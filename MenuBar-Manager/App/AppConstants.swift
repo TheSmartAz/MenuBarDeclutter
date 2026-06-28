@@ -97,21 +97,21 @@ enum AppConstants {
     /// Four-char-code signature used in the registered `EventHotKeyID`.
     static let hotkeyIDSignature: UInt32 = 0x4D424448 // 'MBDH' = MenuBarDeclutter Hotkey
 
-    static var bundleIdentifier: String {
+    static let bundleIdentifier: String = {
         Bundle.main.bundleIdentifier ?? "local.MenuBarDeclutter"
-    }
+    }()
 
     /// Marketing version (`CFBundleShortVersionString`), e.g. "1.0".
-    static var marketingVersion: String {
+    static let marketingVersion: String = {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
-    }
+    }()
 
     /// Build number (`CFBundleVersion`), e.g. "42".
-    static var buildNumber: String {
+    static let buildNumber: String = {
         Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? ""
-    }
+    }()
 
-    static var appVersion: String {
+    static let appVersion: String = {
         switch (marketingVersion, buildNumber) {
         case let (marketing, build) where !marketing.isEmpty && !build.isEmpty:
             return "\(marketing) (\(build))"
@@ -122,5 +122,5 @@ enum AppConstants {
         default:
             return "development"
         }
-    }
+    }()
 }

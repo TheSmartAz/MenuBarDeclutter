@@ -35,33 +35,41 @@ final class AppEnvironmentLiveStatusSynchronizer {
     }
 
     func synchronize() {
-        liveStatus.visibilityState = hidingService.visibilityState
-        liveStatus.primarySeparatorLength = primarySeparatorController.currentLength
-        liveStatus.alwaysHiddenSeparatorLength = alwaysHiddenSeparatorController.currentLength
-        liveStatus.alwaysHiddenSeparatorInstalled = alwaysHiddenSeparatorController.statusItem != nil
-        liveStatus.hotkeyRegistered = hotkeyManager.isRegistered(identifier: .visibilityToggle)
-        liveStatus.searchHotkeyRegistered = hotkeyManager.isRegistered(identifier: .findIcon)
-        liveStatus.hoverPollingActive = hoverRevealController.isPollingActive
-        liveStatus.autoRehideScheduled = rehideController.isScheduled
-        liveStatus.lastRehideReason = rehideController.lastReason?.rawValue
-        liveStatus.accessibilityPermissionStatus = accessibilityPermissionService.status
-        liveStatus.automationPaused = settingsStore.automationPaused
+        liveStatus.applyRuntimeState(
+            LiveDiagnosticsRuntimeState(
+                visibilityState: hidingService.visibilityState,
+                primarySeparatorLength: primarySeparatorController.currentLength,
+                alwaysHiddenSeparatorLength: alwaysHiddenSeparatorController.currentLength,
+                alwaysHiddenSeparatorInstalled: alwaysHiddenSeparatorController.statusItem != nil,
+                hotkeyRegistered: hotkeyManager.isRegistered(identifier: .visibilityToggle),
+                searchHotkeyRegistered: hotkeyManager.isRegistered(identifier: .findIcon),
+                hoverPollingActive: hoverRevealController.isPollingActive,
+                autoRehideScheduled: rehideController.isScheduled,
+                lastRehideReason: rehideController.lastReason?.rawValue,
+                accessibilityPermissionStatus: accessibilityPermissionService.status,
+                automationPaused: settingsStore.automationPaused
+            )
+        )
         refreshSearchAndSecondBarItemCounts()
     }
 
     func refreshSearchIndexItemCount() {
-        liveStatus.searchIndexItemCount = liveStatus.scannedMenuBarItems.count
+        liveStatus.updateSearchIndexItemCount(liveStatus.scannedMenuBarItems.count)
     }
 
     func refreshSecondBarItemCount() {
-        liveStatus.secondBarItemCount = liveStatus.scannedMenuBarItems.filter {
-            ($0.zone == .hidden && settingsStore.secondBarShowHiddenItems)
-                || ($0.zone == .alwaysHidden && settingsStore.secondBarShowAlwaysHiddenItems)
-        }.count
+        liveStatus.updateSecondBarItemCount(menuBarItemCounts().secondBarItemCount)
     }
 
     func refreshSearchAndSecondBarItemCounts() {
-        refreshSearchIndexItemCount()
-        refreshSecondBarItemCount()
+        liveStatus.updateSearchAndSecondBarItemCounts(menuBarItemCounts())
+    }
+
+    private func menuBarItemCounts() -> LiveDiagnosticsMenuBarItemCounts {
+        LiveDiagnosticsMenuBarItemCounts.counts(
+            from: liveStatus.scannedMenuBarItems,
+            includeHiddenInSecondBar: settingsStore.secondBarShowHiddenItems,
+            includeAlwaysHiddenInSecondBar: settingsStore.secondBarShowAlwaysHiddenItems
+        )
     }
 }

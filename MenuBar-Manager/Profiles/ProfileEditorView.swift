@@ -2,7 +2,20 @@ import SwiftUI
 
 struct ProfileEditorView: View {
     @Binding var profile: ProfileModel
+
     @State private var targetZoneText: String
+    @State private var targetZoneTextNeedsCommit = false
+    @FocusState private var isTargetZoneEditorFocused: Bool
+
+    private var targetZoneTextBinding: Binding<String> {
+        Binding(
+            get: { targetZoneText },
+            set: { newValue in
+                targetZoneText = newValue
+                targetZoneTextNeedsCommit = true
+            }
+        )
+    }
 
     init(profile: Binding<ProfileModel>) {
         self._profile = profile
@@ -28,12 +41,10 @@ struct ProfileEditorView: View {
             }
 
             Section("Target Zones") {
-                TextEditor(text: $targetZoneText)
+                TextEditor(text: targetZoneTextBinding)
                     .font(.system(.body, design: .monospaced))
                     .frame(minHeight: 96)
-                    .onChange(of: targetZoneText) { _, newValue in
-                        profile.targetZonesByBundleID = Self.zones(from: newValue)
-                    }
+                    .focused($isTargetZoneEditorFocused)
 
                 Text("One mapping per line, for example: com.example.app=hidden. Supported zones: visible, hidden, alwaysHidden.")
                     .font(.caption)
@@ -46,9 +57,43 @@ struct ProfileEditorView: View {
             }
         }
         .formStyle(.grouped)
-        .onChange(of: profile.id) { _, _ in
-            targetZoneText = Self.text(from: profile.targetZonesByBundleID)
+        .onChange(of: isTargetZoneEditorFocused) { _, isFocused in
+            if !isFocused {
+                commitTargetZoneTextIfNeeded()
+            }
         }
+        .onChange(of: profile.id) { _, _ in
+            syncTargetZoneText(from: profile.targetZonesByBundleID, force: true)
+        }
+        .onChange(of: profile.targetZonesByBundleID) { _, newValue in
+            syncTargetZoneText(from: newValue, force: false)
+        }
+        .onDisappear {
+            commitTargetZoneTextIfNeeded()
+        }
+    }
+
+    private func commitTargetZoneTextIfNeeded() {
+        guard targetZoneTextNeedsCommit else { return }
+
+        let zones = Self.zones(from: targetZoneText)
+        targetZoneTextNeedsCommit = false
+        guard profile.targetZonesByBundleID != zones else { return }
+
+        profile.targetZonesByBundleID = zones
+    }
+
+    private func syncTargetZoneText(from zones: [String: MenuBarZone], force: Bool) {
+        if !force {
+            guard !targetZoneTextNeedsCommit else { return }
+            guard Self.zones(from: targetZoneText) != zones else { return }
+        }
+
+        let text = Self.text(from: zones)
+        if targetZoneText != text {
+            targetZoneText = text
+        }
+        targetZoneTextNeedsCommit = false
     }
 
     static func text(from zones: [String: MenuBarZone]) -> String {

@@ -16,16 +16,6 @@ struct ProfileListView: View {
     @State private var draftProfile: ProfileModel?
     @State private var dryRunSummary: ProfileApplicationDryRun?
     @State private var message: String?
-    @State private var triggerDraftKind: TriggerDraftKind = .externalDisplay
-    @State private var triggerBundleIdentifier = NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? "com.apple.finder"
-    @State private var triggerMinimumDisplayCount = 2
-    @State private var triggerBatteryThreshold = 20
-    @State private var triggerTime = Calendar.current.date(
-        bySettingHour: 9,
-        minute: 0,
-        second: 0,
-        of: Date()
-    ) ?? Date()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -174,20 +164,8 @@ struct ProfileListView: View {
                 Spacer()
             }
 
-            HStack {
-                Picker("Trigger", selection: $triggerDraftKind) {
-                    ForEach(TriggerDraftKind.allCases) { kind in
-                        Text(kind.displayName).tag(kind)
-                    }
-                }
-                .frame(width: 170)
-
-                triggerDraftControls
-
-                Button("Add Trigger", systemImage: "plus") {
-                    addConfiguredTrigger()
-                }
-                .disabled(selectedProfile == nil || !canAddConfiguredTrigger)
+            TriggerDraftForm(isProfileSelected: selectedProfile != nil) { rule, name in
+                addTrigger(rule: rule, name: name)
             }
 
             if settingsStore.automationPaused {
@@ -291,91 +269,6 @@ struct ProfileListView: View {
         onTriggersChanged()
     }
 
-    private var triggerDraftControls: some View {
-        Group {
-            switch triggerDraftKind {
-            case .externalDisplay:
-                Stepper(
-                    "Displays: \(triggerMinimumDisplayCount)",
-                    value: $triggerMinimumDisplayCount,
-                    in: 2...8
-                )
-                .frame(width: 130)
-            case .appLaunched, .frontmostApp:
-                TextField("Bundle ID", text: $triggerBundleIdentifier)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(width: 220)
-            case .batteryLow:
-                Stepper(
-                    "Battery: \(triggerBatteryThreshold)%",
-                    value: $triggerBatteryThreshold,
-                    in: 1...100
-                )
-                .frame(width: 150)
-            case .timeOfDay:
-                DatePicker(
-                    "Time",
-                    selection: $triggerTime,
-                    displayedComponents: .hourAndMinute
-                )
-                .labelsHidden()
-                .frame(width: 110)
-            }
-        }
-    }
-
-    private var canAddConfiguredTrigger: Bool {
-        switch triggerDraftKind {
-        case .appLaunched, .frontmostApp:
-            !triggerBundleIdentifier.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        case .externalDisplay, .batteryLow, .timeOfDay:
-            true
-        }
-    }
-
-    private func addConfiguredTrigger() {
-        guard let rule = configuredTriggerRule else { return }
-        addTrigger(rule: rule, name: configuredTriggerName)
-    }
-
-    private var configuredTriggerRule: TriggerRule? {
-        switch triggerDraftKind {
-        case .externalDisplay:
-            .externalDisplayConnected(minimumDisplayCount: triggerMinimumDisplayCount)
-        case .appLaunched:
-            normalizedTriggerBundleID.map { .appLaunched(bundleIdentifier: $0) }
-        case .frontmostApp:
-            normalizedTriggerBundleID.map { .frontmostApp(bundleIdentifier: $0) }
-        case .batteryLow:
-            .batteryLow(thresholdPercent: triggerBatteryThreshold)
-        case .timeOfDay:
-            .timeOfDay(
-                hour: Calendar.current.component(.hour, from: triggerTime),
-                minute: Calendar.current.component(.minute, from: triggerTime)
-            )
-        }
-    }
-
-    private var configuredTriggerName: String {
-        switch triggerDraftKind {
-        case .externalDisplay:
-            "External Display"
-        case .appLaunched:
-            "App Launched"
-        case .frontmostApp:
-            "Frontmost App"
-        case .batteryLow:
-            "Battery Low"
-        case .timeOfDay:
-            "Time of Day"
-        }
-    }
-
-    private var normalizedTriggerBundleID: String? {
-        let bundleID = triggerBundleIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
-        return bundleID.isEmpty ? nil : bundleID
-    }
-
     private func export(profile: ProfileModel) {
         let panel = NSSavePanel()
         panel.title = "Export Profile"
@@ -431,6 +324,152 @@ private enum TriggerDraftKind: String, CaseIterable, Identifiable {
         case .timeOfDay:
             "Time"
         }
+    }
+}
+
+private struct TriggerDraft {
+    var kind: TriggerDraftKind
+    var bundleIdentifier: String
+    var minimumDisplayCount: Int
+    var batteryThreshold: Int
+    var time: Date
+
+    var canAdd: Bool {
+        switch kind {
+        case .appLaunched, .frontmostApp:
+            normalizedBundleIdentifier != nil
+        case .externalDisplay, .batteryLow, .timeOfDay:
+            true
+        }
+    }
+
+    var rule: TriggerRule? {
+        switch kind {
+        case .externalDisplay:
+            .externalDisplayConnected(minimumDisplayCount: minimumDisplayCount)
+        case .appLaunched:
+            normalizedBundleIdentifier.map { .appLaunched(bundleIdentifier: $0) }
+        case .frontmostApp:
+            normalizedBundleIdentifier.map { .frontmostApp(bundleIdentifier: $0) }
+        case .batteryLow:
+            .batteryLow(thresholdPercent: batteryThreshold)
+        case .timeOfDay:
+            .timeOfDay(
+                hour: Calendar.current.component(.hour, from: time),
+                minute: Calendar.current.component(.minute, from: time)
+            )
+        }
+    }
+
+    var name: String {
+        switch kind {
+        case .externalDisplay:
+            "External Display"
+        case .appLaunched:
+            "App Launched"
+        case .frontmostApp:
+            "Frontmost App"
+        case .batteryLow:
+            "Battery Low"
+        case .timeOfDay:
+            "Time of Day"
+        }
+    }
+
+    private var normalizedBundleIdentifier: String? {
+        let trimmed = bundleIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+}
+
+private struct TriggerDraftForm: View {
+    let isProfileSelected: Bool
+    let onAdd: (TriggerRule, String) -> Void
+
+    @State private var draft: TriggerDraft
+
+    init(
+        isProfileSelected: Bool,
+        onAdd: @escaping (TriggerRule, String) -> Void
+    ) {
+        self.isProfileSelected = isProfileSelected
+        self.onAdd = onAdd
+        self._draft = State(initialValue: TriggerDraft(
+            kind: .externalDisplay,
+            bundleIdentifier: Self.defaultBundleIdentifier,
+            minimumDisplayCount: 2,
+            batteryThreshold: 20,
+            time: Self.defaultTriggerTime
+        ))
+    }
+
+    var body: some View {
+        HStack {
+            Picker("Trigger", selection: $draft.kind) {
+                ForEach(TriggerDraftKind.allCases) { kind in
+                    Text(kind.displayName).tag(kind)
+                }
+            }
+            .frame(width: 170)
+
+            draftControls
+
+            Button("Add Trigger", systemImage: "plus") {
+                addTrigger()
+            }
+            .disabled(!isProfileSelected || !draft.canAdd)
+        }
+    }
+
+    private var draftControls: some View {
+        Group {
+            switch draft.kind {
+            case .externalDisplay:
+                Stepper(
+                    "Displays: \(draft.minimumDisplayCount)",
+                    value: $draft.minimumDisplayCount,
+                    in: 2...8
+                )
+                .frame(width: 130)
+            case .appLaunched, .frontmostApp:
+                TextField("Bundle ID", text: $draft.bundleIdentifier)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 220)
+            case .batteryLow:
+                Stepper(
+                    "Battery: \(draft.batteryThreshold)%",
+                    value: $draft.batteryThreshold,
+                    in: 1...100
+                )
+                .frame(width: 150)
+            case .timeOfDay:
+                DatePicker(
+                    "Time",
+                    selection: $draft.time,
+                    displayedComponents: .hourAndMinute
+                )
+                .labelsHidden()
+                .frame(width: 110)
+            }
+        }
+    }
+
+    private static var defaultBundleIdentifier: String {
+        NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? "com.apple.finder"
+    }
+
+    private static var defaultTriggerTime: Date {
+        Calendar.current.date(
+            bySettingHour: 9,
+            minute: 0,
+            second: 0,
+            of: Date()
+        ) ?? Date()
+    }
+
+    private func addTrigger() {
+        guard let rule = draft.rule else { return }
+        onAdd(rule, draft.name)
     }
 }
 

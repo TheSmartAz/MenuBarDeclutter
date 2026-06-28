@@ -56,6 +56,7 @@ final class RehideController {
     private let diagnosticsLogger: DiagnosticsLogger
     private var pollTimer: Timer?
     private var fireDeadline: Date?
+    private var isFiringAutoRehide = false
     private(set) var isScheduled = false
     private(set) var lastReason: RehideReason?
 
@@ -71,9 +72,7 @@ final class RehideController {
         cancel(reason: nil)
         guard delay > 0 else {
             // Non-positive delay fires immediately.
-            lastReason = .timerExpired
-            notifyStatusChanged()
-            onRehide?()
+            fireRehide()
             diagnosticsLogger.log("Auto-rehide fired immediately (delay=\(delay)s).")
             return
         }
@@ -106,6 +105,8 @@ final class RehideController {
     /// Called when the user collapses manually so the timer can be cancelled
     /// and the reason recorded.
     func markUserCollapsed() {
+        guard !isFiringAutoRehide else { return }
+
         let hadActiveCountdown = hasActiveCountdown
         lastReason = .userCollapsed
         cancel(reason: nil)
@@ -117,6 +118,12 @@ final class RehideController {
     /// Called when the rehide fires so the reason is recorded and the
     /// countdown is no longer scheduled.
     func markRehideFired() {
+        guard !isFiringAutoRehide else {
+            lastReason = .timerExpired
+            clearCountdown()
+            return
+        }
+
         let hadActiveCountdown = hasActiveCountdown
         lastReason = .timerExpired
         cancel(reason: nil)
@@ -156,10 +163,7 @@ final class RehideController {
         }
 
         if now >= deadline {
-            lastReason = .timerExpired
-            notifyStatusChanged()
-            onRehide?()
-            cancel(reason: nil)
+            fireRehide()
         }
     }
 
@@ -184,6 +188,23 @@ final class RehideController {
 
     private var hasActiveCountdown: Bool {
         pollTimer != nil || isScheduled || fireDeadline != nil
+    }
+
+    private func fireRehide() {
+        lastReason = .timerExpired
+        clearCountdown()
+        notifyStatusChanged()
+
+        isFiringAutoRehide = true
+        defer { isFiringAutoRehide = false }
+        onRehide?()
+    }
+
+    private func clearCountdown() {
+        pollTimer?.invalidate()
+        pollTimer = nil
+        fireDeadline = nil
+        isScheduled = false
     }
 
     private func notifyStatusChanged() {

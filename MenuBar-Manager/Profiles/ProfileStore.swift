@@ -39,14 +39,22 @@ final class ProfileStore {
                 at: appSupportPaths.profilesDirectory,
                 includingPropertiesForKeys: nil
             )
-            profiles = try urls
-                .filter { $0.pathExtension == "json" && $0.lastPathComponent != TriggerService.storageFilename }
-                .map { url in
+            var loadedProfiles: [ProfileModel] = []
+            var skippedFiles: [String] = []
+
+            for url in profileURLs(from: urls) {
+                do {
                     let data = try Data(contentsOf: url)
-                    return try decoder.decode(ProfileModel.self, from: data)
+                    loadedProfiles.append(try decoder.decode(ProfileModel.self, from: data))
+                } catch {
+                    skippedFiles.append("\(url.lastPathComponent): \(error.localizedDescription)")
                 }
-                .sorted { $0.updatedAt > $1.updatedAt }
-            lastError = nil
+            }
+
+            profiles = loadedProfiles.sorted { $0.updatedAt > $1.updatedAt }
+            lastError = skippedFiles.isEmpty
+                ? nil
+                : "Skipped \(skippedFiles.count) profile file(s): \(skippedFiles.joined(separator: "; "))"
         } catch {
             lastError = error.localizedDescription
         }
@@ -144,6 +152,12 @@ final class ProfileStore {
 
     private func url(for id: UUID) -> URL {
         appSupportPaths.profilesDirectory.appendingPathComponent("\(id.uuidString).json")
+    }
+
+    private func profileURLs(from urls: [URL]) -> [URL] {
+        urls.filter {
+            $0.pathExtension == "json" && $0.lastPathComponent != TriggerService.storageFilename
+        }
     }
 
     private func uniqueName(_ base: String) -> String {

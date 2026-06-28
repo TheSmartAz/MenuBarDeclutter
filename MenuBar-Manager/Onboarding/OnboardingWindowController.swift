@@ -37,7 +37,6 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
 
         let contentView = OnboardingRootView(
             navigationModel: navigationModel,
-            settingsStore: settingsStore,
             onComplete: { [weak self] in
                 self?.complete()
             }

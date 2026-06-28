@@ -40,15 +40,14 @@ final class OnboardingNavigationModel {
 /// `hasCompletedOnboarding`.
 struct OnboardingRootView: View {
     @Bindable var navigationModel: OnboardingNavigationModel
-    let settingsStore: SettingsStore
     let onComplete: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
             TabView(selection: $navigationModel.currentIndex) {
-                ForEach(Array(OnboardingStep.allSteps.enumerated()), id: \.offset) { index, step in
+                ForEach(OnboardingStep.allSteps) { step in
                     OnboardingStepView(step: step)
-                        .tag(index)
+                        .tag(OnboardingStep.allSteps.firstIndex(of: step) ?? 0)
                 }
             }
             .tabViewStyle(.automatic)
@@ -155,7 +154,6 @@ private struct PageControl: View {
 #Preview {
     OnboardingRootView(
         navigationModel: OnboardingNavigationModel(),
-        settingsStore: SettingsStore(),
         onComplete: {}
     )
 }

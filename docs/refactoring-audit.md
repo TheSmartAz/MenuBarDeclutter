@@ -626,16 +626,16 @@ Failure to build stops work; the failing change is reverted before continuation.
 
 ## Completed actions
 
-All five top-leverage actions have been implemented. Follow-up Wave 1, Wave 2, and
-Wave 3 subagent passes also closed several remaining high/medium findings called out
+All five top-leverage actions have been implemented. Follow-up Wave 1, Wave 2, Wave 3,
+and Wave 4 subagent passes also closed several remaining high/medium findings called out
 above.
 The combined tree was verified by:
 
 - `xcodebuild -scheme MenuBarDeclutter -destination 'platform=macOS' build`
 - `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -only-testing:MenuBarDeclutterTests`
-  (153 unit tests passed)
+  (162 unit tests passed)
 - `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS'`
-  (153 unit tests + 7 UI tests passed)
+  (162 unit tests + 7 UI tests passed)
 
 | Action | Files modified | Verification |
 |---|---|---|
@@ -661,6 +661,11 @@ The combined tree was verified by:
 | M-AC1 — Settings runtime reapply duplication | `App/SettingsRuntimeCoordinator.swift` (shared `reapplyStatusBarBehavior()` and visibility-hotkey refresh helper) | Build + tests pass. |
 | M-S5 — Settings slider repetition | `Settings/LabeledSlider.swift`, `Settings/BehaviorSettingsView.swift`, `Settings/AdvancedSettingsView.swift`, `Settings/SecondBarSettingsView.swift` (shared slider row with optional endpoint labels and monospaced value label) | Build + tests pass. |
 | Test coverage gaps — pure presentation/logic | `MenuBar-ManagerTests/HealthIssuePresentationTests.swift`, `MenuBar-ManagerTests/TriggerRuleEvaluatorTests.swift`, `MenuBar-ManagerTests/AccessibilityDiscoveryLogicTests.swift` (coverage for health labels/ranks, trigger display names, and strict separator midpoint classification) | Build + tests pass. |
+| M-HP2 — Profile persistence resilience | `Profiles/ProfileModel.swift`, `Profiles/ProfileStore.swift`, `MenuBar-ManagerTests/ProfileStoreTests.swift` (profile JSON now carries a schema version, legacy missing-version files still decode, future unsupported versions fail per-file, and corrupt profile files no longer drop the entire profile list) | Build + tests pass. |
+| M-S6 / M-S7 — Profile settings UI cleanup | `Profiles/ProfileListView.swift`, `Profiles/ProfileEditorView.swift`, `MenuBar-ManagerTests/ProfileStoreTests.swift` (trigger draft state moved into `TriggerDraftForm`; target-zone text commits on focus loss/disappear and syncs external same-id content changes without reparsing on every keystroke) | Build + tests pass. |
+| M-AC2 / low AppConstants cache — Live diagnostics synchronization | `App/AppConstants.swift`, `App/AppEnvironmentLiveStatusSynchronizer.swift`, `Core/LiveDiagnosticsStatus.swift`, `MenuBar-ManagerTests/LiveDiagnosticsStatusTests.swift` (bundle metadata is cached; live runtime sync uses idempotent update helpers; search/second-bar item counts are computed in one pass) | Build + tests pass. |
+| M-HM4 / M-HM7 — Rehide and drag verification cleanup | `Hiding/RehideController.swift`, `Moving/DragVerificationService.swift`, `MenuBar-ManagerTests/RehideControllerTests.swift`, `MenuBar-ManagerTests/IconMovePlanningTests.swift` (auto-rehide fire path emits one status update; drag verification uses locale-stable folded matching without redundant lowercasing) | Build + tests pass. |
+| Low-impact polish — status/search/onboarding | `StatusBar/StatusItemFactory.swift`, `Search/HighlightOverlayWindow.swift`, `Onboarding/OnboardingRootView.swift`, `Onboarding/OnboardingWindowController.swift` (status item SF Symbols are cached, search highlight window is reused, and onboarding no longer carries an unused settings dependency) | Build + tests pass. |
 
 ### Notes on decisions deferred
 

@@ -136,6 +136,35 @@ struct RehideControllerTests {
         #expect(controller.lastReason == .cancelled)
     }
 
+    @Test func statusChangeCallbackFiresOnceWhenAutoRehideFires() {
+        let logger = DiagnosticsLogger()
+        let controller = RehideController(diagnosticsLogger: logger)
+
+        var fired = 0
+        var statusChanges = 0
+        controller.onStatusChange = { statusChanges += 1 }
+        controller.onRehide = {
+            fired += 1
+            controller.markUserCollapsed()
+            controller.markRehideFired()
+        }
+
+        controller.startCountdown(delay: 5)
+        #expect(statusChanges == 1)
+
+        controller.processTick(
+            now: Date().addingTimeInterval(6),
+            autoRehideEnabled: true,
+            autoRehideDelay: 5,
+            conditions: RehidePostponementConditions()
+        )
+
+        #expect(fired == 1)
+        #expect(statusChanges == 2)
+        #expect(controller.isScheduled == false)
+        #expect(controller.lastReason == .timerExpired)
+    }
+
     @Test func settingsWindowPostpones() {
         let logger = DiagnosticsLogger()
         let controller = RehideController(diagnosticsLogger: logger)

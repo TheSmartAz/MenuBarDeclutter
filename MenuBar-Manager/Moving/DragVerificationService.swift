@@ -80,8 +80,7 @@ struct DragVerificationService {
     private static func normalized(_ value: String?) -> String {
         value?
             .trimmingCharacters(in: .whitespacesAndNewlines)
-            .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
-            .lowercased()
+            .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
             ?? ""
     }
 }

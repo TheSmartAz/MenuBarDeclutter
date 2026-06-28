@@ -8,6 +8,7 @@ import Foundation
 @MainActor
 final class StatusItemFactory {
     private let diagnosticsLogger: DiagnosticsLogger
+    private var imageCache: [CachedImageKey: NSImage] = [:]
 
     init(diagnosticsLogger: DiagnosticsLogger) {
         self.diagnosticsLogger = diagnosticsLogger
@@ -46,11 +47,7 @@ final class StatusItemFactory {
         }
 
         let symbolName = hiding.isCollapsed ? kind.collapsedSymbolName : kind.expandedSymbolName
-        if let image = NSImage(
-            systemSymbolName: symbolName,
-            accessibilityDescription: kind.accessibilityLabel
-        ) {
-            image.isTemplate = true
+        if let image = image(named: symbolName, accessibilityDescription: kind.accessibilityLabel) {
             button.image = image
             button.title = ""
         } else {
@@ -73,21 +70,13 @@ final class StatusItemFactory {
 
         switch kind {
         case .control:
-            if let image = NSImage(
-                systemSymbolName: kind.expandedSymbolName,
-                accessibilityDescription: kind.accessibilityLabel
-            ) {
-                image.isTemplate = true
+            if let image = image(named: kind.expandedSymbolName, accessibilityDescription: kind.accessibilityLabel) {
                 button.image = image
             } else {
                 button.title = "MBD"
             }
         case .primarySeparator, .alwaysHiddenSeparator:
-            if let image = NSImage(
-                systemSymbolName: kind.expandedSymbolName,
-                accessibilityDescription: kind.accessibilityLabel
-            ) {
-                image.isTemplate = true
+            if let image = image(named: kind.expandedSymbolName, accessibilityDescription: kind.accessibilityLabel) {
                 button.image = image
             } else {
                 button.title = "|"
@@ -95,5 +84,28 @@ final class StatusItemFactory {
         }
 
         diagnosticsLogger.log("Installed status item (kind=\(kind), length=\(length)).")
+    }
+
+    private func image(named symbolName: String, accessibilityDescription: String) -> NSImage? {
+        let key = CachedImageKey(symbolName: symbolName, accessibilityDescription: accessibilityDescription)
+        if let cached = imageCache[key] {
+            return cached
+        }
+
+        guard let image = NSImage(
+            systemSymbolName: symbolName,
+            accessibilityDescription: accessibilityDescription
+        ) else {
+            return nil
+        }
+
+        image.isTemplate = true
+        imageCache[key] = image
+        return image
+    }
+
+    private struct CachedImageKey: Hashable {
+        let symbolName: String
+        let accessibilityDescription: String
     }
 }

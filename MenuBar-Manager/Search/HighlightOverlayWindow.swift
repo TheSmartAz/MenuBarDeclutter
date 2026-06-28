@@ -21,19 +21,9 @@ final class HighlightOverlayWindow {
             return
         }
 
-        let overlayWindow = NSWindow(
-            contentRect: visibleFrame,
-            styleMask: [.borderless],
-            backing: .buffered,
-            defer: false
-        )
-        overlayWindow.isOpaque = false
-        overlayWindow.backgroundColor = .clear
-        overlayWindow.hasShadow = false
-        overlayWindow.ignoresMouseEvents = true
-        overlayWindow.level = .statusBar
-        overlayWindow.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
-        overlayWindow.contentView = HighlightOverlayView(frame: NSRect(origin: .zero, size: visibleFrame.size))
+        let overlayWindow = window ?? makeWindow(frame: visibleFrame)
+        overlayWindow.setFrame(visibleFrame, display: true)
+        overlayWindow.contentView?.frame = NSRect(origin: .zero, size: visibleFrame.size)
         overlayWindow.orderFrontRegardless()
 
         window = overlayWindow
@@ -51,7 +41,23 @@ final class HighlightOverlayWindow {
         dismissWorkItem?.cancel()
         dismissWorkItem = nil
         window?.orderOut(nil)
-        window = nil
+    }
+
+    private func makeWindow(frame: CGRect) -> NSWindow {
+        let overlayWindow = NSWindow(
+            contentRect: frame,
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        overlayWindow.isOpaque = false
+        overlayWindow.backgroundColor = .clear
+        overlayWindow.hasShadow = false
+        overlayWindow.ignoresMouseEvents = true
+        overlayWindow.level = .statusBar
+        overlayWindow.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
+        overlayWindow.contentView = HighlightOverlayView(frame: NSRect(origin: .zero, size: frame.size))
+        return overlayWindow
     }
 
     private func visibleOverlayFrame(for frame: CGRect) -> CGRect {
@@ -110,8 +116,6 @@ final class HighlightOverlayWindow {
 }
 
 private final class HighlightOverlayView: NSView {
-    override var isFlipped: Bool { false }
-
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
 

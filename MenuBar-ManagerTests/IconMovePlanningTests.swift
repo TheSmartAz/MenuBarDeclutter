@@ -87,6 +87,30 @@ struct IconMovePlanningTests {
         #expect(result.isSuccess == false)
     }
 
+    @Test func verificationMatchesWithLocaleStableFoldedText() {
+        let original = makeSnapshot(
+            bundleID: "com.example.move",
+            zone: .hidden,
+            title: "CAF\u{00C9} Status",
+            owningApplicationName: "Example"
+        )
+        let after = makeSnapshot(
+            bundleID: "com.example.move",
+            zone: .visible,
+            title: " cafe status ",
+            owningApplicationName: "Different"
+        )
+
+        let result = DragVerificationService().verify(
+            original: original,
+            targetZone: .visible,
+            rescannedSnapshots: [after]
+        )
+
+        #expect(result.outcome == .succeeded)
+        #expect(result.matchedSnapshot == after)
+    }
+
     @Test func moveServiceAwaitsDragAndClearsProgress() async {
         let suiteName = "IconMovePlanningTests.service.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
@@ -332,17 +356,19 @@ struct IconMovePlanningTests {
     private func makeSnapshot(
         bundleID: String = "com.example.app",
         zone: MenuBarZone,
+        title: String = "Status",
+        owningApplicationName: String = "Example",
         frame: CGRect? = CGRect(x: 100, y: 850, width: 24, height: 22),
         isSystem: Bool = false
     ) -> MenuBarItemSnapshot {
         MenuBarItemSnapshot(
             id: UUID().uuidString,
-            title: "Status",
+            title: title,
             role: "AXMenuBarItem",
             subrole: nil,
             frame: frame,
             owningProcessIdentifier: 42,
-            owningApplicationName: "Example",
+            owningApplicationName: owningApplicationName,
             bundleIdentifier: bundleID,
             zone: zone,
             isLikelySystemItem: isSystem,

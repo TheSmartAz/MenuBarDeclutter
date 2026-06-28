@@ -50,4 +50,94 @@ final class LiveDiagnosticsStatus {
     var safeModeReasonSummary: String = "Inactive"
 
     init() {}
+
+    func applyRuntimeState(_ state: LiveDiagnosticsRuntimeState) {
+        setIfChanged(\.visibilityState, to: state.visibilityState)
+        setIfChanged(\.primarySeparatorLength, to: state.primarySeparatorLength)
+        setIfChanged(\.alwaysHiddenSeparatorLength, to: state.alwaysHiddenSeparatorLength)
+        setIfChanged(\.alwaysHiddenSeparatorInstalled, to: state.alwaysHiddenSeparatorInstalled)
+        setIfChanged(\.hotkeyRegistered, to: state.hotkeyRegistered)
+        setIfChanged(\.searchHotkeyRegistered, to: state.searchHotkeyRegistered)
+        setIfChanged(\.hoverPollingActive, to: state.hoverPollingActive)
+        setIfChanged(\.autoRehideScheduled, to: state.autoRehideScheduled)
+        setIfChanged(\.lastRehideReason, to: state.lastRehideReason)
+        setIfChanged(\.accessibilityPermissionStatus, to: state.accessibilityPermissionStatus)
+        setIfChanged(\.automationPaused, to: state.automationPaused)
+    }
+
+    func updateSearchIndexItemCount(_ count: Int) {
+        setIfChanged(\.searchIndexItemCount, to: count)
+    }
+
+    func updateSecondBarItemCount(_ count: Int) {
+        setIfChanged(\.secondBarItemCount, to: count)
+    }
+
+    func updateSearchAndSecondBarItemCounts(_ counts: LiveDiagnosticsMenuBarItemCounts) {
+        updateSearchIndexItemCount(counts.searchIndexItemCount)
+        updateSecondBarItemCount(counts.secondBarItemCount)
+    }
+
+    private func setIfChanged<Value: Equatable>(
+        _ keyPath: ReferenceWritableKeyPath<LiveDiagnosticsStatus, Value>,
+        to value: Value
+    ) {
+        guard self[keyPath: keyPath] != value else { return }
+        self[keyPath: keyPath] = value
+    }
+}
+
+struct LiveDiagnosticsRuntimeState: Equatable {
+    let visibilityState: HidingVisibilityState
+    let primarySeparatorLength: Double
+    let alwaysHiddenSeparatorLength: Double
+    let alwaysHiddenSeparatorInstalled: Bool
+    let hotkeyRegistered: Bool
+    let searchHotkeyRegistered: Bool
+    let hoverPollingActive: Bool
+    let autoRehideScheduled: Bool
+    let lastRehideReason: String?
+    let accessibilityPermissionStatus: AccessibilityPermissionStatus
+    let automationPaused: Bool
+}
+
+struct LiveDiagnosticsMenuBarItemCounts: Equatable {
+    let searchIndexItemCount: Int
+    let secondBarItemCount: Int
+
+    static func counts(
+        from snapshots: [MenuBarItemSnapshot],
+        includeHiddenInSecondBar: Bool,
+        includeAlwaysHiddenInSecondBar: Bool
+    ) -> LiveDiagnosticsMenuBarItemCounts {
+        var secondBarItemCount = 0
+
+        for snapshot in snapshots where snapshot.isVisibleInSecondBar(
+            includeHidden: includeHiddenInSecondBar,
+            includeAlwaysHidden: includeAlwaysHiddenInSecondBar
+        ) {
+            secondBarItemCount += 1
+        }
+
+        return LiveDiagnosticsMenuBarItemCounts(
+            searchIndexItemCount: snapshots.count,
+            secondBarItemCount: secondBarItemCount
+        )
+    }
+}
+
+private extension MenuBarItemSnapshot {
+    func isVisibleInSecondBar(
+        includeHidden: Bool,
+        includeAlwaysHidden: Bool
+    ) -> Bool {
+        switch zone {
+        case .hidden:
+            return includeHidden
+        case .alwaysHidden:
+            return includeAlwaysHidden
+        case .visible, .unknown:
+            return false
+        }
+    }
 }
