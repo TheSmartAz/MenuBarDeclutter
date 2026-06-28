@@ -42,111 +42,6 @@ final class AppEnvironment {
         }
     )
 
-    private lazy var searchService = SearchService()
-
-    private lazy var highlightOverlayWindow = HighlightOverlayWindow(
-        diagnosticsLogger: diagnosticsLogger
-    )
-
-    private lazy var menuItemActivator = MenuItemActivator(
-        settingsStore: settingsStore,
-        hidingService: hidingService,
-        highlightOverlay: highlightOverlayWindow,
-        diagnosticsLogger: diagnosticsLogger
-    )
-
-    private lazy var searchWindowController = SearchWindowController(
-        settingsStore: settingsStore,
-        permissionService: accessibilityPermissionService,
-        liveStatus: liveStatus,
-        searchService: searchService,
-        menuItemActivator: menuItemActivator,
-        diagnosticsLogger: diagnosticsLogger,
-        onRefresh: { [weak self] in
-            self?.refreshMenuBarItems()
-        },
-        onMove: { [weak self] result, command in
-            guard let self else {
-                return IconMoveResult.skipped(
-                    command: command,
-                    itemName: result.displayTitle,
-                    error: .disabled
-                )
-            }
-            return await self.moveIcon(result.snapshot, command: command)
-        },
-        onSettingsChanged: { [weak self] in
-            self?.refreshSearchSettings()
-        },
-        onOpenPrivacySettings: { [weak self] in
-            self?.settingsWindowController.show(section: SettingsSection.privacy)
-        }
-    )
-
-    private lazy var secondBarPositioningService = SecondBarPositioningService()
-
-    private lazy var iconMoveService = IconMoveService(
-        settingsStore: settingsStore,
-        permissionService: accessibilityPermissionService,
-        liveStatus: liveStatus,
-        diagnosticsLogger: diagnosticsLogger,
-        separatorFramesProvider: { [weak self] in
-            MenuBarSeparatorFrames(
-                primary: self?.primarySeparatorController.screenFrame,
-                alwaysHidden: self?.alwaysHiddenSeparatorController.screenFrame
-            )
-        },
-        currentVisibilityProvider: { [weak self] in
-            self?.hidingService.visibilityState ?? .expanded
-        },
-        setVisibility: { [weak self] state in
-            self?.hidingService.setVisibility(state)
-        },
-        refreshSnapshots: { [weak self] in
-            self?.refreshMenuBarItems()
-            return self?.liveStatus.scannedMenuBarItems ?? []
-        },
-        suspendRuntimeBehaviors: { [weak self] in
-            self?.suspendRuntimeForIconMove()
-        },
-        resumeRuntimeBehaviors: { [weak self] in
-            self?.resumeRuntimeAfterIconMove()
-        }
-    )
-
-    private lazy var secondBarWindowController = SecondBarWindowController(
-        settingsStore: settingsStore,
-        permissionService: accessibilityPermissionService,
-        liveStatus: liveStatus,
-        positioningService: secondBarPositioningService,
-        diagnosticsLogger: diagnosticsLogger,
-        onRefresh: { [weak self] in
-            self?.refreshMenuBarItems()
-        },
-        onActivate: { [weak self] snapshot in
-            self?.activateSecondBarItem(snapshot) ?? MenuItemActivationResult(
-                outcome: .selectedWithoutHighlight,
-                message: "Second Bar item selected."
-            )
-        },
-        onMove: { [weak self] snapshot, command in
-            guard let self else {
-                return IconMoveResult.skipped(
-                    command: command,
-                    itemName: snapshot.owningApplicationName ?? snapshot.title ?? "Menu Bar Item",
-                    error: .disabled
-                )
-            }
-            return await self.moveIcon(snapshot, command: command)
-        },
-        onSettingsChanged: { [weak self] in
-            self?.refreshSecondBarSettings()
-        },
-        onOpenPrivacySettings: { [weak self] in
-            self?.settingsWindowController.show(section: SettingsSection.privacy)
-        }
-    )
-
     private lazy var profileAutomationCoordinator = ProfileAutomationCoordinator(
         settingsStore: settingsStore,
         diagnosticsLogger: diagnosticsLogger,
@@ -232,7 +127,7 @@ final class AppEnvironment {
             self?.resetAllSettings()
         },
         onResetMovingWarnings: { [weak self] in
-            self?.iconMoveService.resetWarnings()
+            self?.resetMovingWarnings()
         },
         onShowOnboarding: { [weak self] in
             self?.showOnboarding()
@@ -344,6 +239,37 @@ final class AppEnvironment {
         accessibilityPermissionService: accessibilityPermissionService
     )
 
+    private lazy var menuBarItemSurfaceCoordinator = MenuBarItemSurfaceCoordinator(
+        settingsStore: settingsStore,
+        diagnosticsLogger: diagnosticsLogger,
+        liveStatus: liveStatus,
+        safeModeLaunchState: safeModeLaunchState,
+        hidingService: hidingService,
+        rehideController: rehideController,
+        hoverRevealController: hoverRevealController,
+        accessibilityPermissionService: accessibilityPermissionService,
+        menuBarScanCoordinator: menuBarScanCoordinator,
+        liveStatusSynchronizer: liveStatusSynchronizer,
+        separatorFramesProvider: { [weak self] in
+            MenuBarSeparatorFrames(
+                primary: self?.primarySeparatorController.screenFrame,
+                alwaysHidden: self?.alwaysHiddenSeparatorController.screenFrame
+            )
+        },
+        isHoverRevealSuppressed: { [weak self] in
+            self?.isHoverRevealSuppressed == true
+        },
+        refreshSearchSettings: { [weak self] in
+            self?.refreshSearchSettings()
+        },
+        refreshSecondBarSettings: { [weak self] in
+            self?.refreshSecondBarSettings()
+        },
+        openPrivacySettings: { [weak self] in
+            self?.settingsWindowController.show(section: SettingsSection.privacy)
+        }
+    )
+
     private lazy var healthCoordinator = AppHealthCoordinator(
         settingsStore: settingsStore,
         diagnosticsLogger: diagnosticsLogger,
@@ -358,7 +284,7 @@ final class AppEnvironment {
         hidingService: hidingService,
         accessibilityPermissionService: accessibilityPermissionService,
         menuBarScanCoordinator: menuBarScanCoordinator,
-        secondBarWindowController: secondBarWindowController,
+        secondBarWindowController: menuBarItemSurfaceCoordinator.secondBarWindowController,
         synchronizeLiveStatus: { [weak self] in
             self?.updateLiveStatusFromServices()
         },
@@ -383,7 +309,7 @@ final class AppEnvironment {
         hotkeyManager: hotkeyManager,
         hoverRevealController: hoverRevealController,
         menuBarScanCoordinator: menuBarScanCoordinator,
-        secondBarWindowController: secondBarWindowController,
+        secondBarWindowController: menuBarItemSurfaceCoordinator.secondBarWindowController,
         triggerService: profileAutomationCoordinator.triggerService,
         liveStatusSynchronizer: liveStatusSynchronizer,
         isHoverRevealSuppressed: { [weak self] in
@@ -553,7 +479,7 @@ final class AppEnvironment {
     }
 
     func stop() {
-        secondBarWindowController.hide()
+        menuBarItemSurfaceCoordinator.hideSecondBar()
         profileAutomationCoordinator.stop()
         systemRecoveryCoordinator.stopObserving()
         menuBarScanCoordinator.stop()
@@ -675,7 +601,7 @@ final class AppEnvironment {
         hidingService.handleScreenParametersChanged()
         statusBarController.ensureRequiredStatusItemsInstalled()
         statusBarController.reapplyCurrentVisibility()
-        secondBarWindowController.refreshAfterSettingsChanged()
+        menuBarItemSurfaceCoordinator.refreshSecondBarAfterSettingsChanged()
 
         if !safeModeLaunchState.isSafeModeActive {
             menuBarScanCoordinator.scanIfAllowed(reason: reason, force: true)
@@ -720,52 +646,6 @@ final class AppEnvironment {
         liveStatusSynchronizer.synchronize()
     }
 
-    private func activateSecondBarItem(_ snapshot: MenuBarItemSnapshot) -> MenuItemActivationResult {
-        let result = menuItemActivator.activate(
-            MenuBarSearchResult(
-                snapshot: snapshot,
-                score: 0,
-                matchReason: .recent
-            )
-        )
-
-        if settingsStore.secondBarActivateOwningAppOnSelection,
-           let processIdentifier = snapshot.owningProcessIdentifier {
-            NSRunningApplication(processIdentifier: processIdentifier)?
-                .activate(options: [])
-        }
-
-        diagnosticsLogger.log("Second Bar activation: \(result.message)")
-        return result
-    }
-
-    private func moveIcon(_ snapshot: MenuBarItemSnapshot, command: IconMoveCommand) async -> IconMoveResult {
-        guard !safeModeLaunchState.isSafeModeActive else {
-            return IconMoveResult.skipped(
-                command: command,
-                itemName: snapshot.owningApplicationName ?? snapshot.title ?? "Menu Bar Item",
-                error: .disabled
-            )
-        }
-        return await iconMoveService.move(snapshot, command: command)
-    }
-
-    private func suspendRuntimeForIconMove() {
-        rehideController.cancel(reason: .cancelled)
-        hoverRevealController.stop()
-        liveStatus.autoRehideScheduled = false
-        liveStatus.hoverPollingActive = false
-        diagnosticsLogger.log("Runtime reveal behaviors suspended for icon move.", level: .debug)
-    }
-
-    private func resumeRuntimeAfterIconMove() {
-        if settingsStore.hoverRevealEnabled && !isHoverRevealSuppressed {
-            hoverRevealController.start()
-        }
-        liveStatus.hoverPollingActive = hoverRevealController.isPollingActive
-        diagnosticsLogger.log("Runtime reveal behaviors resumed after icon move.", level: .debug)
-    }
-
     private func dryRunProfile(_ profile: ProfileModel) -> ProfileApplicationDryRun {
         profileAutomationCoordinator.dryRunProfile(profile)
     }
@@ -789,37 +669,27 @@ final class AppEnvironment {
     }
 
     func showSearch() {
-        refreshMenuBarItems()
-        searchWindowController.show()
+        menuBarItemSurfaceCoordinator.showSearch()
     }
 
     func showSecondBar() {
-        settingsStore.secondBarEnabled = true
-        refreshSecondBarSettings()
-        refreshMenuBarItems()
-        secondBarWindowController.show()
+        menuBarItemSurfaceCoordinator.showSecondBar()
     }
 
     func hideSecondBar() {
-        secondBarWindowController.hide()
+        menuBarItemSurfaceCoordinator.hideSecondBar()
     }
 
     func toggleSecondBar() {
-        if !settingsStore.secondBarEnabled {
-            settingsStore.secondBarEnabled = true
-            refreshSecondBarSettings()
-        }
-        refreshMenuBarItems()
-        secondBarWindowController.toggle()
+        menuBarItemSurfaceCoordinator.toggleSecondBar()
     }
 
     func refreshMenuBarItems() {
-        if safeModeLaunchState.isSafeModeActive {
-            diagnosticsLogger.log("Safe Mode skipped manual Pro scan.", level: .warning)
-        } else {
-            menuBarScanCoordinator.requestManualRefresh()
-        }
-        liveStatusSynchronizer.refreshSearchAndSecondBarItemCounts()
+        menuBarItemSurfaceCoordinator.refreshMenuBarItems()
+    }
+
+    func resetMovingWarnings() {
+        menuBarItemSurfaceCoordinator.resetMovingWarnings()
     }
 
     func toggleProMode() {
