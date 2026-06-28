@@ -1,3 +1,4 @@
+import AppKit
 import CoreGraphics
 import Foundation
 import Testing
@@ -96,6 +97,50 @@ struct MenuBarScanCoordinatorTests {
         #expect(harness.scanner.scanCount == 2)
     }
 
+    @Test func applicationLifecycleNotificationsInvalidateScannerCandidateCache() async {
+        let workspaceNotificationCenter = NotificationCenter()
+        let harness = makeHarness(
+            isTrusted: { false },
+            workspaceNotificationCenter: workspaceNotificationCenter
+        )
+        defer {
+            harness.coordinator.stop()
+            harness.tearDown()
+        }
+
+        harness.coordinator.start()
+        #expect(harness.scanner.scanCount == 0)
+        #expect(harness.scanner.invalidateCandidateCacheCount == 0)
+
+        workspaceNotificationCenter.post(name: NSWorkspace.didLaunchApplicationNotification, object: nil)
+        workspaceNotificationCenter.post(name: NSWorkspace.didTerminateApplicationNotification, object: nil)
+
+        await waitUntilInvalidationCount(2, scanner: harness.scanner)
+
+        #expect(harness.scanner.invalidateCandidateCacheCount == 2)
+        #expect(harness.scanner.scanCount == 0)
+    }
+
+    @Test func stopRemovesApplicationLifecycleObservers() async {
+        let workspaceNotificationCenter = NotificationCenter()
+        let harness = makeHarness(
+            isTrusted: { false },
+            workspaceNotificationCenter: workspaceNotificationCenter
+        )
+        defer { harness.tearDown() }
+
+        harness.coordinator.start()
+        harness.coordinator.stop()
+
+        workspaceNotificationCenter.post(name: NSWorkspace.didLaunchApplicationNotification, object: nil)
+        workspaceNotificationCenter.post(name: NSWorkspace.didTerminateApplicationNotification, object: nil)
+
+        try? await Task.sleep(nanoseconds: 30_000_000)
+
+        #expect(harness.scanner.invalidateCandidateCacheCount == 0)
+        #expect(harness.scanner.scanCount == 0)
+    }
+
     @Test func disabledProModeClearsScanStateAndDoesNotScan() {
         let harness = makeHarness(isTrusted: { true })
         defer { harness.tearDown() }
@@ -116,6 +161,7 @@ struct MenuBarScanCoordinatorTests {
     private func makeHarness(
         isTrusted: @escaping () -> Bool?,
         notificationCenter: NotificationCenter = NotificationCenter(),
+        workspaceNotificationCenter: NotificationCenter = NotificationCenter(),
         visibilityScanDebounceNanoseconds: UInt64 = 250_000_000,
         now: @escaping () -> Date = { Date(timeIntervalSince1970: 100) }
     ) -> CoordinatorHarness {
@@ -147,6 +193,7 @@ struct MenuBarScanCoordinatorTests {
                 )
             },
             notificationCenter: notificationCenter,
+            workspaceNotificationCenter: workspaceNotificationCenter,
             visibilityScanDebounceNanoseconds: visibilityScanDebounceNanoseconds,
             now: now
         )
@@ -174,6 +221,19 @@ struct MenuBarScanCoordinatorTests {
             try? await Task.sleep(nanoseconds: 10_000_000)
         }
     }
+
+    private func waitUntilInvalidationCount(
+        _ expectedCount: Int,
+        scanner: FakeMenuBarScanner,
+        timeoutNanoseconds: UInt64 = 1_000_000_000
+    ) async {
+        let deadline = ContinuousClock.now + .nanoseconds(Int64(timeoutNanoseconds))
+
+        while scanner.invalidateCandidateCacheCount < expectedCount,
+              ContinuousClock.now < deadline {
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+    }
 }
 
 @MainActor
@@ -194,6 +254,7 @@ private struct CoordinatorHarness {
 @MainActor
 private final class FakeMenuBarScanner: MenuBarScanning {
     private(set) var scanCount = 0
+    private(set) var invalidateCandidateCacheCount = 0
 
     func scan(
         primarySeparatorFrame: CGRect?,
@@ -224,5 +285,9 @@ private final class FakeMenuBarScanner: MenuBarScanning {
             scanTimestamp: Date(timeIntervalSince1970: Double(scanCount)),
             axFailuresCount: scanCount
         )
+    }
+
+    func invalidateCandidateCache() {
+        invalidateCandidateCacheCount += 1
     }
 }

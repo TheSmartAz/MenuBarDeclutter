@@ -33,13 +33,12 @@ final class GlobalHotkeyManager {
         let action: () -> Void
     }
 
-    private nonisolated static let activeManagerMutex: Mutex<GlobalHotkeyManager?> = Mutex(nil)
+    private nonisolated static let activeManagerMutex: Mutex<WeakReference<GlobalHotkeyManager>?> = Mutex(nil)
 
     private let diagnosticsLogger: DiagnosticsLogger
 
-    private nonisolated(unsafe) var eventHandler: EventHandlerRef?
-    private var eventHandlerInstalled = false
-    private nonisolated(unsafe) var registeredHotKeyRefs: [UInt32: EventHotKeyRef] = [:]
+    private nonisolated let carbonResources = CarbonHotkeyResources()
+    private var isInvalidated = false
     private var currentHotkeyIDCounter: UInt32 = 0
     private var registrationsByIdentifier: [RegistrationIdentifier: ActiveRegistration] = [:]
     private var identifierByCarbonID: [UInt32: RegistrationIdentifier] = [:]
@@ -61,21 +60,12 @@ final class GlobalHotkeyManager {
     init(diagnosticsLogger: DiagnosticsLogger) {
         self.diagnosticsLogger = diagnosticsLogger
         installApplicationEventHandler()
-        Self.activeManagerMutex.withLock { $0 = self }
+        Self.activate(self)
     }
 
     deinit {
-        Self.activeManagerMutex.withLock { manager in
-            if manager === self {
-                manager = nil
-            }
-        }
-        for ref in registeredHotKeyRefs.values {
-            UnregisterEventHotKey(ref)
-        }
-        if let eventHandler {
-            RemoveEventHandler(eventHandler)
-        }
+        Self.clearActiveManager(self)
+        carbonResources.takeAll().perform()
     }
 
     /// Updates the visibility-toggle hotkey. Passing `nil` unregisters.
@@ -92,6 +82,14 @@ final class GlobalHotkeyManager {
         hotkey: HotkeyModel?,
         action: @escaping () -> Void
     ) {
+        guard !isInvalidated else {
+            diagnosticsLogger.log(
+                "Ignoring \(identifier.displayName) hotkey registration after manager teardown.",
+                level: .warning
+            )
+            return
+        }
+
         unregister(identifier: identifier)
 
         guard let hotkey else {
@@ -121,7 +119,7 @@ final class GlobalHotkeyManager {
         )
 
         if status == noErr, let ref {
-            registeredHotKeyRefs[carbonID] = ref
+            carbonResources.storeHotKeyRef(ref, carbonID: carbonID)
             registrationsByIdentifier[identifier] = ActiveRegistration(
                 identifier: identifier,
                 hotkey: hotkey,
@@ -143,8 +141,8 @@ final class GlobalHotkeyManager {
             return
         }
 
-        if let ref = registeredHotKeyRefs.removeValue(forKey: registration.carbonID) {
-            UnregisterEventHotKey(ref)
+        if let token = carbonResources.takeHotKeyRef(carbonID: registration.carbonID) {
+            token.unregister()
         }
         identifierByCarbonID.removeValue(forKey: registration.carbonID)
         diagnosticsLogger.log("Unregistered \(identifier.displayName) hotkey.", level: .debug)
@@ -165,19 +163,45 @@ final class GlobalHotkeyManager {
         registrationsByIdentifier[identifier]?.hotkey
     }
 
+    /// Explicit shutdown path used by app termination. `deinit` keeps a
+    /// last-resort cleanup for tests or unusual ownership paths, but normal
+    /// Carbon teardown should happen through this main-actor method.
+    func invalidate() {
+        guard !isInvalidated else { return }
+        isInvalidated = true
+        unregister()
+        if let token = carbonResources.takeEventHandler() {
+            token.remove()
+        }
+        Self.clearActiveManager(self)
+    }
+
     private func handleHotKeyPressed(carbonID: UInt32?) {
-        let registration: ActiveRegistration?
-        if let carbonID,
-           let identifier = identifierByCarbonID[carbonID] {
-            registration = registrationsByIdentifier[identifier]
-        } else if registrationsByIdentifier.count == 1 {
-            registration = registrationsByIdentifier.values.first
-        } else {
-            registration = nil
+        let resolver = HotkeyCallbackResolver(
+            identifierByCarbonID: identifierByCarbonID,
+            registeredIdentifiers: Set(registrationsByIdentifier.keys)
+        )
+
+        let identifier: RegistrationIdentifier
+        switch resolver.resolve(carbonID: carbonID) {
+        case let .matched(resolvedIdentifier, .carbonID):
+            identifier = resolvedIdentifier
+        case let .matched(resolvedIdentifier, .singleRegistrationFallback):
+            diagnosticsLogger.log(
+                "Global hotkey callback did not include a Carbon ID; using single-registration fallback.",
+                level: .warning
+            )
+            identifier = resolvedIdentifier
+        case let .unknown(reason):
+            diagnosticsLogger.log(
+                "Received unknown global hotkey callback (\(reason.logDescription)).",
+                level: .warning
+            )
+            return
         }
 
-        guard let registration else {
-            diagnosticsLogger.log("Received unknown global hotkey callback.", level: .warning)
+        guard let registration = registrationsByIdentifier[identifier] else {
+            diagnosticsLogger.log("Received global hotkey callback for stale registration.", level: .warning)
             return
         }
 
@@ -188,9 +212,10 @@ final class GlobalHotkeyManager {
     // MARK: Carbon event handler installation
 
     private func installApplicationEventHandler() {
-        guard !eventHandlerInstalled else { return }
+        guard !carbonResources.hasEventHandler else { return }
 
         var spec = EventTypeSpec(eventClass: UInt32(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
+        var eventHandler: EventHandlerRef?
         let status = InstallEventHandler(
             GetApplicationEventTarget(),
             { _, event, _ in
@@ -203,8 +228,8 @@ final class GlobalHotkeyManager {
             &eventHandler
         )
 
-        if status == noErr {
-            eventHandlerInstalled = true
+        if status == noErr, let eventHandler {
+            carbonResources.storeEventHandler(eventHandler)
             diagnosticsLogger.log("Global hotkey event handler installed.", level: .debug)
         } else {
             diagnosticsLogger.log(
@@ -216,11 +241,11 @@ final class GlobalHotkeyManager {
 
     nonisolated static func dispatchHotkeyFromCallback(_ event: EventRef?) {
         let carbonID = carbonHotkeyID(from: event)
-        let manager = Self.activeManagerMutex.withLock { $0 }
-        guard manager != nil else { return }
+        let manager = Self.activeManagerMutex.withLock { $0?.value }
+        guard let manager else { return }
 
         Task { @MainActor in
-            manager?.handleHotKeyPressed(carbonID: carbonID)
+            manager.handleHotKeyPressed(carbonID: carbonID)
         }
     }
 
@@ -240,5 +265,123 @@ final class GlobalHotkeyManager {
 
         guard status == noErr else { return nil }
         return hotkeyID.id
+    }
+
+    private static func activate(_ manager: GlobalHotkeyManager) {
+        activeManagerMutex.withLock { activeManager in
+            activeManager = WeakReference(manager)
+        }
+    }
+
+    private nonisolated static func clearActiveManager(_ manager: GlobalHotkeyManager) {
+        activeManagerMutex.withLock { activeManager in
+            if activeManager?.value === manager || activeManager?.value == nil {
+                activeManager = nil
+            }
+        }
+    }
+}
+
+nonisolated private final class WeakReference<Object: AnyObject>: @unchecked Sendable {
+    weak var value: Object?
+
+    init(_ value: Object) {
+        self.value = value
+    }
+}
+
+nonisolated private final class CarbonHotkeyResources: @unchecked Sendable {
+    private struct State {
+        var eventHandler: CarbonEventHandlerToken?
+        var hotKeyRefs: [UInt32: CarbonHotKeyToken] = [:]
+    }
+
+    private let state = Mutex(State())
+
+    var hasEventHandler: Bool {
+        state.withLock { $0.eventHandler != nil }
+    }
+
+    func storeEventHandler(_ eventHandler: EventHandlerRef) {
+        let token = CarbonEventHandlerToken(eventHandler)
+        state.withLock { $0.eventHandler = token }
+    }
+
+    func takeEventHandler() -> CarbonEventHandlerToken? {
+        state.withLock { state in
+            let eventHandler = state.eventHandler
+            state.eventHandler = nil
+            return eventHandler
+        }
+    }
+
+    func storeHotKeyRef(_ ref: EventHotKeyRef, carbonID: UInt32) {
+        let token = CarbonHotKeyToken(ref)
+        state.withLock { $0.hotKeyRefs[carbonID] = token }
+    }
+
+    func takeHotKeyRef(carbonID: UInt32) -> CarbonHotKeyToken? {
+        state.withLock { $0.hotKeyRefs.removeValue(forKey: carbonID) }
+    }
+
+    func takeAll() -> CarbonHotkeyTeardown {
+        state.withLock { state in
+            let teardown = CarbonHotkeyTeardown(
+                eventHandler: state.eventHandler,
+                hotKeyRefs: Array(state.hotKeyRefs.values)
+            )
+            state.eventHandler = nil
+            state.hotKeyRefs.removeAll()
+            return teardown
+        }
+    }
+}
+
+nonisolated private struct CarbonHotkeyTeardown {
+    let eventHandler: CarbonEventHandlerToken?
+    let hotKeyRefs: [CarbonHotKeyToken]
+
+    func perform() {
+        for token in hotKeyRefs {
+            token.unregister()
+        }
+        if let eventHandler {
+            eventHandler.remove()
+        }
+    }
+}
+
+nonisolated private struct CarbonEventHandlerToken: @unchecked Sendable {
+    private let ref: EventHandlerRef
+
+    init(_ ref: EventHandlerRef) {
+        self.ref = ref
+    }
+
+    func remove() {
+        RemoveEventHandler(ref)
+    }
+}
+
+nonisolated private struct CarbonHotKeyToken: @unchecked Sendable {
+    private let ref: EventHotKeyRef
+
+    init(_ ref: EventHotKeyRef) {
+        self.ref = ref
+    }
+
+    func unregister() {
+        UnregisterEventHotKey(ref)
+    }
+}
+
+nonisolated private extension HotkeyCallbackResolver.UnknownReason {
+    var logDescription: String {
+        switch self {
+        case .missingCarbonIDWithoutSingleRegistration:
+            "missing Carbon ID"
+        case let .unregisteredCarbonID(carbonID):
+            "unregistered Carbon ID \(carbonID)"
+        }
     }
 }

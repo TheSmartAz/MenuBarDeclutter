@@ -65,63 +65,150 @@ final class IconMoveService {
     }
 
     func move(_ snapshot: MenuBarItemSnapshot, command: IconMoveCommand) async -> IconMoveResult {
+        switch preflight(snapshot: snapshot, command: command) {
+        case .ready(let context):
+            return await move(snapshot, command: command, context: context)
+        case .finished(let result):
+            return result
+        }
+    }
+
+    private func move(
+        _ snapshot: MenuBarItemSnapshot,
+        command: IconMoveCommand,
+        context: IconMovePreflightContext
+    ) async -> IconMoveResult {
+        isMoving = true
+        defer {
+            isMoving = false
+        }
+
+        if let cancellation = confirmIfNeeded(
+            snapshot: snapshot,
+            command: command,
+            itemName: context.itemName
+        ) {
+            return cancellation
+        }
+
+        guard !Task.isCancelled else {
+            return cancelled(command: command, itemName: context.itemName, error: .moveCancelled)
+        }
+
+        let session = beginMoveSession(sourceZone: snapshot.zone, targetZone: context.targetZone)
+
+        defer {
+            endMoveSession()
+        }
+
+        return await executeWithRetries(
+            originalSnapshot: snapshot,
+            command: command,
+            itemName: context.itemName,
+            preMoveVisibility: session.preMoveVisibility
+        )
+    }
+
+    func resetWarnings() {
+        settingsStore.iconMovingConfirmationSuppressed = false
+        diagnosticsLogger.log("Icon moving warnings reset.", level: .debug)
+    }
+
+    private enum IconMovePreflightResult {
+        case ready(IconMovePreflightContext)
+        case finished(IconMoveResult)
+    }
+
+    private struct IconMovePreflightContext {
+        let itemName: String
+        let targetZone: MenuBarZone
+    }
+
+    private struct IconMoveSession {
+        let preMoveVisibility: HidingVisibilityState
+    }
+
+    private func preflight(
+        snapshot: MenuBarItemSnapshot,
+        command: IconMoveCommand
+    ) -> IconMovePreflightResult {
         let itemName = displayName(for: snapshot)
         let targetZone = command.targetZone(currentZone: snapshot.zone)
 
         if isMoving {
-            return record(.skipped(command: command, itemName: itemName, error: .moveAlreadyInProgress))
+            return .finished(record(.skipped(command: command, itemName: itemName, error: .moveAlreadyInProgress)))
         }
         guard settingsStore.iconMovingEnabled else {
-            return record(.skipped(command: command, itemName: itemName, error: .disabled))
+            return .finished(record(.skipped(command: command, itemName: itemName, error: .disabled)))
         }
         guard settingsStore.proModeEnabled else {
-            return record(.skipped(command: command, itemName: itemName, error: .proModeRequired))
+            return .finished(record(.skipped(command: command, itemName: itemName, error: .proModeRequired)))
         }
         guard permissionService.refreshStatus() == .granted else {
-            return record(.skipped(command: command, itemName: itemName, error: .accessibilityPermissionRequired))
+            return .finished(record(.skipped(
+                command: command,
+                itemName: itemName,
+                error: .accessibilityPermissionRequired
+            )))
         }
         if let error = safetyRules.validate(
             snapshot: snapshot,
             allowSystemItems: settingsStore.iconMovingAllowSystemItems,
             appBundleIdentifier: AppConstants.bundleIdentifier
         ) {
-            return record(.skipped(command: command, itemName: itemName, error: error))
+            return .finished(record(.skipped(command: command, itemName: itemName, error: error)))
         }
 
         guard !Task.isCancelled else {
-            return cancelled(command: command, itemName: itemName, error: .moveCancelled)
+            return .finished(cancelled(command: command, itemName: itemName, error: .moveCancelled))
         }
 
-        isMoving = true
-        defer {
-            isMoving = false
+        return .ready(IconMovePreflightContext(itemName: itemName, targetZone: targetZone))
+    }
+
+    private func confirmIfNeeded(
+        snapshot: MenuBarItemSnapshot,
+        command: IconMoveCommand,
+        itemName: String
+    ) -> IconMoveResult? {
+        guard settingsStore.iconMovingRequireConfirmation && !settingsStore.iconMovingConfirmationSuppressed else {
+            return nil
         }
 
-        if settingsStore.iconMovingRequireConfirmation && !settingsStore.iconMovingConfirmationSuppressed {
-            let decision = confirmationHandler(snapshot, command)
-            if decision.suppressFutureWarnings {
-                settingsStore.iconMovingConfirmationSuppressed = true
-            }
-            guard decision.confirmed else {
-                return cancelled(command: command, itemName: itemName, error: .confirmationCancelled)
-            }
+        let decision = confirmationHandler(snapshot, command)
+        if decision.suppressFutureWarnings {
+            settingsStore.iconMovingConfirmationSuppressed = true
         }
 
-        guard !Task.isCancelled else {
-            return cancelled(command: command, itemName: itemName, error: .moveCancelled)
+        guard decision.confirmed else {
+            return cancelled(command: command, itemName: itemName, error: .confirmationCancelled)
         }
 
+        return nil
+    }
+
+    private func beginMoveSession(sourceZone: MenuBarZone, targetZone: MenuBarZone) -> IconMoveSession {
         liveStatus.iconMoveInProgress = true
         suspendRuntimeBehaviors()
+
         let preMoveVisibility = currentVisibilityProvider()
-        revealForMove(sourceZone: snapshot.zone, targetZone: targetZone)
+        revealForMove(sourceZone: sourceZone, targetZone: targetZone)
 
-        defer {
-            resumeRuntimeBehaviors()
-            liveStatus.iconMoveInProgress = false
-        }
+        return IconMoveSession(preMoveVisibility: preMoveVisibility)
+    }
 
-        var currentSnapshot = snapshot
+    private func endMoveSession() {
+        resumeRuntimeBehaviors()
+        liveStatus.iconMoveInProgress = false
+    }
+
+    private func executeWithRetries(
+        originalSnapshot: MenuBarItemSnapshot,
+        command: IconMoveCommand,
+        itemName: String,
+        preMoveVisibility: HidingVisibilityState
+    ) async -> IconMoveResult {
+        var currentSnapshot = originalSnapshot
         var lastPlan: DragPlan?
         var lastVerification: DragVerificationResult?
         let maxRetries = settingsStore.iconMovingMaxRetries
@@ -188,7 +275,7 @@ final class IconMoveService {
 
                 let rescanned = refreshSnapshots()
                 let verification = verifier.verify(
-                    original: snapshot,
+                    original: originalSnapshot,
                     targetZone: plan.targetZone,
                     rescannedSnapshots: rescanned
                 )
@@ -196,6 +283,8 @@ final class IconMoveService {
                 liveStatus.lastIconMoveVerificationSummary = verification.summary
 
                 if verification.isSuccess {
+                    // Successful moves keep the bar revealed so the user can see the new icon position.
+                    // Failure and cancellation paths restore the captured pre-move visibility.
                     let result = IconMoveResult(
                         outcome: .succeeded,
                         command: command,
@@ -243,11 +332,6 @@ final class IconMoveService {
             retries: maxRetries,
             restoreVisibility: preMoveVisibility
         )
-    }
-
-    func resetWarnings() {
-        settingsStore.iconMovingConfirmationSuppressed = false
-        diagnosticsLogger.log("Icon moving warnings reset.", level: .debug)
     }
 
     private func makePlan(

@@ -1,3 +1,4 @@
+import AppKit
 import CoreGraphics
 import Foundation
 import Observation
@@ -12,6 +13,12 @@ protocol MenuBarScanning: AnyObject {
         primarySeparatorFrame: CGRect?,
         alwaysHiddenSeparatorFrame: CGRect?
     ) -> MenuBarScanResult
+
+    func invalidateCandidateCache()
+}
+
+extension MenuBarScanning {
+    func invalidateCandidateCache() {}
 }
 
 @MainActor
@@ -23,11 +30,13 @@ final class MenuBarScanCoordinator {
     @ObservationIgnored private let diagnosticsLogger: DiagnosticsLogger
     @ObservationIgnored private let liveStatus: LiveDiagnosticsStatus
     @ObservationIgnored private let separatorFramesProvider: () -> MenuBarSeparatorFrames
-    @ObservationIgnored private let notificationCenter: NotificationCenter
+    @ObservationIgnored nonisolated(unsafe) private let notificationCenter: NotificationCenter
+    @ObservationIgnored nonisolated(unsafe) private let workspaceNotificationCenter: NotificationCenter
     @ObservationIgnored private let visibilityScanDebounceNanoseconds: UInt64
     @ObservationIgnored private let now: () -> Date
 
-    @ObservationIgnored private var visibilityObserver: NSObjectProtocol?
+    @ObservationIgnored nonisolated(unsafe) private var visibilityObserver: NSObjectProtocol?
+    @ObservationIgnored nonisolated(unsafe) private var workspaceLifecycleObservers: [NSObjectProtocol] = []
     @ObservationIgnored private var pendingVisibilityScanTask: Task<Void, Never>?
     @ObservationIgnored private var visibilityScanRequestID = 0
     @ObservationIgnored private var lastScanDate: Date?
@@ -43,6 +52,7 @@ final class MenuBarScanCoordinator {
         liveStatus: LiveDiagnosticsStatus,
         separatorFramesProvider: @escaping () -> MenuBarSeparatorFrames,
         notificationCenter: NotificationCenter = .default,
+        workspaceNotificationCenter: NotificationCenter = NSWorkspace.shared.notificationCenter,
         visibilityScanDebounceNanoseconds: UInt64 = 250_000_000,
         now: @escaping () -> Date = { Date() }
     ) {
@@ -53,8 +63,13 @@ final class MenuBarScanCoordinator {
         self.liveStatus = liveStatus
         self.separatorFramesProvider = separatorFramesProvider
         self.notificationCenter = notificationCenter
+        self.workspaceNotificationCenter = workspaceNotificationCenter
         self.visibilityScanDebounceNanoseconds = visibilityScanDebounceNanoseconds
         self.now = now
+    }
+
+    deinit {
+        removeNotificationObservers()
     }
 
     var canScan: Bool {
@@ -69,14 +84,12 @@ final class MenuBarScanCoordinator {
 
     func start() {
         observeVisibilityChanges()
+        observeWorkspaceLifecycleChanges()
         refreshAfterSettingsChanged(reason: "launch")
     }
 
     func stop() {
-        if let visibilityObserver {
-            notificationCenter.removeObserver(visibilityObserver)
-            self.visibilityObserver = nil
-        }
+        removeNotificationObservers()
         visibilityScanRequestID += 1
         pendingVisibilityScanTask?.cancel()
         pendingVisibilityScanTask = nil
@@ -182,6 +195,50 @@ final class MenuBarScanCoordinator {
                 self?.scheduleVisibilityChangeScan()
             }
         }
+    }
+
+    private nonisolated func removeNotificationObservers() {
+        if let visibilityObserver {
+            notificationCenter.removeObserver(visibilityObserver)
+            self.visibilityObserver = nil
+        }
+        for observer in workspaceLifecycleObservers {
+            workspaceNotificationCenter.removeObserver(observer)
+        }
+        workspaceLifecycleObservers.removeAll()
+    }
+
+    private func observeWorkspaceLifecycleChanges() {
+        guard workspaceLifecycleObservers.isEmpty else { return }
+
+        workspaceLifecycleObservers.append(
+            workspaceNotificationCenter.addObserver(
+                forName: NSWorkspace.didLaunchApplicationNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    self?.invalidateScannerCandidateCache(reason: "app launch")
+                }
+            }
+        )
+
+        workspaceLifecycleObservers.append(
+            workspaceNotificationCenter.addObserver(
+                forName: NSWorkspace.didTerminateApplicationNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    self?.invalidateScannerCandidateCache(reason: "app terminate")
+                }
+            }
+        )
+    }
+
+    private func invalidateScannerCandidateCache(reason: String) {
+        scanner.invalidateCandidateCache()
+        diagnosticsLogger.log("AX scanner candidate cache invalidated after \(reason).", level: .debug)
     }
 
     private func scheduleVisibilityChangeScan() {

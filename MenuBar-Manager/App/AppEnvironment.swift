@@ -414,8 +414,20 @@ final class AppEnvironment {
     }
 
     func start() {
-        // Best-effort: ensure App Support directories exist on launch so the
-        // diagnostics export save panel has a default location.
+        prepareLaunchStorage()
+        logSafeModeStatusIfNeeded()
+        startRuntimeServices()
+
+        let recoveredAtStartup = runStartupHealthCheckAndRecoveryIfNeeded()
+        applyInitialVisibility(recoveredAtStartup: recoveredAtStartup)
+
+        reflectLaunchAtLoginPreferenceIfNeeded()
+        presentFirstRunSurfacesIfNeeded()
+
+        diagnosticsLogger.log("Application environment started in \(settingsStore.appMode.displayName) mode.")
+    }
+
+    private func prepareLaunchStorage() {
         do {
             try appSupportPaths.ensureDirectoriesExist()
         } catch {
@@ -426,32 +438,50 @@ final class AppEnvironment {
         } catch {
             diagnosticsLogger.log("Could not write crash marker: \(error.localizedDescription)", level: .warning)
         }
+    }
 
+    private func logSafeModeStatusIfNeeded() {
         if safeModeLaunchState.isSafeModeActive {
             diagnosticsLogger.log("Safe Mode active: \(safeModeLaunchState.displaySummary).", level: .warning)
         }
+    }
 
+    private func startRuntimeServices() {
         profileAutomationCoordinator.start()
 
         settingsStore.lastKnownAppVersion = AppConstants.appVersion
         statusBarController.installStatusItem()
         updateLiveStatusFromServices()
         applyInitialBehaviorSettings()
-        if !safeModeLaunchState.isSafeModeActive {
-            menuBarScanCoordinator.start()
-        } else {
-            diagnosticsLogger.log("Safe Mode skipped Pro Mode Accessibility scans.", level: .warning)
-        }
+        startMenuBarScanningIfAllowed()
         refreshTriggerSettings()
         systemRecoveryCoordinator.startObserving()
+    }
 
+    private func startMenuBarScanningIfAllowed() {
+        guard !safeModeLaunchState.isSafeModeActive else {
+            diagnosticsLogger.log("Safe Mode skipped Pro Mode Accessibility scans.", level: .warning)
+            return
+        }
+        menuBarScanCoordinator.start()
+    }
+
+    private func runStartupHealthCheckAndRecoveryIfNeeded() -> Bool {
         let startupReport = runHealthCheck(reason: "launch")
-        let recoveredAtStartup = !startupReport.isHealthy
-        if !startupReport.isHealthy {
-            healthCoordinator.recover(report: startupReport)
-            _ = runHealthCheck(reason: "startup recovery")
+        guard !startupReport.isHealthy else {
+            return false
         }
 
+        healthCoordinator.recover(report: startupReport)
+
+        // Intentional second check: recovery can recreate status items, reset
+        // settings, or refresh permission state. The refreshed report drives
+        // the initial collapse/expand decision below.
+        _ = runHealthCheck(reason: "startup recovery")
+        return true
+    }
+
+    private func applyInitialVisibility(recoveredAtStartup: Bool) {
         if shouldCollapseAfterStartupHealth,
            liveStatus.healthReport?.status == .ok {
             collapseHiddenItems()
@@ -460,23 +490,21 @@ final class AppEnvironment {
         } else {
             expandHiddenItems()
         }
+    }
 
-        // Phase 3: reflect the persisted Launch at Login preference. This only
-        // enables the login item when the user previously opted in.
-        if reflectLaunchAtLoginOnStart {
-            launchAtLoginService.apply(enabled: settingsStore.launchAtLoginEnabled)
-        }
+    private func reflectLaunchAtLoginPreferenceIfNeeded() {
+        guard reflectLaunchAtLoginOnStart else { return }
+        launchAtLoginService.apply(enabled: settingsStore.launchAtLoginEnabled)
+    }
 
+    private func presentFirstRunSurfacesIfNeeded() {
         if !settingsStore.hasSeenDragHint {
             showDragHint()
         }
 
-        // Phase 3: present onboarding on first launch (or skip if already completed).
         if !settingsStore.hasCompletedOnboarding {
             onboardingWindowController.show()
         }
-
-        diagnosticsLogger.log("Application environment started in \(settingsStore.appMode.displayName) mode.")
     }
 
     func stop() {
@@ -484,6 +512,7 @@ final class AppEnvironment {
         profileAutomationCoordinator.stop()
         systemRecoveryCoordinator.stopObserving()
         menuBarScanCoordinator.stop()
+        hotkeyManager.invalidate()
         statusBarController.removeStatusItem()
         do {
             try safeModeService.clearRunningMarker()

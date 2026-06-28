@@ -14,7 +14,9 @@ followed.
 - **HIGH-impact findings:** 20
 - **MEDIUM-impact findings:** 28
 - **LOW-impact findings (quick wins):** ~20
-- **Test coverage gaps:** 7 pure-logic files without unit tests
+- **Original test coverage gaps:** 7 pure-logic files without unit tests; most are now
+  covered by follow-up waves, with direct `TriggerService` service-lifecycle tests still
+  the main remaining pure-logic gap.
 - **Top-leverage actions:** 5 (see "Highest-Leverage Actions" below)
 
 ## Risk Categories
@@ -539,17 +541,17 @@ because test target lacks `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`.
 
 ---
 
-## Test coverage gaps (pure-logic files without unit tests)
+## Original test coverage gaps (current status)
 
-| File | Untested logic | Testability |
-|------|-----------------|-------------|
-| `MenuBar-Manager/Accessibility/MenuBarZone.swift:25-48` | `classify(itemFrame:primarySeparatorFrame:alwaysHiddenSeparatorFrame:)` | High (pure geometry) |
-| `MenuBar-Manager/Accessibility/MenuBarScanResult.swift:22-68` | `deduplicated`, `merge`, zone counts, `empty` | High (pure value type) |
-| `MenuBar-Manager/Health/HealthReport.swift:24-71` | `status`, `isHealthy`, `sortedIssues`, `plainText` | High |
-| `MenuBar-Manager/Health/HealthIssue.swift` | `HealthSeverity.displayName`/`sortRank` | Medium |
-| `MenuBar-Manager/Profiles/TriggerModel.swift:12-30` | `TriggerRule.displayName` for 7 cases | Medium |
-| `MenuBar-Manager/Profiles/TriggerService.swift:49-188` | `load`/`save`/`addTrigger`/`delete`/`evaluate(context:reason:)` | High |
-| `MenuBar-Manager/Permissions/AccessibilityPermissionService.swift:78-102` | `refreshStatus`, `requestPromptFromUserAction` | Medium-High |
+| File | Untested logic at audit time | Current status |
+|------|------------------------------|----------------|
+| `MenuBar-Manager/Accessibility/MenuBarZone.swift:25-48` | `classify(itemFrame:primarySeparatorFrame:alwaysHiddenSeparatorFrame:)` | Covered by `AccessibilityDiscoveryLogicTests`. |
+| `MenuBar-Manager/Accessibility/MenuBarScanResult.swift:22-68` | `deduplicated`, `merge`, zone counts, `empty` | Covered by `AccessibilityDiscoveryLogicTests`. |
+| `MenuBar-Manager/Health/HealthReport.swift:24-71` | `status`, `isHealthy`, `sortedIssues`, `plainText` | Covered by `HealthReportTests`. |
+| `MenuBar-Manager/Health/HealthIssue.swift` | `HealthSeverity.displayName`/`sortRank` | Covered by `HealthIssuePresentationTests`. |
+| `MenuBar-Manager/Profiles/TriggerModel.swift:12-30` | `TriggerRule.displayName` for 7 cases | Covered by `TriggerRuleEvaluatorTests`. |
+| `MenuBar-Manager/Profiles/TriggerService.swift:49-188` | `load`/`save`/`addTrigger`/`delete`/`evaluate(context:reason:)` | Partially covered through trigger-rule and profile-application tests; direct `TriggerService` lifecycle/coalescing tests remain. |
+| `MenuBar-Manager/Permissions/AccessibilityPermissionService.swift:78-102` | `refreshStatus`, `requestPromptFromUserAction` | Cached status, forced refresh, stale invalidation, and mapping are covered by `AccessibilityDiscoveryLogicTests`; the user-prompt path remains system-level/manual. |
 
 ---
 
@@ -626,15 +628,15 @@ Failure to build stops work; the failing change is reverted before continuation.
 
 ## Completed actions
 
-All five top-leverage actions have been implemented. Follow-up Wave 1 through Wave 6
+All five top-leverage actions have been implemented. Follow-up Wave 1 through Wave 7
 subagent/local passes also closed several remaining high/medium findings called out above.
 The combined tree was verified by:
 
 - `xcodebuild -scheme MenuBarDeclutter -destination 'platform=macOS' build`
 - `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -only-testing:MenuBarDeclutterTests`
-  (176 unit tests passed)
+  (188 unit tests passed)
 - `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS'`
-  (176 unit tests + 7 UI tests passed)
+  (188 unit tests + 7 UI test executions passed)
 
 | Action | Files modified | Verification |
 |---|---|---|
@@ -671,10 +673,15 @@ The combined tree was verified by:
 | M-HM1 / M-HM2 — Icon-move geometry constants and injection | `App/AppConstants.swift`, `Hiding/ScreenGeometryService.swift`, `Moving/IconMoveService.swift`, `Moving/DragPlan.swift`, `App/MenuBarItemSurfaceCoordinator.swift`, `App/AppEnvironment.swift`, `MenuBar-ManagerTests/IconMovePlanningTests.swift`, `MenuBar-ManagerTests/ScreenGeometryServiceTests.swift` (screen-frame fallback and target spacing moved behind named constants and injectable geometry service) | Build + tests pass. |
 | Low-impact cleanup — shared display-name helper | `Core/DisplayString.swift`, `Accessibility/AXMenuBarScanner.swift`, `Search/SearchService.swift`, `SecondBar/SecondBarItemView.swift`, `SecondBar/SecondBarRootView.swift`, `SecondBar/SecondBarViewModel.swift` (duplicated `firstNonEmpty` logic hoisted to a shared helper) | Build + tests pass. |
 | H11 — AX scanner candidate cache | `Accessibility/AXMenuBarScanner.swift`, `Accessibility/AXMenuBarCandidateCache.swift`, `MenuBar-ManagerTests/AXMenuBarCandidateCacheTests.swift` (scans now prioritize previously successful app menu-bar pids before sweeping remaining running apps, with deterministic cache invalidation and ordering tests) | Build + tests pass. |
+| H11 — AX scanner cache invalidation wiring | `Accessibility/MenuBarScanCoordinator.swift`, `MenuBar-ManagerTests/MenuBarScanCoordinatorTests.swift` (workspace launch/terminate notifications now invalidate the scanner candidate cache without triggering scans or permission prompts; observers are removed on stop) | Build + tests pass. |
 | H2 — Diagnostics logger ring buffer | `Core/DiagnosticsLogger.swift`, `MenuBar-ManagerTests/DiagnosticsLoggerTests.swift` (event retention now uses a bounded ring buffer while preserving chronological `events` reads and `clear()`/`removeAll()` semantics) | Build + tests pass. |
 | H4 / M-S1 — Settings action grouping | `Settings/SettingsActions.swift`, `Settings/SettingsWindowController.swift`, `Settings/SettingsRootView.swift`, `App/AppEnvironment.swift` (settings callbacks are grouped into compact action value types while preserving section layout and behavior) | Build + tests pass. |
+| H4 / H19 — AppEnvironment startup sequencing | `App/AppEnvironment.swift` (startup is split into launch-storage, runtime-services, scan gating, health recovery, initial visibility, launch-at-login reflection, and first-run presentation steps; the second health check after recovery is documented as intentional; stop now explicitly invalidates Carbon hotkeys) | Build + tests pass. |
 | H20 — Conservative test-helper cleanup | `MenuBar-ManagerTests/Support/TestSupport.swift`, `MenuBar-ManagerTests/HidingServiceTests.swift`, `MenuBar-ManagerTests/SearchServiceTests.swift`, `MenuBar-ManagerTests/SecondBarViewModelTests.swift` (representative duplicated isolated-defaults and snapshot factories now use shared helpers) | Build + tests pass. |
 | Low-impact moving cleanup | `Core/AsyncPause.swift`, `Moving/IconMoveSafetyRules.swift`, `Moving/IconMoveService.swift`, `Moving/DragExecutor.swift` (duplicated async sleep helper is shared; icon-move safety/confirmation types moved out of the service file; display names use `DisplayString`) | Build + tests pass. |
+| M-HP4 — Global hotkey Carbon safety | `Hotkeys/GlobalHotkeyManager.swift`, `Hotkeys/HotkeyCallbackResolver.swift`, `MenuBar-ManagerTests/HotkeyCallbackResolverTests.swift` (Carbon refs are held in synchronized nonisolated resources, active-manager callback storage is weak, callback resolution is pure/tested, and single-registration fallback is explicit) | Build + tests pass. |
+| M-HM6 / M-HM8 — Icon move decomposition and visibility semantics | `Moving/IconMoveService.swift`, `MenuBar-ManagerTests/IconMovePlanningTests.swift` (move flow is split into preflight, confirmation, session setup/teardown, planning, and retry execution; tests now pin that failures/cancellations restore pre-move visibility while success leaves the bar revealed) | Build + tests pass. |
+| Test coverage gap — Health report pure logic | `MenuBar-ManagerTests/HealthReportTests.swift` (covers health status precedence, `isHealthy`, sorted issue ordering, and plain-text rendering including recovery-action formatting) | Build + tests pass. |
 
 ### Notes on decisions deferred
 
@@ -691,9 +698,10 @@ The combined tree was verified by:
   the existing schema. The cached `ISO8601DateFormatter` removes the biggest per-call
   allocation, which is the higher-leverage win.
 - **AXMenuBarScanner off-main scan** (remaining H11 work) was deferred because traversal
-  pruning plus candidate-pid caching now deliver the dominant AX-cost reductions while
-  the off-main move requires verifying `DiagnosticsLogger` `Sendable` discipline and a
-  hop-back-to-main bridge for `liveStatus` writes.
+  pruning, candidate-pid caching, and workspace-driven cache invalidation now deliver the
+  dominant AX-cost reductions while the off-main move requires verifying
+  `DiagnosticsLogger` `Sendable` discipline and a hop-back-to-main bridge for
+  `liveStatus` writes.
 - **`.xcconfig` factoring** (M-TP1) was not added in this pass. Setting
   `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` on the test target handles the
   biggest test-target churn; xcconfig consolidation is a separate, lower-priority

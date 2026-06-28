@@ -176,6 +176,68 @@ struct IconMovePlanningTests {
         #expect(visibility == .expanded)
     }
 
+    @Test func moveServiceRestoresVisibilityWhenDragFails() async {
+        let suiteName = "IconMovePlanningTests.dragFailed.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let store = SettingsStore(defaults: defaults)
+        store.proModeEnabled = true
+        store.iconMovingEnabled = true
+        store.iconMovingRequireConfirmation = false
+        store.iconMovingMaxRetries = 0
+
+        let logger = DiagnosticsLogger()
+        let permission = AccessibilityPermissionService(
+            settingsStore: store,
+            diagnosticsLogger: logger,
+            trustProvider: { true },
+            promptTrustProvider: { true },
+            systemSettingsOpener: { true }
+        )
+        let liveStatus = LiveDiagnosticsStatus()
+        let original = makeSnapshot(
+            bundleID: "com.example.move",
+            zone: .hidden,
+            frame: CGRect(x: 260, y: 850, width: 24, height: 22)
+        )
+
+        var visibility: HidingVisibilityState = .collapsed
+        var visibilityChanges: [HidingVisibilityState] = []
+        var resumed = false
+        let service = IconMoveService(
+            settingsStore: store,
+            permissionService: permission,
+            liveStatus: liveStatus,
+            diagnosticsLogger: logger,
+            dragExecutor: FailingDragExecutor(),
+            separatorFramesProvider: {
+                MenuBarSeparatorFrames(
+                    primary: CGRect(x: 500, y: 848, width: 20, height: 24),
+                    alwaysHidden: CGRect(x: 200, y: 848, width: 20, height: 24)
+                )
+            },
+            currentVisibilityProvider: { visibility },
+            setVisibility: { newVisibility in
+                visibility = newVisibility
+                visibilityChanges.append(newVisibility)
+            },
+            refreshSnapshots: { [] },
+            suspendRuntimeBehaviors: {},
+            resumeRuntimeBehaviors: { resumed = true }
+        )
+
+        let result = await service.move(original, command: .moveToZone(.visible))
+
+        #expect(result.outcome == .failed)
+        #expect(result.error == .dragFailed)
+        #expect(liveStatus.iconMoveInProgress == false)
+        #expect(liveStatus.lastIconMoveResult == IconMoveOutcome.failed.rawValue)
+        #expect(resumed)
+        #expect(visibility == .collapsed)
+        #expect(visibilityChanges == [.expanded, .collapsed])
+    }
+
     @Test func moveServicePlansWithInjectedScreenGeometry() async {
         let suiteName = "IconMovePlanningTests.geometry.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
@@ -464,6 +526,12 @@ nonisolated private struct ProbeDragExecutor: DragExecuting {
 
     func execute(_ plan: DragPlan) async -> Bool {
         await probe.execute(plan)
+    }
+}
+
+nonisolated private struct FailingDragExecutor: DragExecuting {
+    func execute(_ plan: DragPlan) async -> Bool {
+        false
     }
 }
 
