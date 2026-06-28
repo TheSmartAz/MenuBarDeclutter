@@ -81,78 +81,115 @@ final class SettingsStore {
 
     @ObservationIgnored private let defaults: UserDefaults
 
+    private static let registeredDefaults: [Key: Any] = [
+        .hasCompletedOnboarding: false,
+        .launchAtLoginEnabled: false,
+        .lastKnownAppVersion: "",
+        .appMode: AppConstants.defaultAppMode,
+        .isCollapsed: false,
+        .startCollapsed: false,
+        .expandedSeparatorLength: AppConstants.defaultExpandedSeparatorLength,
+        .hasSeenDragHint: false,
+        .showPrimarySeparator: true,
+        .proModeEnabled: false,
+        .accessibilityDiscoveryEnabled: false,
+        .menuBarScanIntervalSeconds: AppConstants.defaultMenuBarScanIntervalSeconds,
+        .searchEnabled: true,
+        .searchHotkeyEnabled: false,
+        .searchRevealOnSelection: true,
+        .searchHighlightOnSelection: true,
+        .secondBarEnabled: false,
+        .secondBarShowHiddenItems: true,
+        .secondBarShowAlwaysHiddenItems: true,
+        .secondBarAutoCloseAfterSelection: true,
+        .secondBarPositionModeRaw: SecondBarPositionMode.belowMenuBar.rawValue,
+        .secondBarIconSize: AppConstants.defaultSecondBarIconSize,
+        .secondBarShowLabels: true,
+        .secondBarCloseOnOutsideClick: true,
+        .secondBarActivateOwningAppOnSelection: false,
+        .iconMovingEnabled: false,
+        .iconMovingRequireConfirmation: true,
+        .iconMovingConfirmationSuppressed: false,
+        .iconMovingMaxRetries: AppConstants.defaultIconMovingMaxRetries,
+        .iconMovingDragDuration: AppConstants.defaultIconMovingDragDuration,
+        .iconMovingAllowSystemItems: false,
+        .smartTriggersEnabled: false,
+        .automationPaused: false,
+        .autoRehideEnabled: true,
+        .autoRehideDelaySeconds: AppConstants.defaultAutoRehideDelaySeconds,
+        .hoverRevealEnabled: false,
+        .hoverRevealPollingIntervalSeconds: AppConstants.defaultHoverRevealPollingIntervalSeconds,
+        .alwaysHiddenEnabled: false,
+        .showSeparators: true,
+        .globalHotkeyEnabled: false,
+        .revealAllOnOptionClick: true
+    ]
+
+    private static let registrationDefaults: [String: Any] = Dictionary(
+        uniqueKeysWithValues: registeredDefaults.map { ($0.rawValue, $1) }
+    )
+
+    private static func registeredDefault<Value>(_ key: Key, as type: Value.Type = Value.self) -> Value {
+        guard let value = registeredDefaults[key] as? Value else {
+            preconditionFailure("Missing registered default for \(key.rawValue)")
+        }
+        return value
+    }
+
     var hasCompletedOnboarding: Bool {
-        didSet { defaults.set(hasCompletedOnboarding, forKey: Key.hasCompletedOnboarding.rawValue) }
+        didSet { persist(hasCompletedOnboarding, for: .hasCompletedOnboarding) }
     }
 
     var launchAtLoginEnabled: Bool {
-        didSet { defaults.set(launchAtLoginEnabled, forKey: Key.launchAtLoginEnabled.rawValue) }
+        didSet { persist(launchAtLoginEnabled, for: .launchAtLoginEnabled) }
     }
 
     var lastKnownAppVersion: String {
-        didSet { defaults.set(lastKnownAppVersion, forKey: Key.lastKnownAppVersion.rawValue) }
+        didSet { persist(lastKnownAppVersion, for: .lastKnownAppVersion) }
     }
 
     var appMode: AppMode {
-        didSet { defaults.set(appMode.rawValue, forKey: Key.appMode.rawValue) }
+        didSet { persist(appMode.rawValue, for: .appMode) }
     }
 
     var isCollapsed: Bool {
-        didSet { defaults.set(isCollapsed, forKey: Key.isCollapsed.rawValue) }
+        didSet { persist(isCollapsed, for: .isCollapsed) }
     }
 
     /// When `true`, the bar always launches collapsed regardless of the last
     /// persisted `isCollapsed` value. Default `false` (restore the last state).
     var startCollapsed: Bool {
-        didSet { defaults.set(startCollapsed, forKey: Key.startCollapsed.rawValue) }
+        didSet { persist(startCollapsed, for: .startCollapsed) }
     }
 
     var expandedSeparatorLength: Double {
-        didSet { defaults.set(expandedSeparatorLength, forKey: Key.expandedSeparatorLength.rawValue) }
+        didSet { persist(expandedSeparatorLength, for: .expandedSeparatorLength) }
     }
 
     var collapsedSeparatorLengthOverride: Double? {
-        didSet {
-            if let collapsedSeparatorLengthOverride {
-                defaults.set(
-                    collapsedSeparatorLengthOverride,
-                    forKey: Key.collapsedSeparatorLengthOverride.rawValue
-                )
-            } else {
-                defaults.removeObject(forKey: Key.collapsedSeparatorLengthOverride.rawValue)
-            }
-        }
+        didSet { persistOptional(collapsedSeparatorLengthOverride, for: .collapsedSeparatorLengthOverride) }
     }
 
     var hasSeenDragHint: Bool {
-        didSet { defaults.set(hasSeenDragHint, forKey: Key.hasSeenDragHint.rawValue) }
+        didSet { persist(hasSeenDragHint, for: .hasSeenDragHint) }
     }
 
     var showPrimarySeparator: Bool {
-        didSet { defaults.set(showPrimarySeparator, forKey: Key.showPrimarySeparator.rawValue) }
+        didSet { persist(showPrimarySeparator, for: .showPrimarySeparator) }
     }
 
     // MARK: Phase 4 Pro discovery settings
 
     var proModeEnabled: Bool {
-        didSet { defaults.set(proModeEnabled, forKey: Key.proModeEnabled.rawValue) }
+        didSet { persist(proModeEnabled, for: .proModeEnabled) }
     }
 
     var accessibilityDiscoveryEnabled: Bool {
-        didSet { defaults.set(accessibilityDiscoveryEnabled, forKey: Key.accessibilityDiscoveryEnabled.rawValue) }
+        didSet { persist(accessibilityDiscoveryEnabled, for: .accessibilityDiscoveryEnabled) }
     }
 
     var lastAccessibilityPermissionStatus: String? {
-        didSet {
-            if let lastAccessibilityPermissionStatus {
-                defaults.set(
-                    lastAccessibilityPermissionStatus,
-                    forKey: Key.lastAccessibilityPermissionStatus.rawValue
-                )
-            } else {
-                defaults.removeObject(forKey: Key.lastAccessibilityPermissionStatus.rawValue)
-            }
-        }
+        didSet { persistOptional(lastAccessibilityPermissionStatus, for: .lastAccessibilityPermissionStatus) }
     }
 
     private var menuBarScanIntervalSecondsStorage: Double
@@ -162,68 +199,56 @@ final class SettingsStore {
         set {
             let clamped = Self.clampMenuBarScanInterval(newValue)
             menuBarScanIntervalSecondsStorage = clamped
-            defaults.set(clamped, forKey: Key.menuBarScanIntervalSeconds.rawValue)
+            persist(clamped, for: .menuBarScanIntervalSeconds)
         }
     }
 
     // MARK: Phase 5 Find Icon search settings
 
     var searchEnabled: Bool {
-        didSet { defaults.set(searchEnabled, forKey: Key.searchEnabled.rawValue) }
+        didSet { persist(searchEnabled, for: .searchEnabled) }
     }
 
     var searchHotkeyEnabled: Bool {
-        didSet { defaults.set(searchHotkeyEnabled, forKey: Key.searchHotkeyEnabled.rawValue) }
+        didSet { persist(searchHotkeyEnabled, for: .searchHotkeyEnabled) }
     }
 
     var searchHotkeyKeyCode: Int? {
-        didSet {
-            if let searchHotkeyKeyCode {
-                defaults.set(searchHotkeyKeyCode, forKey: Key.searchHotkeyKeyCode.rawValue)
-            } else {
-                defaults.removeObject(forKey: Key.searchHotkeyKeyCode.rawValue)
-            }
-        }
+        didSet { persistOptional(searchHotkeyKeyCode, for: .searchHotkeyKeyCode) }
     }
 
     var searchHotkeyModifiersRaw: UInt? {
-        didSet {
-            if let searchHotkeyModifiersRaw {
-                defaults.set(searchHotkeyModifiersRaw, forKey: Key.searchHotkeyModifiersRaw.rawValue)
-            } else {
-                defaults.removeObject(forKey: Key.searchHotkeyModifiersRaw.rawValue)
-            }
-        }
+        didSet { persistOptional(searchHotkeyModifiersRaw, for: .searchHotkeyModifiersRaw) }
     }
 
     var searchRevealOnSelection: Bool {
-        didSet { defaults.set(searchRevealOnSelection, forKey: Key.searchRevealOnSelection.rawValue) }
+        didSet { persist(searchRevealOnSelection, for: .searchRevealOnSelection) }
     }
 
     var searchHighlightOnSelection: Bool {
-        didSet { defaults.set(searchHighlightOnSelection, forKey: Key.searchHighlightOnSelection.rawValue) }
+        didSet { persist(searchHighlightOnSelection, for: .searchHighlightOnSelection) }
     }
 
     // MARK: Phase 6 Second Bar settings
 
     var secondBarEnabled: Bool {
-        didSet { defaults.set(secondBarEnabled, forKey: Key.secondBarEnabled.rawValue) }
+        didSet { persist(secondBarEnabled, for: .secondBarEnabled) }
     }
 
     var secondBarShowHiddenItems: Bool {
-        didSet { defaults.set(secondBarShowHiddenItems, forKey: Key.secondBarShowHiddenItems.rawValue) }
+        didSet { persist(secondBarShowHiddenItems, for: .secondBarShowHiddenItems) }
     }
 
     var secondBarShowAlwaysHiddenItems: Bool {
-        didSet { defaults.set(secondBarShowAlwaysHiddenItems, forKey: Key.secondBarShowAlwaysHiddenItems.rawValue) }
+        didSet { persist(secondBarShowAlwaysHiddenItems, for: .secondBarShowAlwaysHiddenItems) }
     }
 
     var secondBarAutoCloseAfterSelection: Bool {
-        didSet { defaults.set(secondBarAutoCloseAfterSelection, forKey: Key.secondBarAutoCloseAfterSelection.rawValue) }
+        didSet { persist(secondBarAutoCloseAfterSelection, for: .secondBarAutoCloseAfterSelection) }
     }
 
     var secondBarPositionModeRaw: String {
-        didSet { defaults.set(secondBarPositionModeRaw, forKey: Key.secondBarPositionModeRaw.rawValue) }
+        didSet { persist(secondBarPositionModeRaw, for: .secondBarPositionModeRaw) }
     }
 
     private var secondBarIconSizeStorage: Double
@@ -233,38 +258,34 @@ final class SettingsStore {
         set {
             let clamped = Self.clampSecondBarIconSize(newValue)
             secondBarIconSizeStorage = clamped
-            defaults.set(clamped, forKey: Key.secondBarIconSize.rawValue)
+            persist(clamped, for: .secondBarIconSize)
         }
     }
 
     var secondBarShowLabels: Bool {
-        didSet { defaults.set(secondBarShowLabels, forKey: Key.secondBarShowLabels.rawValue) }
+        didSet { persist(secondBarShowLabels, for: .secondBarShowLabels) }
     }
 
     var secondBarCloseOnOutsideClick: Bool {
-        didSet { defaults.set(secondBarCloseOnOutsideClick, forKey: Key.secondBarCloseOnOutsideClick.rawValue) }
+        didSet { persist(secondBarCloseOnOutsideClick, for: .secondBarCloseOnOutsideClick) }
     }
 
     var secondBarActivateOwningAppOnSelection: Bool {
-        didSet {
-            defaults.set(secondBarActivateOwningAppOnSelection, forKey: Key.secondBarActivateOwningAppOnSelection.rawValue)
-        }
+        didSet { persist(secondBarActivateOwningAppOnSelection, for: .secondBarActivateOwningAppOnSelection) }
     }
 
     // MARK: Phase 7 icon moving settings
 
     var iconMovingEnabled: Bool {
-        didSet { defaults.set(iconMovingEnabled, forKey: Key.iconMovingEnabled.rawValue) }
+        didSet { persist(iconMovingEnabled, for: .iconMovingEnabled) }
     }
 
     var iconMovingRequireConfirmation: Bool {
-        didSet { defaults.set(iconMovingRequireConfirmation, forKey: Key.iconMovingRequireConfirmation.rawValue) }
+        didSet { persist(iconMovingRequireConfirmation, for: .iconMovingRequireConfirmation) }
     }
 
     var iconMovingConfirmationSuppressed: Bool {
-        didSet {
-            defaults.set(iconMovingConfirmationSuppressed, forKey: Key.iconMovingConfirmationSuppressed.rawValue)
-        }
+        didSet { persist(iconMovingConfirmationSuppressed, for: .iconMovingConfirmationSuppressed) }
     }
 
     private var iconMovingMaxRetriesStorage: Int
@@ -274,7 +295,7 @@ final class SettingsStore {
         set {
             let clamped = Self.clampIconMovingMaxRetries(newValue)
             iconMovingMaxRetriesStorage = clamped
-            defaults.set(clamped, forKey: Key.iconMovingMaxRetries.rawValue)
+            persist(clamped, for: .iconMovingMaxRetries)
         }
     }
 
@@ -285,28 +306,28 @@ final class SettingsStore {
         set {
             let clamped = Self.clampIconMovingDragDuration(newValue)
             iconMovingDragDurationStorage = clamped
-            defaults.set(clamped, forKey: Key.iconMovingDragDuration.rawValue)
+            persist(clamped, for: .iconMovingDragDuration)
         }
     }
 
     var iconMovingAllowSystemItems: Bool {
-        didSet { defaults.set(iconMovingAllowSystemItems, forKey: Key.iconMovingAllowSystemItems.rawValue) }
+        didSet { persist(iconMovingAllowSystemItems, for: .iconMovingAllowSystemItems) }
     }
 
     // MARK: Phase 8 profiles and triggers
 
     var smartTriggersEnabled: Bool {
-        didSet { defaults.set(smartTriggersEnabled, forKey: Key.smartTriggersEnabled.rawValue) }
+        didSet { persist(smartTriggersEnabled, for: .smartTriggersEnabled) }
     }
 
     var automationPaused: Bool {
-        didSet { defaults.set(automationPaused, forKey: Key.automationPaused.rawValue) }
+        didSet { persist(automationPaused, for: .automationPaused) }
     }
 
     // MARK: Phase 2 behavior settings
 
     var autoRehideEnabled: Bool {
-        didSet { defaults.set(autoRehideEnabled, forKey: Key.autoRehideEnabled.rawValue) }
+        didSet { persist(autoRehideEnabled, for: .autoRehideEnabled) }
     }
 
     private var autoRehideDelaySecondsStorage: Double
@@ -318,14 +339,12 @@ final class SettingsStore {
         set {
             let clamped = Self.clampAutoRehideDelay(newValue)
             autoRehideDelaySecondsStorage = clamped
-            defaults.set(clamped, forKey: Key.autoRehideDelaySeconds.rawValue)
+            persist(clamped, for: .autoRehideDelaySeconds)
         }
     }
 
     var hoverRevealEnabled: Bool {
-        didSet {
-            defaults.set(hoverRevealEnabled, forKey: Key.hoverRevealEnabled.rawValue)
-        }
+        didSet { persist(hoverRevealEnabled, for: .hoverRevealEnabled) }
     }
 
     private var hoverRevealPollingIntervalSecondsStorage: Double
@@ -337,256 +356,327 @@ final class SettingsStore {
         set {
             let clamped = Self.clampHoverPollingInterval(newValue)
             hoverRevealPollingIntervalSecondsStorage = clamped
-            defaults.set(clamped, forKey: Key.hoverRevealPollingIntervalSeconds.rawValue)
+            persist(clamped, for: .hoverRevealPollingIntervalSeconds)
         }
     }
 
     var alwaysHiddenEnabled: Bool {
-        didSet { defaults.set(alwaysHiddenEnabled, forKey: Key.alwaysHiddenEnabled.rawValue) }
+        didSet { persist(alwaysHiddenEnabled, for: .alwaysHiddenEnabled) }
     }
 
     var showSeparators: Bool {
-        didSet { defaults.set(showSeparators, forKey: Key.showSeparators.rawValue) }
+        didSet { persist(showSeparators, for: .showSeparators) }
     }
 
     var globalHotkeyEnabled: Bool {
-        didSet { defaults.set(globalHotkeyEnabled, forKey: Key.globalHotkeyEnabled.rawValue) }
+        didSet { persist(globalHotkeyEnabled, for: .globalHotkeyEnabled) }
     }
 
     var globalHotkeyKeyCode: Int? {
-        didSet {
-            if let globalHotkeyKeyCode {
-                defaults.set(globalHotkeyKeyCode, forKey: Key.globalHotkeyKeyCode.rawValue)
-            } else {
-                defaults.removeObject(forKey: Key.globalHotkeyKeyCode.rawValue)
-            }
-        }
+        didSet { persistOptional(globalHotkeyKeyCode, for: .globalHotkeyKeyCode) }
     }
 
     var globalHotkeyModifiersRaw: UInt? {
-        didSet {
-            if let globalHotkeyModifiersRaw {
-                defaults.set(globalHotkeyModifiersRaw, forKey: Key.globalHotkeyModifiersRaw.rawValue)
-            } else {
-                defaults.removeObject(forKey: Key.globalHotkeyModifiersRaw.rawValue)
-            }
-        }
+        didSet { persistOptional(globalHotkeyModifiersRaw, for: .globalHotkeyModifiersRaw) }
     }
 
     var revealAllOnOptionClick: Bool {
-        didSet { defaults.set(revealAllOnOptionClick, forKey: Key.revealAllOnOptionClick.rawValue) }
+        didSet { persist(revealAllOnOptionClick, for: .revealAllOnOptionClick) }
+    }
+
+    private func persist<Value>(_ value: Value, for key: Key) {
+        defaults.set(value, forKey: key.rawValue)
+    }
+
+    private func persistOptional<Value>(_ value: Value?, for key: Key) {
+        if let value {
+            persist(value, for: key)
+        } else {
+            defaults.removeObject(forKey: key.rawValue)
+        }
+    }
+
+    private static func bool(for key: Key, in defaults: UserDefaults) -> Bool {
+        defaults.bool(forKey: key.rawValue)
+    }
+
+    private static func string(for key: Key, default defaultValue: String, in defaults: UserDefaults) -> String {
+        defaults.string(forKey: key.rawValue) ?? defaultValue
+    }
+
+    private static func optionalString(for key: Key, in defaults: UserDefaults) -> String? {
+        defaults.string(forKey: key.rawValue)
+    }
+
+    private static func value<Value>(for key: Key, default defaultValue: Value, in defaults: UserDefaults) -> Value {
+        defaults.object(forKey: key.rawValue) as? Value ?? defaultValue
+    }
+
+    private static func optionalValue<Value>(
+        for key: Key,
+        as type: Value.Type = Value.self,
+        in defaults: UserDefaults
+    ) -> Value? {
+        defaults.object(forKey: key.rawValue) as? Value
+    }
+
+    private static func optionalDoubleWhenPresent(for key: Key, in defaults: UserDefaults) -> Double? {
+        if defaults.object(forKey: key.rawValue) != nil {
+            return defaults.double(forKey: key.rawValue)
+        }
+        return nil
+    }
+
+    private static func clampedDouble(
+        for key: Key,
+        default defaultValue: Double,
+        clamp: (Double) -> Double,
+        in defaults: UserDefaults
+    ) -> Double {
+        let storedValue = value(for: key, default: defaultValue, in: defaults)
+        let clampedValue = clamp(storedValue)
+        defaults.set(clampedValue, forKey: key.rawValue)
+        return clampedValue
+    }
+
+    private static func clampedInt(
+        for key: Key,
+        default defaultValue: Int,
+        clamp: (Int) -> Int,
+        in defaults: UserDefaults
+    ) -> Int {
+        let storedValue = value(for: key, default: defaultValue, in: defaults)
+        let clampedValue = clamp(storedValue)
+        defaults.set(clampedValue, forKey: key.rawValue)
+        return clampedValue
     }
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
 
-        defaults.register(defaults: [
-            Key.hasCompletedOnboarding.rawValue: false,
-            Key.launchAtLoginEnabled.rawValue: false,
-            Key.lastKnownAppVersion.rawValue: "",
-            Key.appMode.rawValue: AppConstants.defaultAppMode,
-            Key.isCollapsed.rawValue: false,
-            Key.startCollapsed.rawValue: false,
-            Key.expandedSeparatorLength.rawValue: AppConstants.defaultExpandedSeparatorLength,
-            Key.hasSeenDragHint.rawValue: false,
-            Key.showPrimarySeparator.rawValue: true,
-            Key.proModeEnabled.rawValue: false,
-            Key.accessibilityDiscoveryEnabled.rawValue: false,
-            Key.menuBarScanIntervalSeconds.rawValue: AppConstants.defaultMenuBarScanIntervalSeconds,
-            Key.searchEnabled.rawValue: true,
-            Key.searchHotkeyEnabled.rawValue: false,
-            Key.searchRevealOnSelection.rawValue: true,
-            Key.searchHighlightOnSelection.rawValue: true,
-            Key.secondBarEnabled.rawValue: false,
-            Key.secondBarShowHiddenItems.rawValue: true,
-            Key.secondBarShowAlwaysHiddenItems.rawValue: true,
-            Key.secondBarAutoCloseAfterSelection.rawValue: true,
-            Key.secondBarPositionModeRaw.rawValue: SecondBarPositionMode.belowMenuBar.rawValue,
-            Key.secondBarIconSize.rawValue: AppConstants.defaultSecondBarIconSize,
-            Key.secondBarShowLabels.rawValue: true,
-            Key.secondBarCloseOnOutsideClick.rawValue: true,
-            Key.secondBarActivateOwningAppOnSelection.rawValue: false,
-            Key.iconMovingEnabled.rawValue: false,
-            Key.iconMovingRequireConfirmation.rawValue: true,
-            Key.iconMovingConfirmationSuppressed.rawValue: false,
-            Key.iconMovingMaxRetries.rawValue: AppConstants.defaultIconMovingMaxRetries,
-            Key.iconMovingDragDuration.rawValue: AppConstants.defaultIconMovingDragDuration,
-            Key.iconMovingAllowSystemItems.rawValue: false,
-            Key.smartTriggersEnabled.rawValue: false,
-            Key.automationPaused.rawValue: false,
-            Key.autoRehideEnabled.rawValue: true,
-            Key.autoRehideDelaySeconds.rawValue: AppConstants.defaultAutoRehideDelaySeconds,
-            Key.hoverRevealEnabled.rawValue: false,
-            Key.hoverRevealPollingIntervalSeconds.rawValue: AppConstants.defaultHoverRevealPollingIntervalSeconds,
-            Key.alwaysHiddenEnabled.rawValue: false,
-            Key.showSeparators.rawValue: true,
-            Key.globalHotkeyEnabled.rawValue: false,
-            Key.revealAllOnOptionClick.rawValue: true
-        ])
+        defaults.register(defaults: Self.registrationDefaults)
 
-        self.hasCompletedOnboarding = defaults.bool(forKey: Key.hasCompletedOnboarding.rawValue)
-        self.launchAtLoginEnabled = defaults.bool(forKey: Key.launchAtLoginEnabled.rawValue)
-        self.lastKnownAppVersion = defaults.string(forKey: Key.lastKnownAppVersion.rawValue) ?? ""
-
-        let storedMode = defaults.string(forKey: Key.appMode.rawValue)
-            .flatMap(AppMode.init(rawValue:)) ?? .basic
-        self.appMode = storedMode
-
-        self.isCollapsed = defaults.bool(forKey: Key.isCollapsed.rawValue)
-        self.startCollapsed = defaults.bool(forKey: Key.startCollapsed.rawValue)
-
-        let expandedLength = defaults.object(forKey: Key.expandedSeparatorLength.rawValue) as? Double
-        self.expandedSeparatorLength = expandedLength ?? AppConstants.defaultExpandedSeparatorLength
-
-        if defaults.object(forKey: Key.collapsedSeparatorLengthOverride.rawValue) != nil {
-            self.collapsedSeparatorLengthOverride = defaults.double(
-                forKey: Key.collapsedSeparatorLengthOverride.rawValue
-            )
-        } else {
-            self.collapsedSeparatorLengthOverride = nil
-        }
-
-        self.hasSeenDragHint = defaults.bool(forKey: Key.hasSeenDragHint.rawValue)
-        self.showPrimarySeparator = defaults.object(forKey: Key.showPrimarySeparator.rawValue) as? Bool ?? true
-        self.proModeEnabled = defaults.bool(forKey: Key.proModeEnabled.rawValue)
-        self.accessibilityDiscoveryEnabled = defaults.bool(forKey: Key.accessibilityDiscoveryEnabled.rawValue)
-        self.lastAccessibilityPermissionStatus = defaults.string(
-            forKey: Key.lastAccessibilityPermissionStatus.rawValue
+        self.hasCompletedOnboarding = Self.bool(for: .hasCompletedOnboarding, in: defaults)
+        self.launchAtLoginEnabled = Self.bool(for: .launchAtLoginEnabled, in: defaults)
+        self.lastKnownAppVersion = Self.string(
+            for: .lastKnownAppVersion,
+            default: Self.registeredDefault(.lastKnownAppVersion),
+            in: defaults
         )
 
-        let storedScanInterval = defaults.object(forKey: Key.menuBarScanIntervalSeconds.rawValue) as? Double
-        let clampedScanInterval = Self.clampMenuBarScanInterval(
-            storedScanInterval ?? AppConstants.defaultMenuBarScanIntervalSeconds
+        let storedModeRaw = Self.string(
+            for: .appMode,
+            default: Self.registeredDefault(.appMode),
+            in: defaults
         )
-        self.menuBarScanIntervalSecondsStorage = clampedScanInterval
-        defaults.set(clampedScanInterval, forKey: Key.menuBarScanIntervalSeconds.rawValue)
+        self.appMode = AppMode(rawValue: storedModeRaw) ?? .basic
 
-        self.searchEnabled = defaults.object(forKey: Key.searchEnabled.rawValue) as? Bool ?? true
-        self.searchHotkeyEnabled = defaults.bool(forKey: Key.searchHotkeyEnabled.rawValue)
-        self.searchHotkeyKeyCode = defaults.object(forKey: Key.searchHotkeyKeyCode.rawValue) as? Int
-        self.searchHotkeyModifiersRaw = defaults.object(forKey: Key.searchHotkeyModifiersRaw.rawValue) as? UInt
-        self.searchRevealOnSelection = defaults.object(forKey: Key.searchRevealOnSelection.rawValue) as? Bool ?? true
-        self.searchHighlightOnSelection = defaults.object(forKey: Key.searchHighlightOnSelection.rawValue) as? Bool ?? true
-
-        self.secondBarEnabled = defaults.bool(forKey: Key.secondBarEnabled.rawValue)
-        self.secondBarShowHiddenItems = defaults.object(forKey: Key.secondBarShowHiddenItems.rawValue) as? Bool ?? true
-        self.secondBarShowAlwaysHiddenItems = defaults.object(forKey: Key.secondBarShowAlwaysHiddenItems.rawValue) as? Bool ?? true
-        self.secondBarAutoCloseAfterSelection = defaults.object(forKey: Key.secondBarAutoCloseAfterSelection.rawValue) as? Bool ?? true
-        self.secondBarPositionModeRaw = defaults.string(forKey: Key.secondBarPositionModeRaw.rawValue)
-            ?? SecondBarPositionMode.belowMenuBar.rawValue
-
-        let storedSecondBarIconSize = defaults.object(forKey: Key.secondBarIconSize.rawValue) as? Double
-        let clampedSecondBarIconSize = Self.clampSecondBarIconSize(
-            storedSecondBarIconSize ?? AppConstants.defaultSecondBarIconSize
+        self.isCollapsed = Self.bool(for: .isCollapsed, in: defaults)
+        self.startCollapsed = Self.bool(for: .startCollapsed, in: defaults)
+        self.expandedSeparatorLength = Self.value(
+            for: .expandedSeparatorLength,
+            default: Self.registeredDefault(.expandedSeparatorLength),
+            in: defaults
         )
-        self.secondBarIconSizeStorage = clampedSecondBarIconSize
-        defaults.set(clampedSecondBarIconSize, forKey: Key.secondBarIconSize.rawValue)
-
-        self.secondBarShowLabels = defaults.object(forKey: Key.secondBarShowLabels.rawValue) as? Bool ?? true
-        self.secondBarCloseOnOutsideClick = defaults.object(forKey: Key.secondBarCloseOnOutsideClick.rawValue) as? Bool ?? true
-        self.secondBarActivateOwningAppOnSelection = defaults.bool(
-            forKey: Key.secondBarActivateOwningAppOnSelection.rawValue
+        self.collapsedSeparatorLengthOverride = Self.optionalDoubleWhenPresent(
+            for: .collapsedSeparatorLengthOverride,
+            in: defaults
+        )
+        self.hasSeenDragHint = Self.bool(for: .hasSeenDragHint, in: defaults)
+        self.showPrimarySeparator = Self.value(
+            for: .showPrimarySeparator,
+            default: Self.registeredDefault(.showPrimarySeparator),
+            in: defaults
+        )
+        self.proModeEnabled = Self.bool(for: .proModeEnabled, in: defaults)
+        self.accessibilityDiscoveryEnabled = Self.bool(for: .accessibilityDiscoveryEnabled, in: defaults)
+        self.lastAccessibilityPermissionStatus = Self.optionalString(
+            for: .lastAccessibilityPermissionStatus,
+            in: defaults
         )
 
-        self.iconMovingEnabled = defaults.bool(forKey: Key.iconMovingEnabled.rawValue)
-        self.iconMovingRequireConfirmation = defaults.object(forKey: Key.iconMovingRequireConfirmation.rawValue) as? Bool ?? true
-        self.iconMovingConfirmationSuppressed = defaults.bool(forKey: Key.iconMovingConfirmationSuppressed.rawValue)
-
-        let storedIconMoveRetries = defaults.object(forKey: Key.iconMovingMaxRetries.rawValue) as? Int
-        let clampedIconMoveRetries = Self.clampIconMovingMaxRetries(
-            storedIconMoveRetries ?? AppConstants.defaultIconMovingMaxRetries
+        self.menuBarScanIntervalSecondsStorage = Self.clampedDouble(
+            for: .menuBarScanIntervalSeconds,
+            default: Self.registeredDefault(.menuBarScanIntervalSeconds),
+            clamp: Self.clampMenuBarScanInterval,
+            in: defaults
         )
-        self.iconMovingMaxRetriesStorage = clampedIconMoveRetries
-        defaults.set(clampedIconMoveRetries, forKey: Key.iconMovingMaxRetries.rawValue)
 
-        let storedIconMoveDuration = defaults.object(forKey: Key.iconMovingDragDuration.rawValue) as? Double
-        let clampedIconMoveDuration = Self.clampIconMovingDragDuration(
-            storedIconMoveDuration ?? AppConstants.defaultIconMovingDragDuration
+        self.searchEnabled = Self.value(
+            for: .searchEnabled,
+            default: Self.registeredDefault(.searchEnabled),
+            in: defaults
         )
-        self.iconMovingDragDurationStorage = clampedIconMoveDuration
-        defaults.set(clampedIconMoveDuration, forKey: Key.iconMovingDragDuration.rawValue)
-
-        self.iconMovingAllowSystemItems = defaults.bool(forKey: Key.iconMovingAllowSystemItems.rawValue)
-        self.smartTriggersEnabled = defaults.bool(forKey: Key.smartTriggersEnabled.rawValue)
-        self.automationPaused = defaults.bool(forKey: Key.automationPaused.rawValue)
-
-        self.autoRehideEnabled = defaults.object(forKey: Key.autoRehideEnabled.rawValue) as? Bool ?? true
-
-        let storedDelay = defaults.object(forKey: Key.autoRehideDelaySeconds.rawValue) as? Double
-        let clampedDelay = Self.clampAutoRehideDelay(
-            storedDelay ?? AppConstants.defaultAutoRehideDelaySeconds
+        self.searchHotkeyEnabled = Self.bool(for: .searchHotkeyEnabled, in: defaults)
+        self.searchHotkeyKeyCode = Self.optionalValue(for: .searchHotkeyKeyCode, in: defaults)
+        self.searchHotkeyModifiersRaw = Self.optionalValue(for: .searchHotkeyModifiersRaw, in: defaults)
+        self.searchRevealOnSelection = Self.value(
+            for: .searchRevealOnSelection,
+            default: Self.registeredDefault(.searchRevealOnSelection),
+            in: defaults
         )
-        self.autoRehideDelaySecondsStorage = clampedDelay
-        defaults.set(clampedDelay, forKey: Key.autoRehideDelaySeconds.rawValue)
-
-        self.hoverRevealEnabled = defaults.bool(forKey: Key.hoverRevealEnabled.rawValue)
-
-        let storedInterval = defaults.object(forKey: Key.hoverRevealPollingIntervalSeconds.rawValue) as? Double
-        let clampedInterval = Self.clampHoverPollingInterval(
-            storedInterval ?? AppConstants.defaultHoverRevealPollingIntervalSeconds
+        self.searchHighlightOnSelection = Self.value(
+            for: .searchHighlightOnSelection,
+            default: Self.registeredDefault(.searchHighlightOnSelection),
+            in: defaults
         )
-        self.hoverRevealPollingIntervalSecondsStorage = clampedInterval
-        defaults.set(clampedInterval, forKey: Key.hoverRevealPollingIntervalSeconds.rawValue)
 
-        self.alwaysHiddenEnabled = defaults.bool(forKey: Key.alwaysHiddenEnabled.rawValue)
-        self.showSeparators = defaults.object(forKey: Key.showSeparators.rawValue) as? Bool ?? true
-        self.globalHotkeyEnabled = defaults.bool(forKey: Key.globalHotkeyEnabled.rawValue)
+        self.secondBarEnabled = Self.bool(for: .secondBarEnabled, in: defaults)
+        self.secondBarShowHiddenItems = Self.value(
+            for: .secondBarShowHiddenItems,
+            default: Self.registeredDefault(.secondBarShowHiddenItems),
+            in: defaults
+        )
+        self.secondBarShowAlwaysHiddenItems = Self.value(
+            for: .secondBarShowAlwaysHiddenItems,
+            default: Self.registeredDefault(.secondBarShowAlwaysHiddenItems),
+            in: defaults
+        )
+        self.secondBarAutoCloseAfterSelection = Self.value(
+            for: .secondBarAutoCloseAfterSelection,
+            default: Self.registeredDefault(.secondBarAutoCloseAfterSelection),
+            in: defaults
+        )
+        self.secondBarPositionModeRaw = Self.string(
+            for: .secondBarPositionModeRaw,
+            default: Self.registeredDefault(.secondBarPositionModeRaw),
+            in: defaults
+        )
 
-        self.globalHotkeyKeyCode = defaults.object(forKey: Key.globalHotkeyKeyCode.rawValue) as? Int
-        self.globalHotkeyModifiersRaw = defaults.object(forKey: Key.globalHotkeyModifiersRaw.rawValue) as? UInt
+        self.secondBarIconSizeStorage = Self.clampedDouble(
+            for: .secondBarIconSize,
+            default: Self.registeredDefault(.secondBarIconSize),
+            clamp: Self.clampSecondBarIconSize,
+            in: defaults
+        )
 
-        self.revealAllOnOptionClick = defaults.object(forKey: Key.revealAllOnOptionClick.rawValue) as? Bool ?? true
+        self.secondBarShowLabels = Self.value(
+            for: .secondBarShowLabels,
+            default: Self.registeredDefault(.secondBarShowLabels),
+            in: defaults
+        )
+        self.secondBarCloseOnOutsideClick = Self.value(
+            for: .secondBarCloseOnOutsideClick,
+            default: Self.registeredDefault(.secondBarCloseOnOutsideClick),
+            in: defaults
+        )
+        self.secondBarActivateOwningAppOnSelection = Self.bool(
+            for: .secondBarActivateOwningAppOnSelection,
+            in: defaults
+        )
+
+        self.iconMovingEnabled = Self.bool(for: .iconMovingEnabled, in: defaults)
+        self.iconMovingRequireConfirmation = Self.value(
+            for: .iconMovingRequireConfirmation,
+            default: Self.registeredDefault(.iconMovingRequireConfirmation),
+            in: defaults
+        )
+        self.iconMovingConfirmationSuppressed = Self.bool(for: .iconMovingConfirmationSuppressed, in: defaults)
+        self.iconMovingMaxRetriesStorage = Self.clampedInt(
+            for: .iconMovingMaxRetries,
+            default: Self.registeredDefault(.iconMovingMaxRetries),
+            clamp: Self.clampIconMovingMaxRetries,
+            in: defaults
+        )
+        self.iconMovingDragDurationStorage = Self.clampedDouble(
+            for: .iconMovingDragDuration,
+            default: Self.registeredDefault(.iconMovingDragDuration),
+            clamp: Self.clampIconMovingDragDuration,
+            in: defaults
+        )
+
+        self.iconMovingAllowSystemItems = Self.bool(for: .iconMovingAllowSystemItems, in: defaults)
+        self.smartTriggersEnabled = Self.bool(for: .smartTriggersEnabled, in: defaults)
+        self.automationPaused = Self.bool(for: .automationPaused, in: defaults)
+
+        self.autoRehideEnabled = Self.value(
+            for: .autoRehideEnabled,
+            default: Self.registeredDefault(.autoRehideEnabled),
+            in: defaults
+        )
+        self.autoRehideDelaySecondsStorage = Self.clampedDouble(
+            for: .autoRehideDelaySeconds,
+            default: Self.registeredDefault(.autoRehideDelaySeconds),
+            clamp: Self.clampAutoRehideDelay,
+            in: defaults
+        )
+
+        self.hoverRevealEnabled = Self.bool(for: .hoverRevealEnabled, in: defaults)
+
+        self.hoverRevealPollingIntervalSecondsStorage = Self.clampedDouble(
+            for: .hoverRevealPollingIntervalSeconds,
+            default: Self.registeredDefault(.hoverRevealPollingIntervalSeconds),
+            clamp: Self.clampHoverPollingInterval,
+            in: defaults
+        )
+
+        self.alwaysHiddenEnabled = Self.bool(for: .alwaysHiddenEnabled, in: defaults)
+        self.showSeparators = Self.value(
+            for: .showSeparators,
+            default: Self.registeredDefault(.showSeparators),
+            in: defaults
+        )
+        self.globalHotkeyEnabled = Self.bool(for: .globalHotkeyEnabled, in: defaults)
+
+        self.globalHotkeyKeyCode = Self.optionalValue(for: .globalHotkeyKeyCode, in: defaults)
+        self.globalHotkeyModifiersRaw = Self.optionalValue(for: .globalHotkeyModifiersRaw, in: defaults)
+
+        self.revealAllOnOptionClick = Self.value(
+            for: .revealAllOnOptionClick,
+            default: Self.registeredDefault(.revealAllOnOptionClick),
+            in: defaults
+        )
     }
 
     func restoreDefaults() {
-        hasCompletedOnboarding = false
-        launchAtLoginEnabled = false
-        lastKnownAppVersion = ""
-        appMode = .basic
-        isCollapsed = false
-        startCollapsed = false
-        expandedSeparatorLength = AppConstants.defaultExpandedSeparatorLength
+        hasCompletedOnboarding = Self.registeredDefault(.hasCompletedOnboarding)
+        launchAtLoginEnabled = Self.registeredDefault(.launchAtLoginEnabled)
+        lastKnownAppVersion = Self.registeredDefault(.lastKnownAppVersion)
+        appMode = AppMode(rawValue: Self.registeredDefault(.appMode, as: String.self)) ?? .basic
+        isCollapsed = Self.registeredDefault(.isCollapsed)
+        startCollapsed = Self.registeredDefault(.startCollapsed)
+        expandedSeparatorLength = Self.registeredDefault(.expandedSeparatorLength)
         collapsedSeparatorLengthOverride = nil
-        hasSeenDragHint = false
-        showPrimarySeparator = true
-        proModeEnabled = false
-        accessibilityDiscoveryEnabled = false
+        hasSeenDragHint = Self.registeredDefault(.hasSeenDragHint)
+        showPrimarySeparator = Self.registeredDefault(.showPrimarySeparator)
+        proModeEnabled = Self.registeredDefault(.proModeEnabled)
+        accessibilityDiscoveryEnabled = Self.registeredDefault(.accessibilityDiscoveryEnabled)
         lastAccessibilityPermissionStatus = nil
-        menuBarScanIntervalSeconds = AppConstants.defaultMenuBarScanIntervalSeconds
-        searchEnabled = true
-        searchHotkeyEnabled = false
+        menuBarScanIntervalSeconds = Self.registeredDefault(.menuBarScanIntervalSeconds)
+        searchEnabled = Self.registeredDefault(.searchEnabled)
+        searchHotkeyEnabled = Self.registeredDefault(.searchHotkeyEnabled)
         searchHotkeyKeyCode = nil
         searchHotkeyModifiersRaw = nil
-        searchRevealOnSelection = true
-        searchHighlightOnSelection = true
-        secondBarEnabled = false
-        secondBarShowHiddenItems = true
-        secondBarShowAlwaysHiddenItems = true
-        secondBarAutoCloseAfterSelection = true
-        secondBarPositionModeRaw = SecondBarPositionMode.belowMenuBar.rawValue
-        secondBarIconSize = AppConstants.defaultSecondBarIconSize
-        secondBarShowLabels = true
-        secondBarCloseOnOutsideClick = true
-        secondBarActivateOwningAppOnSelection = false
-        iconMovingEnabled = false
-        iconMovingRequireConfirmation = true
-        iconMovingConfirmationSuppressed = false
-        iconMovingMaxRetries = AppConstants.defaultIconMovingMaxRetries
-        iconMovingDragDuration = AppConstants.defaultIconMovingDragDuration
-        iconMovingAllowSystemItems = false
-        smartTriggersEnabled = false
-        automationPaused = false
+        searchRevealOnSelection = Self.registeredDefault(.searchRevealOnSelection)
+        searchHighlightOnSelection = Self.registeredDefault(.searchHighlightOnSelection)
+        secondBarEnabled = Self.registeredDefault(.secondBarEnabled)
+        secondBarShowHiddenItems = Self.registeredDefault(.secondBarShowHiddenItems)
+        secondBarShowAlwaysHiddenItems = Self.registeredDefault(.secondBarShowAlwaysHiddenItems)
+        secondBarAutoCloseAfterSelection = Self.registeredDefault(.secondBarAutoCloseAfterSelection)
+        secondBarPositionModeRaw = Self.registeredDefault(.secondBarPositionModeRaw)
+        secondBarIconSize = Self.registeredDefault(.secondBarIconSize)
+        secondBarShowLabels = Self.registeredDefault(.secondBarShowLabels)
+        secondBarCloseOnOutsideClick = Self.registeredDefault(.secondBarCloseOnOutsideClick)
+        secondBarActivateOwningAppOnSelection = Self.registeredDefault(.secondBarActivateOwningAppOnSelection)
+        iconMovingEnabled = Self.registeredDefault(.iconMovingEnabled)
+        iconMovingRequireConfirmation = Self.registeredDefault(.iconMovingRequireConfirmation)
+        iconMovingConfirmationSuppressed = Self.registeredDefault(.iconMovingConfirmationSuppressed)
+        iconMovingMaxRetries = Self.registeredDefault(.iconMovingMaxRetries)
+        iconMovingDragDuration = Self.registeredDefault(.iconMovingDragDuration)
+        iconMovingAllowSystemItems = Self.registeredDefault(.iconMovingAllowSystemItems)
+        smartTriggersEnabled = Self.registeredDefault(.smartTriggersEnabled)
+        automationPaused = Self.registeredDefault(.automationPaused)
 
-        autoRehideEnabled = true
-        autoRehideDelaySeconds = AppConstants.defaultAutoRehideDelaySeconds
-        hoverRevealEnabled = false
-        hoverRevealPollingIntervalSeconds = AppConstants.defaultHoverRevealPollingIntervalSeconds
-        alwaysHiddenEnabled = false
-        showSeparators = true
-        globalHotkeyEnabled = false
+        autoRehideEnabled = Self.registeredDefault(.autoRehideEnabled)
+        autoRehideDelaySeconds = Self.registeredDefault(.autoRehideDelaySeconds)
+        hoverRevealEnabled = Self.registeredDefault(.hoverRevealEnabled)
+        hoverRevealPollingIntervalSeconds = Self.registeredDefault(.hoverRevealPollingIntervalSeconds)
+        alwaysHiddenEnabled = Self.registeredDefault(.alwaysHiddenEnabled)
+        showSeparators = Self.registeredDefault(.showSeparators)
+        globalHotkeyEnabled = Self.registeredDefault(.globalHotkeyEnabled)
         globalHotkeyKeyCode = nil
         globalHotkeyModifiersRaw = nil
-        revealAllOnOptionClick = true
+        revealAllOnOptionClick = Self.registeredDefault(.revealAllOnOptionClick)
     }
 
     // MARK: Clamping helpers

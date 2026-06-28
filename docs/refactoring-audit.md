@@ -628,15 +628,16 @@ Failure to build stops work; the failing change is reverted before continuation.
 
 ## Completed actions
 
-All five top-leverage actions have been implemented. Follow-up Wave 1 through Wave 9
-subagent/local passes also closed several remaining high/medium findings called out above.
+All five top-leverage actions have been implemented. Follow-up Wave 1 through Wave 10
+subagent/local passes also closed the remaining high/medium findings called out above,
+except for the deliberately deferred full `SettingsStore` property-wrapper migration.
 The combined tree was verified by:
 
 - `xcodebuild -scheme MenuBarDeclutter -destination 'platform=macOS' build`
 - `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -only-testing:MenuBarDeclutterTests`
-  (198 unit tests passed)
+  (201 unit tests passed)
 - `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS'`
-  (198 unit tests + 7 UI test executions passed)
+  (201 unit tests + 7 UI test executions passed)
 
 | Action | Files modified | Verification |
 |---|---|---|
@@ -651,6 +652,7 @@ The combined tree was verified by:
 | Finding | Files modified | Verification |
 |---|---|---|
 | H5 / M-S2 — Diagnostics settings recomputation | `Settings/DiagnosticsSettingsView.swift` (split event list, toolbar counts, live-status groups, and snapshot table into smaller subviews with narrower Observation dependencies) | Build + tests pass. |
+| M-S3 — Live status row repetition | `Settings/DiagnosticsSettingsView.swift` (live-status grids now render from ordered `LiveStatusRowData` arrays through a shared row view, preserving labels, values, row order, and warning/secondary value styling) | Build + tests pass. |
 | H6 / H7 — Hiding and hover polling | `Hiding/HidingService.swift`, `Hiding/HoverRevealController.swift`, `Hiding/ScreenGeometryService.swift` (no-op visibility transitions stop dispatching, hover polling skips geometry while expanded, screen geometry caches until invalidated) | Build + tests pass. |
 | H8 — Icon move re-entrancy and cancellation | `Moving/IconMoveService.swift`, `Moving/DragExecutor.swift`, `Moving/IconMoveError.swift` (move guard is set before confirmation, drag executor checks cancellation and releases mouse on mid-drag cancellation) | Build + tests pass. |
 | H15 — Accessibility permission probes | `Permissions/AccessibilityPermissionService.swift` (added short-TTL `currentStatus`, forceful `refreshStatus()`, and `markStale()` invalidation) | Build + tests pass. |
@@ -675,8 +677,11 @@ The combined tree was verified by:
 | H11 — AX scanner candidate cache | `Accessibility/AXMenuBarScanner.swift`, `Accessibility/AXMenuBarCandidateCache.swift`, `MenuBar-ManagerTests/AXMenuBarCandidateCacheTests.swift` (scans now prioritize previously successful app menu-bar pids before sweeping remaining running apps, with deterministic cache invalidation and ordering tests) | Build + tests pass. |
 | H11 — AX scanner cache invalidation wiring | `Accessibility/MenuBarScanCoordinator.swift`, `MenuBar-ManagerTests/MenuBarScanCoordinatorTests.swift` (workspace launch/terminate notifications now invalidate the scanner candidate cache without triggering scans or permission prompts; observers are removed on stop) | Build + tests pass. |
 | H11 — AX scanner off-main execution | `Accessibility/MenuBarScanCoordinator.swift`, `Accessibility/AXMenuBarScanner.swift`, `Accessibility/AXElementReader.swift`, `Accessibility/MenuBarScanResult.swift`, `Accessibility/MenuBarItemSnapshot.swift`, `Accessibility/MenuBarZone.swift`, `Core/DisplayString.swift`, `MenuBar-ManagerTests/MenuBarScanCoordinatorTests.swift`, `docs/testing/manual-qa.md` (the coordinator now snapshots AppKit-only inputs on the main actor, the scanner runs AX traversal inside an actor over a sendable context, scan logs are flushed after traversal, in-flight scans are canceled or invalidated by request ID, and stale completions after disable/clear are ignored) | Build + tests pass. |
+| H1 — SettingsStore defaults/persistence slice | `Core/SettingsStore.swift`, `MenuBar-ManagerTests/SettingsStoreTests.swift` (registered defaults now live in one table shared by `register(defaults:)` and `restoreDefaults()`, setters use shared persist/remove helpers, init uses typed load helpers, clamped load paths still write repaired values back to `UserDefaults`, and tests pin optional `removeObject` semantics plus clamping-on-load repair) | Build + tests pass. |
 | H2 — Diagnostics logger ring buffer | `Core/DiagnosticsLogger.swift`, `MenuBar-ManagerTests/DiagnosticsLoggerTests.swift` (event retention now uses a bounded ring buffer while preserving chronological `events` reads and `clear()`/`removeAll()` semantics) | Build + tests pass. |
+| H3 — Diagnostics exporter schema consolidation | `Core/DiagnosticsExporter.swift`, `MenuBar-ManagerTests/DiagnosticsExportTests.swift` (JSON export now uses typed `Encodable` DTOs; settings JSON and plain-text output share one ordered field descriptor table; optional settings still encode as explicit JSON `null` and preserve existing plain-text fallback strings; tests pin exact JSON key sets and representative text output) | Build + tests pass. |
 | H4 / M-S1 — Settings action grouping | `Settings/SettingsActions.swift`, `Settings/SettingsWindowController.swift`, `Settings/SettingsRootView.swift`, `App/AppEnvironment.swift` (settings callbacks are grouped into compact action value types while preserving section layout and behavior) | Build + tests pass. |
+| M-S4 — Settings change forwarding | `Settings/SettingsActions.swift`, `Settings/BehaviorSettingsView.swift`, `Settings/SearchSettingsView.swift`, `Settings/SecondBarSettingsView.swift`, `Settings/AdvancedSettingsView.swift` (repeated simple `settingsStore` change-forwarding chains are grouped behind named settings modifiers while preserving individual `onChange` observers; custom inline state-mutating and automation callbacks remain local) | Build + tests pass. |
 | H4 / H19 — AppEnvironment startup sequencing | `App/AppEnvironment.swift` (startup is split into launch-storage, runtime-services, scan gating, health recovery, initial visibility, launch-at-login reflection, and first-run presentation steps; the second health check after recovery is documented as intentional; stop now explicitly invalidates Carbon hotkeys) | Build + tests pass. |
 | H20 — Conservative test-helper cleanup | `MenuBar-ManagerTests/Support/TestSupport.swift`, `MenuBar-ManagerTests/HidingServiceTests.swift`, `MenuBar-ManagerTests/SearchServiceTests.swift`, `MenuBar-ManagerTests/SecondBarViewModelTests.swift` (representative duplicated isolated-defaults and snapshot factories now use shared helpers) | Build + tests pass. |
 | Low-impact moving cleanup | `Core/AsyncPause.swift`, `Moving/IconMoveSafetyRules.swift`, `Moving/IconMoveService.swift`, `Moving/DragExecutor.swift` (duplicated async sleep helper is shared; icon-move safety/confirmation types moved out of the service file; display names use `DisplayString`) | Build + tests pass. |
@@ -684,25 +689,17 @@ The combined tree was verified by:
 | M-HM6 / M-HM8 — Icon move decomposition and visibility semantics | `Moving/IconMoveService.swift`, `MenuBar-ManagerTests/IconMovePlanningTests.swift` (move flow is split into preflight, confirmation, session setup/teardown, planning, and retry execution; tests now pin that failures/cancellations restore pre-move visibility while success leaves the bar revealed) | Build + tests pass. |
 | Test coverage gap — Health report pure logic | `MenuBar-ManagerTests/HealthReportTests.swift` (covers health status precedence, `isHealthy`, sorted issue ordering, and plain-text rendering including recovery-action formatting) | Build + tests pass. |
 | H16 / M-HP1 — TriggerService direct coverage | `Profiles/TriggerService.swift`, `MenuBar-ManagerTests/TriggerServiceTests.swift`, `MenuBar-ManagerTests/TriggerServicePersistenceTests.swift` (trigger persistence round-trips through App Support, `ProfileStore` ignores `triggers.json`, missing/corrupt trigger files are handled safely, start/stop observer lifecycle is pinned, event bursts coalesce through injected centers, first-match precedence saves once, paused/loop-guard paths skip cleanly, and skipped matches no longer report as fired) | Build + tests pass. |
+| M-HP3 / M-HP5 — Profile frontmost-app seeding and health coordinator dependencies | `Profiles/ProfileListView.swift`, `Health/AppHealthCoordinator.swift`, `App/AppEnvironment.swift` (trigger draft bundle IDs now seed from the current frontmost app only when a bundle-backed trigger is shown, avoiding the SwiftUI view-init read; health recovery wiring now enters through grouped dependency/action values instead of an 18-parameter coordinator initializer while preserving the existing `RecoveryActions` behavior) | Build + tests pass. |
+| M-TP1 — Build settings `.xcconfig` factoring | `Config/Shared.xcconfig`, `Config/Debug.xcconfig`, `Config/Release.xcconfig`, `MenuBar-Manager.xcodeproj/project.pbxproj` (Debug/Release configurations now use shared base config files for repeated development-team, version, deployment-target, product-name, code-signing, and Swift toolchain settings while preserving canonical schemes, target names, product identifiers, and unit-test `MainActor` isolation) | `xcodebuild -list`, `plutil -lint`, build, and tests pass. |
 
 ### Notes on decisions deferred
 
-- **Full `@UserDefault` property wrapper for `SettingsStore`** was deliberately not
-  implemented. The audit identified it as the maintainability goal for H1, but the
-  7-place entry-to-add-a-setting cost is currently manageable and the property-wrapper
-  rewrite risks subtle behavioral drift around clamping-on-load, optional `set` vs
-  `removeObject`, and registration semantics. The smaller wins (`@MainActor`, clamp
-  consolidation) preserve all current behavior.
-- **Codable consolidation of `DiagnosticsExporter`** was deferred. The JSON shape is
-  loosely tested (`application`/`system`/`screens`/`settings`/`logs`/
-  `excludedByDesign` keys exist, types match); a `Codable` migration is feasible but
-  would still require a hand-rolled key-by-key `CodingKeys` declaration that mirrors
-  the existing schema. The cached `ISO8601DateFormatter` removes the biggest per-call
-  allocation, which is the higher-leverage win.
-- **`.xcconfig` factoring** (M-TP1) was not added in this pass. Setting
-  `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` on the test target handles the
-  biggest test-target churn; xcconfig consolidation is a separate, lower-priority
-  cleanup that does not affect runtime behavior.
+- **Full `@UserDefault` property wrapper for `SettingsStore`** remains deliberately
+  deferred. The H1 defaults/persistence slice now centralizes registration, restore
+  defaults, optional removal, typed loading, and clamping-on-load repair, reducing the
+  highest-risk duplication without changing the observable stored-property surface.
+  A property-wrapper migration still risks subtle drift around Swift Observation,
+  optional `set` vs `removeObject`, and initialization/write-back ordering.
 - The unit-test target's `@MainActor` annotations on individual suites were not
   removed in bulk in this pass — they are now redundant (the target-level isolation
   setting makes them implicit) but harmless, and a mass edit would create churn

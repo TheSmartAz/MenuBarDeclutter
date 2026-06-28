@@ -28,7 +28,7 @@ struct DiagnosticsExporter {
         }
     }
 
-    struct ScreenSnapshot: Equatable, Sendable {
+    struct ScreenSnapshot: Encodable, Equatable, Sendable {
         let index: Int
         let x: Double
         let y: Double
@@ -101,7 +101,7 @@ struct DiagnosticsExporter {
 
     /// A minimal, human-readable settings snapshot. Never embeds file paths or
     /// network configuration.
-    struct SettingsSnapshot {
+    struct SettingsSnapshot: Encodable {
         let appMode: String
         let isCollapsed: Bool
         let hasCompletedOnboarding: Bool
@@ -143,6 +143,13 @@ struct DiagnosticsExporter {
         let revealAllOnOptionClick: Bool
         let expandedSeparatorLength: Double
         let collapsedSeparatorLengthOverride: Double?
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: DynamicCodingKey.self)
+            for field in DiagnosticsExporter.settingsFields {
+                try field.encode(snapshot: self, to: &container)
+            }
+        }
     }
 
     func makeSnapshot(
@@ -262,52 +269,7 @@ struct DiagnosticsExporter {
         }
         lines.append("")
         lines.append("== Settings ==")
-        let s = snapshot.settings
-        lines.append("App Mode: \(s.appMode)")
-        lines.append("Collapsed: \(s.isCollapsed)")
-        lines.append("Onboarding Completed: \(s.hasCompletedOnboarding)")
-        lines.append("Launch at Login: \(s.launchAtLoginEnabled)")
-        lines.append("Pro Mode Enabled: \(s.proModeEnabled)")
-        lines.append("Accessibility Discovery Enabled: \(s.accessibilityDiscoveryEnabled)")
-        lines.append("Last Accessibility Permission Status: \(s.lastAccessibilityPermissionStatus ?? "(none)")")
-        lines.append("Menu Bar Scan Interval (s): \(s.menuBarScanIntervalSeconds)")
-        lines.append("Find Icon Enabled: \(s.searchEnabled)")
-        lines.append("Find Icon Hotkey Enabled: \(s.searchHotkeyEnabled)")
-        lines.append("Find Icon Hotkey: \(s.searchHotkeyDisplayName)")
-        lines.append("Find Icon Reveal on Selection: \(s.searchRevealOnSelection)")
-        lines.append("Find Icon Highlight on Selection: \(s.searchHighlightOnSelection)")
-        lines.append("Second Bar Enabled: \(s.secondBarEnabled)")
-        lines.append("Second Bar Show Hidden Items: \(s.secondBarShowHiddenItems)")
-        lines.append("Second Bar Show Always-Hidden Items: \(s.secondBarShowAlwaysHiddenItems)")
-        lines.append("Second Bar Auto-close: \(s.secondBarAutoCloseAfterSelection)")
-        lines.append("Second Bar Position Mode: \(s.secondBarPositionMode)")
-        lines.append("Second Bar Icon Size: \(s.secondBarIconSize)")
-        lines.append("Second Bar Show Labels: \(s.secondBarShowLabels)")
-        lines.append("Second Bar Close Outside: \(s.secondBarCloseOnOutsideClick)")
-        lines.append("Second Bar Activate Owning App: \(s.secondBarActivateOwningAppOnSelection)")
-        lines.append("Icon Moving Enabled: \(s.iconMovingEnabled)")
-        lines.append("Icon Moving Require Confirmation: \(s.iconMovingRequireConfirmation)")
-        lines.append("Icon Moving Max Retries: \(s.iconMovingMaxRetries)")
-        lines.append("Icon Moving Drag Duration: \(s.iconMovingDragDuration)")
-        lines.append("Icon Moving Allow System Items: \(s.iconMovingAllowSystemItems)")
-        lines.append("Smart Triggers Enabled: \(s.smartTriggersEnabled)")
-        lines.append("Automation Paused: \(s.automationPaused)")
-        lines.append("Show Primary Separator: \(s.showPrimarySeparator)")
-        lines.append("Show Separators: \(s.showSeparators)")
-        lines.append("Auto-Rehide Enabled: \(s.autoRehideEnabled)")
-        lines.append("Auto-Rehide Delay (s): \(s.autoRehideDelaySeconds)")
-        lines.append("Hover Reveal Enabled: \(s.hoverRevealEnabled)")
-        lines.append("Hover Polling Interval (s): \(s.hoverRevealPollingIntervalSeconds)")
-        lines.append("Always-Hidden Enabled: \(s.alwaysHiddenEnabled)")
-        lines.append("Global Hotkey Enabled: \(s.globalHotkeyEnabled)")
-        lines.append("Global Hotkey: \(s.globalHotkeyDisplayName)")
-        lines.append("Reveal All on Option-Click: \(s.revealAllOnOptionClick)")
-        lines.append("Expanded Separator Length: \(s.expandedSeparatorLength)")
-        if let override = s.collapsedSeparatorLengthOverride {
-            lines.append("Collapsed Separator Override: \(override)")
-        } else {
-            lines.append("Collapsed Separator Override: (none — auto)")
-        }
+        lines.append(contentsOf: Self.settingsPlainTextLines(for: snapshot.settings))
         lines.append("")
         if includeAppSupportPath, let path = appSupportPath {
             lines.append("== App Support ==")
@@ -338,101 +300,269 @@ struct DiagnosticsExporter {
     // MARK: JSON
 
     private func json(snapshot: Snapshot, includeAppSupportPath: Bool, appSupportPath: URL?) throws -> Data {
-        var dict: [String: Any] = [
-            "generatedAt": Self.iso(snapshot.generatedAt),
-            "application": [
-                "name": AppConstants.displayName,
-                "bundleIdentifier": snapshot.bundleIdentifier,
-                "marketingVersion": snapshot.marketingVersion,
-                "buildNumber": snapshot.buildNumber,
-                "appVersion": snapshot.appVersion
-            ],
-            "system": [
-                "macOSVersion": snapshot.macOSVersion,
-                "architecture": snapshot.architecture,
-                "screenCount": snapshot.screens.count
-            ],
-            "screens": snapshot.screens.map { screen in
-                [
-                    "index": screen.index,
-                    "x": screen.x,
-                    "y": screen.y,
-                    "width": screen.width,
-                    "height": screen.height,
-                    "isMain": screen.isMain
-                ] as [String: Any]
-            },
-            "settings": [
-                "appMode": snapshot.settings.appMode,
-                "isCollapsed": snapshot.settings.isCollapsed,
-                "hasCompletedOnboarding": snapshot.settings.hasCompletedOnboarding,
-                "launchAtLoginEnabled": snapshot.settings.launchAtLoginEnabled,
-                "proModeEnabled": snapshot.settings.proModeEnabled,
-                "accessibilityDiscoveryEnabled": snapshot.settings.accessibilityDiscoveryEnabled,
-                "lastAccessibilityPermissionStatus": snapshot.settings.lastAccessibilityPermissionStatus ?? NSNull(),
-                "menuBarScanIntervalSeconds": snapshot.settings.menuBarScanIntervalSeconds,
-                "searchEnabled": snapshot.settings.searchEnabled,
-                "searchHotkeyEnabled": snapshot.settings.searchHotkeyEnabled,
-                "searchHotkeyDisplayName": snapshot.settings.searchHotkeyDisplayName,
-                "searchRevealOnSelection": snapshot.settings.searchRevealOnSelection,
-                "searchHighlightOnSelection": snapshot.settings.searchHighlightOnSelection,
-                "secondBarEnabled": snapshot.settings.secondBarEnabled,
-                "secondBarShowHiddenItems": snapshot.settings.secondBarShowHiddenItems,
-                "secondBarShowAlwaysHiddenItems": snapshot.settings.secondBarShowAlwaysHiddenItems,
-                "secondBarAutoCloseAfterSelection": snapshot.settings.secondBarAutoCloseAfterSelection,
-                "secondBarPositionMode": snapshot.settings.secondBarPositionMode,
-                "secondBarIconSize": snapshot.settings.secondBarIconSize,
-                "secondBarShowLabels": snapshot.settings.secondBarShowLabels,
-                "secondBarCloseOnOutsideClick": snapshot.settings.secondBarCloseOnOutsideClick,
-                "secondBarActivateOwningAppOnSelection": snapshot.settings.secondBarActivateOwningAppOnSelection,
-                "iconMovingEnabled": snapshot.settings.iconMovingEnabled,
-                "iconMovingRequireConfirmation": snapshot.settings.iconMovingRequireConfirmation,
-                "iconMovingMaxRetries": snapshot.settings.iconMovingMaxRetries,
-                "iconMovingDragDuration": snapshot.settings.iconMovingDragDuration,
-                "iconMovingAllowSystemItems": snapshot.settings.iconMovingAllowSystemItems,
-                "smartTriggersEnabled": snapshot.settings.smartTriggersEnabled,
-                "automationPaused": snapshot.settings.automationPaused,
-                "showPrimarySeparator": snapshot.settings.showPrimarySeparator,
-                "showSeparators": snapshot.settings.showSeparators,
-                "autoRehideEnabled": snapshot.settings.autoRehideEnabled,
-                "autoRehideDelaySeconds": snapshot.settings.autoRehideDelaySeconds,
-                "hoverRevealEnabled": snapshot.settings.hoverRevealEnabled,
-                "hoverRevealPollingIntervalSeconds": snapshot.settings.hoverRevealPollingIntervalSeconds,
-                "alwaysHiddenEnabled": snapshot.settings.alwaysHiddenEnabled,
-                "globalHotkeyEnabled": snapshot.settings.globalHotkeyEnabled,
-                "globalHotkeyDisplayName": snapshot.settings.globalHotkeyDisplayName,
-                "revealAllOnOptionClick": snapshot.settings.revealAllOnOptionClick,
-                "expandedSeparatorLength": snapshot.settings.expandedSeparatorLength,
-                "collapsedSeparatorLengthOverride": snapshot.settings.collapsedSeparatorLengthOverride ?? NSNull()
-            ] as [String: Any],
-            "logs": snapshot.events.map { event in
-                [
-                    "category": event.category.rawValue,
-                    "level": event.level.rawValue,
-                    "severity": event.level.rawValue,
-                    "timestamp": Self.iso(event.timestamp),
-                    "message": event.message,
-                    "metadata": event.metadata
-                ] as [String: Any]
-            },
-            "excludedByDesign": [
-                "screenshots",
-                "screenContents",
-                "liveSearchText",
-                "selectedItemIdentity",
-                "personalFilePaths",
-                "networkData"
-            ]
-        ]
-        if includeAppSupportPath, let path = appSupportPath {
-            dict["appSupport"] = ["diagnosticsDirectory": path.path]
-        }
+        let document = ExportDocument(
+            snapshot: snapshot,
+            includeAppSupportPath: includeAppSupportPath,
+            appSupportPath: appSupportPath
+        )
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
 
         do {
-            return try JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys])
+            return try encoder.encode(document)
         } catch {
             throw DiagnosticsExportError.encodingFailed
         }
+    }
+
+    private struct ExportDocument: Encodable {
+        let generatedAt: String
+        let application: Application
+        let system: System
+        let screens: [ScreenSnapshot]
+        let settings: SettingsSnapshot
+        let logs: [Log]
+        let excludedByDesign: [String]
+        let appSupport: AppSupport?
+
+        init(snapshot: Snapshot, includeAppSupportPath: Bool, appSupportPath: URL?) {
+            self.generatedAt = DiagnosticsExporter.iso(snapshot.generatedAt)
+            self.application = Application(snapshot: snapshot)
+            self.system = System(snapshot: snapshot)
+            self.screens = snapshot.screens
+            self.settings = snapshot.settings
+            self.logs = snapshot.events.map(Log.init(event:))
+            self.excludedByDesign = DiagnosticsExporter.excludedByDesign
+            self.appSupport = includeAppSupportPath
+                ? appSupportPath.map { AppSupport(diagnosticsDirectory: $0.path) }
+                : nil
+        }
+
+        enum CodingKeys: String, CodingKey {
+            case generatedAt
+            case application
+            case system
+            case screens
+            case settings
+            case logs
+            case excludedByDesign
+            case appSupport
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(generatedAt, forKey: .generatedAt)
+            try container.encode(application, forKey: .application)
+            try container.encode(system, forKey: .system)
+            try container.encode(screens, forKey: .screens)
+            try container.encode(settings, forKey: .settings)
+            try container.encode(logs, forKey: .logs)
+            try container.encode(excludedByDesign, forKey: .excludedByDesign)
+            try container.encodeIfPresent(appSupport, forKey: .appSupport)
+        }
+
+        struct Application: Encodable {
+            let name: String
+            let bundleIdentifier: String
+            let marketingVersion: String
+            let buildNumber: String
+            let appVersion: String
+
+            init(snapshot: Snapshot) {
+                self.name = AppConstants.displayName
+                self.bundleIdentifier = snapshot.bundleIdentifier
+                self.marketingVersion = snapshot.marketingVersion
+                self.buildNumber = snapshot.buildNumber
+                self.appVersion = snapshot.appVersion
+            }
+        }
+
+        struct System: Encodable {
+            let macOSVersion: String
+            let architecture: String
+            let screenCount: Int
+
+            init(snapshot: Snapshot) {
+                self.macOSVersion = snapshot.macOSVersion
+                self.architecture = snapshot.architecture
+                self.screenCount = snapshot.screens.count
+            }
+        }
+
+        struct Log: Encodable {
+            let category: String
+            let level: String
+            let severity: String
+            let timestamp: String
+            let message: String
+            let metadata: [String: String]
+
+            init(event: DiagnosticEvent) {
+                self.category = event.category.rawValue
+                self.level = event.level.rawValue
+                self.severity = event.level.rawValue
+                self.timestamp = DiagnosticsExporter.iso(event.timestamp)
+                self.message = event.message
+                self.metadata = event.metadata
+            }
+        }
+
+        struct AppSupport: Encodable {
+            let diagnosticsDirectory: String
+        }
+    }
+
+    private struct DynamicCodingKey: CodingKey {
+        let stringValue: String
+        let intValue: Int? = nil
+
+        init(stringValue: String) {
+            self.stringValue = stringValue
+        }
+
+        init?(intValue: Int) {
+            return nil
+        }
+    }
+
+    private enum SettingsFieldValue {
+        case bool(Bool)
+        case double(Double)
+        case int(Int)
+        case string(String)
+        case optionalDouble(Double?, emptyText: String)
+        case optionalString(String?, emptyText: String)
+
+        var plainText: String {
+            switch self {
+            case let .bool(value):
+                "\(value)"
+            case let .double(value):
+                "\(value)"
+            case let .int(value):
+                "\(value)"
+            case let .string(value):
+                value
+            case let .optionalDouble(value, emptyText):
+                value.map { "\($0)" } ?? emptyText
+            case let .optionalString(value, emptyText):
+                value ?? emptyText
+            }
+        }
+
+        func encode(
+            to container: inout KeyedEncodingContainer<DynamicCodingKey>,
+            forKey key: DynamicCodingKey
+        ) throws {
+            switch self {
+            case let .bool(value):
+                try container.encode(value, forKey: key)
+            case let .double(value):
+                try container.encode(value, forKey: key)
+            case let .int(value):
+                try container.encode(value, forKey: key)
+            case let .string(value):
+                try container.encode(value, forKey: key)
+            case let .optionalDouble(value, _):
+                if let value {
+                    try container.encode(value, forKey: key)
+                } else {
+                    try container.encodeNil(forKey: key)
+                }
+            case let .optionalString(value, _):
+                if let value {
+                    try container.encode(value, forKey: key)
+                } else {
+                    try container.encodeNil(forKey: key)
+                }
+            }
+        }
+    }
+
+    private struct SettingsField {
+        let key: String
+        let label: String
+        let value: (SettingsSnapshot) -> SettingsFieldValue
+
+        func plainTextLine(for snapshot: SettingsSnapshot) -> String {
+            "\(label): \(value(snapshot).plainText)"
+        }
+
+        func encode(
+            snapshot: SettingsSnapshot,
+            to container: inout KeyedEncodingContainer<DynamicCodingKey>
+        ) throws {
+            try value(snapshot).encode(to: &container, forKey: DynamicCodingKey(stringValue: key))
+        }
+    }
+
+    private static let settingsFields: [SettingsField] = [
+        SettingsField(key: "appMode", label: "App Mode") { .string($0.appMode) },
+        SettingsField(key: "isCollapsed", label: "Collapsed") { .bool($0.isCollapsed) },
+        SettingsField(key: "hasCompletedOnboarding", label: "Onboarding Completed") { .bool($0.hasCompletedOnboarding) },
+        SettingsField(key: "launchAtLoginEnabled", label: "Launch at Login") { .bool($0.launchAtLoginEnabled) },
+        SettingsField(key: "proModeEnabled", label: "Pro Mode Enabled") { .bool($0.proModeEnabled) },
+        SettingsField(key: "accessibilityDiscoveryEnabled", label: "Accessibility Discovery Enabled") { .bool($0.accessibilityDiscoveryEnabled) },
+        SettingsField(key: "lastAccessibilityPermissionStatus", label: "Last Accessibility Permission Status") {
+            .optionalString($0.lastAccessibilityPermissionStatus, emptyText: "(none)")
+        },
+        SettingsField(key: "menuBarScanIntervalSeconds", label: "Menu Bar Scan Interval (s)") { .double($0.menuBarScanIntervalSeconds) },
+        SettingsField(key: "searchEnabled", label: "Find Icon Enabled") { .bool($0.searchEnabled) },
+        SettingsField(key: "searchHotkeyEnabled", label: "Find Icon Hotkey Enabled") { .bool($0.searchHotkeyEnabled) },
+        SettingsField(key: "searchHotkeyDisplayName", label: "Find Icon Hotkey") { .string($0.searchHotkeyDisplayName) },
+        SettingsField(key: "searchRevealOnSelection", label: "Find Icon Reveal on Selection") { .bool($0.searchRevealOnSelection) },
+        SettingsField(key: "searchHighlightOnSelection", label: "Find Icon Highlight on Selection") { .bool($0.searchHighlightOnSelection) },
+        SettingsField(key: "secondBarEnabled", label: "Second Bar Enabled") { .bool($0.secondBarEnabled) },
+        SettingsField(key: "secondBarShowHiddenItems", label: "Second Bar Show Hidden Items") { .bool($0.secondBarShowHiddenItems) },
+        SettingsField(key: "secondBarShowAlwaysHiddenItems", label: "Second Bar Show Always-Hidden Items") { .bool($0.secondBarShowAlwaysHiddenItems) },
+        SettingsField(key: "secondBarAutoCloseAfterSelection", label: "Second Bar Auto-close") { .bool($0.secondBarAutoCloseAfterSelection) },
+        SettingsField(key: "secondBarPositionMode", label: "Second Bar Position Mode") { .string($0.secondBarPositionMode) },
+        SettingsField(key: "secondBarIconSize", label: "Second Bar Icon Size") { .double($0.secondBarIconSize) },
+        SettingsField(key: "secondBarShowLabels", label: "Second Bar Show Labels") { .bool($0.secondBarShowLabels) },
+        SettingsField(key: "secondBarCloseOnOutsideClick", label: "Second Bar Close Outside") { .bool($0.secondBarCloseOnOutsideClick) },
+        SettingsField(key: "secondBarActivateOwningAppOnSelection", label: "Second Bar Activate Owning App") {
+            .bool($0.secondBarActivateOwningAppOnSelection)
+        },
+        SettingsField(key: "iconMovingEnabled", label: "Icon Moving Enabled") { .bool($0.iconMovingEnabled) },
+        SettingsField(key: "iconMovingRequireConfirmation", label: "Icon Moving Require Confirmation") {
+            .bool($0.iconMovingRequireConfirmation)
+        },
+        SettingsField(key: "iconMovingMaxRetries", label: "Icon Moving Max Retries") { .int($0.iconMovingMaxRetries) },
+        SettingsField(key: "iconMovingDragDuration", label: "Icon Moving Drag Duration") { .double($0.iconMovingDragDuration) },
+        SettingsField(key: "iconMovingAllowSystemItems", label: "Icon Moving Allow System Items") {
+            .bool($0.iconMovingAllowSystemItems)
+        },
+        SettingsField(key: "smartTriggersEnabled", label: "Smart Triggers Enabled") { .bool($0.smartTriggersEnabled) },
+        SettingsField(key: "automationPaused", label: "Automation Paused") { .bool($0.automationPaused) },
+        SettingsField(key: "showPrimarySeparator", label: "Show Primary Separator") { .bool($0.showPrimarySeparator) },
+        SettingsField(key: "showSeparators", label: "Show Separators") { .bool($0.showSeparators) },
+        SettingsField(key: "autoRehideEnabled", label: "Auto-Rehide Enabled") { .bool($0.autoRehideEnabled) },
+        SettingsField(key: "autoRehideDelaySeconds", label: "Auto-Rehide Delay (s)") { .double($0.autoRehideDelaySeconds) },
+        SettingsField(key: "hoverRevealEnabled", label: "Hover Reveal Enabled") { .bool($0.hoverRevealEnabled) },
+        SettingsField(key: "hoverRevealPollingIntervalSeconds", label: "Hover Polling Interval (s)") {
+            .double($0.hoverRevealPollingIntervalSeconds)
+        },
+        SettingsField(key: "alwaysHiddenEnabled", label: "Always-Hidden Enabled") { .bool($0.alwaysHiddenEnabled) },
+        SettingsField(key: "globalHotkeyEnabled", label: "Global Hotkey Enabled") { .bool($0.globalHotkeyEnabled) },
+        SettingsField(key: "globalHotkeyDisplayName", label: "Global Hotkey") { .string($0.globalHotkeyDisplayName) },
+        SettingsField(key: "revealAllOnOptionClick", label: "Reveal All on Option-Click") { .bool($0.revealAllOnOptionClick) },
+        SettingsField(key: "expandedSeparatorLength", label: "Expanded Separator Length") { .double($0.expandedSeparatorLength) },
+        SettingsField(key: "collapsedSeparatorLengthOverride", label: "Collapsed Separator Override") {
+            .optionalDouble($0.collapsedSeparatorLengthOverride, emptyText: "(none — auto)")
+        }
+    ]
+
+    private static let excludedByDesign = [
+        "screenshots",
+        "screenContents",
+        "liveSearchText",
+        "selectedItemIdentity",
+        "personalFilePaths",
+        "networkData"
+    ]
+
+    private static func settingsPlainTextLines(for snapshot: SettingsSnapshot) -> [String] {
+        settingsFields.map { $0.plainTextLine(for: snapshot) }
     }
 
     // MARK: Helpers

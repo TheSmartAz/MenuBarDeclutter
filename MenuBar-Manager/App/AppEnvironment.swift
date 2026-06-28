@@ -272,32 +272,36 @@ final class AppEnvironment {
     )
 
     private lazy var healthCoordinator = AppHealthCoordinator(
-        settingsStore: settingsStore,
-        diagnosticsLogger: diagnosticsLogger,
-        liveStatus: liveStatus,
-        safeModeService: safeModeService,
-        safeModeLaunchState: safeModeLaunchState,
-        screenGeometry: screenGeometry,
-        statusBarController: statusBarController,
-        hotkeyManager: hotkeyManager,
-        rehideController: rehideController,
-        hoverRevealController: hoverRevealController,
-        hidingService: hidingService,
-        accessibilityPermissionService: accessibilityPermissionService,
-        menuBarScanCoordinator: menuBarScanCoordinator,
-        secondBarWindowController: menuBarItemSurfaceCoordinator.secondBarWindowController,
-        synchronizeLiveStatus: { [weak self] in
-            self?.updateLiveStatusFromServices()
-        },
-        revealAllHiddenItems: { [weak self] in
-            self?.revealAllHiddenItems()
-        },
-        resetSettingsToDefaults: { [weak self] in
-            self?.resetAllSettings()
-        },
-        refreshTriggerSettings: { [weak self] in
-            self?.refreshTriggerSettings()
-        }
+        dependencies: AppHealthCoordinatorDependencies(
+            settingsStore: settingsStore,
+            diagnosticsLogger: diagnosticsLogger,
+            liveStatus: liveStatus,
+            safeModeService: safeModeService,
+            safeModeLaunchState: safeModeLaunchState,
+            screenGeometry: screenGeometry,
+            statusBarController: statusBarController,
+            hotkeyManager: hotkeyManager,
+            rehideController: rehideController,
+            hoverRevealController: hoverRevealController,
+            hidingService: hidingService,
+            accessibilityPermissionService: accessibilityPermissionService,
+            menuBarScanCoordinator: menuBarScanCoordinator,
+            secondBarWindowController: menuBarItemSurfaceCoordinator.secondBarWindowController
+        ),
+        actions: AppHealthCoordinatorActions(
+            synchronizeLiveStatus: { [weak self] in
+                self?.updateLiveStatusFromServices()
+            },
+            revealAllHiddenItems: { [weak self] in
+                self?.revealAllHiddenItems()
+            },
+            resetAllSettings: { [weak self] in
+                self?.resetAllSettings()
+            },
+            refreshTriggerSettings: { [weak self] in
+                self?.refreshTriggerSettings()
+            }
+        )
     )
 
     private lazy var settingsRuntimeCoordinator = SettingsRuntimeCoordinator(

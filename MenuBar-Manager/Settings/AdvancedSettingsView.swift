@@ -139,11 +139,7 @@ struct AdvancedSettingsView: View {
         }
         .formStyle(.grouped)
         .padding()
-        .onChange(of: settingsStore.iconMovingEnabled) { _, _ in onChange?() }
-        .onChange(of: settingsStore.iconMovingRequireConfirmation) { _, _ in onChange?() }
-        .onChange(of: settingsStore.iconMovingMaxRetries) { _, _ in onChange?() }
-        .onChange(of: settingsStore.iconMovingDragDuration) { _, _ in onChange?() }
-        .onChange(of: settingsStore.iconMovingAllowSystemItems) { _, _ in onChange?() }
+        .onIconMovingSettingsChanges(from: settingsStore, perform: onChange)
         .confirmationDialog(
             "Enable experimental icon moving?",
             isPresented: $showIconMovingConfirmation,

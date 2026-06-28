@@ -1,4 +1,4 @@
-import Foundation
+import SwiftUI
 
 struct SettingsActions {
     var behaviorChanged: (() -> Void)?
@@ -67,4 +67,74 @@ struct SettingsProfileActions {
     }
 
     static let empty = SettingsProfileActions()
+}
+
+@MainActor
+extension View {
+    func onBehaviorSettingsChanges(
+        from settingsStore: SettingsStore,
+        perform action: (() -> Void)?
+    ) -> some View {
+        self
+            .forwardSettingsChange(of: settingsStore.autoRehideEnabled, to: action)
+            .forwardSettingsChange(of: settingsStore.autoRehideDelaySeconds, to: action)
+            .forwardSettingsChange(of: settingsStore.hoverRevealEnabled, to: action)
+            .forwardSettingsChange(of: settingsStore.hoverRevealPollingIntervalSeconds, to: action)
+            .forwardSettingsChange(of: settingsStore.alwaysHiddenEnabled, to: action)
+            .forwardSettingsChange(of: settingsStore.showSeparators, to: action)
+            .forwardSettingsChange(of: settingsStore.globalHotkeyEnabled, to: action)
+            .forwardSettingsChange(of: settingsStore.globalHotkeyKeyCode, to: action)
+            .forwardSettingsChange(of: settingsStore.globalHotkeyModifiersRaw, to: action)
+            .forwardSettingsChange(of: settingsStore.revealAllOnOptionClick, to: action)
+    }
+
+    func onSearchSettingsChanges(
+        from settingsStore: SettingsStore,
+        perform action: (() -> Void)?
+    ) -> some View {
+        self
+            .forwardSettingsChange(of: settingsStore.searchEnabled, to: action)
+            .forwardSettingsChange(of: settingsStore.searchHotkeyEnabled, to: action)
+            .forwardSettingsChange(of: settingsStore.searchHotkeyKeyCode, to: action)
+            .forwardSettingsChange(of: settingsStore.searchHotkeyModifiersRaw, to: action)
+            .forwardSettingsChange(of: settingsStore.searchRevealOnSelection, to: action)
+            .forwardSettingsChange(of: settingsStore.searchHighlightOnSelection, to: action)
+    }
+
+    func onSecondBarSettingsChanges(
+        from settingsStore: SettingsStore,
+        perform action: (() -> Void)?
+    ) -> some View {
+        self
+            .forwardSettingsChange(of: settingsStore.secondBarEnabled, to: action)
+            .forwardSettingsChange(of: settingsStore.secondBarShowHiddenItems, to: action)
+            .forwardSettingsChange(of: settingsStore.secondBarShowAlwaysHiddenItems, to: action)
+            .forwardSettingsChange(of: settingsStore.secondBarAutoCloseAfterSelection, to: action)
+            .forwardSettingsChange(of: settingsStore.secondBarPositionModeRaw, to: action)
+            .forwardSettingsChange(of: settingsStore.secondBarIconSize, to: action)
+            .forwardSettingsChange(of: settingsStore.secondBarShowLabels, to: action)
+            .forwardSettingsChange(of: settingsStore.secondBarCloseOnOutsideClick, to: action)
+            .forwardSettingsChange(of: settingsStore.secondBarActivateOwningAppOnSelection, to: action)
+    }
+
+    func onIconMovingSettingsChanges(
+        from settingsStore: SettingsStore,
+        perform action: (() -> Void)?
+    ) -> some View {
+        self
+            .forwardSettingsChange(of: settingsStore.iconMovingEnabled, to: action)
+            .forwardSettingsChange(of: settingsStore.iconMovingRequireConfirmation, to: action)
+            .forwardSettingsChange(of: settingsStore.iconMovingMaxRetries, to: action)
+            .forwardSettingsChange(of: settingsStore.iconMovingDragDuration, to: action)
+            .forwardSettingsChange(of: settingsStore.iconMovingAllowSystemItems, to: action)
+    }
+
+    private func forwardSettingsChange<Value: Equatable>(
+        of value: Value,
+        to action: (() -> Void)?
+    ) -> some View {
+        onChange(of: value) { _, _ in
+            action?()
+        }
+    }
 }

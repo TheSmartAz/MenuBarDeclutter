@@ -1,25 +1,47 @@
 import AppKit
 
 @MainActor
+struct AppHealthCoordinatorDependencies {
+    let settingsStore: SettingsStore
+    let diagnosticsLogger: DiagnosticsLogger
+    let liveStatus: LiveDiagnosticsStatus
+    let safeModeService: SafeModeService
+    let safeModeLaunchState: SafeModeLaunchState
+    let screenGeometry: ScreenGeometryService
+    let statusBarController: StatusBarController
+    let hotkeyManager: GlobalHotkeyManager
+    let rehideController: RehideController
+    let hoverRevealController: HoverRevealController
+    let hidingService: HidingService
+    let accessibilityPermissionService: AccessibilityPermissionService
+    let menuBarScanCoordinator: MenuBarScanCoordinator
+    let secondBarWindowController: SecondBarWindowController
+}
+
+@MainActor
+struct AppHealthCoordinatorActions {
+    let synchronizeLiveStatus: () -> Void
+    let revealAllHiddenItems: () -> Void
+    let resetAllSettings: () -> Void
+    let refreshTriggerSettings: () -> Void
+
+    init(
+        synchronizeLiveStatus: @escaping () -> Void = {},
+        revealAllHiddenItems: @escaping () -> Void = {},
+        resetAllSettings: @escaping () -> Void = {},
+        refreshTriggerSettings: @escaping () -> Void = {}
+    ) {
+        self.synchronizeLiveStatus = synchronizeLiveStatus
+        self.revealAllHiddenItems = revealAllHiddenItems
+        self.resetAllSettings = resetAllSettings
+        self.refreshTriggerSettings = refreshTriggerSettings
+    }
+}
+
+@MainActor
 final class AppHealthCoordinator {
-    private let settingsStore: SettingsStore
-    private let diagnosticsLogger: DiagnosticsLogger
-    private let liveStatus: LiveDiagnosticsStatus
-    private let safeModeService: SafeModeService
-    private let safeModeLaunchState: SafeModeLaunchState
-    private let screenGeometry: ScreenGeometryService
-    private let statusBarController: StatusBarController
-    private let hotkeyManager: GlobalHotkeyManager
-    private let rehideController: RehideController
-    private let hoverRevealController: HoverRevealController
-    private let hidingService: HidingService
-    private let accessibilityPermissionService: AccessibilityPermissionService
-    private let menuBarScanCoordinator: MenuBarScanCoordinator
-    private let secondBarWindowController: SecondBarWindowController
-    private let synchronizeLiveStatus: () -> Void
-    private let revealAllHiddenItems: () -> Void
-    private let resetSettingsToDefaults: () -> Void
-    private let refreshTriggerSettings: () -> Void
+    private let dependencies: AppHealthCoordinatorDependencies
+    private let externalActions: AppHealthCoordinatorActions
 
     private var healthService = HealthService()
     private var autoRehideTemporarilyDisabled = false
@@ -28,13 +50,13 @@ final class AppHealthCoordinator {
     private lazy var recoveryService = RecoveryService(
         actions: RecoveryActions(
             recreateMissingStatusItems: { [weak self] in
-                self?.statusBarController.ensureRequiredStatusItemsInstalled()
+                self?.dependencies.statusBarController.ensureRequiredStatusItemsInstalled()
             },
             resetSeparatorLengths: { [weak self] in
                 self?.resetSeparatorLengths()
             },
             expandAll: { [weak self] in
-                self?.revealAllHiddenItems()
+                self?.externalActions.revealAllHiddenItems()
             },
             disableAutoRehideTemporarily: { [weak self] in
                 self?.disableAutoRehideTemporarily()
@@ -52,7 +74,7 @@ final class AppHealthCoordinator {
                 self?.refreshAccessibilityPermissionStatus()
             },
             resetSettingsToDefaults: { [weak self] in
-                self?.resetSettingsToDefaults()
+                self?.externalActions.resetAllSettings()
             },
             disableProMode: { [weak self] in
                 self?.disableProMode()
@@ -62,65 +84,33 @@ final class AppHealthCoordinator {
             }
         ),
         log: { [weak self] message in
-            self?.diagnosticsLogger.log(message)
+            self?.dependencies.diagnosticsLogger.log(message)
         }
     )
 
     init(
-        settingsStore: SettingsStore,
-        diagnosticsLogger: DiagnosticsLogger,
-        liveStatus: LiveDiagnosticsStatus,
-        safeModeService: SafeModeService,
-        safeModeLaunchState: SafeModeLaunchState,
-        screenGeometry: ScreenGeometryService,
-        statusBarController: StatusBarController,
-        hotkeyManager: GlobalHotkeyManager,
-        rehideController: RehideController,
-        hoverRevealController: HoverRevealController,
-        hidingService: HidingService,
-        accessibilityPermissionService: AccessibilityPermissionService,
-        menuBarScanCoordinator: MenuBarScanCoordinator,
-        secondBarWindowController: SecondBarWindowController,
-        synchronizeLiveStatus: @escaping () -> Void,
-        revealAllHiddenItems: @escaping () -> Void,
-        resetSettingsToDefaults: @escaping () -> Void,
-        refreshTriggerSettings: @escaping () -> Void
+        dependencies: AppHealthCoordinatorDependencies,
+        actions: AppHealthCoordinatorActions
     ) {
-        self.settingsStore = settingsStore
-        self.diagnosticsLogger = diagnosticsLogger
-        self.liveStatus = liveStatus
-        self.safeModeService = safeModeService
-        self.safeModeLaunchState = safeModeLaunchState
-        self.screenGeometry = screenGeometry
-        self.statusBarController = statusBarController
-        self.hotkeyManager = hotkeyManager
-        self.rehideController = rehideController
-        self.hoverRevealController = hoverRevealController
-        self.hidingService = hidingService
-        self.accessibilityPermissionService = accessibilityPermissionService
-        self.menuBarScanCoordinator = menuBarScanCoordinator
-        self.secondBarWindowController = secondBarWindowController
-        self.synchronizeLiveStatus = synchronizeLiveStatus
-        self.revealAllHiddenItems = revealAllHiddenItems
-        self.resetSettingsToDefaults = resetSettingsToDefaults
-        self.refreshTriggerSettings = refreshTriggerSettings
+        self.dependencies = dependencies
+        self.externalActions = actions
     }
 
     var isAutoRehideSuppressed: Bool {
-        safeModeLaunchState.isSafeModeActive || autoRehideTemporarilyDisabled
+        dependencies.safeModeLaunchState.isSafeModeActive || autoRehideTemporarilyDisabled
     }
 
     var isHoverRevealSuppressed: Bool {
-        safeModeLaunchState.isSafeModeActive || hoverRevealTemporarilyDisabled
+        dependencies.safeModeLaunchState.isSafeModeActive || hoverRevealTemporarilyDisabled
     }
 
     @discardableResult
     func runHealthCheck(reason: String) -> HealthReport {
-        synchronizeLiveStatus()
+        externalActions.synchronizeLiveStatus()
         let report = healthService.makeReport(snapshot: makeHealthSnapshot())
-        liveStatus.healthReport = report
+        dependencies.liveStatus.healthReport = report
 
-        diagnosticsLogger.log(
+        dependencies.diagnosticsLogger.log(
             "Health check (\(reason)): \(report.status.displayName), \(report.issues.count) issue(s).",
             level: report.status == .ok ? .info : .warning
         )
@@ -138,97 +128,100 @@ final class AppHealthCoordinator {
     }
 
     func disableProMode() {
-        settingsStore.proModeEnabled = false
-        settingsStore.accessibilityDiscoveryEnabled = false
-        settingsStore.iconMovingEnabled = false
-        settingsStore.smartTriggersEnabled = false
-        refreshTriggerSettings()
-        liveStatus.scannedMenuBarItems = []
-        liveStatus.lastMenuBarScanTime = nil
-        liveStatus.menuBarScanFailuresCount = 0
-        diagnosticsLogger.log("Pro Mode disabled by health recovery.", level: .warning)
+        dependencies.settingsStore.proModeEnabled = false
+        dependencies.settingsStore.accessibilityDiscoveryEnabled = false
+        dependencies.settingsStore.iconMovingEnabled = false
+        dependencies.settingsStore.smartTriggersEnabled = false
+        externalActions.refreshTriggerSettings()
+        dependencies.liveStatus.scannedMenuBarItems = []
+        dependencies.liveStatus.lastMenuBarScanTime = nil
+        dependencies.liveStatus.menuBarScanFailuresCount = 0
+        dependencies.diagnosticsLogger.log("Pro Mode disabled by health recovery.", level: .warning)
     }
 
     func requestSafeModeNextLaunch() {
         do {
-            try safeModeService.requestSafeModeOnNextLaunch()
-            diagnosticsLogger.log("Safe Mode requested for next launch.", level: .warning)
+            try dependencies.safeModeService.requestSafeModeOnNextLaunch()
+            dependencies.diagnosticsLogger.log("Safe Mode requested for next launch.", level: .warning)
         } catch {
-            diagnosticsLogger.log("Could not request Safe Mode: \(error.localizedDescription)", level: .error)
+            dependencies.diagnosticsLogger.log("Could not request Safe Mode: \(error.localizedDescription)", level: .error)
         }
     }
 
     private func makeHealthSnapshot() -> HealthCheckSnapshot {
         HealthCheckSnapshot(
-            controlItemExists: statusBarController.isControlItemInstalled,
+            controlItemExists: dependencies.statusBarController.isControlItemInstalled,
             primarySeparatorExpected: true,
-            primarySeparatorExists: statusBarController.isPrimarySeparatorInstalled,
-            alwaysHiddenEnabled: settingsStore.alwaysHiddenEnabled,
-            alwaysHiddenSeparatorExists: statusBarController.isAlwaysHiddenSeparatorInstalled,
-            primarySeparatorLength: statusBarController.primarySeparatorLength,
-            alwaysHiddenSeparatorLength: statusBarController.alwaysHiddenSeparatorLength,
-            widestScreenWidth: screenGeometry.widestScreenWidth(),
+            primarySeparatorExists: dependencies.statusBarController.isPrimarySeparatorInstalled,
+            alwaysHiddenEnabled: dependencies.settingsStore.alwaysHiddenEnabled,
+            alwaysHiddenSeparatorExists: dependencies.statusBarController.isAlwaysHiddenSeparatorInstalled,
+            primarySeparatorLength: dependencies.statusBarController.primarySeparatorLength,
+            alwaysHiddenSeparatorLength: dependencies.statusBarController.alwaysHiddenSeparatorLength,
+            widestScreenWidth: dependencies.screenGeometry.widestScreenWidth(),
             screenCount: NSScreen.screens.count,
-            settingsIssues: HealthService.validateSettings(settingsStore),
-            globalHotkeyEnabled: settingsStore.globalHotkeyEnabled && !safeModeLaunchState.isSafeModeActive,
-            globalHotkeyRegistered: hotkeyManager.isRegistered(identifier: .visibilityToggle),
-            searchHotkeyEnabled: settingsStore.searchEnabled
-                && settingsStore.searchHotkeyEnabled
-                && !safeModeLaunchState.isSafeModeActive,
-            searchHotkeyRegistered: hotkeyManager.isRegistered(identifier: .findIcon),
-            autoRehideEnabled: settingsStore.autoRehideEnabled && !isAutoRehideSuppressed,
-            autoRehideScheduled: rehideController.isScheduled,
-            visibilityState: hidingService.visibilityState,
-            hoverRevealEnabled: settingsStore.hoverRevealEnabled && !isHoverRevealSuppressed,
-            hoverRevealPollingActive: hoverRevealController.isPollingActive,
-            proModeEnabled: settingsStore.proModeEnabled && !safeModeLaunchState.isSafeModeActive,
-            accessibilityDiscoveryEnabled: settingsStore.accessibilityDiscoveryEnabled && !safeModeLaunchState.isSafeModeActive,
-            accessibilityPermissionStatus: accessibilityPermissionService.refreshStatus(),
-            lastMenuBarScanTime: liveStatus.lastMenuBarScanTime,
-            menuBarScanFailuresCount: liveStatus.menuBarScanFailuresCount,
-            axScanStaleThreshold: max(60, settingsStore.menuBarScanIntervalSeconds * 10)
+            settingsIssues: HealthService.validateSettings(dependencies.settingsStore),
+            globalHotkeyEnabled: dependencies.settingsStore.globalHotkeyEnabled
+                && !dependencies.safeModeLaunchState.isSafeModeActive,
+            globalHotkeyRegistered: dependencies.hotkeyManager.isRegistered(identifier: .visibilityToggle),
+            searchHotkeyEnabled: dependencies.settingsStore.searchEnabled
+                && dependencies.settingsStore.searchHotkeyEnabled
+                && !dependencies.safeModeLaunchState.isSafeModeActive,
+            searchHotkeyRegistered: dependencies.hotkeyManager.isRegistered(identifier: .findIcon),
+            autoRehideEnabled: dependencies.settingsStore.autoRehideEnabled && !isAutoRehideSuppressed,
+            autoRehideScheduled: dependencies.rehideController.isScheduled,
+            visibilityState: dependencies.hidingService.visibilityState,
+            hoverRevealEnabled: dependencies.settingsStore.hoverRevealEnabled && !isHoverRevealSuppressed,
+            hoverRevealPollingActive: dependencies.hoverRevealController.isPollingActive,
+            proModeEnabled: dependencies.settingsStore.proModeEnabled
+                && !dependencies.safeModeLaunchState.isSafeModeActive,
+            accessibilityDiscoveryEnabled: dependencies.settingsStore.accessibilityDiscoveryEnabled
+                && !dependencies.safeModeLaunchState.isSafeModeActive,
+            accessibilityPermissionStatus: dependencies.accessibilityPermissionService.refreshStatus(),
+            lastMenuBarScanTime: dependencies.liveStatus.lastMenuBarScanTime,
+            menuBarScanFailuresCount: dependencies.liveStatus.menuBarScanFailuresCount,
+            axScanStaleThreshold: max(60, dependencies.settingsStore.menuBarScanIntervalSeconds * 10)
         )
     }
 
     private func disableAutoRehideTemporarily() {
         autoRehideTemporarilyDisabled = true
-        rehideController.cancel(reason: .cancelled)
-        liveStatus.autoRehideScheduled = false
-        diagnosticsLogger.log("Auto-rehide disabled temporarily by recovery.", level: .warning)
+        dependencies.rehideController.cancel(reason: .cancelled)
+        dependencies.liveStatus.autoRehideScheduled = false
+        dependencies.diagnosticsLogger.log("Auto-rehide disabled temporarily by recovery.", level: .warning)
     }
 
     private func disableHoverRevealTemporarily() {
         hoverRevealTemporarilyDisabled = true
-        hoverRevealController.stop()
-        liveStatus.hoverPollingActive = false
-        diagnosticsLogger.log("Hover reveal disabled temporarily by recovery.", level: .warning)
+        dependencies.hoverRevealController.stop()
+        dependencies.liveStatus.hoverPollingActive = false
+        dependencies.diagnosticsLogger.log("Hover reveal disabled temporarily by recovery.", level: .warning)
     }
 
     private func resetSeparatorLengths() {
-        settingsStore.expandedSeparatorLength = AppConstants.defaultExpandedSeparatorLength
-        settingsStore.collapsedSeparatorLengthOverride = nil
-        statusBarController.resetSeparatorLength()
-        statusBarController.reapplyCurrentVisibility()
-        statusBarController.refreshSeparatorVisuals()
-        diagnosticsLogger.log("Separator lengths reset by health recovery.", level: .warning)
+        dependencies.settingsStore.expandedSeparatorLength = AppConstants.defaultExpandedSeparatorLength
+        dependencies.settingsStore.collapsedSeparatorLengthOverride = nil
+        dependencies.statusBarController.resetSeparatorLength()
+        dependencies.statusBarController.reapplyCurrentVisibility()
+        dependencies.statusBarController.refreshSeparatorVisuals()
+        dependencies.diagnosticsLogger.log("Separator lengths reset by health recovery.", level: .warning)
     }
 
     private func resetMenuBarScanInterval() {
-        settingsStore.menuBarScanIntervalSeconds = AppConstants.defaultMenuBarScanIntervalSeconds
-        if !safeModeLaunchState.isSafeModeActive {
-            menuBarScanCoordinator.refreshAfterSettingsChanged(reason: "health recovery")
+        dependencies.settingsStore.menuBarScanIntervalSeconds = AppConstants.defaultMenuBarScanIntervalSeconds
+        if !dependencies.safeModeLaunchState.isSafeModeActive {
+            dependencies.menuBarScanCoordinator.refreshAfterSettingsChanged(reason: "health recovery")
         }
-        diagnosticsLogger.log("Menu bar scan interval reset by health recovery.", level: .warning)
+        dependencies.diagnosticsLogger.log("Menu bar scan interval reset by health recovery.", level: .warning)
     }
 
     private func resetSecondBarPosition() {
-        settingsStore.secondBarPositionModeRaw = SecondBarPositionMode.belowMenuBar.rawValue
-        secondBarWindowController.refreshAfterSettingsChanged()
-        diagnosticsLogger.log("Second Bar position reset by health recovery.", level: .warning)
+        dependencies.settingsStore.secondBarPositionModeRaw = SecondBarPositionMode.belowMenuBar.rawValue
+        dependencies.secondBarWindowController.refreshAfterSettingsChanged()
+        dependencies.diagnosticsLogger.log("Second Bar position reset by health recovery.", level: .warning)
     }
 
     private func refreshAccessibilityPermissionStatus() {
-        liveStatus.accessibilityPermissionStatus = accessibilityPermissionService.refreshStatus()
-        diagnosticsLogger.log("Accessibility permission status refreshed by health recovery.", level: .warning)
+        dependencies.liveStatus.accessibilityPermissionStatus = dependencies.accessibilityPermissionService.refreshStatus()
+        dependencies.diagnosticsLogger.log("Accessibility permission status refreshed by health recovery.", level: .warning)
     }
 }

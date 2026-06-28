@@ -77,6 +77,70 @@ struct DiagnosticsExportTests {
         #expect(excluded.contains("networkData"))
     }
 
+    @Test func jsonExportLocksCurrentSchemaKeys() throws {
+        let exporter = makeExporter()
+        let store = makeStore()
+        let logger = DiagnosticsLogger()
+        logger.log("schema check", level: .warning, metadata: ["reason": "coverage"])
+
+        let snapshot = exporter.makeSnapshot(settingsStore: store, logger: logger)
+        let data = try exporter.serialize(snapshot, format: .json)
+        let object = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+
+        #expect(object.keys.sorted() == [
+            "application",
+            "excludedByDesign",
+            "generatedAt",
+            "logs",
+            "screens",
+            "settings",
+            "system"
+        ])
+
+        let application = try #require(object["application"] as? [String: Any])
+        #expect(application.keys.sorted() == [
+            "appVersion",
+            "buildNumber",
+            "bundleIdentifier",
+            "marketingVersion",
+            "name"
+        ])
+
+        let system = try #require(object["system"] as? [String: Any])
+        #expect(system.keys.sorted() == [
+            "architecture",
+            "macOSVersion",
+            "screenCount"
+        ])
+
+        let screens = try #require(object["screens"] as? [[String: Any]])
+        #expect(try #require(screens.first?.keys.sorted()) == [
+            "height",
+            "index",
+            "isMain",
+            "width",
+            "x",
+            "y"
+        ])
+
+        let settings = try #require(object["settings"] as? [String: Any])
+        #expect(settings.keys.sorted() == Self.expectedSettingsKeys)
+        #expect(settings["lastAccessibilityPermissionStatus"] is NSNull)
+        #expect(settings["collapsedSeparatorLengthOverride"] is NSNull)
+
+        let logs = try #require(object["logs"] as? [[String: Any]])
+        let log = try #require(logs.first)
+        #expect(log.keys.sorted() == [
+            "category",
+            "level",
+            "message",
+            "metadata",
+            "severity",
+            "timestamp"
+        ])
+        #expect(try #require(log["metadata"] as? [String: String]) == ["reason": "coverage"])
+    }
+
     @Test func txtExportIsHumanReadableAndExcludesByDesign() throws {
         let exporter = makeExporter()
         let store = makeStore()
@@ -94,6 +158,8 @@ struct DiagnosticsExportTests {
         #expect(text.contains("Screen Count: 1"))
         #expect(text.contains("Screen 0 (main): 1728 x 1117"))
         #expect(text.contains("at (0, 25)"))
+        #expect(text.contains("Last Accessibility Permission Status: (none)"))
+        #expect(text.contains("Collapsed Separator Override: (none — auto)"))
         #expect(text.contains("warm up"))
         #expect(text.contains("Excluded by design"))
         #expect(text.contains("Screenshots, screen contents, live search text, selected item identity, personal file paths, network data"))
@@ -156,4 +222,48 @@ struct DiagnosticsExportTests {
         let arch = DiagnosticsExporter.currentArchitecture()
         #expect(arch == "arm64" || arch == "x86_64" || arch == "unknown")
     }
+
+    private static let expectedSettingsKeys = [
+        "accessibilityDiscoveryEnabled",
+        "alwaysHiddenEnabled",
+        "appMode",
+        "autoRehideDelaySeconds",
+        "autoRehideEnabled",
+        "automationPaused",
+        "collapsedSeparatorLengthOverride",
+        "expandedSeparatorLength",
+        "globalHotkeyDisplayName",
+        "globalHotkeyEnabled",
+        "hasCompletedOnboarding",
+        "hoverRevealEnabled",
+        "hoverRevealPollingIntervalSeconds",
+        "iconMovingAllowSystemItems",
+        "iconMovingDragDuration",
+        "iconMovingEnabled",
+        "iconMovingMaxRetries",
+        "iconMovingRequireConfirmation",
+        "isCollapsed",
+        "lastAccessibilityPermissionStatus",
+        "launchAtLoginEnabled",
+        "menuBarScanIntervalSeconds",
+        "proModeEnabled",
+        "revealAllOnOptionClick",
+        "searchEnabled",
+        "searchHighlightOnSelection",
+        "searchHotkeyDisplayName",
+        "searchHotkeyEnabled",
+        "searchRevealOnSelection",
+        "secondBarActivateOwningAppOnSelection",
+        "secondBarAutoCloseAfterSelection",
+        "secondBarCloseOnOutsideClick",
+        "secondBarEnabled",
+        "secondBarIconSize",
+        "secondBarPositionMode",
+        "secondBarShowAlwaysHiddenItems",
+        "secondBarShowHiddenItems",
+        "secondBarShowLabels",
+        "showPrimarySeparator",
+        "showSeparators",
+        "smartTriggersEnabled"
+    ]
 }

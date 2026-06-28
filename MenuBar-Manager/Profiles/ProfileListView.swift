@@ -321,8 +321,17 @@ private enum TriggerDraftKind: String, CaseIterable, Identifiable {
             "Frontmost App"
         case .batteryLow:
             "Battery"
-        case .timeOfDay:
+    case .timeOfDay:
             "Time"
+        }
+    }
+
+    var requiresBundleIdentifier: Bool {
+        switch self {
+        case .appLaunched, .frontmostApp:
+            true
+        case .externalDisplay, .batteryLow, .timeOfDay:
+            false
         }
     }
 }
@@ -384,19 +393,23 @@ private struct TriggerDraft {
 
 private struct TriggerDraftForm: View {
     let isProfileSelected: Bool
+    let frontmostBundleIdentifier: @MainActor () -> String?
     let onAdd: (TriggerRule, String) -> Void
 
     @State private var draft: TriggerDraft
+    @State private var didSeedDefaultBundleIdentifier = false
 
     init(
         isProfileSelected: Bool,
+        frontmostBundleIdentifier: @escaping @MainActor () -> String? = Self.currentFrontmostBundleIdentifier,
         onAdd: @escaping (TriggerRule, String) -> Void
     ) {
         self.isProfileSelected = isProfileSelected
+        self.frontmostBundleIdentifier = frontmostBundleIdentifier
         self.onAdd = onAdd
         self._draft = State(initialValue: TriggerDraft(
             kind: .externalDisplay,
-            bundleIdentifier: Self.defaultBundleIdentifier,
+            bundleIdentifier: Self.fallbackBundleIdentifier,
             minimumDisplayCount: 2,
             batteryThreshold: 20,
             time: Self.defaultTriggerTime
@@ -418,6 +431,12 @@ private struct TriggerDraftForm: View {
                 addTrigger()
             }
             .disabled(!isProfileSelected || !draft.canAdd)
+        }
+        .onAppear {
+            seedDefaultBundleIdentifierIfNeeded()
+        }
+        .onChange(of: draft.kind) { _, _ in
+            seedDefaultBundleIdentifierIfNeeded()
         }
     }
 
@@ -454,8 +473,10 @@ private struct TriggerDraftForm: View {
         }
     }
 
-    private static var defaultBundleIdentifier: String {
-        NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? "com.apple.finder"
+    private static let fallbackBundleIdentifier = "com.apple.finder"
+
+    private static func currentFrontmostBundleIdentifier() -> String? {
+        NSWorkspace.shared.frontmostApplication?.bundleIdentifier
     }
 
     private static var defaultTriggerTime: Date {
@@ -470,6 +491,21 @@ private struct TriggerDraftForm: View {
     private func addTrigger() {
         guard let rule = draft.rule else { return }
         onAdd(rule, draft.name)
+    }
+
+    private func seedDefaultBundleIdentifierIfNeeded() {
+        guard draft.kind.requiresBundleIdentifier, !didSeedDefaultBundleIdentifier else { return }
+        didSeedDefaultBundleIdentifier = true
+
+        let currentValue = draft.bundleIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard currentValue.isEmpty || currentValue == Self.fallbackBundleIdentifier else { return }
+
+        let frontmostIdentifier = frontmostBundleIdentifier()?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let frontmostIdentifier, !frontmostIdentifier.isEmpty {
+            draft.bundleIdentifier = frontmostIdentifier
+        } else {
+            draft.bundleIdentifier = Self.fallbackBundleIdentifier
+        }
     }
 }
 

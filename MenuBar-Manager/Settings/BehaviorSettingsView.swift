@@ -85,16 +85,7 @@ struct BehaviorSettingsView: View {
         }
         .formStyle(.grouped)
         .padding()
-        .onChange(of: settingsStore.autoRehideEnabled) { _, _ in onChange?() }
-        .onChange(of: settingsStore.autoRehideDelaySeconds) { _, _ in onChange?() }
-        .onChange(of: settingsStore.hoverRevealEnabled) { _, _ in onChange?() }
-        .onChange(of: settingsStore.hoverRevealPollingIntervalSeconds) { _, _ in onChange?() }
-        .onChange(of: settingsStore.alwaysHiddenEnabled) { _, _ in onChange?() }
-        .onChange(of: settingsStore.showSeparators) { _, _ in onChange?() }
-        .onChange(of: settingsStore.globalHotkeyEnabled) { _, _ in onChange?() }
-        .onChange(of: settingsStore.globalHotkeyKeyCode) { _, _ in onChange?() }
-        .onChange(of: settingsStore.globalHotkeyModifiersRaw) { _, _ in onChange?() }
-        .onChange(of: settingsStore.revealAllOnOptionClick) { _, _ in onChange?() }
+        .onBehaviorSettingsChanges(from: settingsStore, perform: onChange)
     }
 }
 

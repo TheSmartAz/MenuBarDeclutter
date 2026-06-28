@@ -647,197 +647,175 @@ private struct LiveStatusHeader: View {
     }
 }
 
-private struct LiveStatusGrid<Content: View>: View {
-    let content: Content
+private enum LiveStatusValueStyle {
+    case secondary
+    case warning
+}
 
-    init(@ViewBuilder content: () -> Content) {
-        self.content = content()
+private struct LiveStatusRowData: Identifiable {
+    let label: String
+    let value: String
+    var valueStyle: LiveStatusValueStyle = .secondary
+
+    var id: String {
+        label
     }
+}
+
+private struct LiveStatusGrid: View {
+    let rows: [LiveStatusRowData]
 
     var body: some View {
         Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 4) {
-            content
+            ForEach(rows) { row in
+                LiveStatusRow(row: row)
+            }
         }
         .padding(.horizontal)
+    }
+}
+
+private struct LiveStatusRow: View {
+    let row: LiveStatusRowData
+
+    var body: some View {
+        GridRow {
+            Text(row.label)
+            valueText
+            Spacer()
+        }
+    }
+
+    @ViewBuilder
+    private var valueText: some View {
+        switch row.valueStyle {
+        case .secondary:
+            Text(row.value)
+                .foregroundStyle(.secondary)
+        case .warning:
+            Text(row.value)
+                .foregroundStyle(.orange)
+        }
+    }
+}
+
+private extension Bool {
+    var yesNoText: String {
+        self ? "Yes" : "No"
+    }
+}
+
+private extension String {
+    var emptyPlaceholder: String {
+        isEmpty ? "—" : self
     }
 }
 
 private struct LiveStatusCoreGrid: View {
     let liveStatus: LiveDiagnosticsStatus
 
+    private var rows: [LiveStatusRowData] {
+        [
+            LiveStatusRowData(label: "Visibility State", value: liveStatus.visibilityState.rawValue),
+            LiveStatusRowData(
+                label: "Primary Separator Length",
+                value: liveStatus.primarySeparatorLength.formatted(.number.precision(.fractionLength(0)))
+            ),
+            LiveStatusRowData(
+                label: "Always-Hidden Separator Length",
+                value: liveStatus.alwaysHiddenSeparatorLength.formatted(.number.precision(.fractionLength(0)))
+            ),
+            LiveStatusRowData(label: "Always-Hidden Installed", value: liveStatus.alwaysHiddenSeparatorInstalled.yesNoText),
+            LiveStatusRowData(label: "Hotkey Registered", value: liveStatus.hotkeyRegistered.yesNoText),
+            LiveStatusRowData(
+                label: "Find Icon Hotkey",
+                value: liveStatus.searchHotkeyRegistered ? "Registered" : "Not Registered"
+            ),
+            LiveStatusRowData(label: "Hover Polling", value: liveStatus.hoverPollingActive ? "Active" : "Inactive"),
+            LiveStatusRowData(label: "Auto-Rehide", value: liveStatus.autoRehideScheduled ? "Scheduled" : "Idle"),
+            LiveStatusRowData(label: "Last Rehide Reason", value: liveStatus.lastRehideReason ?? "—")
+        ]
+    }
+
     var body: some View {
-        LiveStatusGrid {
-            GridRow {
-                Text("Visibility State")
-                Text(liveStatus.visibilityState.rawValue)
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-            GridRow {
-                Text("Primary Separator Length")
-                Text(liveStatus.primarySeparatorLength, format: .number.precision(.fractionLength(0)))
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-            GridRow {
-                Text("Always-Hidden Separator Length")
-                Text(liveStatus.alwaysHiddenSeparatorLength, format: .number.precision(.fractionLength(0)))
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-            GridRow {
-                Text("Always-Hidden Installed")
-                Text(liveStatus.alwaysHiddenSeparatorInstalled ? "Yes" : "No")
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-            GridRow {
-                Text("Hotkey Registered")
-                Text(liveStatus.hotkeyRegistered ? "Yes" : "No")
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-            GridRow {
-                Text("Find Icon Hotkey")
-                Text(liveStatus.searchHotkeyRegistered ? "Registered" : "Not Registered")
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-            GridRow {
-                Text("Hover Polling")
-                Text(liveStatus.hoverPollingActive ? "Active" : "Inactive")
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-            GridRow {
-                Text("Auto-Rehide")
-                Text(liveStatus.autoRehideScheduled ? "Scheduled" : "Idle")
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-            GridRow {
-                Text("Last Rehide Reason")
-                Text(liveStatus.lastRehideReason ?? "—")
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-        }
+        LiveStatusGrid(rows: rows)
     }
 }
 
 private struct LiveStatusAccessibilityGrid: View {
     let liveStatus: LiveDiagnosticsStatus
 
-    var body: some View {
-        LiveStatusGrid {
-            GridRow {
-                Text("Accessibility Permission")
-                Text(liveStatus.accessibilityPermissionStatus.displayName)
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-            GridRow {
-                Text("Scanned Items")
-                Text(liveStatus.scannedMenuBarItems.count, format: .number)
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-            GridRow {
-                Text("Visible / Hidden / Always Hidden / Unknown")
-                Text("\(liveStatus.menuBarScanVisibleCount) / \(liveStatus.menuBarScanHiddenCount) / \(liveStatus.menuBarScanAlwaysHiddenCount) / \(liveStatus.menuBarScanUnknownCount)")
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-            GridRow {
-                Text("Last AX Scan")
-                if let lastMenuBarScanTime = liveStatus.lastMenuBarScanTime {
-                    Text(lastMenuBarScanTime, format: Date.FormatStyle(date: .omitted, time: .standard))
-                        .foregroundStyle(.secondary)
-                } else {
-                    Text("—")
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-            }
-            GridRow {
-                Text("AX Failures")
-                Text(liveStatus.menuBarScanFailuresCount, format: .number)
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
+    private var rows: [LiveStatusRowData] {
+        [
+            LiveStatusRowData(
+                label: "Accessibility Permission",
+                value: liveStatus.accessibilityPermissionStatus.displayName
+            ),
+            LiveStatusRowData(label: "Scanned Items", value: liveStatus.scannedMenuBarItems.count.formatted(.number)),
+            LiveStatusRowData(
+                label: "Visible / Hidden / Always Hidden / Unknown",
+                value: scanCountSummary
+            ),
+            LiveStatusRowData(label: "Last AX Scan", value: lastScanText),
+            LiveStatusRowData(label: "AX Failures", value: liveStatus.menuBarScanFailuresCount.formatted(.number))
+        ]
+    }
+
+    private var scanCountSummary: String {
+        [
+            liveStatus.menuBarScanVisibleCount,
+            liveStatus.menuBarScanHiddenCount,
+            liveStatus.menuBarScanAlwaysHiddenCount,
+            liveStatus.menuBarScanUnknownCount
+        ]
+            .map { String($0) }
+            .joined(separator: " / ")
+    }
+
+    private var lastScanText: String {
+        guard let lastMenuBarScanTime = liveStatus.lastMenuBarScanTime else {
+            return "—"
         }
+        return lastMenuBarScanTime.formatted(Date.FormatStyle(date: .omitted, time: .standard))
+    }
+
+    var body: some View {
+        LiveStatusGrid(rows: rows)
     }
 }
 
 private struct LiveStatusSearchGrid: View {
     let liveStatus: LiveDiagnosticsStatus
 
+    private var rows: [LiveStatusRowData] {
+        [
+            LiveStatusRowData(label: "Search Index Items", value: liveStatus.searchIndexItemCount.formatted(.number)),
+            LiveStatusRowData(label: "Last Search Query", value: liveStatus.lastSearchQuery.emptyPlaceholder),
+            LiveStatusRowData(label: "Last Search Selection", value: liveStatus.lastSearchSelectedItem ?? "—"),
+            LiveStatusRowData(label: "Last Search Activation", value: liveStatus.lastSearchActivationOutcome ?? "—")
+        ]
+    }
+
     var body: some View {
-        LiveStatusGrid {
-            GridRow {
-                Text("Search Index Items")
-                Text(liveStatus.searchIndexItemCount, format: .number)
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-            GridRow {
-                Text("Last Search Query")
-                Text(liveStatus.lastSearchQuery.isEmpty ? "—" : liveStatus.lastSearchQuery)
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-            GridRow {
-                Text("Last Search Selection")
-                Text(liveStatus.lastSearchSelectedItem ?? "—")
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-            GridRow {
-                Text("Last Search Activation")
-                Text(liveStatus.lastSearchActivationOutcome ?? "—")
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-        }
+        LiveStatusGrid(rows: rows)
     }
 }
 
 private struct LiveStatusSecondBarGrid: View {
     let liveStatus: LiveDiagnosticsStatus
 
+    private var rows: [LiveStatusRowData] {
+        [
+            LiveStatusRowData(label: "Second Bar Visible", value: liveStatus.secondBarVisible.yesNoText),
+            LiveStatusRowData(label: "Second Bar Items", value: liveStatus.secondBarItemCount.formatted(.number)),
+            LiveStatusRowData(label: "Second Bar Screen", value: liveStatus.secondBarCurrentScreen ?? "—"),
+            LiveStatusRowData(label: "Second Bar Position", value: liveStatus.secondBarLastPosition ?? "—"),
+            LiveStatusRowData(label: "Last Second Bar Selection", value: liveStatus.lastSecondBarSelectedItem ?? "—")
+        ]
+    }
+
     var body: some View {
-        LiveStatusGrid {
-            GridRow {
-                Text("Second Bar Visible")
-                Text(liveStatus.secondBarVisible ? "Yes" : "No")
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-            GridRow {
-                Text("Second Bar Items")
-                Text(liveStatus.secondBarItemCount, format: .number)
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-            GridRow {
-                Text("Second Bar Screen")
-                Text(liveStatus.secondBarCurrentScreen ?? "—")
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-            GridRow {
-                Text("Second Bar Position")
-                Text(liveStatus.secondBarLastPosition ?? "—")
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-            GridRow {
-                Text("Last Second Bar Selection")
-                Text(liveStatus.lastSecondBarSelectedItem ?? "—")
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-        }
+        LiveStatusGrid(rows: rows)
     }
 }
 
@@ -845,51 +823,27 @@ private struct LiveStatusIconMoveGrid: View {
     let liveStatus: LiveDiagnosticsStatus
     let settingsStore: SettingsStore
 
+    private var rows: [LiveStatusRowData] {
+        [
+            LiveStatusRowData(label: "Icon Move In Progress", value: liveStatus.iconMoveInProgress.yesNoText),
+            LiveStatusRowData(label: "Last Icon Move Result", value: liveStatus.lastIconMoveResult ?? "—"),
+            LiveStatusRowData(label: "Last Icon Move Error", value: liveStatus.lastIconMoveError ?? "—"),
+            LiveStatusRowData(label: "Last Drag Plan", value: liveStatus.lastIconMoveDragPlanSummary ?? "—"),
+            LiveStatusRowData(
+                label: "Last Move Verification",
+                value: liveStatus.lastIconMoveVerificationSummary ?? "—"
+            ),
+            LiveStatusRowData(label: "Move Retries", value: liveStatus.lastIconMoveRetriesCount.formatted(.number)),
+            LiveStatusRowData(
+                label: "Experimental Icon Moving",
+                value: settingsStore.iconMovingEnabled ? "Enabled" : "Disabled",
+                valueStyle: settingsStore.iconMovingEnabled ? .warning : .secondary
+            )
+        ]
+    }
+
     var body: some View {
-        LiveStatusGrid {
-            GridRow {
-                Text("Icon Move In Progress")
-                Text(liveStatus.iconMoveInProgress ? "Yes" : "No")
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-            GridRow {
-                Text("Last Icon Move Result")
-                Text(liveStatus.lastIconMoveResult ?? "—")
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-            GridRow {
-                Text("Last Icon Move Error")
-                Text(liveStatus.lastIconMoveError ?? "—")
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-            GridRow {
-                Text("Last Drag Plan")
-                Text(liveStatus.lastIconMoveDragPlanSummary ?? "—")
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-            GridRow {
-                Text("Last Move Verification")
-                Text(liveStatus.lastIconMoveVerificationSummary ?? "—")
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-            GridRow {
-                Text("Move Retries")
-                Text(liveStatus.lastIconMoveRetriesCount, format: .number)
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-            GridRow {
-                Text("Experimental Icon Moving")
-                Text(settingsStore.iconMovingEnabled ? "Enabled" : "Disabled")
-                    .foregroundStyle(settingsStore.iconMovingEnabled ? .orange : .secondary)
-                Spacer()
-            }
-        }
+        LiveStatusGrid(rows: rows)
     }
 }
 
@@ -902,57 +856,34 @@ private struct LiveStatusAutomationGrid: View {
         settingsStore.automationPaused || liveStatus.automationPaused
     }
 
+    private var rows: [LiveStatusRowData] {
+        [
+            LiveStatusRowData(
+                label: "Smart Triggers",
+                value: settingsStore.smartTriggersEnabled ? "Enabled" : "Disabled"
+            ),
+            LiveStatusRowData(
+                label: "Automation Paused",
+                value: isAutomationPaused.yesNoText,
+                valueStyle: isAutomationPaused ? .warning : .secondary
+            ),
+            LiveStatusRowData(
+                label: "Launch at Login Status",
+                value: launchAtLoginService?.statusDisplayName ?? "Unavailable"
+            ),
+            LiveStatusRowData(
+                label: "Last Login Item Action",
+                value: launchAtLoginService?.lastRegistrationResult?.displayName ?? "—"
+            ),
+            LiveStatusRowData(label: "Active Profile", value: liveStatus.activeProfileName ?? "—"),
+            LiveStatusRowData(label: "Last Trigger Fired", value: liveStatus.lastTriggerFired ?? "—"),
+            LiveStatusRowData(label: "Profile Apply Log", value: liveStatus.lastProfileApplyLog.emptyPlaceholder),
+            LiveStatusRowData(label: "Trigger Evaluation", value: liveStatus.triggerEvaluationLog.emptyPlaceholder)
+        ]
+    }
+
     var body: some View {
-        LiveStatusGrid {
-            GridRow {
-                Text("Smart Triggers")
-                Text(settingsStore.smartTriggersEnabled ? "Enabled" : "Disabled")
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-            GridRow {
-                Text("Automation Paused")
-                Text(isAutomationPaused ? "Yes" : "No")
-                    .foregroundStyle(isAutomationPaused ? .orange : .secondary)
-                Spacer()
-            }
-            GridRow {
-                Text("Launch at Login Status")
-                Text(launchAtLoginService?.statusDisplayName ?? "Unavailable")
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-            GridRow {
-                Text("Last Login Item Action")
-                Text(launchAtLoginService?.lastRegistrationResult?.displayName ?? "—")
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-            GridRow {
-                Text("Active Profile")
-                Text(liveStatus.activeProfileName ?? "—")
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-            GridRow {
-                Text("Last Trigger Fired")
-                Text(liveStatus.lastTriggerFired ?? "—")
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-            GridRow {
-                Text("Profile Apply Log")
-                Text(liveStatus.lastProfileApplyLog.isEmpty ? "—" : liveStatus.lastProfileApplyLog)
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-            GridRow {
-                Text("Trigger Evaluation")
-                Text(liveStatus.triggerEvaluationLog.isEmpty ? "—" : liveStatus.triggerEvaluationLog)
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-        }
+        LiveStatusGrid(rows: rows)
     }
 }
 

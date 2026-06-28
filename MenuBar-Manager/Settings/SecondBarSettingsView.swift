@@ -76,15 +76,7 @@ struct SecondBarSettingsView: View {
         }
         .formStyle(.grouped)
         .padding()
-        .onChange(of: settingsStore.secondBarEnabled) { _, _ in onChange?() }
-        .onChange(of: settingsStore.secondBarShowHiddenItems) { _, _ in onChange?() }
-        .onChange(of: settingsStore.secondBarShowAlwaysHiddenItems) { _, _ in onChange?() }
-        .onChange(of: settingsStore.secondBarAutoCloseAfterSelection) { _, _ in onChange?() }
-        .onChange(of: settingsStore.secondBarPositionModeRaw) { _, _ in onChange?() }
-        .onChange(of: settingsStore.secondBarIconSize) { _, _ in onChange?() }
-        .onChange(of: settingsStore.secondBarShowLabels) { _, _ in onChange?() }
-        .onChange(of: settingsStore.secondBarCloseOnOutsideClick) { _, _ in onChange?() }
-        .onChange(of: settingsStore.secondBarActivateOwningAppOnSelection) { _, _ in onChange?() }
+        .onSecondBarSettingsChanges(from: settingsStore, perform: onChange)
     }
 }
 

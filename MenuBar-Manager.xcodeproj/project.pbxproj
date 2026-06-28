@@ -27,6 +27,10 @@
 		D50216DD2FF1001400C9EAC2 /* MenuBarDeclutter.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MenuBarDeclutter.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D50216EC2FF1001500C9EAC2 /* MenuBarDeclutterTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MenuBarDeclutterTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D50216F62FF1001500C9EAC2 /* MenuBarDeclutterUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MenuBarDeclutterUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D5A000012FF9A00000C9EAC2 /* Shared.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Shared.xcconfig; sourceTree = "<group>"; };
+		D5A000022FF9A00000C9EAC2 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
+		D5A000032FF9A00000C9EAC2 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
+		D5A000052FF9A00000C9EAC2 /* MenuBarDeclutter-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "MenuBarDeclutter-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -75,11 +79,23 @@
 		D50216D42FF1001400C9EAC2 = {
 			isa = PBXGroup;
 			children = (
+				D5A000042FF9A00000C9EAC2 /* Config */,
 				D50216DF2FF1001400C9EAC2 /* MenuBar-Manager */,
 				D50216EF2FF1001500C9EAC2 /* MenuBar-ManagerTests */,
 				D50216F92FF1001500C9EAC2 /* MenuBar-ManagerUITests */,
 				D50216DE2FF1001400C9EAC2 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		D5A000042FF9A00000C9EAC2 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				D5A000012FF9A00000C9EAC2 /* Shared.xcconfig */,
+				D5A000022FF9A00000C9EAC2 /* Debug.xcconfig */,
+				D5A000032FF9A00000C9EAC2 /* Release.xcconfig */,
+				D5A000052FF9A00000C9EAC2 /* MenuBarDeclutter-Info.plist */,
+			);
+			path = Config;
 			sourceTree = "<group>";
 		};
 		D50216DE2FF1001400C9EAC2 /* Products */ = {
@@ -271,6 +287,7 @@
 /* Begin XCBuildConfiguration section */
 		D50216FE2FF1001500C9EAC2 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = D5A000022FF9A00000C9EAC2 /* Debug.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -304,7 +321,6 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = LT2MVX436A;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -323,7 +339,6 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -335,6 +350,7 @@
 		};
 		D50216FF2FF1001500C9EAC2 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = D5A000032FF9A00000C9EAC2 /* Release.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -368,7 +384,6 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = LT2MVX436A;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -381,7 +396,6 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = macosx;
@@ -391,13 +405,11 @@
 		};
 		D50217012FF1001500C9EAC2 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = D5A000022FF9A00000C9EAC2 /* Debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = LT2MVX436A;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -408,28 +420,21 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "Yongjun-Zhang.MenuBarDeclutter";
-				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 6.0;
 			};
 			name = Debug;
 		};
 		D50217022FF1001500C9EAC2 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = D5A000032FF9A00000C9EAC2 /* Release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = LT2MVX436A;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -440,97 +445,62 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "Yongjun-Zhang.MenuBarDeclutter";
-				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 6.0;
 			};
 			name = Release;
 		};
 		D50217042FF1001500C9EAC2 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = D5A000022FF9A00000C9EAC2 /* Debug.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = LT2MVX436A;
 				GENERATE_INFOPLIST_FILE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "Yongjun-Zhang.MenuBarDeclutterTests";
-				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 6.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MenuBarDeclutter.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/MenuBarDeclutter";
 			};
 			name = Debug;
 		};
 		D50217052FF1001500C9EAC2 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = D5A000032FF9A00000C9EAC2 /* Release.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = LT2MVX436A;
 				GENERATE_INFOPLIST_FILE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "Yongjun-Zhang.MenuBarDeclutterTests";
-				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 6.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MenuBarDeclutter.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/MenuBarDeclutter";
 			};
 			name = Release;
 		};
 		D50217072FF1001500C9EAC2 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = D5A000022FF9A00000C9EAC2 /* Debug.xcconfig */;
 			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = LT2MVX436A;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "Yongjun-Zhang.MenuBarDeclutterUITests";
-				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 6.0;
 				TEST_TARGET_NAME = MenuBarDeclutter;
 			};
 			name = Debug;
 		};
 		D50217082FF1001500C9EAC2 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = D5A000032FF9A00000C9EAC2 /* Release.xcconfig */;
 			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = LT2MVX436A;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "Yongjun-Zhang.MenuBarDeclutterUITests";
-				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 6.0;
 				TEST_TARGET_NAME = MenuBarDeclutter;
 			};
 			name = Release;

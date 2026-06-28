@@ -426,4 +426,81 @@ struct SettingsStoreTests {
         #expect(store.smartTriggersEnabled == false)
         #expect(store.automationPaused == false)
     }
+
+    @Test func restoreDefaultsRemovesOptionalDefaults() {
+        let suiteName = "SettingsStoreTests.restoreOptionals.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let optionalKeys: [SettingsStore.Key] = [
+            .collapsedSeparatorLengthOverride,
+            .lastAccessibilityPermissionStatus,
+            .searchHotkeyKeyCode,
+            .searchHotkeyModifiersRaw,
+            .globalHotkeyKeyCode,
+            .globalHotkeyModifiersRaw
+        ]
+
+        let store = SettingsStore(defaults: defaults)
+        store.collapsedSeparatorLengthOverride = 120
+        store.lastAccessibilityPermissionStatus = AccessibilityPermissionStatus.granted.rawValue
+        store.searchHotkeyKeyCode = 3
+        store.searchHotkeyModifiersRaw = 0x0100
+        store.globalHotkeyKeyCode = 11
+        store.globalHotkeyModifiersRaw = 0x0900
+        for key in optionalKeys {
+            #expect(defaults.object(forKey: key.rawValue) != nil)
+        }
+
+        store.restoreDefaults()
+
+        #expect(store.collapsedSeparatorLengthOverride == nil)
+        #expect(store.lastAccessibilityPermissionStatus == nil)
+        #expect(store.searchHotkeyKeyCode == nil)
+        #expect(store.searchHotkeyModifiersRaw == nil)
+        #expect(store.globalHotkeyKeyCode == nil)
+        #expect(store.globalHotkeyModifiersRaw == nil)
+        for key in optionalKeys {
+            #expect(defaults.object(forKey: key.rawValue) == nil)
+        }
+
+        let reloaded = SettingsStore(defaults: defaults)
+        #expect(reloaded.collapsedSeparatorLengthOverride == nil)
+        #expect(reloaded.lastAccessibilityPermissionStatus == nil)
+        #expect(reloaded.searchHotkeyKeyCode == nil)
+        #expect(reloaded.searchHotkeyModifiersRaw == nil)
+        #expect(reloaded.globalHotkeyKeyCode == nil)
+        #expect(reloaded.globalHotkeyModifiersRaw == nil)
+    }
+
+    @Test func invalidPersistedClampedValuesAreRepairedOnLoad() {
+        let suiteName = "SettingsStoreTests.clampOnLoad.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        defaults.set(-100, forKey: SettingsStore.Key.autoRehideDelaySeconds.rawValue)
+        defaults.set(999, forKey: SettingsStore.Key.hoverRevealPollingIntervalSeconds.rawValue)
+        defaults.set(Double.nan, forKey: SettingsStore.Key.menuBarScanIntervalSeconds.rawValue)
+        defaults.set(999, forKey: SettingsStore.Key.secondBarIconSize.rawValue)
+        defaults.set(-100, forKey: SettingsStore.Key.iconMovingMaxRetries.rawValue)
+        defaults.set(Double.infinity, forKey: SettingsStore.Key.iconMovingDragDuration.rawValue)
+
+        let store = SettingsStore(defaults: defaults)
+
+        #expect(store.autoRehideDelaySeconds == AppConstants.minAutoRehideDelaySeconds)
+        #expect(store.hoverRevealPollingIntervalSeconds == AppConstants.maxHoverRevealPollingIntervalSeconds)
+        #expect(store.menuBarScanIntervalSeconds == AppConstants.defaultMenuBarScanIntervalSeconds)
+        #expect(store.secondBarIconSize == AppConstants.maxSecondBarIconSize)
+        #expect(store.iconMovingMaxRetries == AppConstants.minIconMovingMaxRetries)
+        #expect(store.iconMovingDragDuration == AppConstants.maxIconMovingDragDuration)
+
+        #expect(defaults.double(forKey: SettingsStore.Key.autoRehideDelaySeconds.rawValue) == AppConstants.minAutoRehideDelaySeconds)
+        #expect(defaults.double(forKey: SettingsStore.Key.hoverRevealPollingIntervalSeconds.rawValue) == AppConstants.maxHoverRevealPollingIntervalSeconds)
+        #expect(defaults.double(forKey: SettingsStore.Key.menuBarScanIntervalSeconds.rawValue) == AppConstants.defaultMenuBarScanIntervalSeconds)
+        #expect(defaults.double(forKey: SettingsStore.Key.secondBarIconSize.rawValue) == AppConstants.maxSecondBarIconSize)
+        #expect(defaults.integer(forKey: SettingsStore.Key.iconMovingMaxRetries.rawValue) == AppConstants.minIconMovingMaxRetries)
+        #expect(defaults.double(forKey: SettingsStore.Key.iconMovingDragDuration.rawValue) == AppConstants.maxIconMovingDragDuration)
+    }
 }

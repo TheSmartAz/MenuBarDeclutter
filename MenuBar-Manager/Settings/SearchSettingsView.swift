@@ -67,12 +67,7 @@ struct SearchSettingsView: View {
         }
         .formStyle(.grouped)
         .padding()
-        .onChange(of: settingsStore.searchEnabled) { _, _ in onChange?() }
-        .onChange(of: settingsStore.searchHotkeyEnabled) { _, _ in onChange?() }
-        .onChange(of: settingsStore.searchHotkeyKeyCode) { _, _ in onChange?() }
-        .onChange(of: settingsStore.searchHotkeyModifiersRaw) { _, _ in onChange?() }
-        .onChange(of: settingsStore.searchRevealOnSelection) { _, _ in onChange?() }
-        .onChange(of: settingsStore.searchHighlightOnSelection) { _, _ in onChange?() }
+        .onSearchSettingsChanges(from: settingsStore, perform: onChange)
     }
 }
 
