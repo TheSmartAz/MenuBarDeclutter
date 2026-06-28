@@ -140,7 +140,7 @@ final class AXMenuBarScanner: MenuBarScanning {
         let pid = reader.readProcessIdentifier(element) ?? inheritedProcessIdentifier
         let role = reader.readString(element, attribute: kAXRoleAttribute as String)
         let subrole = reader.readString(element, attribute: kAXSubroleAttribute as String)
-        let title = firstNonEmpty([
+        let title = DisplayString.firstNonEmpty([
             reader.readString(element, attribute: kAXTitleAttribute as String),
             reader.readString(element, attribute: kAXDescriptionAttribute as String),
             reader.readString(element, attribute: "AXIdentifier")
@@ -257,15 +257,6 @@ final class AXMenuBarScanner: MenuBarScanning {
     private func runningApplication(pid: pid_t?) -> NSRunningApplication? {
         guard let pid else { return nil }
         return NSRunningApplication(processIdentifier: pid)
-    }
-
-    private func firstNonEmpty(_ values: [String?]) -> String? {
-        values
-            .compactMap { value in
-                let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines)
-                return trimmed?.isEmpty == false ? trimmed : nil
-            }
-            .first
     }
 
     private static func isLikelySystemItem(

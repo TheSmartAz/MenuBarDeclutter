@@ -45,7 +45,7 @@ final class StatusBarMenuBuilder {
         menu.addItem(
             menuItem(
                 title: "Expand Hidden Items",
-                action: #selector(StatusBarMenuCommandTarget.expand(_:)),
+                command: .expand,
                 keyEquivalent: ""
             )
         )
@@ -53,15 +53,15 @@ final class StatusBarMenuBuilder {
         menu.addItem(
             menuItem(
                 title: "Collapse Hidden Items",
-                action: #selector(StatusBarMenuCommandTarget.collapse(_:)),
+                command: .collapse,
                 keyEquivalent: ""
             )
         )
 
         menu.addItem(
-           menuItem(
+            menuItem(
                 title: "Toggle Hidden Items",
-                action: #selector(StatusBarMenuCommandTarget.toggle(_:)),
+                command: .toggle,
                 keyEquivalent: "h"
             )
         )
@@ -69,7 +69,7 @@ final class StatusBarMenuBuilder {
         menu.addItem(
             menuItem(
                 title: "Reveal All Hidden Items",
-                action: #selector(StatusBarMenuCommandTarget.revealAll(_:)),
+                command: .revealAll,
                 keyEquivalent: ""
             )
         )
@@ -77,7 +77,7 @@ final class StatusBarMenuBuilder {
         menu.addItem(
             menuItem(
                 title: "Toggle Reveal All",
-                action: #selector(StatusBarMenuCommandTarget.toggleRevealAll(_:)),
+                command: .toggleRevealAll,
                 keyEquivalent: ""
             )
         )
@@ -87,7 +87,7 @@ final class StatusBarMenuBuilder {
         menu.addItem(
             menuItem(
                 title: "Find Icon...",
-                action: #selector(StatusBarMenuCommandTarget.findIcon(_:)),
+                command: .findIcon,
                 keyEquivalent: "f"
             )
         )
@@ -95,7 +95,7 @@ final class StatusBarMenuBuilder {
         menu.addItem(
             menuItem(
                 title: "Show Second Bar",
-                action: #selector(StatusBarMenuCommandTarget.showSecondBar(_:)),
+                command: .showSecondBar,
                 keyEquivalent: ""
             )
         )
@@ -103,7 +103,7 @@ final class StatusBarMenuBuilder {
         menu.addItem(
             menuItem(
                 title: "Hide Second Bar",
-                action: #selector(StatusBarMenuCommandTarget.hideSecondBar(_:)),
+                command: .hideSecondBar,
                 keyEquivalent: ""
             )
         )
@@ -111,14 +111,14 @@ final class StatusBarMenuBuilder {
         menu.addItem(
             menuItem(
                 title: "Toggle Second Bar",
-                action: #selector(StatusBarMenuCommandTarget.toggleSecondBar(_:)),
+                command: .toggleSecondBar,
                 keyEquivalent: "s"
             )
         )
 
         let refreshItem = menuItem(
             title: "Refresh Menu Bar Items",
-            action: #selector(StatusBarMenuCommandTarget.refreshMenuBarItems(_:)),
+            command: .refreshMenuBarItems,
             keyEquivalent: "r"
         )
         refreshItem.isEnabled = actions.canRefreshMenuBarItems()
@@ -127,7 +127,7 @@ final class StatusBarMenuBuilder {
         menu.addItem(
             menuItem(
                 title: actions.proModeTitle(),
-                action: #selector(StatusBarMenuCommandTarget.toggleProMode(_:)),
+                command: .toggleProMode,
                 keyEquivalent: ""
             )
         )
@@ -135,7 +135,7 @@ final class StatusBarMenuBuilder {
         menu.addItem(
             menuItem(
                 title: actions.automationPausedTitle(),
-                action: #selector(StatusBarMenuCommandTarget.toggleAutomationPaused(_:)),
+                command: .toggleAutomationPaused,
                 keyEquivalent: ""
             )
         )
@@ -145,7 +145,7 @@ final class StatusBarMenuBuilder {
         menu.addItem(
             menuItem(
                 title: "Reset Separator Length",
-                action: #selector(StatusBarMenuCommandTarget.resetSeparatorLength(_:)),
+                command: .resetSeparatorLength,
                 keyEquivalent: ""
             )
         )
@@ -153,7 +153,7 @@ final class StatusBarMenuBuilder {
         menu.addItem(
             menuItem(
                 title: "Show Drag Hint",
-                action: #selector(StatusBarMenuCommandTarget.showDragHint(_:)),
+                command: .showDragHint,
                 keyEquivalent: ""
             )
         )
@@ -163,7 +163,7 @@ final class StatusBarMenuBuilder {
         menu.addItem(
             menuItem(
                 title: "Settings...",
-                action: #selector(StatusBarMenuCommandTarget.openSettings(_:)),
+                command: .openSettings,
                 keyEquivalent: ","
             )
         )
@@ -171,7 +171,7 @@ final class StatusBarMenuBuilder {
         menu.addItem(
             menuItem(
                 title: "Show Diagnostics",
-                action: #selector(StatusBarMenuCommandTarget.showDiagnostics(_:)),
+                command: .showDiagnostics,
                 keyEquivalent: ""
             )
         )
@@ -181,7 +181,7 @@ final class StatusBarMenuBuilder {
         menu.addItem(
             menuItem(
                 title: "About \(AppConstants.displayName)",
-                action: #selector(StatusBarMenuCommandTarget.showAbout(_:)),
+                command: .showAbout,
                 keyEquivalent: ""
             )
         )
@@ -191,7 +191,7 @@ final class StatusBarMenuBuilder {
         menu.addItem(
             menuItem(
                 title: "Quit",
-                action: #selector(StatusBarMenuCommandTarget.quit(_:)),
+                command: .quit,
                 keyEquivalent: "q"
             )
         )
@@ -216,10 +216,77 @@ final class StatusBarMenuBuilder {
         refresh(for: state.isCollapsed ? HidingVisibilityState.collapsed : HidingVisibilityState.expanded)
     }
 
-    private func menuItem(title: String, action: Selector, keyEquivalent: String) -> NSMenuItem {
-        let item = NSMenuItem(title: title, action: action, keyEquivalent: keyEquivalent)
+    private func menuItem(title: String, command: StatusBarMenuCommand, keyEquivalent: String) -> NSMenuItem {
+        let item = NSMenuItem(
+            title: title,
+            action: #selector(StatusBarMenuCommandTarget.performCommand(_:)),
+            keyEquivalent: keyEquivalent
+        )
+        item.tag = command.rawValue
         item.target = commandTarget
         return item
+    }
+}
+
+private enum StatusBarMenuCommand: Int {
+    case expand = 1
+    case collapse
+    case toggle
+    case revealAll
+    case toggleRevealAll
+    case findIcon
+    case showSecondBar
+    case hideSecondBar
+    case toggleSecondBar
+    case refreshMenuBarItems
+    case toggleProMode
+    case toggleAutomationPaused
+    case resetSeparatorLength
+    case showDragHint
+    case openSettings
+    case showDiagnostics
+    case showAbout
+    case quit
+
+    func perform(using actions: StatusBarMenuBuilder.Actions) {
+        switch self {
+        case .expand:
+            actions.expand()
+        case .collapse:
+            actions.collapse()
+        case .toggle:
+            actions.toggle()
+        case .revealAll:
+            actions.revealAll()
+        case .toggleRevealAll:
+            actions.toggleRevealAll()
+        case .findIcon:
+            actions.findIcon()
+        case .showSecondBar:
+            actions.showSecondBar()
+        case .hideSecondBar:
+            actions.hideSecondBar()
+        case .toggleSecondBar:
+            actions.toggleSecondBar()
+        case .refreshMenuBarItems:
+            actions.refreshMenuBarItems()
+        case .toggleProMode:
+            actions.toggleProMode()
+        case .toggleAutomationPaused:
+            actions.toggleAutomationPaused()
+        case .resetSeparatorLength:
+            actions.resetSeparatorLength()
+        case .showDragHint:
+            actions.showDragHint()
+        case .openSettings:
+            actions.openSettings()
+        case .showDiagnostics:
+            actions.showDiagnostics()
+        case .showAbout:
+            actions.showAbout()
+        case .quit:
+            actions.quit()
+        }
     }
 }
 
@@ -231,75 +298,8 @@ private final class StatusBarMenuCommandTarget: NSObject {
         self.actions = actions
     }
 
-    @objc func expand(_ sender: NSMenuItem) {
-        actions.expand()
-    }
-
-    @objc func collapse(_ sender: NSMenuItem) {
-        actions.collapse()
-    }
-
-    @objc func toggle(_ sender: NSMenuItem) {
-        actions.toggle()
-    }
-
-    @objc func revealAll(_ sender: NSMenuItem) {
-        actions.revealAll()
-    }
-
-    @objc func toggleRevealAll(_ sender: NSMenuItem) {
-        actions.toggleRevealAll()
-    }
-
-    @objc func findIcon(_ sender: NSMenuItem) {
-        actions.findIcon()
-    }
-
-    @objc func showSecondBar(_ sender: NSMenuItem) {
-        actions.showSecondBar()
-    }
-
-    @objc func hideSecondBar(_ sender: NSMenuItem) {
-        actions.hideSecondBar()
-    }
-
-    @objc func toggleSecondBar(_ sender: NSMenuItem) {
-        actions.toggleSecondBar()
-    }
-
-    @objc func refreshMenuBarItems(_ sender: NSMenuItem) {
-        actions.refreshMenuBarItems()
-    }
-
-    @objc func toggleProMode(_ sender: NSMenuItem) {
-        actions.toggleProMode()
-    }
-
-    @objc func toggleAutomationPaused(_ sender: NSMenuItem) {
-        actions.toggleAutomationPaused()
-    }
-
-    @objc func resetSeparatorLength(_ sender: NSMenuItem) {
-        actions.resetSeparatorLength()
-    }
-
-    @objc func showDragHint(_ sender: NSMenuItem) {
-        actions.showDragHint()
-    }
-
-    @objc func openSettings(_ sender: NSMenuItem) {
-        actions.openSettings()
-    }
-
-    @objc func showDiagnostics(_ sender: NSMenuItem) {
-        actions.showDiagnostics()
-    }
-
-    @objc func showAbout(_ sender: NSMenuItem) {
-        actions.showAbout()
-    }
-
-    @objc func quit(_ sender: NSMenuItem) {
-        actions.quit()
+    @objc func performCommand(_ sender: NSMenuItem) {
+        guard let command = StatusBarMenuCommand(rawValue: sender.tag) else { return }
+        command.perform(using: actions)
     }
 }

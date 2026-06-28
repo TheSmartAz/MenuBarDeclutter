@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 
 enum AppConstants {
@@ -32,6 +33,9 @@ enum AppConstants {
 
     /// First-run and menu-triggered hint for positioning the separator.
     static let dragHintMessage = "Hold Command and drag the separator to choose which icons are hidden."
+
+    /// Headless-safe screen frame used when macOS cannot report active screens.
+    static let defaultScreenFrame = CGRect(x: 0, y: 0, width: 1440, height: 900)
 
     // MARK: Phase 2 behavior defaults
 
@@ -79,6 +83,8 @@ enum AppConstants {
     static let defaultIconMovingDragDuration: Double = 0.35
     static let minIconMovingDragDuration: Double = 0.15
     static let maxIconMovingDragDuration: Double = 1.5
+    static let iconMovingTargetSpacingSourceWidthMultiplier: CGFloat = 1.5
+    static let iconMovingMinimumTargetSpacing: CGFloat = 36
 
     // MARK: Default global hotkeys
 

@@ -61,6 +61,14 @@ struct SecondBarPositioningService {
         self.mouseLocationProvider = mouseLocationProvider
     }
 
+    func currentScreenSnapshots() -> [SecondBarScreenSnapshot] {
+        screensProvider()
+    }
+
+    func invalidateCurrentScreenSnapshots() {
+        Self.invalidateCurrentScreens()
+    }
+
     func placement(
         panelSize: CGSize,
         mode: SecondBarPositionMode,
@@ -207,6 +215,18 @@ struct SecondBarPositioningService {
     }
 
     static func currentScreens() -> [SecondBarScreenSnapshot] {
+        currentScreenCache.snapshots()
+    }
+
+    static func invalidateCurrentScreens() {
+        currentScreenCache.invalidate()
+    }
+
+    private static let currentScreenCache = SecondBarScreenSnapshotCache {
+        uncachedCurrentScreens()
+    }
+
+    private static func uncachedCurrentScreens() -> [SecondBarScreenSnapshot] {
         NSScreen.screens.enumerated().map { index, screen in
             SecondBarScreenSnapshot(
                 id: screen.localizedName.isEmpty ? "screen-\(index)" : screen.localizedName,
@@ -231,5 +251,29 @@ struct SecondBarPositioningService {
             width: notchWidth,
             height: menuBarHeight
         )
+    }
+}
+
+final class SecondBarScreenSnapshotCache {
+    private let snapshotsProvider: () -> [SecondBarScreenSnapshot]
+    // Single-entry cache: one current display topology until a display-change invalidation.
+    private var cachedSnapshots: [SecondBarScreenSnapshot]?
+
+    init(snapshotsProvider: @escaping () -> [SecondBarScreenSnapshot]) {
+        self.snapshotsProvider = snapshotsProvider
+    }
+
+    func snapshots() -> [SecondBarScreenSnapshot] {
+        if let cachedSnapshots {
+            return cachedSnapshots
+        }
+
+        let snapshots = snapshotsProvider()
+        cachedSnapshots = snapshots
+        return snapshots
+    }
+
+    func invalidate() {
+        cachedSnapshots = nil
     }
 }

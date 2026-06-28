@@ -74,7 +74,7 @@ struct SecondBarItemView: View {
     }
 
     private var displayTitle: String {
-        firstNonEmpty([
+        DisplayString.firstNonEmpty([
             snapshot.owningApplicationName,
             snapshot.title,
             snapshot.bundleIdentifier
@@ -82,19 +82,10 @@ struct SecondBarItemView: View {
     }
 
     private var subtitle: String? {
-        firstNonEmpty([
+        DisplayString.firstNonEmpty([
             snapshot.title,
             snapshot.bundleIdentifier
         ].filter { $0 != displayTitle })
-    }
-
-    private func firstNonEmpty(_ values: [String?]) -> String? {
-        values
-            .compactMap { value in
-                let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines)
-                return trimmed?.isEmpty == false ? trimmed : nil
-            }
-            .first
     }
 }
 

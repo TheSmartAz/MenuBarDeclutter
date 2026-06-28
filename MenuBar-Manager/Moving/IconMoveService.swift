@@ -47,6 +47,7 @@ final class IconMoveService {
     private let dragExecutor: any DragExecuting
     private let verifier: DragVerificationService
     private let planFactory: DragPlanFactory
+    private let screenGeometry: ScreenGeometryService
     private let safetyRules: IconMoveSafetyRules
     private let separatorFramesProvider: () -> MenuBarSeparatorFrames
     private let currentVisibilityProvider: () -> HidingVisibilityState
@@ -70,6 +71,7 @@ final class IconMoveService {
         dragExecutor: any DragExecuting = DragExecutor(),
         verifier: DragVerificationService = DragVerificationService(),
         planFactory: DragPlanFactory = DragPlanFactory(),
+        screenGeometry: ScreenGeometryService = ScreenGeometryService(),
         safetyRules: IconMoveSafetyRules = IconMoveSafetyRules(),
         separatorFramesProvider: @escaping () -> MenuBarSeparatorFrames,
         currentVisibilityProvider: @escaping () -> HidingVisibilityState,
@@ -86,6 +88,7 @@ final class IconMoveService {
         self.dragExecutor = dragExecutor
         self.verifier = verifier
         self.planFactory = planFactory
+        self.screenGeometry = screenGeometry
         self.safetyRules = safetyRules
         self.separatorFramesProvider = separatorFramesProvider
         self.currentVisibilityProvider = currentVisibilityProvider
@@ -291,10 +294,7 @@ final class IconMoveService {
         retryCount: Int
     ) throws -> DragPlan {
         let frames = separatorFramesProvider()
-        let sourceFrame = snapshot.frame ?? .zero
-        let screenFrame = NSScreen.screens.first { $0.frame.intersects(sourceFrame) }?.frame
-            ?? NSScreen.main?.frame
-            ?? CGRect(x: 0, y: 0, width: 1440, height: 900)
+        let screenFrame = screenGeometry.screenFrame(intersecting: snapshot.frame ?? .zero)
 
         return try planFactory.plan(
             for: snapshot,

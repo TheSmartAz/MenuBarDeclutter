@@ -38,6 +38,7 @@ final class MenuBarItemSurfaceCoordinator {
     private let hidingService: HidingService
     private let rehideController: RehideController
     private let hoverRevealController: HoverRevealController
+    private let screenGeometry: ScreenGeometryService
     private let menuBarScanCoordinator: MenuBarScanCoordinator
     private let liveStatusSynchronizer: AppEnvironmentLiveStatusSynchronizer
     private let secondBarPositioningService: SecondBarPositioningService
@@ -85,6 +86,7 @@ final class MenuBarItemSurfaceCoordinator {
         permissionService: accessibilityPermissionService,
         liveStatus: liveStatus,
         diagnosticsLogger: diagnosticsLogger,
+        screenGeometry: screenGeometry,
         separatorFramesProvider: separatorFramesProvider,
         currentVisibilityProvider: { [weak self] in
             self?.hidingService.visibilityState ?? .expanded
@@ -118,6 +120,7 @@ final class MenuBarItemSurfaceCoordinator {
         hidingService: HidingService,
         rehideController: RehideController,
         hoverRevealController: HoverRevealController,
+        screenGeometry: ScreenGeometryService,
         accessibilityPermissionService: AccessibilityPermissionService,
         menuBarScanCoordinator: MenuBarScanCoordinator,
         liveStatusSynchronizer: AppEnvironmentLiveStatusSynchronizer,
@@ -135,6 +138,7 @@ final class MenuBarItemSurfaceCoordinator {
         self.hidingService = hidingService
         self.rehideController = rehideController
         self.hoverRevealController = hoverRevealController
+        self.screenGeometry = screenGeometry
         self.accessibilityPermissionService = accessibilityPermissionService
         self.menuBarScanCoordinator = menuBarScanCoordinator
         self.liveStatusSynchronizer = liveStatusSynchronizer

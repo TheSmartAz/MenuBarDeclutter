@@ -246,6 +246,7 @@ final class AppEnvironment {
         hidingService: hidingService,
         rehideController: rehideController,
         hoverRevealController: hoverRevealController,
+        screenGeometry: screenGeometry,
         accessibilityPermissionService: accessibilityPermissionService,
         menuBarScanCoordinator: menuBarScanCoordinator,
         liveStatusSynchronizer: liveStatusSynchronizer,

@@ -108,13 +108,14 @@ final class SecondBarWindowController: NSWindowController, NSWindowDelegate {
 
     @MainActor
     private func handleScreenParametersChanged() {
+        positioningService.invalidateCurrentScreenSnapshots()
         guard window?.isVisible == true else { return }
 
         // If the last-saved position no longer falls inside any current screen, close
         // the panel rather than repositioning blindly — re-opening from settings
         // will pick a sensible default again.
         if let lastPosition {
-            let stillInsideScreen = NSScreen.screens.contains { screen in
+            let stillInsideScreen = positioningService.currentScreenSnapshots().contains { screen in
                 screen.visibleFrame.contains(lastPosition)
             }
             if !stillInsideScreen {

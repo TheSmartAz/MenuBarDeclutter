@@ -80,16 +80,11 @@ final class SecondBarViewModel {
     }
 
     private func displayTitle(for snapshot: MenuBarItemSnapshot) -> String {
-        [
+        DisplayString.firstNonEmpty([
             snapshot.owningApplicationName,
             snapshot.title,
             snapshot.bundleIdentifier
-        ]
-        .compactMap { value in
-            let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines)
-            return trimmed?.isEmpty == false ? trimmed : nil
-        }
-        .first ?? "Menu Bar Item"
+        ]) ?? "Menu Bar Item"
     }
 
     private func searchableText(for snapshot: MenuBarItemSnapshot) -> String {

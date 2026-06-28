@@ -76,6 +76,34 @@ struct SecondBarPositioningServiceTests {
         #expect(!placement.frame.intersects(notch))
     }
 
+    @Test func screenSnapshotCacheReusesSnapshotsUntilInvalidated() {
+        var providerCallCount = 0
+        var screenWidth: CGFloat = 800
+        let cache = SecondBarScreenSnapshotCache {
+            providerCallCount += 1
+            return [
+                makeScreen(
+                    frame: CGRect(x: 0, y: 0, width: screenWidth, height: 600),
+                    visibleFrame: CGRect(x: 0, y: 0, width: screenWidth, height: 575)
+                )
+            ]
+        }
+
+        let firstSnapshots = cache.snapshots()
+        screenWidth = 1200
+        let cachedSnapshots = cache.snapshots()
+
+        #expect(providerCallCount == 1)
+        #expect(cachedSnapshots == firstSnapshots)
+
+        cache.invalidate()
+        let refreshedSnapshots = cache.snapshots()
+
+        #expect(providerCallCount == 2)
+        #expect(refreshedSnapshots != firstSnapshots)
+        #expect(refreshedSnapshots.first?.frame.width == 1200)
+    }
+
     private func makeScreen(
         frame: CGRect = CGRect(x: 0, y: 0, width: 800, height: 600),
         visibleFrame: CGRect = CGRect(x: 0, y: 0, width: 800, height: 575),

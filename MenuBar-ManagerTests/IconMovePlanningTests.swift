@@ -176,6 +176,68 @@ struct IconMovePlanningTests {
         #expect(visibility == .expanded)
     }
 
+    @Test func moveServicePlansWithInjectedScreenGeometry() async {
+        let suiteName = "IconMovePlanningTests.geometry.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let store = SettingsStore(defaults: defaults)
+        store.proModeEnabled = true
+        store.iconMovingEnabled = true
+        store.iconMovingRequireConfirmation = false
+        store.iconMovingMaxRetries = 0
+
+        let logger = DiagnosticsLogger()
+        let permission = AccessibilityPermissionService(
+            settingsStore: store,
+            diagnosticsLogger: logger,
+            trustProvider: { true },
+            promptTrustProvider: { true },
+            systemSettingsOpener: { true }
+        )
+        let liveStatus = LiveDiagnosticsStatus()
+        let dragProbe = AsyncDragProbe()
+        let screenFrame = CGRect(x: 0, y: 0, width: 300, height: 900)
+        let screenGeometry = ScreenGeometryService(
+            widthsProvider: { [300] },
+            screenFramesProvider: { [screenFrame] },
+            primaryScreenFrameProvider: { screenFrame }
+        )
+        let original = makeSnapshot(
+            bundleID: "com.example.move",
+            zone: .hidden,
+            frame: CGRect(x: 260, y: 850, width: 24, height: 22)
+        )
+        let moved = makeSnapshot(
+            bundleID: "com.example.move",
+            zone: .hidden,
+            frame: CGRect(x: 276, y: 850, width: 24, height: 22)
+        )
+
+        let service = IconMoveService(
+            settingsStore: store,
+            permissionService: permission,
+            liveStatus: liveStatus,
+            diagnosticsLogger: logger,
+            dragExecutor: ProbeDragExecutor(probe: dragProbe),
+            screenGeometry: screenGeometry,
+            separatorFramesProvider: {
+                MenuBarSeparatorFrames(primary: nil, alwaysHidden: nil)
+            },
+            currentVisibilityProvider: { .expanded },
+            setVisibility: { _ in },
+            refreshSnapshots: { [moved] },
+            suspendRuntimeBehaviors: {},
+            resumeRuntimeBehaviors: {}
+        )
+
+        let result = await service.move(original, command: .moveRight)
+        let plan = await dragProbe.lastPlan()
+
+        #expect(result.outcome == .succeeded)
+        #expect(plan?.targetFrame.maxX == screenFrame.maxX)
+    }
+
     @Test func confirmationSetsMoveGuardBeforeDecisionReturns() async {
         let suiteName = "IconMovePlanningTests.reentrant.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
@@ -379,15 +441,21 @@ struct IconMovePlanningTests {
 
 private actor AsyncDragProbe {
     private var count = 0
+    private var plan: DragPlan?
 
     func execute(_ plan: DragPlan) async -> Bool {
         count += 1
+        self.plan = plan
         await Task.yield()
         return true
     }
 
     func executeCount() -> Int {
         count
+    }
+
+    func lastPlan() -> DragPlan? {
+        plan
     }
 }
 

@@ -50,13 +50,13 @@ struct MenuBarSearchResult: Identifiable, Equatable, Sendable {
         self.snapshot = snapshot
         self.score = score
         self.matchReason = matchReason
-        self.appName = Self.firstNonEmpty([
+        self.appName = DisplayString.firstNonEmpty([
             snapshot.owningApplicationName,
             snapshot.bundleIdentifier,
             snapshot.title
         ]) ?? "Unknown App"
 
-        let displayTitle = Self.firstNonEmpty([
+        let displayTitle = DisplayString.firstNonEmpty([
             snapshot.owningApplicationName,
             snapshot.title,
             snapshot.bundleIdentifier
@@ -74,15 +74,6 @@ struct MenuBarSearchResult: Identifiable, Equatable, Sendable {
             return trimmed?.isEmpty == false ? trimmed : nil
         }
         self.displaySubtitle = details.first { $0 != displayTitle } ?? snapshot.zone.displayName
-    }
-
-    private static func firstNonEmpty(_ values: [String?]) -> String? {
-        values
-            .compactMap { value in
-                let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines)
-                return trimmed?.isEmpty == false ? trimmed : nil
-            }
-            .first
     }
 }
 

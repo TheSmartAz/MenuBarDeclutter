@@ -27,7 +27,7 @@ struct DragPlanningContext: Equatable, Sendable {
     init(
         primarySeparatorFrame: CGRect?,
         alwaysHiddenSeparatorFrame: CGRect?,
-        screenFrame: CGRect = CGRect(x: 0, y: 0, width: 1440, height: 900)
+        screenFrame: CGRect = AppConstants.defaultScreenFrame
     ) {
         self.primarySeparatorFrame = primarySeparatorFrame
         self.alwaysHiddenSeparatorFrame = alwaysHiddenSeparatorFrame
@@ -75,7 +75,10 @@ struct DragPlanFactory {
         command: IconMoveCommand,
         context: DragPlanningContext
     ) -> CGRect {
-        let spacing = max(sourceFrame.width * 1.5, 36)
+        let spacing = max(
+            sourceFrame.width * AppConstants.iconMovingTargetSpacingSourceWidthMultiplier,
+            AppConstants.iconMovingMinimumTargetSpacing
+        )
 
         switch command {
         case .moveLeft:

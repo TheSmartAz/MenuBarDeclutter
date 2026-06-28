@@ -626,16 +626,15 @@ Failure to build stops work; the failing change is reverted before continuation.
 
 ## Completed actions
 
-All five top-leverage actions have been implemented. Follow-up Wave 1, Wave 2, Wave 3,
-and Wave 4 subagent passes also closed several remaining high/medium findings called out
-above.
+All five top-leverage actions have been implemented. Follow-up Wave 1 through Wave 5
+subagent/local passes also closed several remaining high/medium findings called out above.
 The combined tree was verified by:
 
 - `xcodebuild -scheme MenuBarDeclutter -destination 'platform=macOS' build`
 - `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -only-testing:MenuBarDeclutterTests`
-  (162 unit tests passed)
+  (169 unit tests passed)
 - `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS'`
-  (162 unit tests + 7 UI tests passed)
+  (169 unit tests + 7 UI tests passed)
 
 | Action | Files modified | Verification |
 |---|---|---|
@@ -666,6 +665,11 @@ The combined tree was verified by:
 | M-AC2 / low AppConstants cache — Live diagnostics synchronization | `App/AppConstants.swift`, `App/AppEnvironmentLiveStatusSynchronizer.swift`, `Core/LiveDiagnosticsStatus.swift`, `MenuBar-ManagerTests/LiveDiagnosticsStatusTests.swift` (bundle metadata is cached; live runtime sync uses idempotent update helpers; search/second-bar item counts are computed in one pass) | Build + tests pass. |
 | M-HM4 / M-HM7 — Rehide and drag verification cleanup | `Hiding/RehideController.swift`, `Moving/DragVerificationService.swift`, `MenuBar-ManagerTests/RehideControllerTests.swift`, `MenuBar-ManagerTests/IconMovePlanningTests.swift` (auto-rehide fire path emits one status update; drag verification uses locale-stable folded matching without redundant lowercasing) | Build + tests pass. |
 | Low-impact polish — status/search/onboarding | `StatusBar/StatusItemFactory.swift`, `Search/HighlightOverlayWindow.swift`, `Onboarding/OnboardingRootView.swift`, `Onboarding/OnboardingWindowController.swift` (status item SF Symbols are cached, search highlight window is reused, and onboarding no longer carries an unused settings dependency) | Build + tests pass. |
+| M-HP6 — Hotkey key display lookup | `Hotkeys/HotkeyModel.swift`, `MenuBar-ManagerTests/HotkeyModelTests.swift` (`keyDisplayName` now uses a static lookup table with fallback coverage) | Build + tests pass. |
+| M-HM5 — Status menu command dispatch | `StatusBar/StatusBarMenuBuilder.swift`, `MenuBar-ManagerTests/StatusBarMenuBuilderTests.swift` (16 forwarding selectors collapsed into one tagged command dispatcher while preserving menu titles, shortcuts, enabled state, and action routing) | Build + tests pass. |
+| M-AS5 — Second-bar screen snapshot cache | `SecondBar/SecondBarPositioningService.swift`, `SecondBar/SecondBarWindowController.swift`, `MenuBar-ManagerTests/SecondBarPositioningServiceTests.swift` (screen snapshots are cached until display-change invalidation and reused by the window controller's visible-screen checks) | Build + tests pass. |
+| M-HM1 / M-HM2 — Icon-move geometry constants and injection | `App/AppConstants.swift`, `Hiding/ScreenGeometryService.swift`, `Moving/IconMoveService.swift`, `Moving/DragPlan.swift`, `App/MenuBarItemSurfaceCoordinator.swift`, `App/AppEnvironment.swift`, `MenuBar-ManagerTests/IconMovePlanningTests.swift`, `MenuBar-ManagerTests/ScreenGeometryServiceTests.swift` (screen-frame fallback and target spacing moved behind named constants and injectable geometry service) | Build + tests pass. |
+| Low-impact cleanup — shared display-name helper | `Core/DisplayString.swift`, `Accessibility/AXMenuBarScanner.swift`, `Search/SearchService.swift`, `SecondBar/SecondBarItemView.swift`, `SecondBar/SecondBarRootView.swift`, `SecondBar/SecondBarViewModel.swift` (duplicated `firstNonEmpty` logic hoisted to a shared helper) | Build + tests pass. |
 
 ### Notes on decisions deferred
 

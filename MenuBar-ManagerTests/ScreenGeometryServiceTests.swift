@@ -57,6 +57,29 @@ struct ScreenGeometryServiceTests {
         #expect(!service.isPointInAnyMenuBarBand(CGPoint(x: -1, y: 900)))
     }
 
+    @Test func screenFrameUsesIntersectingFrameBeforePrimaryFallback() {
+        let primary = CGRect(x: 0, y: 0, width: 500, height: 900)
+        let secondary = CGRect(x: 500, y: 0, width: 400, height: 900)
+        let service = ScreenGeometryService(
+            widthsProvider: { [500, 400] },
+            screenFramesProvider: { [primary, secondary] },
+            primaryScreenFrameProvider: { primary }
+        )
+
+        #expect(service.screenFrame(intersecting: CGRect(x: 600, y: 800, width: 24, height: 22)) == secondary)
+        #expect(service.screenFrame(intersecting: CGRect(x: 1000, y: 800, width: 24, height: 22)) == primary)
+    }
+
+    @Test func screenFrameUsesDefaultFallbackWhenNoScreensAreAvailable() {
+        let service = ScreenGeometryService(
+            widthsProvider: { [] },
+            screenFramesProvider: { [] },
+            primaryScreenFrameProvider: { nil }
+        )
+
+        #expect(service.screenFrame(intersecting: CGRect(x: 1000, y: 800, width: 24, height: 22)) == AppConstants.defaultScreenFrame)
+    }
+
     @Test func cachesGeometryUntilInvalidated() {
         var widthCalls = 0
         var bandCalls = 0

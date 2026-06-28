@@ -15,15 +15,22 @@ final class ScreenGeometryService {
     /// Defaulting to a closure reading `NSScreen.screens` keeps the type
     /// usable in production while allowing tests to inject fake widths.
     private let widthsProvider: () -> [Double]
+    private let screenFramesProvider: () -> [CGRect]
+    private let primaryScreenFrameProvider: () -> CGRect?
     private let menuBarBandsProvider: () -> [CGRect]
     private var cachedWidths: [Double]?
+    private var cachedScreenFrames: [CGRect]?
     private var cachedMenuBarBands: [CGRect]?
 
     init(
         widthsProvider: @escaping () -> [Double] = { NSScreen.screens.map { Double($0.frame.width) } },
+        screenFramesProvider: @escaping () -> [CGRect] = { NSScreen.screens.map(\.frame) },
+        primaryScreenFrameProvider: @escaping () -> CGRect? = { NSScreen.main?.frame },
         menuBarBandsProvider: (() -> [CGRect])? = nil
     ) {
         self.widthsProvider = widthsProvider
+        self.screenFramesProvider = screenFramesProvider
+        self.primaryScreenFrameProvider = primaryScreenFrameProvider
         self.menuBarBandsProvider = menuBarBandsProvider ?? {
             NSScreen.screens.compactMap { Self.menuBarBand(for: $0) }
         }
@@ -32,6 +39,7 @@ final class ScreenGeometryService {
     /// Clears cached screen geometry after a display-configuration change.
     func invalidateCache() {
         cachedWidths = nil
+        cachedScreenFrames = nil
         cachedMenuBarBands = nil
     }
 
@@ -63,6 +71,20 @@ final class ScreenGeometryService {
         Self.menuBarBand(for: screen)
     }
 
+    /// Returns the screen frame that should bound planning for an item frame.
+    /// An intersecting screen wins; otherwise the primary screen, first known
+    /// screen, or headless fallback is used.
+    func screenFrame(intersecting itemFrame: CGRect) -> CGRect {
+        let frames = screenFrames()
+        if let matchingFrame = frames.first(where: { $0.intersects(itemFrame) || $0.contains(CGPoint(x: itemFrame.midX, y: itemFrame.midY)) }) {
+            return matchingFrame
+        }
+
+        return primaryScreenFrameProvider()
+            ?? frames.first
+            ?? AppConstants.defaultScreenFrame
+    }
+
     private static func menuBarBand(for screen: NSScreen) -> CGRect? {
         let frame = screen.frame
         let menuBarHeight = max(0, frame.maxY - screen.visibleFrame.maxY)
@@ -87,6 +109,16 @@ final class ScreenGeometryService {
         let widths = widthsProvider()
         cachedWidths = widths
         return widths
+    }
+
+    private func screenFrames() -> [CGRect] {
+        if let cachedScreenFrames {
+            return cachedScreenFrames
+        }
+
+        let frames = screenFramesProvider()
+        cachedScreenFrames = frames
+        return frames
     }
 
     private func menuBarBands() -> [CGRect] {
