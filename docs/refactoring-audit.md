@@ -503,41 +503,33 @@ because test target lacks `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`.
 
 ---
 
-## LOW-impact findings (quick wins)
+## LOW-impact findings (current status)
 
-- `firstNonEmpty` helper duplicated in 5 files → hoist to shared util
-  (`AXMenuBarScanner.swift:196-203`, `SearchService.swift:67-74`,
-  `SecondBarViewModel.swift:82-93`).
-- `pause(_:)` async helper byte-identical in `IconMoveService` and `DragExecutor` →
-  extract.
-- `StatusItemFactory` recreates SF Symbol images on every `updateSymbol`/`configure` →
-  cache two images per `StatusItemKind`.
-- Nested `DragHintPopoverView` inside `StatusBarController.swift:394-407` → move to own
-  file.
-- `HighlightOverlayView.isFlipped` override returns `false` (default) → remove
-  (`HighlightOverlayWindow.swift:113`).
-- `HighlightOverlayWindow` recreated per activation → lazily create once.
-- `AXElementReader` uses per-attribute AX calls → `AXUIElementCopyMultipleAttributeValues`
-  for batch.
-- `AXMenuBarScanner` system-wide + `systemuiserver` redundant `AXExtrasMenuBar` reads
-  (`:70-75`, `:85-93`).
-- `OnboardingRootView` `ForEach(...enumerated(), id: \.offset)` despite
-  `OnboardingStep: Identifiable`; unused `settingsStore` param.
-- `DryRunSummaryView` `ForEach` over `[String]` with `id: \.self` — duplicate-string hazard.
-- `DateFormatter` allocated per export call (`DiagnosticsSettingsView.swift:157-163`).
-- `AppConstants.bundleIdentifier`/`marketingVersion`/`buildNumber`/`appVersion` re-read
-  `Bundle.main.infoDictionary` every call → cache as `static let`.
-- `apps/output/` empty directory — remove or document intent.
-- `docs/PLAN.md:52-54` stale "Future Phases" section — refresh.
-- `IconMoveSafetyRules`/`IconMoveConfirmationDecision` should live in own file rather than
-  inside `IconMoveService.swift:4-39`.
-- `StatusBarMenuBuilder` menu titles are hardcoded English — extract to string table if
-  localizing.
-- `DragPlan.spacing` formula `max(sourceFrame.width * 1.5, 36)` — name the constants.
-- `IconMoveService.revealForMove` does not handle `.unknown` zone explicitly.
-- `StatusBarController.applyVisibility` writes 5 `@Observable` fields sequentially —
-  batch via single `update(from:)` method on `LiveDiagnosticsStatus`.
-- `SecondBarWindowController.windowDidResignKey` + `hidesOnDeactivate` are redundant;
+The original quick-win list has been reconciled after Waves 1-11. Most items were
+closed as side effects of larger refactors; the remaining open items are either
+explicitly optional or need system/UI QA before changing behavior.
+
+| Finding | Current status |
+|---|---|
+| `firstNonEmpty` helper duplicated in 5 files | Completed in the shared `DisplayString.firstNonEmpty` follow-up. |
+| Duplicate async `pause(_:)` helper | Completed by `Core/AsyncPause.swift`. |
+| `StatusItemFactory` recreates SF Symbol images | Completed by the status/search/onboarding polish follow-up. |
+| Nested `DragHintPopoverView` | Completed when status menu presentation was split out. |
+| `HighlightOverlayView.isFlipped` override / recreated highlight window | Completed in the search highlight cleanup. |
+| Redundant `AXExtrasMenuBar` reads and screen re-querying in scanner | Completed across the AX scanner pruning/cache/off-main waves. |
+| `OnboardingRootView` enumerated `ForEach` and unused settings dependency | Completed in the status/search/onboarding polish follow-up. |
+| `DryRunSummaryView` duplicate-string `ForEach(id: \.self)` hazard | Completed in Wave 11 by using positional identity for repeated string rows. |
+| Diagnostics export filename `DateFormatter` allocation | Completed in Wave 11 by caching the filename timestamp formatter. |
+| App bundle metadata repeated reads | Completed in the AppConstants/live-diagnostics follow-up. |
+| Empty `apps/output/` directory | No longer present in this checkout. |
+| Stale `docs/PLAN.md` future-phases section | Reconciled in Wave 11; Phase 10 visual capture remains explicitly postponed. |
+| `IconMoveSafetyRules` / `IconMoveConfirmationDecision` nested in move service | Completed in the low-impact moving cleanup follow-up. |
+| `DragPlan.spacing` magic numbers | Completed by named `AppConstants` icon-moving spacing constants. |
+| `IconMoveService.revealForMove` missing explicit `.unknown` handling | Completed in Wave 11; unknown source/target zones now reveal all before moving. |
+| `StatusBarController.applyVisibility` direct live-status field writes | Completed in Wave 11 through `LiveDiagnosticsStatus.updateStatusBarVisibility(...)`. |
+| `AXElementReader` batched attribute reads | Deferred. Worth doing only with dedicated AX regression/manual QA because `AXUIElementCopyMultipleAttributeValues` has different partial-failure behavior from per-attribute reads. |
+| `StatusBarMenuBuilder` hardcoded English titles | Deferred until localization is an explicit product goal. |
+| `SecondBarWindowController.windowDidResignKey` + `hidesOnDeactivate` | Deferred. They cover related but not identical close paths; removing one needs UI QA around app deactivation vs focus loss. |
 
 ---
 
@@ -628,16 +620,16 @@ Failure to build stops work; the failing change is reverted before continuation.
 
 ## Completed actions
 
-All five top-leverage actions have been implemented. Follow-up Wave 1 through Wave 10
+All five top-leverage actions have been implemented. Follow-up Wave 1 through Wave 11
 subagent/local passes also closed the remaining high/medium findings called out above,
 except for the deliberately deferred full `SettingsStore` property-wrapper migration.
 The combined tree was verified by:
 
 - `xcodebuild -scheme MenuBarDeclutter -destination 'platform=macOS' build`
 - `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -only-testing:MenuBarDeclutterTests`
-  (201 unit tests passed)
+  (203 unit tests passed)
 - `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS'`
-  (201 unit tests + 7 UI test executions passed)
+  (203 unit tests + 7 UI test executions passed)
 
 | Action | Files modified | Verification |
 |---|---|---|
@@ -691,6 +683,7 @@ The combined tree was verified by:
 | H16 / M-HP1 — TriggerService direct coverage | `Profiles/TriggerService.swift`, `MenuBar-ManagerTests/TriggerServiceTests.swift`, `MenuBar-ManagerTests/TriggerServicePersistenceTests.swift` (trigger persistence round-trips through App Support, `ProfileStore` ignores `triggers.json`, missing/corrupt trigger files are handled safely, start/stop observer lifecycle is pinned, event bursts coalesce through injected centers, first-match precedence saves once, paused/loop-guard paths skip cleanly, and skipped matches no longer report as fired) | Build + tests pass. |
 | M-HP3 / M-HP5 — Profile frontmost-app seeding and health coordinator dependencies | `Profiles/ProfileListView.swift`, `Health/AppHealthCoordinator.swift`, `App/AppEnvironment.swift` (trigger draft bundle IDs now seed from the current frontmost app only when a bundle-backed trigger is shown, avoiding the SwiftUI view-init read; health recovery wiring now enters through grouped dependency/action values instead of an 18-parameter coordinator initializer while preserving the existing `RecoveryActions` behavior) | Build + tests pass. |
 | M-TP1 — Build settings `.xcconfig` factoring | `Config/Shared.xcconfig`, `Config/Debug.xcconfig`, `Config/Release.xcconfig`, `MenuBar-Manager.xcodeproj/project.pbxproj` (Debug/Release configurations now use shared base config files for repeated development-team, version, deployment-target, product-name, code-signing, and Swift toolchain settings while preserving canonical schemes, target names, product identifiers, and unit-test `MainActor` isolation) | `xcodebuild -list`, `plutil -lint`, build, and tests pass. |
+| Wave 11 — Low-impact cleanup reconciliation | `Profiles/ProfileListView.swift`, `Settings/DiagnosticsSettingsView.swift`, `Moving/IconMoveService.swift`, `Core/LiveDiagnosticsStatus.swift`, `StatusBar/StatusBarController.swift`, `MenuBar-ManagerTests/IconMovePlanningTests.swift`, `MenuBar-ManagerTests/LiveDiagnosticsStatusTests.swift`, `docs/PLAN.md`, `docs/refactoring-audit.md` (remaining safe quick wins now avoid duplicate-string `ForEach` identity, cache diagnostics filename formatting, explicitly reveal all for unknown-zone icon moves, funnel status-bar visibility diagnostics through one helper, and reconcile stale low-impact audit entries) | Build + tests pass. |
 
 ### Notes on decisions deferred
 

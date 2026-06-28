@@ -176,6 +176,65 @@ struct IconMovePlanningTests {
         #expect(visibility == .expanded)
     }
 
+    @Test func moveServiceRevealsAllForUnknownZoneMoves() async {
+        let suiteName = "IconMovePlanningTests.unknownZoneReveal.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let store = SettingsStore(defaults: defaults)
+        store.proModeEnabled = true
+        store.iconMovingEnabled = true
+        store.iconMovingRequireConfirmation = false
+        store.iconMovingMaxRetries = 0
+
+        let logger = DiagnosticsLogger()
+        let permission = AccessibilityPermissionService(
+            settingsStore: store,
+            diagnosticsLogger: logger,
+            trustProvider: { true },
+            promptTrustProvider: { true },
+            systemSettingsOpener: { true }
+        )
+        let liveStatus = LiveDiagnosticsStatus()
+        let dragProbe = AsyncDragProbe()
+        let original = makeSnapshot(
+            bundleID: "com.example.move",
+            zone: .unknown,
+            frame: CGRect(x: 260, y: 850, width: 24, height: 22)
+        )
+        let moved = makeSnapshot(
+            bundleID: "com.example.move",
+            zone: .visible,
+            frame: CGRect(x: 560, y: 850, width: 24, height: 22)
+        )
+
+        var visibility: HidingVisibilityState = .collapsed
+        let service = IconMoveService(
+            settingsStore: store,
+            permissionService: permission,
+            liveStatus: liveStatus,
+            diagnosticsLogger: logger,
+            dragExecutor: ProbeDragExecutor(probe: dragProbe),
+            separatorFramesProvider: {
+                MenuBarSeparatorFrames(
+                    primary: CGRect(x: 500, y: 848, width: 20, height: 24),
+                    alwaysHidden: CGRect(x: 200, y: 848, width: 20, height: 24)
+                )
+            },
+            currentVisibilityProvider: { visibility },
+            setVisibility: { visibility = $0 },
+            refreshSnapshots: { [moved] },
+            suspendRuntimeBehaviors: {},
+            resumeRuntimeBehaviors: {}
+        )
+
+        let result = await service.move(original, command: .moveToZone(.visible))
+
+        #expect(result.outcome == .succeeded)
+        #expect(await dragProbe.executeCount() == 1)
+        #expect(visibility == .revealAll)
+    }
+
     @Test func moveServiceRestoresVisibilityWhenDragFails() async {
         let suiteName = "IconMovePlanningTests.dragFailed.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!

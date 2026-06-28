@@ -293,10 +293,12 @@ final class StatusBarController {
         }
         menuPresenter.refresh(for: visibility)
 
-        liveStatus.visibilityState = visibility
-        liveStatus.primarySeparatorLength = primarySeparatorController.currentLength
-        liveStatus.alwaysHiddenSeparatorLength = alwaysHiddenSeparatorController.currentLength
-        liveStatus.alwaysHiddenSeparatorInstalled = alwaysHiddenSeparatorController.statusItem != nil
+        liveStatus.updateStatusBarVisibility(
+            state: visibility,
+            primarySeparatorLength: primarySeparatorController.currentLength,
+            alwaysHiddenSeparatorLength: alwaysHiddenSeparatorController.currentLength,
+            alwaysHiddenSeparatorInstalled: alwaysHiddenSeparatorController.statusItem != nil
+        )
     }
 
     private func handleVisibilityChange(_ visibility: HidingVisibilityState) {

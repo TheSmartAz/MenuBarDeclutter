@@ -72,7 +72,9 @@ Status: implemented.
 
 ## Future Phases
 
-- Phase 10: visual capture research remains postponed. Do not add ScreenCaptureKit, Screen Recording, Apple Events, Input Monitoring, or network access without a separate opt-in design review.
+- Phase 10 visual capture research remains postponed. No ScreenCaptureKit,
+  Screen Recording, Apple Events, Input Monitoring, or network access should be
+  added without a separate opt-in privacy/design review.
 
 ## Product Principles
 

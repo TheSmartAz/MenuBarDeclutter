@@ -520,7 +520,7 @@ private struct DryRunSummaryView: View {
             Text(summary.summary)
                 .foregroundStyle(.secondary)
 
-            ForEach(summary.itemsToReveal, id: \.self) { item in
+            ForEach(Array(summary.itemsToReveal.enumerated()), id: \.offset) { _, item in
                 Label(item, systemImage: "eye")
             }
 
@@ -531,12 +531,12 @@ private struct DryRunSummaryView: View {
                 )
             }
 
-            ForEach(summary.unavailableItems, id: \.self) { item in
+            ForEach(Array(summary.unavailableItems.enumerated()), id: \.offset) { _, item in
                 Label(item, systemImage: "questionmark.circle")
                     .foregroundStyle(.orange)
             }
 
-            ForEach(summary.permissionRequirements, id: \.self) { requirement in
+            ForEach(Array(summary.permissionRequirements.enumerated()), id: \.offset) { _, requirement in
                 Label(requirement, systemImage: "exclamationmark.triangle")
                     .foregroundStyle(.orange)
             }

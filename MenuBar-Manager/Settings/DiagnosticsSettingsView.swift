@@ -103,7 +103,7 @@ struct DiagnosticsSettingsView: View {
             return
         }
 
-        let timestamp = Self.filenameTimestamp(exporter: exporter)
+        let timestamp = Self.filenameTimestamp()
         let suggestedName = "MenuBarDeclutter-diagnostics-\(timestamp).\(exportFormat.fileExtension)"
 
         let panel = NSSavePanel()
@@ -160,7 +160,7 @@ struct DiagnosticsSettingsView: View {
             return
         }
 
-        let timestamp = Self.filenameTimestamp(exporter: exporter)
+        let timestamp = Self.filenameTimestamp()
         let suggestedName = "MenuBarDeclutter-health-\(timestamp).txt"
 
         let panel = NSSavePanel()
@@ -184,13 +184,18 @@ struct DiagnosticsSettingsView: View {
         }
     }
 
-    private static func filenameTimestamp(exporter: DiagnosticsExporter) -> String {
+    private static func filenameTimestamp() -> String {
+        filenameTimestampFormatter.string(from: Date())
+    }
+
+    @MainActor
+    private static let filenameTimestampFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd_HHmmss"
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        return formatter.string(from: Date())
-    }
+        return formatter
+    }()
 
     private static func utType(for format: DiagnosticsExporter.Format) -> UTType {
         switch format {

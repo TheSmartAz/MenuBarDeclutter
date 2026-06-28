@@ -62,4 +62,20 @@ struct LiveDiagnosticsStatusTests {
         #expect(liveStatus.searchIndexItemCount == 7)
         #expect(liveStatus.secondBarItemCount == 3)
     }
+
+    @Test func applyingStatusBarVisibilityUpdatesRelatedDiagnostics() {
+        let liveStatus = LiveDiagnosticsStatus()
+
+        liveStatus.updateStatusBarVisibility(
+            state: .collapsed,
+            primarySeparatorLength: 123,
+            alwaysHiddenSeparatorLength: 45,
+            alwaysHiddenSeparatorInstalled: true
+        )
+
+        #expect(liveStatus.visibilityState == .collapsed)
+        #expect(liveStatus.primarySeparatorLength == 123)
+        #expect(liveStatus.alwaysHiddenSeparatorLength == 45)
+        #expect(liveStatus.alwaysHiddenSeparatorInstalled)
+    }
 }

@@ -78,6 +78,18 @@ final class LiveDiagnosticsStatus {
         updateSecondBarItemCount(counts.secondBarItemCount)
     }
 
+    func updateStatusBarVisibility(
+        state: HidingVisibilityState,
+        primarySeparatorLength: Double,
+        alwaysHiddenSeparatorLength: Double,
+        alwaysHiddenSeparatorInstalled: Bool
+    ) {
+        setIfChanged(\.visibilityState, to: state)
+        setIfChanged(\.primarySeparatorLength, to: primarySeparatorLength)
+        setIfChanged(\.alwaysHiddenSeparatorLength, to: alwaysHiddenSeparatorLength)
+        setIfChanged(\.alwaysHiddenSeparatorInstalled, to: alwaysHiddenSeparatorInstalled)
+    }
+
     private func setIfChanged<Value: Equatable>(
         _ keyPath: ReferenceWritableKeyPath<LiveDiagnosticsStatus, Value>,
         to value: Value

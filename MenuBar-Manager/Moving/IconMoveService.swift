@@ -358,7 +358,9 @@ final class IconMoveService {
     }
 
     private func revealForMove(sourceZone: MenuBarZone, targetZone: MenuBarZone) {
-        if sourceZone == .alwaysHidden || targetZone == .alwaysHidden {
+        if sourceZone == .unknown || targetZone == .unknown {
+            setVisibility(.revealAll)
+        } else if sourceZone == .alwaysHidden || targetZone == .alwaysHidden {
             setVisibility(.revealAll)
         } else if sourceZone == .hidden || targetZone == .hidden {
             setVisibility(.expanded)
