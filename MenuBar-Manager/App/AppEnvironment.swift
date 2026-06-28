@@ -147,34 +147,31 @@ final class AppEnvironment {
         }
     )
 
-    private lazy var profileStore = ProfileStore(appSupportPaths: appSupportPaths)
-
-    private lazy var profileApplicationService = ProfileApplicationService(
+    private lazy var profileAutomationCoordinator = ProfileAutomationCoordinator(
         settingsStore: settingsStore,
         diagnosticsLogger: diagnosticsLogger,
+        appSupportPaths: appSupportPaths,
         liveStatus: liveStatus,
+        accessibilityPermissionService: accessibilityPermissionService,
         setVisibility: { [weak self] state in
             self?.hidingService.setVisibility(state)
-        }
-    )
-
-    private lazy var triggerService = TriggerService(
-        settingsStore: settingsStore,
-        profileStore: profileStore,
-        profileApplicationService: profileApplicationService,
-        appSupportPaths: appSupportPaths,
-        diagnosticsLogger: diagnosticsLogger,
-        liveStatus: liveStatus
-    )
-
-    private lazy var automationURLHandler = AutomationURLHandler(
-        diagnosticsLogger: diagnosticsLogger,
-        expand: { [weak self] in self?.expandHiddenItems() },
-        collapse: { [weak self] in self?.collapseHiddenItems() },
-        revealAll: { [weak self] in self?.revealAllHiddenItems() },
-        showSecondBar: { [weak self] in self?.showSecondBar() },
-        applyProfileNamed: { [weak self] name in
-            self?.applyProfile(named: name) == true
+        },
+        refreshAfterProfileApply: { [weak self] in
+            self?.refreshBehaviorSettings()
+            self?.refreshSecondBarSettings()
+            self?.refreshTriggerSettings()
+        },
+        expand: { [weak self] in
+            self?.expandHiddenItems()
+        },
+        collapse: { [weak self] in
+            self?.collapseHiddenItems()
+        },
+        revealAll: { [weak self] in
+            self?.revealAllHiddenItems()
+        },
+        showSecondBar: { [weak self] in
+            self?.showSecondBar()
         }
     )
 
@@ -195,8 +192,8 @@ final class AppEnvironment {
         diagnosticsExporter: diagnosticsExporter,
         accessibilityPermissionService: accessibilityPermissionService,
         menuBarScanCoordinator: menuBarScanCoordinator,
-        profileStore: profileStore,
-        triggerService: triggerService,
+        profileStore: profileAutomationCoordinator.profileStore,
+        triggerService: profileAutomationCoordinator.triggerService,
         onBehaviorChanged: { [weak self] in
             self?.refreshBehaviorSettings()
         },
@@ -387,7 +384,7 @@ final class AppEnvironment {
         hoverRevealController: hoverRevealController,
         menuBarScanCoordinator: menuBarScanCoordinator,
         secondBarWindowController: secondBarWindowController,
-        triggerService: triggerService,
+        triggerService: profileAutomationCoordinator.triggerService,
         liveStatusSynchronizer: liveStatusSynchronizer,
         isHoverRevealSuppressed: { [weak self] in
             self?.isHoverRevealSuppressed == true
@@ -507,9 +504,7 @@ final class AppEnvironment {
             diagnosticsLogger.log("Safe Mode active: \(safeModeLaunchState.displaySummary).", level: .warning)
         }
 
-        profileStore.load()
-        triggerService.load()
-        automationURLHandler.install()
+        profileAutomationCoordinator.start()
 
         settingsStore.lastKnownAppVersion = AppConstants.appVersion
         statusBarController.installStatusItem()
@@ -559,8 +554,7 @@ final class AppEnvironment {
 
     func stop() {
         secondBarWindowController.hide()
-        triggerService.stop()
-        automationURLHandler.uninstall()
+        profileAutomationCoordinator.stop()
         systemRecoveryCoordinator.stopObserving()
         menuBarScanCoordinator.stop()
         statusBarController.removeStatusItem()
@@ -773,34 +767,15 @@ final class AppEnvironment {
     }
 
     private func dryRunProfile(_ profile: ProfileModel) -> ProfileApplicationDryRun {
-        profileApplicationService.dryRun(
-            profile: profile,
-            snapshots: liveStatus.scannedMenuBarItems,
-            accessibilityStatus: accessibilityPermissionService.refreshStatus(),
-            allowProMoves: false
-        )
+        profileAutomationCoordinator.dryRunProfile(profile)
     }
 
     private func applyProfile(_ profile: ProfileModel) -> ProfileApplicationDryRun {
-        let summary = profileApplicationService.applyBasicSettings(
-            profile: profile,
-            snapshots: liveStatus.scannedMenuBarItems,
-            accessibilityStatus: accessibilityPermissionService.refreshStatus(),
-            allowProMoves: false
-        )
-        refreshBehaviorSettings()
-        refreshSecondBarSettings()
-        refreshTriggerSettings()
-        return summary
+        profileAutomationCoordinator.applyProfile(profile)
     }
 
     private func applyProfile(named name: String) -> Bool {
-        profileStore.load()
-        guard let profile = profileStore.profile(named: name) else {
-            return false
-        }
-        _ = applyProfile(profile)
-        return true
+        profileAutomationCoordinator.applyProfile(named: name)
     }
 
     // MARK: UI surfaces
