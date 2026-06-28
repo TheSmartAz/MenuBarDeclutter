@@ -88,6 +88,7 @@ final class HidingService {
     /// Re-applies the current state after a screen-configuration change so the
     /// collapsed separator still covers the (potentially larger) menu bar.
     func handleScreenParametersChanged() {
+        screenGeometry.invalidateCache()
         diagnosticsLogger.log(
             "Screen parameters changed; recomputing collapsed length (\(screenGeometry.widestScreenWidth())pt wide)."
         )
@@ -100,6 +101,8 @@ final class HidingService {
 
     private func applyVisibility(_ newState: HidingVisibilityState, isReapply: Bool = false) {
         let previousState = visibilityState
+        guard previousState != newState || isReapply else { return }
+
         visibilityState = newState
         settingsStore.isCollapsed = newState.isCollapsed
 

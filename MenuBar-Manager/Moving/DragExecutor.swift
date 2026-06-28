@@ -7,44 +7,118 @@ nonisolated protocol DragExecuting {
 }
 
 nonisolated struct DragExecutor: DragExecuting {
-    var eventSourceFactory: () -> CGEventSource? = {
-        CGEventSource(stateID: .hidSystemState)
-    }
+    var eventSourceFactory: () -> CGEventSource?
+    var currentMouseLocationProvider: (CGEventSource) -> CGPoint?
+    var mouseMovePoster: (CGPoint, CGEventSource) -> Void
+    var mouseEventPoster: (CGEventType, CGPoint, CGEventSource, CGEventFlags) -> Void
+    var pauseHandler: (TimeInterval) async -> Bool
     var restoreMousePosition: Bool = true
 
+    init(
+        eventSourceFactory: @escaping () -> CGEventSource? = {
+            CGEventSource(stateID: .hidSystemState)
+        },
+        currentMouseLocationProvider: @escaping (CGEventSource) -> CGPoint? = {
+            CGEvent(source: $0)?.location
+        },
+        mouseMovePoster: @escaping (CGPoint, CGEventSource) -> Void = { point, source in
+            Self.postMouseMove(to: point, source: source)
+        },
+        mouseEventPoster: @escaping (CGEventType, CGPoint, CGEventSource, CGEventFlags) -> Void = { type, point, source, flags in
+            Self.postMouse(type, at: point, source: source, flags: flags)
+        },
+        pauseHandler: @escaping (TimeInterval) async -> Bool = Self.pause,
+        restoreMousePosition: Bool = true
+    ) {
+        self.eventSourceFactory = eventSourceFactory
+        self.currentMouseLocationProvider = currentMouseLocationProvider
+        self.mouseMovePoster = mouseMovePoster
+        self.mouseEventPoster = mouseEventPoster
+        self.pauseHandler = pauseHandler
+        self.restoreMousePosition = restoreMousePosition
+    }
+
     func execute(_ plan: DragPlan) async -> Bool {
+        guard !Task.isCancelled else {
+            return false
+        }
+
         guard let source = eventSourceFactory(),
-              let currentMouse = CGEvent(source: source)?.location else {
+              let currentMouse = currentMouseLocationProvider(source) else {
+            return false
+        }
+
+        var didMouseDown = false
+        var lastDragPoint = plan.sourcePoint
+
+        func cancelActiveDrag() -> Bool {
+            if didMouseDown {
+                mouseEventPoster(.leftMouseUp, lastDragPoint, source, [])
+            }
+            return false
+        }
+
+        guard !Task.isCancelled else {
             return false
         }
 
         postMouseMove(to: plan.sourcePoint, source: source)
-        await pause(0.08)
+        guard await pauseHandler(0.08), !Task.isCancelled else {
+            return false
+        }
+
         postMouse(.leftMouseDown, at: plan.sourcePoint, source: source, flags: plan.modifierFlags)
-        await pause(0.08)
+        didMouseDown = true
+        guard await pauseHandler(0.08), !Task.isCancelled else {
+            return cancelActiveDrag()
+        }
 
         let steps = max(4, Int(plan.duration / 0.025))
         for index in 1...steps {
+            guard !Task.isCancelled else {
+                return cancelActiveDrag()
+            }
+
             let progress = CGFloat(index) / CGFloat(steps)
             let point = CGPoint(
                 x: plan.sourcePoint.x + ((plan.targetPoint.x - plan.sourcePoint.x) * progress),
                 y: plan.sourcePoint.y + ((plan.targetPoint.y - plan.sourcePoint.y) * progress)
             )
             postMouse(.leftMouseDragged, at: point, source: source, flags: plan.modifierFlags)
-            await pause(plan.duration / TimeInterval(steps))
+            lastDragPoint = point
+
+            guard await pauseHandler(plan.duration / TimeInterval(steps)), !Task.isCancelled else {
+                return cancelActiveDrag()
+            }
         }
 
         postMouse(.leftMouseUp, at: plan.targetPoint, source: source, flags: [])
+        didMouseDown = false
 
         if restoreMousePosition {
-            await pause(0.08)
+            guard await pauseHandler(0.08), !Task.isCancelled else {
+                return false
+            }
             postMouseMove(to: currentMouse, source: source)
         }
 
-        return true
+        return !Task.isCancelled
     }
 
     private func postMouseMove(to point: CGPoint, source: CGEventSource) {
+        mouseMovePoster(point, source)
+    }
+
+    private func postMouse(
+        _ type: CGEventType,
+        at point: CGPoint,
+        source: CGEventSource,
+        flags: CGEventFlags
+    ) {
+        mouseEventPoster(type, point, source, flags)
+    }
+
+    private static func postMouseMove(to point: CGPoint, source: CGEventSource) {
         CGEvent(
             mouseEventSource: source,
             mouseType: .mouseMoved,
@@ -53,7 +127,7 @@ nonisolated struct DragExecutor: DragExecuting {
         )?.post(tap: .cghidEventTap)
     }
 
-    private func postMouse(
+    private static func postMouse(
         _ type: CGEventType,
         at point: CGPoint,
         source: CGEventSource,
@@ -69,9 +143,16 @@ nonisolated struct DragExecutor: DragExecuting {
         event?.post(tap: .cghidEventTap)
     }
 
-    private func pause(_ interval: TimeInterval) async {
-        guard interval.isFinite, interval > 0 else { return }
+    private static func pause(_ interval: TimeInterval) async -> Bool {
+        guard !Task.isCancelled else { return false }
+        guard interval.isFinite, interval > 0 else { return true }
+
         let nanoseconds = UInt64((interval * 1_000_000_000).rounded())
-        try? await Task.sleep(nanoseconds: nanoseconds)
+        do {
+            try await Task.sleep(nanoseconds: nanoseconds)
+            return !Task.isCancelled
+        } catch {
+            return false
+        }
     }
 }

@@ -23,9 +23,13 @@ final class MenuBarScanCoordinator {
     @ObservationIgnored private let diagnosticsLogger: DiagnosticsLogger
     @ObservationIgnored private let liveStatus: LiveDiagnosticsStatus
     @ObservationIgnored private let separatorFramesProvider: () -> MenuBarSeparatorFrames
+    @ObservationIgnored private let notificationCenter: NotificationCenter
+    @ObservationIgnored private let visibilityScanDebounceNanoseconds: UInt64
     @ObservationIgnored private let now: () -> Date
 
     @ObservationIgnored private var visibilityObserver: NSObjectProtocol?
+    @ObservationIgnored private var pendingVisibilityScanTask: Task<Void, Never>?
+    @ObservationIgnored private var visibilityScanRequestID = 0
     @ObservationIgnored private var lastScanDate: Date?
 
     private(set) var lastResult: MenuBarScanResult?
@@ -38,6 +42,8 @@ final class MenuBarScanCoordinator {
         diagnosticsLogger: DiagnosticsLogger,
         liveStatus: LiveDiagnosticsStatus,
         separatorFramesProvider: @escaping () -> MenuBarSeparatorFrames,
+        notificationCenter: NotificationCenter = .default,
+        visibilityScanDebounceNanoseconds: UInt64 = 250_000_000,
         now: @escaping () -> Date = { Date() }
     ) {
         self.settingsStore = settingsStore
@@ -46,6 +52,8 @@ final class MenuBarScanCoordinator {
         self.diagnosticsLogger = diagnosticsLogger
         self.liveStatus = liveStatus
         self.separatorFramesProvider = separatorFramesProvider
+        self.notificationCenter = notificationCenter
+        self.visibilityScanDebounceNanoseconds = visibilityScanDebounceNanoseconds
         self.now = now
     }
 
@@ -66,14 +74,17 @@ final class MenuBarScanCoordinator {
 
     func stop() {
         if let visibilityObserver {
-            NotificationCenter.default.removeObserver(visibilityObserver)
+            notificationCenter.removeObserver(visibilityObserver)
             self.visibilityObserver = nil
         }
+        visibilityScanRequestID += 1
+        pendingVisibilityScanTask?.cancel()
+        pendingVisibilityScanTask = nil
     }
 
     func refreshAfterSettingsChanged(reason: String = "settings changed") {
         let status = permissionService.refreshStatus()
-        liveStatus.accessibilityPermissionStatus = status
+        setLiveStatus(\.accessibilityPermissionStatus, to: status)
         scanIfAllowed(reason: reason)
     }
 
@@ -84,7 +95,7 @@ final class MenuBarScanCoordinator {
     @discardableResult
     func scanIfAllowed(reason: String, force: Bool = false) -> MenuBarScanResult? {
         let status = permissionService.refreshStatus()
-        liveStatus.accessibilityPermissionStatus = status
+        setLiveStatus(\.accessibilityPermissionStatus, to: status)
 
         guard settingsStore.proModeEnabled else {
             clearScanState(skipReason: "Pro Mode disabled")
@@ -130,37 +141,70 @@ final class MenuBarScanCoordinator {
         lastSkipReason = skipReason
         lastResult = nil
         lastScanDate = nil
-        liveStatus.scannedMenuBarItems = []
-        liveStatus.lastMenuBarScanTime = nil
-        liveStatus.menuBarScanFailuresCount = 0
-        liveStatus.menuBarScanVisibleCount = 0
-        liveStatus.menuBarScanHiddenCount = 0
-        liveStatus.menuBarScanAlwaysHiddenCount = 0
-        liveStatus.menuBarScanUnknownCount = 0
-        liveStatus.searchIndexItemCount = 0
+        setLiveStatus(\.scannedMenuBarItems, to: [])
+        setLiveStatus(\.lastMenuBarScanTime, to: nil)
+        setLiveStatus(\.menuBarScanFailuresCount, to: 0)
+        setLiveStatus(\.menuBarScanVisibleCount, to: 0)
+        setLiveStatus(\.menuBarScanHiddenCount, to: 0)
+        setLiveStatus(\.menuBarScanAlwaysHiddenCount, to: 0)
+        setLiveStatus(\.menuBarScanUnknownCount, to: 0)
+        setLiveStatus(\.searchIndexItemCount, to: 0)
         diagnosticsLogger.log("AX scan unavailable: \(skipReason).", level: .debug)
     }
 
     private func apply(result: MenuBarScanResult) {
-        liveStatus.scannedMenuBarItems = result.snapshots
-        liveStatus.lastMenuBarScanTime = result.scanTimestamp
-        liveStatus.menuBarScanFailuresCount = result.axFailuresCount
-        liveStatus.menuBarScanVisibleCount = result.visibleCount
-        liveStatus.menuBarScanHiddenCount = result.hiddenCount
-        liveStatus.menuBarScanAlwaysHiddenCount = result.alwaysHiddenCount
-        liveStatus.menuBarScanUnknownCount = result.unknownCount
-        liveStatus.searchIndexItemCount = result.snapshots.count
+        setLiveStatus(\.scannedMenuBarItems, to: result.snapshots)
+        setLiveStatus(\.lastMenuBarScanTime, to: result.scanTimestamp)
+        setLiveStatus(\.menuBarScanFailuresCount, to: result.axFailuresCount)
+        setLiveStatus(\.menuBarScanVisibleCount, to: result.visibleCount)
+        setLiveStatus(\.menuBarScanHiddenCount, to: result.hiddenCount)
+        setLiveStatus(\.menuBarScanAlwaysHiddenCount, to: result.alwaysHiddenCount)
+        setLiveStatus(\.menuBarScanUnknownCount, to: result.unknownCount)
+        setLiveStatus(\.searchIndexItemCount, to: result.snapshots.count)
+    }
+
+    private func setLiveStatus<Value: Equatable>(
+        _ keyPath: ReferenceWritableKeyPath<LiveDiagnosticsStatus, Value>,
+        to value: Value
+    ) {
+        guard liveStatus[keyPath: keyPath] != value else { return }
+        liveStatus[keyPath: keyPath] = value
     }
 
     private func observeVisibilityChanges() {
         guard visibilityObserver == nil else { return }
-        visibilityObserver = NotificationCenter.default.addObserver(
+        visibilityObserver = notificationCenter.addObserver(
             forName: HidingService.visibilityDidChangeNotification,
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            MainActor.assumeIsolated {
-                _ = self?.scanIfAllowed(reason: "visibility change")
+            Task { @MainActor [weak self] in
+                self?.scheduleVisibilityChangeScan()
+            }
+        }
+    }
+
+    private func scheduleVisibilityChangeScan() {
+        visibilityScanRequestID += 1
+        let requestID = visibilityScanRequestID
+        let debounceNanoseconds = visibilityScanDebounceNanoseconds
+
+        pendingVisibilityScanTask?.cancel()
+        pendingVisibilityScanTask = Task { @MainActor [weak self] in
+            if debounceNanoseconds > 0 {
+                try? await Task.sleep(nanoseconds: debounceNanoseconds)
+            }
+
+            guard let self,
+                  Task.isCancelled == false,
+                  self.visibilityScanRequestID == requestID else {
+                return
+            }
+
+            _ = self.scanIfAllowed(reason: "visibility change", force: true)
+
+            if self.visibilityScanRequestID == requestID {
+                self.pendingVisibilityScanTask = nil
             }
         }
     }

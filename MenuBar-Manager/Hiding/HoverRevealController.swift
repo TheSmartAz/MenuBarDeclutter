@@ -117,14 +117,17 @@ final class HoverRevealController {
         return decision
     }
 
-    // MARK: Private
+    // MARK: Internal
 
-    private func tick() {
+    func tick() {
+        let isCollapsed = isCollapsedProvider()
+        guard isCollapsed || wasHovering else { return }
+
         let point = mouseLocationProvider()
         let inBand = screenGeometry.isPointInAnyMenuBarBand(point)
         let decision = processMouseLocation(
             isInMenuBarBand: inBand,
-            isCollapsed: isCollapsedProvider(),
+            isCollapsed: isCollapsed,
             autoRehideEnabled: autoRehideEnabledProvider()
         )
 

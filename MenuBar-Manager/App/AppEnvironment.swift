@@ -35,10 +35,7 @@ final class AppEnvironment {
         diagnosticsLogger: diagnosticsLogger,
         liveStatus: liveStatus,
         separatorFramesProvider: { [weak self] in
-            MenuBarSeparatorFrames(
-                primary: self?.primarySeparatorController.screenFrame,
-                alwaysHidden: self?.alwaysHiddenSeparatorController.screenFrame
-            )
+            self?.currentSeparatorFrames() ?? AppEnvironment.emptySeparatorFrames
         }
     )
 
@@ -52,9 +49,7 @@ final class AppEnvironment {
             self?.hidingService.setVisibility(state)
         },
         refreshAfterProfileApply: { [weak self] in
-            self?.refreshBehaviorSettings()
-            self?.refreshSecondBarSettings()
-            self?.refreshTriggerSettings()
+            self?.refreshRuntimeAfterProfileApply()
         },
         expand: { [weak self] in
             self?.expandHiddenItems()
@@ -227,7 +222,7 @@ final class AppEnvironment {
             self?.isAutoRehideSuppressed == true
         },
         hoverRevealSuppressionProvider: { [weak self] in
-            self?.isHoverRevealSuppressed == true
+            self?.isHoverRevealCurrentlySuppressed() == true
         }
     )
 
@@ -255,13 +250,10 @@ final class AppEnvironment {
         menuBarScanCoordinator: menuBarScanCoordinator,
         liveStatusSynchronizer: liveStatusSynchronizer,
         separatorFramesProvider: { [weak self] in
-            MenuBarSeparatorFrames(
-                primary: self?.primarySeparatorController.screenFrame,
-                alwaysHidden: self?.alwaysHiddenSeparatorController.screenFrame
-            )
+            self?.currentSeparatorFrames() ?? AppEnvironment.emptySeparatorFrames
         },
         isHoverRevealSuppressed: { [weak self] in
-            self?.isHoverRevealSuppressed == true
+            self?.isHoverRevealCurrentlySuppressed() == true
         },
         refreshSearchSettings: { [weak self] in
             self?.refreshSearchSettings()
@@ -317,7 +309,7 @@ final class AppEnvironment {
         triggerService: profileAutomationCoordinator.triggerService,
         liveStatusSynchronizer: liveStatusSynchronizer,
         isHoverRevealSuppressed: { [weak self] in
-            self?.isHoverRevealSuppressed == true
+            self?.isHoverRevealCurrentlySuppressed() == true
         },
         runHealthCheck: { [weak self] reason in
             _ = self?.runHealthCheck(reason: reason)
@@ -661,16 +653,34 @@ final class AppEnvironment {
         liveStatusSynchronizer.synchronize()
     }
 
+    private static let emptySeparatorFrames = MenuBarSeparatorFrames(
+        primary: nil,
+        alwaysHidden: nil
+    )
+
+    private func currentSeparatorFrames() -> MenuBarSeparatorFrames {
+        MenuBarSeparatorFrames(
+            primary: primarySeparatorController.screenFrame,
+            alwaysHidden: alwaysHiddenSeparatorController.screenFrame
+        )
+    }
+
+    private func isHoverRevealCurrentlySuppressed() -> Bool {
+        isHoverRevealSuppressed
+    }
+
+    private func refreshRuntimeAfterProfileApply() {
+        refreshBehaviorSettings()
+        refreshSecondBarSettings()
+        refreshTriggerSettings()
+    }
+
     private func dryRunProfile(_ profile: ProfileModel) -> ProfileApplicationDryRun {
         profileAutomationCoordinator.dryRunProfile(profile)
     }
 
     private func applyProfile(_ profile: ProfileModel) -> ProfileApplicationDryRun {
         profileAutomationCoordinator.applyProfile(profile)
-    }
-
-    private func applyProfile(named name: String) -> Bool {
-        profileAutomationCoordinator.applyProfile(named: name)
     }
 
     // MARK: UI surfaces

@@ -10,6 +10,20 @@ final class SecondBarWindowController: NSWindowController, NSWindowDelegate {
 
     private var lastPosition: CGPoint?
 
+    /// Observer for `NSApplication.didChangeScreenParametersNotification`. The second
+    /// bar panel is positioned in screen-relative coordinates, so any display
+    /// connect/disconnect/reorder can leave it stranded off-screen or above the
+    /// notch height on a new main display. When notified while visible, we re-invoke
+    /// `positionPanel()`; if the previously-saved position is no longer inside any
+    /// current `NSScreen.visibleFrame`, the panel is closed to ensure the user can
+    /// re-invoke it from a known-good state rather than clicking into empty space.
+    ///
+    /// Marked `nonisolated(unsafe)` so the observer can be released from
+    /// `deinit` (which on Apple platforms runs on whatever thread releases the last
+    /// reference). The observer is registered on `.main` and only removed here, so
+    /// concurrent access from another thread does not occur in practice.
+    @ObservationIgnored nonisolated(unsafe) private var displayParametersObserver: NSObjectProtocol?
+
     init(
         settingsStore: SettingsStore,
         permissionService: AccessibilityPermissionService,
@@ -62,11 +76,58 @@ final class SecondBarWindowController: NSWindowController, NSWindowDelegate {
         panel.contentViewController = NSHostingController(rootView: rootView)
         panel.delegate = self
         updatePanelBehaviorFromSettings()
+        observeScreenParameters()
     }
 
     @available(*, unavailable)
     required init?(coder: NSCoder) {
         fatalError("SecondBarWindowController does not support storyboards.")
+    }
+
+    deinit {
+        if let displayParametersObserver {
+            NotificationCenter.default.removeObserver(displayParametersObserver)
+        }
+    }
+
+    /// Registers a `.main`-queue observer for screen geometry changes so the
+    /// panel re-positions (or closes, when unreachable) instead of becoming
+    /// stranded off-screen after a display change.
+    private func observeScreenParameters() {
+        guard displayParametersObserver == nil else { return }
+        displayParametersObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.handleScreenParametersChanged()
+            }
+        }
+    }
+
+    @MainActor
+    private func handleScreenParametersChanged() {
+        guard window?.isVisible == true else { return }
+
+        // If the last-saved position no longer falls inside any current screen, close
+        // the panel rather than repositioning blindly — re-opening from settings
+        // will pick a sensible default again.
+        if let lastPosition {
+            let stillInsideScreen = NSScreen.screens.contains { screen in
+                screen.visibleFrame.contains(lastPosition)
+            }
+            if !stillInsideScreen {
+                diagnosticsLogger.log(
+                    "Second Bar closed: previous position no longer inside any current display.",
+                    level: .debug
+                )
+                window?.close()
+                return
+            }
+        }
+
+        positionPanel()
     }
 
     func show() {

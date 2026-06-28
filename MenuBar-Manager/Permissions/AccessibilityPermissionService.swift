@@ -32,14 +32,21 @@ enum AccessibilityPermissionStatus: String, CaseIterable, Identifiable, Sendable
 final class AccessibilityPermissionService {
     typealias TrustProvider = () -> Bool?
     typealias SystemSettingsOpener = () -> Bool
+    typealias DateProvider = () -> Date
 
     @ObservationIgnored private let settingsStore: SettingsStore
     @ObservationIgnored private let diagnosticsLogger: DiagnosticsLogger
     @ObservationIgnored private let trustProvider: TrustProvider
     @ObservationIgnored private let promptTrustProvider: TrustProvider
     @ObservationIgnored private let systemSettingsOpener: SystemSettingsOpener
+    @ObservationIgnored private let statusCacheDuration: TimeInterval
+    @ObservationIgnored private let now: DateProvider
+    @ObservationIgnored private var lastStatusRefreshDate: Date?
 
     private(set) var status: AccessibilityPermissionStatus
+    var currentStatus: AccessibilityPermissionStatus {
+        refreshStatusIfNeeded(force: false)
+    }
 
     init(
         settingsStore: SettingsStore,
@@ -59,10 +66,14 @@ final class AccessibilityPermissionService {
                 return false
             }
             return NSWorkspace.shared.open(url)
-        }
+        },
+        statusCacheDuration: TimeInterval = 1,
+        now: @escaping DateProvider = Date.init
     ) {
+        let trusted = trustProvider()
+        let checkedAt = now()
         let initialStatus = Self.mapPermissionStatus(
-            isTrusted: trustProvider(),
+            isTrusted: trusted,
             lastRecordedStatus: settingsStore.lastAccessibilityPermissionStatus
         )
 
@@ -71,18 +82,20 @@ final class AccessibilityPermissionService {
         self.trustProvider = trustProvider
         self.promptTrustProvider = promptTrustProvider
         self.systemSettingsOpener = systemSettingsOpener
+        self.statusCacheDuration = statusCacheDuration.isFinite ? max(0, statusCacheDuration) : 0
+        self.now = now
+        self.lastStatusRefreshDate = checkedAt
         self.status = initialStatus
         self.settingsStore.lastAccessibilityPermissionStatus = initialStatus.rawValue
     }
 
     @discardableResult
     func refreshStatus() -> AccessibilityPermissionStatus {
-        let mapped = Self.mapPermissionStatus(
-            isTrusted: trustProvider(),
-            lastRecordedStatus: settingsStore.lastAccessibilityPermissionStatus
-        )
-        applyStatus(mapped, reason: "permission check")
-        return status
+        refreshStatusIfNeeded(force: true)
+    }
+
+    func markStale() {
+        lastStatusRefreshDate = nil
     }
 
     @discardableResult
@@ -97,6 +110,7 @@ final class AccessibilityPermissionService {
             mapped = .unknown
         }
 
+        lastStatusRefreshDate = now()
         applyStatus(mapped, reason: "user-requested Accessibility prompt")
         return status
     }
@@ -145,5 +159,24 @@ final class AccessibilityPermissionService {
         diagnosticsLogger.log(
             "Accessibility permission status \(previousStatus.displayName) -> \(newStatus.displayName) (\(reason))."
         )
+    }
+
+    private func refreshStatusIfNeeded(force: Bool) -> AccessibilityPermissionStatus {
+        guard force || isStatusCacheStale else {
+            return status
+        }
+
+        let mapped = Self.mapPermissionStatus(
+            isTrusted: trustProvider(),
+            lastRecordedStatus: settingsStore.lastAccessibilityPermissionStatus
+        )
+        lastStatusRefreshDate = now()
+        applyStatus(mapped, reason: "permission check")
+        return status
+    }
+
+    private var isStatusCacheStale: Bool {
+        guard let lastStatusRefreshDate else { return true }
+        return now().timeIntervalSince(lastStatusRefreshDate) >= statusCacheDuration
     }
 }

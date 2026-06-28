@@ -160,6 +160,37 @@ struct AccessibilityDiscoveryLogicTests {
         #expect(merged.scanTimestamp == current.scanTimestamp)
     }
 
+    @Test func scannerPrunesIncludedMenuBarItemsBeforeDropdownTraversal() {
+        #expect(
+            AXMenuBarScanner.shouldPruneDescendants(
+                ofIncludedNode: true,
+                role: "AXMenuBarItem",
+                subrole: nil
+            )
+        )
+        #expect(
+            AXMenuBarScanner.shouldPruneDescendants(
+                ofIncludedNode: true,
+                role: "AXButton",
+                subrole: "AXStatusItem"
+            )
+        )
+        #expect(
+            AXMenuBarScanner.shouldPruneDescendants(
+                ofIncludedNode: true,
+                role: "AXButton",
+                subrole: nil
+            ) == false
+        )
+        #expect(
+            AXMenuBarScanner.shouldPruneDescendants(
+                ofIncludedNode: false,
+                role: "AXMenu",
+                subrole: nil
+            )
+        )
+    }
+
     @Test func permissionStatusMappingDoesNotRequireAccessibilityPermission() {
         #expect(
             AccessibilityPermissionService.mapPermissionStatus(
@@ -193,6 +224,98 @@ struct AccessibilityDiscoveryLogicTests {
         )
     }
 
+    @Test func currentStatusUsesFreshCacheWithoutRepeatedTrustChecks() {
+        var trustChecks = 0
+        var isTrusted = false
+        let harness = makePermissionService(
+            trustProvider: {
+                trustChecks += 1
+                return isTrusted
+            },
+            statusCacheDuration: 10,
+            now: { Date(timeIntervalSince1970: 100) }
+        )
+        defer { harness.tearDown() }
+
+        #expect(harness.service.status == .notRequested)
+        #expect(trustChecks == 1)
+
+        isTrusted = true
+
+        #expect(harness.service.currentStatus == .notRequested)
+        #expect(harness.service.currentStatus == .notRequested)
+        #expect(trustChecks == 1)
+    }
+
+    @Test func refreshStatusForcesTrustCheckAndObservesChangesInsideCacheTTL() {
+        var trustChecks = 0
+        var isTrusted = false
+        let harness = makePermissionService(
+            trustProvider: {
+                trustChecks += 1
+                return isTrusted
+            },
+            statusCacheDuration: 10,
+            now: { Date(timeIntervalSince1970: 100) }
+        )
+        defer { harness.tearDown() }
+
+        #expect(harness.service.status == .notRequested)
+        #expect(trustChecks == 1)
+
+        isTrusted = true
+
+        #expect(harness.service.refreshStatus() == .granted)
+        #expect(harness.service.currentStatus == .granted)
+        #expect(trustChecks == 2)
+    }
+
+    @Test func currentStatusRefreshesAfterCacheExpires() {
+        var trustChecks = 0
+        var isTrusted = false
+        var now = Date(timeIntervalSince1970: 100)
+        let harness = makePermissionService(
+            trustProvider: {
+                trustChecks += 1
+                return isTrusted
+            },
+            statusCacheDuration: 5,
+            now: { now }
+        )
+        defer { harness.tearDown() }
+
+        isTrusted = true
+        now = Date(timeIntervalSince1970: 104)
+
+        #expect(harness.service.currentStatus == .notRequested)
+        #expect(trustChecks == 1)
+
+        now = Date(timeIntervalSince1970: 106)
+
+        #expect(harness.service.currentStatus == .granted)
+        #expect(trustChecks == 2)
+    }
+
+    @Test func markStaleMakesNextCurrentStatusRefresh() {
+        var trustChecks = 0
+        var isTrusted = false
+        let harness = makePermissionService(
+            trustProvider: {
+                trustChecks += 1
+                return isTrusted
+            },
+            statusCacheDuration: 10,
+            now: { Date(timeIntervalSince1970: 100) }
+        )
+        defer { harness.tearDown() }
+
+        isTrusted = true
+        harness.service.markStale()
+
+        #expect(harness.service.currentStatus == .granted)
+        #expect(trustChecks == 2)
+    }
+
     private func makeSnapshot(
         id: String,
         title: String,
@@ -211,5 +334,42 @@ struct AccessibilityDiscoveryLogicTests {
             isLikelySystemItem: false,
             scanTimestamp: timestamp
         )
+    }
+
+    private func makePermissionService(
+        trustProvider: @escaping AccessibilityPermissionService.TrustProvider,
+        statusCacheDuration: TimeInterval,
+        now: @escaping AccessibilityPermissionService.DateProvider
+    ) -> PermissionServiceHarness {
+        let suiteName = "AccessibilityPermissionServiceTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+
+        let service = AccessibilityPermissionService(
+            settingsStore: SettingsStore(defaults: defaults),
+            diagnosticsLogger: DiagnosticsLogger(),
+            trustProvider: trustProvider,
+            promptTrustProvider: { false },
+            systemSettingsOpener: { true },
+            statusCacheDuration: statusCacheDuration,
+            now: now
+        )
+
+        return PermissionServiceHarness(
+            service: service,
+            defaults: defaults,
+            suiteName: suiteName
+        )
+    }
+}
+
+@MainActor
+private struct PermissionServiceHarness {
+    let service: AccessibilityPermissionService
+    let defaults: UserDefaults
+    let suiteName: String
+
+    func tearDown() {
+        defaults.removePersistentDomain(forName: suiteName)
     }
 }

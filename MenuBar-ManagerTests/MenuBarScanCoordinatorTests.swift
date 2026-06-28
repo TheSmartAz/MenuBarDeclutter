@@ -66,6 +66,36 @@ struct MenuBarScanCoordinatorTests {
         #expect(harness.scanner.scanCount == 2)
     }
 
+    @Test func rapidVisibilityNotificationsCoalesceIntoOneScan() async {
+        var now = Date(timeIntervalSince1970: 100)
+        let notificationCenter = NotificationCenter()
+        let harness = makeHarness(
+            isTrusted: { true },
+            notificationCenter: notificationCenter,
+            visibilityScanDebounceNanoseconds: 20_000_000,
+            now: { now }
+        )
+        defer {
+            harness.coordinator.stop()
+            harness.tearDown()
+        }
+        harness.store.proModeEnabled = true
+        harness.store.accessibilityDiscoveryEnabled = true
+        harness.store.menuBarScanIntervalSeconds = 0.5
+
+        harness.coordinator.start()
+        #expect(harness.scanner.scanCount == 1)
+
+        now = Date(timeIntervalSince1970: 101)
+        notificationCenter.post(name: HidingService.visibilityDidChangeNotification, object: nil)
+        notificationCenter.post(name: HidingService.visibilityDidChangeNotification, object: nil)
+        notificationCenter.post(name: HidingService.visibilityDidChangeNotification, object: nil)
+
+        await waitUntilScanCount(2, scanner: harness.scanner)
+
+        #expect(harness.scanner.scanCount == 2)
+    }
+
     @Test func disabledProModeClearsScanStateAndDoesNotScan() {
         let harness = makeHarness(isTrusted: { true })
         defer { harness.tearDown() }
@@ -85,6 +115,8 @@ struct MenuBarScanCoordinatorTests {
 
     private func makeHarness(
         isTrusted: @escaping () -> Bool?,
+        notificationCenter: NotificationCenter = NotificationCenter(),
+        visibilityScanDebounceNanoseconds: UInt64 = 250_000_000,
         now: @escaping () -> Date = { Date(timeIntervalSince1970: 100) }
     ) -> CoordinatorHarness {
         let suiteName = "MenuBarScanCoordinatorTests.\(UUID().uuidString)"
@@ -114,6 +146,8 @@ struct MenuBarScanCoordinatorTests {
                     alwaysHidden: CGRect(x: 200, y: 0, width: 20, height: 24)
                 )
             },
+            notificationCenter: notificationCenter,
+            visibilityScanDebounceNanoseconds: visibilityScanDebounceNanoseconds,
             now: now
         )
 
@@ -126,6 +160,19 @@ struct MenuBarScanCoordinatorTests {
             defaults: defaults,
             suiteName: suiteName
         )
+    }
+
+    private func waitUntilScanCount(
+        _ expectedCount: Int,
+        scanner: FakeMenuBarScanner,
+        timeoutNanoseconds: UInt64 = 1_000_000_000
+    ) async {
+        let deadline = ContinuousClock.now + .nanoseconds(Int64(timeoutNanoseconds))
+
+        while scanner.scanCount < expectedCount,
+              ContinuousClock.now < deadline {
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
     }
 }
 

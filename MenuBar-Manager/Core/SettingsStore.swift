@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 
+@MainActor
 @Observable
 final class SettingsStore {
     enum AppMode: String, CaseIterable, Identifiable {
@@ -590,66 +591,60 @@ final class SettingsStore {
 
     // MARK: Clamping helpers
 
+    /// Central NaN/+inf/-inf + range clamp shared by all `Double` settings clampers.
+    /// Single source for the NaN/Infinity repair policy so each clamp helper reduces
+    /// to a one-line `range` + `nanFallback` configuration.
+    private static func clamp(
+        _ value: Double,
+        to range: ClosedRange<Double>,
+        nanFallback: Double
+    ) -> Double {
+        if value.isNaN {
+            return nanFallback
+        }
+        if value == .infinity {
+            return range.upperBound
+        }
+        if value == -.infinity {
+            return range.lowerBound
+        }
+        return min(max(value, range.lowerBound), range.upperBound)
+    }
+
     /// Clamps the auto-rehide delay to the documented bounds. Used for both
     /// the setter and the load path so persisted invalid values are repaired.
     static func clampAutoRehideDelay(_ value: Double) -> Double {
-        if value.isNaN {
-            return AppConstants.defaultAutoRehideDelaySeconds
-        }
-        if value == .infinity {
-            return AppConstants.maxAutoRehideDelaySeconds
-        }
-        if value == -.infinity {
-            return AppConstants.minAutoRehideDelaySeconds
-        }
-        return min(max(value, AppConstants.minAutoRehideDelaySeconds), AppConstants.maxAutoRehideDelaySeconds)
+        clamp(
+            value,
+            to: AppConstants.minAutoRehideDelaySeconds ... AppConstants.maxAutoRehideDelaySeconds,
+            nanFallback: AppConstants.defaultAutoRehideDelaySeconds
+        )
     }
 
     /// Clamps the hover polling interval to a small positive range.
     static func clampHoverPollingInterval(_ value: Double) -> Double {
-        if value.isNaN {
-            return AppConstants.defaultHoverRevealPollingIntervalSeconds
-        }
-        if value == .infinity {
-            return AppConstants.maxHoverRevealPollingIntervalSeconds
-        }
-        if value == -.infinity {
-            return AppConstants.minHoverRevealPollingIntervalSeconds
-        }
-        return min(
-            max(value, AppConstants.minHoverRevealPollingIntervalSeconds),
-            AppConstants.maxHoverRevealPollingIntervalSeconds
+        clamp(
+            value,
+            to: AppConstants.minHoverRevealPollingIntervalSeconds ... AppConstants.maxHoverRevealPollingIntervalSeconds,
+            nanFallback: AppConstants.defaultHoverRevealPollingIntervalSeconds
         )
     }
 
     /// Clamps the Accessibility scan throttle interval to a conservative range.
     static func clampMenuBarScanInterval(_ value: Double) -> Double {
-        if value.isNaN {
-            return AppConstants.defaultMenuBarScanIntervalSeconds
-        }
-        if value == .infinity {
-            return AppConstants.maxMenuBarScanIntervalSeconds
-        }
-        if value == -.infinity {
-            return AppConstants.minMenuBarScanIntervalSeconds
-        }
-        return min(
-            max(value, AppConstants.minMenuBarScanIntervalSeconds),
-            AppConstants.maxMenuBarScanIntervalSeconds
+        clamp(
+            value,
+            to: AppConstants.minMenuBarScanIntervalSeconds ... AppConstants.maxMenuBarScanIntervalSeconds,
+            nanFallback: AppConstants.defaultMenuBarScanIntervalSeconds
         )
     }
 
     static func clampSecondBarIconSize(_ value: Double) -> Double {
-        if value.isNaN {
-            return AppConstants.defaultSecondBarIconSize
-        }
-        if value == .infinity {
-            return AppConstants.maxSecondBarIconSize
-        }
-        if value == -.infinity {
-            return AppConstants.minSecondBarIconSize
-        }
-        return min(max(value, AppConstants.minSecondBarIconSize), AppConstants.maxSecondBarIconSize)
+        clamp(
+            value,
+            to: AppConstants.minSecondBarIconSize ... AppConstants.maxSecondBarIconSize,
+            nanFallback: AppConstants.defaultSecondBarIconSize
+        )
     }
 
     static func clampIconMovingMaxRetries(_ value: Int) -> Int {
@@ -657,16 +652,11 @@ final class SettingsStore {
     }
 
     static func clampIconMovingDragDuration(_ value: Double) -> Double {
-        if value.isNaN {
-            return AppConstants.defaultIconMovingDragDuration
-        }
-        if value == .infinity {
-            return AppConstants.maxIconMovingDragDuration
-        }
-        if value == -.infinity {
-            return AppConstants.minIconMovingDragDuration
-        }
-        return min(max(value, AppConstants.minIconMovingDragDuration), AppConstants.maxIconMovingDragDuration)
+        clamp(
+            value,
+            to: AppConstants.minIconMovingDragDuration ... AppConstants.maxIconMovingDragDuration,
+            nanFallback: AppConstants.defaultIconMovingDragDuration
+        )
     }
 
     func effectiveSecondBarPositionMode() -> SecondBarPositionMode {

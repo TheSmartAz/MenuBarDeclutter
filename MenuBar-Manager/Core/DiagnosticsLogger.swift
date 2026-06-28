@@ -57,31 +57,30 @@ enum DiagnosticCategory: String, CaseIterable, Identifiable, Sendable {
     }
 
     static func inferred(from message: String) -> DiagnosticCategory {
-        let lowercased = message.lowercased()
-        if lowercased.contains("safe mode") { return .safeMode }
-        if lowercased.contains("launch at login") || lowercased.contains("smappservice") { return .launchAtLogin }
-        if lowercased.contains("health") { return .health }
-        if lowercased.contains("recover") || lowercased.contains("repair") || lowercased.contains("reset") { return .recovery }
-        if lowercased.contains("trigger") { return .trigger }
-        if lowercased.contains("profile") { return .profile }
-        if lowercased.contains("url") || lowercased.contains("automation") { return .urlAutomation }
-        if lowercased.contains("icon move") || lowercased.contains("moving") || lowercased.contains("drag") { return .iconMove }
-        if lowercased.contains("second bar") { return .secondBar }
-        if lowercased.contains("search") || lowercased.contains("find icon") { return .search }
-        if lowercased.contains("scan") || lowercased.contains("ax ") || lowercased.contains("accessibility snapshot") { return .scan }
-        if lowercased.contains("accessibility") || lowercased.contains("permission") { return .accessibility }
-        if lowercased.contains("hotkey") { return .hotkey }
-        if lowercased.contains("hover") { return .hover }
-        if lowercased.contains("rehide") { return .rehide }
-        if lowercased.contains("separator") { return .separator }
-        if lowercased.contains("status item") { return .statusItem }
-        if lowercased.contains("collapse") || lowercased.contains("expand") || lowercased.contains("visibility") {
+        if message.containsAnyCaseInsensitive(in: ["safe mode"]) { return .safeMode }
+        if message.containsAnyCaseInsensitive(in: ["launch at login", "smappservice"]) { return .launchAtLogin }
+        if message.containsAnyCaseInsensitive(in: ["health"]) { return .health }
+        if message.containsAnyCaseInsensitive(in: ["recover", "repair", "reset"]) { return .recovery }
+        if message.containsAnyCaseInsensitive(in: ["trigger"]) { return .trigger }
+        if message.containsAnyCaseInsensitive(in: ["profile"]) { return .profile }
+        if message.containsAnyCaseInsensitive(in: ["url", "automation"]) { return .urlAutomation }
+        if message.containsAnyCaseInsensitive(in: ["icon move", "moving", "drag"]) { return .iconMove }
+        if message.containsAnyCaseInsensitive(in: ["second bar"]) { return .secondBar }
+        if message.containsAnyCaseInsensitive(in: ["search", "find icon"]) { return .search }
+        if message.containsAnyCaseInsensitive(in: ["scan", "ax ", "accessibility snapshot"]) { return .scan }
+        if message.containsAnyCaseInsensitive(in: ["accessibility", "permission"]) { return .accessibility }
+        if message.containsAnyCaseInsensitive(in: ["hotkey"]) { return .hotkey }
+        if message.containsAnyCaseInsensitive(in: ["hover"]) { return .hover }
+        if message.containsAnyCaseInsensitive(in: ["rehide"]) { return .rehide }
+        if message.containsAnyCaseInsensitive(in: ["separator"]) { return .separator }
+        if message.containsAnyCaseInsensitive(in: ["status item"]) { return .statusItem }
+        if message.containsAnyCaseInsensitive(in: ["collapse", "expand", "visibility"]) {
             return .hiding
         }
-        if lowercased.contains("quit") || lowercased.contains("stop") || lowercased.contains("terminated") {
+        if message.containsAnyCaseInsensitive(in: ["quit", "stop", "terminated"]) {
             return .shutdown
         }
-        if lowercased.contains("privacy") || lowercased.contains("screen recording") || lowercased.contains("network") {
+        if message.containsAnyCaseInsensitive(in: ["privacy", "screen recording", "network"]) {
             return .privacy
         }
         return .startup
@@ -102,6 +101,22 @@ struct DiagnosticEvent: Identifiable, Equatable, Sendable {
     }
 }
 
+/// Hot-path-friendly case-insensitive substring check. Avoids the
+/// `message.lowercased()` full-string allocation previously paid on every `log()`
+/// call. `String.range(of:options:.caseInsensitive)` performs an in-place
+/// case-folded comparison without materializing a new `String`.
+private extension String {
+    func containsAnyCaseInsensitive(in substrings: [String]) -> Bool {
+        for substring in substrings {
+            if range(of: substring, options: .caseInsensitive) != nil {
+                return true
+            }
+        }
+        return false
+    }
+}
+
+@MainActor
 @Observable
 final class DiagnosticsLogger {
     @ObservationIgnored private let capacity: Int

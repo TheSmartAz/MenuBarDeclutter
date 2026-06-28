@@ -1,12 +1,35 @@
 import AppKit
 import SwiftUI
-import UniformTypeIdentifiers
 
 struct SecondBarItemView: View {
     let snapshot: MenuBarItemSnapshot
     let iconSize: Double
     let showLabels: Bool
     let isSelected: Bool
+
+    private let iconCache: AppIconCache
+
+    @State private var appIcon: NSImage
+
+    private var iconLookup: AppIconCache.Lookup {
+        AppIconCache.Lookup(snapshot: snapshot)
+    }
+
+    @MainActor
+    init(
+        snapshot: MenuBarItemSnapshot,
+        iconSize: Double,
+        showLabels: Bool,
+        isSelected: Bool,
+        iconCache: AppIconCache = .shared
+    ) {
+        self.snapshot = snapshot
+        self.iconSize = iconSize
+        self.showLabels = showLabels
+        self.isSelected = isSelected
+        self.iconCache = iconCache
+        _appIcon = State(initialValue: iconCache.cachedIcon(for: snapshot) ?? iconCache.placeholderIcon)
+    }
 
     var body: some View {
         VStack(spacing: 6) {
@@ -42,6 +65,12 @@ struct SecondBarItemView: View {
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(displayTitle), \(snapshot.zone.displayName)")
+        .task(id: iconLookup) { @MainActor in
+            let resolvedIcon = iconCache.icon(for: snapshot)
+            if appIcon !== resolvedIcon {
+                appIcon = resolvedIcon
+            }
+        }
     }
 
     private var displayTitle: String {
@@ -57,20 +86,6 @@ struct SecondBarItemView: View {
             snapshot.title,
             snapshot.bundleIdentifier
         ].filter { $0 != displayTitle })
-    }
-
-    private var appIcon: NSImage {
-        if let processIdentifier = snapshot.owningProcessIdentifier,
-           let icon = NSRunningApplication(processIdentifier: processIdentifier)?.icon {
-            return icon
-        }
-
-        if let bundleIdentifier = snapshot.bundleIdentifier,
-           let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) {
-            return NSWorkspace.shared.icon(forFile: appURL.path)
-        }
-
-        return NSWorkspace.shared.icon(for: .application)
     }
 
     private func firstNonEmpty(_ values: [String?]) -> String? {

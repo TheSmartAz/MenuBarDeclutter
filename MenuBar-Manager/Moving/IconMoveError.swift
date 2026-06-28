@@ -11,6 +11,7 @@ enum IconMoveError: Error, Equatable, Sendable {
     case unsafeSystemItem
     case planningFailed
     case dragFailed
+    case moveCancelled
     case verificationFailed
 
     var displayName: String {
@@ -35,6 +36,8 @@ enum IconMoveError: Error, Equatable, Sendable {
             "Could Not Plan Drag"
         case .dragFailed:
             "Drag Failed"
+        case .moveCancelled:
+            "Move Cancelled"
         case .verificationFailed:
             "Verification Failed"
         }

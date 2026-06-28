@@ -1,10 +1,29 @@
 import AppKit
 import SwiftUI
-import UniformTypeIdentifiers
 
 struct SearchResultRowView: View {
     let result: MenuBarSearchResult
     let isSelected: Bool
+
+    private let iconCache: AppIconCache
+
+    @State private var appIcon: NSImage
+
+    private var iconLookup: AppIconCache.Lookup {
+        AppIconCache.Lookup(snapshot: result.snapshot)
+    }
+
+    @MainActor
+    init(
+        result: MenuBarSearchResult,
+        isSelected: Bool,
+        iconCache: AppIconCache = .shared
+    ) {
+        self.result = result
+        self.isSelected = isSelected
+        self.iconCache = iconCache
+        _appIcon = State(initialValue: iconCache.cachedIcon(for: result.snapshot) ?? iconCache.placeholderIcon)
+    }
 
     var body: some View {
         HStack(spacing: 12) {
@@ -48,6 +67,12 @@ struct SearchResultRowView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(rowBackground, in: .rect(cornerRadius: 8))
         .contentShape(.rect)
+        .task(id: iconLookup) { @MainActor in
+            let resolvedIcon = iconCache.icon(for: result.snapshot)
+            if appIcon !== resolvedIcon {
+                appIcon = resolvedIcon
+            }
+        }
     }
 
     private var rowBackground: Color {
@@ -65,20 +90,6 @@ struct SearchResultRowView: View {
         case .unknown:
             .secondary
         }
-    }
-
-    private var appIcon: NSImage {
-        if let processIdentifier = result.snapshot.owningProcessIdentifier,
-           let icon = NSRunningApplication(processIdentifier: processIdentifier)?.icon {
-            return icon
-        }
-
-        if let bundleIdentifier = result.snapshot.bundleIdentifier,
-           let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) {
-            return NSWorkspace.shared.icon(forFile: appURL.path)
-        }
-
-        return NSWorkspace.shared.icon(for: .application)
     }
 }
 

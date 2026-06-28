@@ -16,6 +16,8 @@ final class ScreenGeometryService {
     /// usable in production while allowing tests to inject fake widths.
     private let widthsProvider: () -> [Double]
     private let menuBarBandsProvider: () -> [CGRect]
+    private var cachedWidths: [Double]?
+    private var cachedMenuBarBands: [CGRect]?
 
     init(
         widthsProvider: @escaping () -> [Double] = { NSScreen.screens.map { Double($0.frame.width) } },
@@ -27,12 +29,18 @@ final class ScreenGeometryService {
         }
     }
 
+    /// Clears cached screen geometry after a display-configuration change.
+    func invalidateCache() {
+        cachedWidths = nil
+        cachedMenuBarBands = nil
+    }
+
     /// Returns the widest visible menu bar width across all currently attached
     /// screens. Falls back to a positive constant when no screen is available
     /// (e.g., running inside a headless test runner) so callers can still
     /// produce a sane collapsed length.
     func widestScreenWidth() -> Double {
-        let width = widthsProvider().max() ?? 0
+        let width = widths().max() ?? 0
         return width > 0 ? width : 1
     }
 
@@ -66,8 +74,28 @@ final class ScreenGeometryService {
 
     /// Returns `true` when `point` is inside the menu bar band of any screen.
     func isPointInAnyMenuBarBand(_ point: CGPoint) -> Bool {
-        menuBarBandsProvider().contains { band in
+        menuBarBands().contains { band in
             band.contains(point)
         }
+    }
+
+    private func widths() -> [Double] {
+        if let cachedWidths {
+            return cachedWidths
+        }
+
+        let widths = widthsProvider()
+        cachedWidths = widths
+        return widths
+    }
+
+    private func menuBarBands() -> [CGRect] {
+        if let cachedMenuBarBands {
+            return cachedMenuBarBands
+        }
+
+        let bands = menuBarBandsProvider()
+        cachedMenuBarBands = bands
+        return bands
     }
 }

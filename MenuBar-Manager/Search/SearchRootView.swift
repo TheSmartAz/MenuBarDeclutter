@@ -18,17 +18,22 @@ struct SearchRootView: View {
     @State private var activationMessage: String?
     @FocusState private var searchFieldFocused: Bool
 
-    private var results: [MenuBarSearchResult] {
-        guard searchIsAvailable else { return [] }
-        return searchService.results(
-            from: liveStatus.scannedMenuBarItems,
-            query: query
-        )
-    }
+    /// Cached search results. The previous design recomputed `results` on every
+    /// accessing property read, which is read from `resultList`, `searchFooter`,
+    /// `selectFirstResultIfNeeded`, `moveSelection`, `activateSelectedResult`, and
+    /// the `onChange(of: resultIDs)` modifier — so a single SwiftUI invalidation
+    /// triggered five or six filter+sort passes. Caching once per query and
+    /// refreshing in a debounced `onChange(of: query)` collapses those redundant
+    /// passes and lets a fast typist skip work between keystrokes.
+    @State private var results: [MenuBarSearchResult] = []
 
-    private var resultIDs: [MenuBarSearchResult.ID] {
-        results.map(\.id)
-    }
+    /// Pre-built normalized index. Rebuilt only when `liveStatus.scannedMenuBarItems`
+    /// changes (i.e. on a new accessibility scan), so the per-keystroke `String.folding`
+    /// allocations in `SearchService.normalize` are paid once per scan rather than
+    /// once per character.
+    @State private var searchIndex: SearchIndex = .init()
+
+    @State private var searchDebounceTask: Task<Void, Never>?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -50,17 +55,16 @@ struct SearchRootView: View {
         .background(.regularMaterial)
         .onAppear {
             onRefresh()
-            updateSearchDiagnostics()
-            selectFirstResultIfNeeded()
+            searchIndex = SearchIndex(snapshots: liveStatus.scannedMenuBarItems)
+            refreshResults()
             searchFieldFocused = true
         }
         .onChange(of: query) {
-            updateSearchDiagnostics()
-            selectFirstResultIfNeeded()
+            scheduleSearch()
         }
-        .onChange(of: resultIDs) {
-            updateSearchDiagnostics()
-            selectFirstResultIfNeeded()
+        .onChange(of: liveStatus.scannedMenuBarItems) { _, newSnapshots in
+            searchIndex = SearchIndex(snapshots: newSnapshots)
+            scheduleSearch()
         }
         .onKeyPress(.downArrow) {
             moveSelection(by: 1)
@@ -265,6 +269,7 @@ struct SearchRootView: View {
     }
 
     private func selectFirstResultIfNeeded() {
+        let resultIDs = results.map(\.id)
         if let selectedID, resultIDs.contains(selectedID) {
             return
         }
@@ -272,6 +277,7 @@ struct SearchRootView: View {
     }
 
     private func moveSelection(by delta: Int) {
+        let resultIDs = results.map(\.id)
         guard !resultIDs.isEmpty else { return }
 
         let currentIndex = selectedID.flatMap { resultIDs.firstIndex(of: $0) } ?? -1
@@ -303,6 +309,36 @@ struct SearchRootView: View {
             let moveResult = await onMove(result, command)
             activationMessage = moveResult.summary
         }
+    }
+
+    /// Schedules a debounced result refresh ~100 ms in the future. Fast typists
+    /// would otherwise pay one full `filter + sort + MenuBarSearchResult` allocation
+    /// churn per keystroke; the debounce coalesces a burst of typing into a single
+    /// snapshot evaluation while preserving the perception of immediate feedback.
+    private func scheduleSearch() {
+        searchDebounceTask?.cancel()
+        let snapshotQuery = query
+        searchDebounceTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(100))
+            if Task.isCancelled { return }
+            _ = snapshotQuery
+            refreshResults()
+        }
+    }
+
+    /// Re-evaluates `results` against the current `searchIndex` and `query`, then
+    /// propagates diagnostics state and reselects the first result as needed.
+    private func refreshResults() {
+        guard searchIsAvailable else {
+            results = []
+            return
+        }
+        results = searchService.results(
+            from: searchIndex,
+            query: query
+        )
+        updateSearchDiagnostics()
+        selectFirstResultIfNeeded()
     }
 
     private func updateSearchDiagnostics() {

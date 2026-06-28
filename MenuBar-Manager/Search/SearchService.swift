@@ -31,25 +31,38 @@ struct MenuBarSearchResult: Identifiable, Equatable, Sendable {
     let score: Int
     let matchReason: MenuBarSearchMatchReason
 
+    /// Pre-computed display fields. The previous implementation rebuilt these on every
+    /// read — and the sort comparator (`isHigherRanked`) re-derived `displayTitle`
+    /// for both sides of each comparison, allocating 1-3 trimmed strings per call.
+    /// Storing them once at construction time reduces the comparator to a single
+    /// `localizedStandardCompare` and makes view reads O(1).
+    let appName: String
+    let displayTitle: String
+    let displaySubtitle: String
+
     var id: String { snapshot.id }
 
-    var appName: String {
-        firstNonEmpty([
+    init(
+        snapshot: MenuBarItemSnapshot,
+        score: Int,
+        matchReason: MenuBarSearchMatchReason
+    ) {
+        self.snapshot = snapshot
+        self.score = score
+        self.matchReason = matchReason
+        self.appName = Self.firstNonEmpty([
             snapshot.owningApplicationName,
             snapshot.bundleIdentifier,
             snapshot.title
         ]) ?? "Unknown App"
-    }
 
-    var displayTitle: String {
-        firstNonEmpty([
+        let displayTitle = Self.firstNonEmpty([
             snapshot.owningApplicationName,
             snapshot.title,
             snapshot.bundleIdentifier
         ]) ?? "Menu Bar Item"
-    }
+        self.displayTitle = displayTitle
 
-    var displaySubtitle: String {
         let details = [
             snapshot.title,
             snapshot.bundleIdentifier,
@@ -60,11 +73,10 @@ struct MenuBarSearchResult: Identifiable, Equatable, Sendable {
             let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines)
             return trimmed?.isEmpty == false ? trimmed : nil
         }
-
-        return details.first { $0 != displayTitle } ?? snapshot.zone.displayName
+        self.displaySubtitle = details.first { $0 != displayTitle } ?? snapshot.zone.displayName
     }
 
-    private func firstNonEmpty(_ values: [String?]) -> String? {
+    private static func firstNonEmpty(_ values: [String?]) -> String? {
         values
             .compactMap { value in
                 let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -74,48 +86,94 @@ struct MenuBarSearchResult: Identifiable, Equatable, Sendable {
     }
 }
 
+/// Pre-normalized per-snapshot index for `SearchService`. Building this once per
+/// accessibility scan and querying it across keystrokes avoids the dominant
+/// `String.folding(options: [.caseInsensitive, .diacriticInsensitive])` per-keystroke
+/// allocation churn identified by the refactoring audit.
+struct SearchIndex: Sendable {
+    struct Entry: Sendable {
+        let snapshot: MenuBarItemSnapshot
+        let normalizedName: String
+        let normalizedTitle: String
+        let normalizedBundleID: String
+    }
+
+    private(set) var entries: [Entry] = []
+
+    init(snapshots: [MenuBarItemSnapshot] = []) {
+        var entries: [Entry] = []
+        entries.reserveCapacity(snapshots.count)
+        for snapshot in snapshots {
+            entries.append(
+                Entry(
+                    snapshot: snapshot,
+                    normalizedName: SearchService.normalize(snapshot.owningApplicationName),
+                    normalizedTitle: SearchService.normalize(snapshot.title),
+                    normalizedBundleID: SearchService.normalize(snapshot.bundleIdentifier)
+                )
+            )
+        }
+        self.entries = entries
+    }
+
+    var isEmpty: Bool { entries.isEmpty }
+    var count: Int { entries.count }
+}
+
 struct SearchService {
     func results(
         from snapshots: [MenuBarItemSnapshot],
         query: String,
         limit: Int = 20
     ) -> [MenuBarSearchResult] {
-        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        let normalizedQuery = normalize(trimmedQuery)
+        return results(
+            from: SearchIndex(snapshots: snapshots),
+            query: query,
+            limit: limit
+        )
+    }
 
-        let results = snapshots.compactMap { snapshot -> MenuBarSearchResult? in
+    func results(
+        from index: SearchIndex,
+        query: String,
+        limit: Int = 20
+    ) -> [MenuBarSearchResult] {
+        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalizedQuery = Self.normalize(trimmedQuery)
+
+        let results = index.entries.compactMap { entry -> MenuBarSearchResult? in
             if normalizedQuery.isEmpty {
                 return MenuBarSearchResult(
-                    snapshot: snapshot,
-                    score: 100 + zoneBoost(for: snapshot.zone),
+                    snapshot: entry.snapshot,
+                    score: 100 + zoneBoost(for: entry.snapshot.zone),
                     matchReason: .recent
                 )
             }
 
-            guard let match = bestMatch(for: snapshot, normalizedQuery: normalizedQuery) else {
+            guard let match = bestMatch(
+                entry: entry,
+                normalizedQuery: normalizedQuery
+            ) else {
                 return nil
             }
 
             return MenuBarSearchResult(
-                snapshot: snapshot,
-                score: match.score + zoneBoost(for: snapshot.zone),
+                snapshot: entry.snapshot,
+                score: match.score + zoneBoost(for: entry.snapshot.zone),
                 matchReason: match.reason
             )
         }
 
-        return results
-            .sorted(by: isHigherRanked)
-            .prefix(max(0, limit))
-            .map { $0 }
+        return Array(results.sorted(by: isHigherRanked).prefix(max(0, limit)))
     }
 
     private func bestMatch(
-        for snapshot: MenuBarItemSnapshot,
+        entry: SearchIndex.Entry,
         normalizedQuery: String
     ) -> (score: Int, reason: MenuBarSearchMatchReason)? {
-        let appName = normalize(snapshot.owningApplicationName)
-        let title = normalize(snapshot.title)
-        let bundleIdentifier = normalize(snapshot.bundleIdentifier)
+        let appName = entry.normalizedName
+        let title = entry.normalizedTitle
+        let bundleIdentifier = entry.normalizedBundleID
 
         if appName == normalizedQuery, !appName.isEmpty {
             return (1000, .exactAppName)
@@ -159,9 +217,9 @@ struct SearchService {
             return lhs.snapshot.scanTimestamp > rhs.snapshot.scanTimestamp
         }
 
-        let leftName = lhs.displayTitle
-        let rightName = rhs.displayTitle
-        let comparison = leftName.localizedStandardCompare(rightName)
+        // `displayTitle` is now a pre-computed `let` field; this comparator
+        // no longer allocates per comparison.
+        let comparison = lhs.displayTitle.localizedStandardCompare(rhs.displayTitle)
         if comparison != .orderedSame {
             return comparison == .orderedAscending
         }
@@ -169,7 +227,7 @@ struct SearchService {
         return lhs.id < rhs.id
     }
 
-    private func normalize(_ value: String?) -> String {
+    static func normalize(_ value: String?) -> String {
         value?
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)

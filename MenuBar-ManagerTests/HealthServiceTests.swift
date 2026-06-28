@@ -33,7 +33,28 @@ struct HealthServiceTests {
         #expect(issues.contains { $0.code == "second-bar-position" })
     }
 
-    @Test func settingsIssuesUseTargetedRecoveryActions() {
+    @Test func validateSettingsDeclaresKnownRecoveryActions() {
+        let suiteName = "HealthServiceTests.settingActions.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let store = SettingsStore(defaults: defaults)
+        store.expandedSeparatorLength = -20
+        store.collapsedSeparatorLengthOverride = AppConstants.collapsedSeparatorMaximumLength * 2
+        store.secondBarPositionModeRaw = "somewhere-impossible"
+        store.lastAccessibilityPermissionStatus = "legacy-status"
+
+        let issues = HealthService.validateSettings(store)
+
+        #expect(issues.first { $0.code == "expanded-separator-length" }?.recoveryAction == .resetSeparatorLengths)
+        #expect(issues.first { $0.code == "collapsed-separator-override" }?.recoveryAction == .resetSeparatorLengths)
+        #expect(issues.first { $0.code == "second-bar-position" }?.recoveryAction == .resetSecondBarPosition)
+        #expect(issues.first { $0.code == "accessibility-permission-status" }?.recoveryAction == .refreshAccessibilityPermissionStatus)
+        #expect(issues.allSatisfy { $0.recoveryAction != .resetSettingsToDefaults })
+    }
+
+    @Test func settingsIssuesUseDeclaredRecoveryActions() {
         let service = HealthService(now: { Date(timeIntervalSince1970: 10) })
         var snapshot = Self.healthySnapshot()
         snapshot.settingsIssues = [
@@ -41,22 +62,26 @@ struct HealthServiceTests {
                 code: "expanded-separator-length",
                 title: "Bad expanded length",
                 detail: "Expanded length is invalid.",
-                severity: .critical
+                severity: .critical,
+                recoveryAction: .resetSeparatorLengths
             ),
             SettingsValidationIssue(
                 code: "scan-interval",
                 title: "Bad scan interval",
-                detail: "Scan interval is invalid."
+                detail: "Scan interval is invalid.",
+                recoveryAction: .resetMenuBarScanInterval
             ),
             SettingsValidationIssue(
                 code: "second-bar-position",
                 title: "Bad Second Bar position",
-                detail: "Second Bar position is invalid."
+                detail: "Second Bar position is invalid.",
+                recoveryAction: .resetSecondBarPosition
             ),
             SettingsValidationIssue(
                 code: "accessibility-permission-status",
                 title: "Bad permission status",
-                detail: "Permission status is invalid."
+                detail: "Permission status is invalid.",
+                recoveryAction: .refreshAccessibilityPermissionStatus
             )
         ]
 
@@ -66,6 +91,23 @@ struct HealthServiceTests {
         #expect(report.issues.first { $0.code == "settings.scan-interval" }?.recoveryAction == .resetMenuBarScanInterval)
         #expect(report.issues.first { $0.code == "settings.second-bar-position" }?.recoveryAction == .resetSecondBarPosition)
         #expect(report.issues.first { $0.code == "settings.accessibility-permission-status" }?.recoveryAction == .refreshAccessibilityPermissionStatus)
+        #expect(report.issues.allSatisfy { $0.recoveryAction != .resetSettingsToDefaults })
+    }
+
+    @Test func unknownSettingsIssueHasNoAutomaticRecoveryAction() {
+        let service = HealthService(now: { Date(timeIntervalSince1970: 10) })
+        var snapshot = Self.healthySnapshot()
+        snapshot.settingsIssues = [
+            SettingsValidationIssue(
+                code: "future-setting-code",
+                title: "Future setting issue",
+                detail: "This issue code is not known to this build."
+            )
+        ]
+
+        let report = service.makeReport(snapshot: snapshot)
+
+        #expect(report.issues.contains { $0.code == "settings.future-setting-code" && $0.recoveryAction == nil })
         #expect(report.issues.allSatisfy { $0.recoveryAction != .resetSettingsToDefaults })
     }
 

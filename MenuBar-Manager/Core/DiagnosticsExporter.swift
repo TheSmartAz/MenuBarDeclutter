@@ -233,8 +233,7 @@ struct DiagnosticsExporter {
 
     private func plainText(snapshot: Snapshot, includeAppSupportPath: Bool, appSupportPath: URL?) throws -> Data {
         var lines: [String] = []
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime]
+        let formatter = Self.sharedISOFormatter
         lines.append("MenuBarDeclutter Diagnostics")
         lines.append("Generated: \(formatter.string(from: snapshot.generatedAt))")
         lines.append("")
@@ -438,10 +437,18 @@ struct DiagnosticsExporter {
 
     // MARK: Helpers
 
-    private static func iso(_ date: Date) -> String {
+    /// Cached ISO8601 formatter (with `.withInternetDateTime` options) shared by all
+    /// `plainText` and `json` formatting passes. `ISO8601DateFormatter` is documented
+    /// as thread-safe, and the only configuration mutating the formatter (its
+    /// `formatOptions`) happens once at construction.
+    private static let sharedISOFormatter: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime]
-        return formatter.string(from: date)
+        return formatter
+    }()
+
+    private static func iso(_ date: Date) -> String {
+        sharedISOFormatter.string(from: date)
     }
 
     static func currentArchitecture() -> String {

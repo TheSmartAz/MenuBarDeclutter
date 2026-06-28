@@ -5,17 +5,20 @@ struct SettingsValidationIssue: Equatable, Sendable {
     let title: String
     let detail: String
     let severity: HealthSeverity
+    let recoveryAction: HealthRecoveryAction?
 
     init(
         code: String,
         title: String,
         detail: String,
-        severity: HealthSeverity = .warning
+        severity: HealthSeverity = .warning,
+        recoveryAction: HealthRecoveryAction? = nil
     ) {
         self.code = code
         self.title = title
         self.detail = detail
         self.severity = severity
+        self.recoveryAction = recoveryAction
     }
 }
 
@@ -121,7 +124,7 @@ struct HealthService {
                     severity: settingsIssue.severity,
                     title: settingsIssue.title,
                     detail: settingsIssue.detail,
-                    recoveryAction: recoveryAction(for: settingsIssue)
+                    recoveryAction: settingsIssue.recoveryAction
                 )
             )
         }
@@ -198,7 +201,8 @@ struct HealthService {
                     code: "expanded-separator-length",
                     title: "Expanded separator length is corrupted",
                     detail: "Expanded separator length must be a positive finite number.",
-                    severity: .critical
+                    severity: .critical,
+                    recoveryAction: .resetSeparatorLengths
                 )
             )
         }
@@ -210,7 +214,8 @@ struct HealthService {
                     code: "collapsed-separator-override",
                     title: "Collapsed separator override is corrupted",
                     detail: "Collapsed separator override must be finite and within the supported status item range.",
-                    severity: .critical
+                    severity: .critical,
+                    recoveryAction: .resetSeparatorLengths
                 )
             )
         }
@@ -221,7 +226,7 @@ struct HealthService {
                     code: "scan-interval",
                     title: "Menu bar scan interval is corrupted",
                     detail: "The Accessibility scan interval must be finite.",
-                    severity: .warning
+                    recoveryAction: .resetMenuBarScanInterval
                 )
             )
         }
@@ -232,7 +237,7 @@ struct HealthService {
                     code: "second-bar-position",
                     title: "Second Bar position setting is corrupted",
                     detail: "The stored Second Bar position mode is not recognized.",
-                    severity: .warning
+                    recoveryAction: .resetSecondBarPosition
                 )
             )
         }
@@ -244,7 +249,7 @@ struct HealthService {
                     code: "accessibility-permission-status",
                     title: "Accessibility permission status is corrupted",
                     detail: "The stored Accessibility permission status is not recognized.",
-                    severity: .warning
+                    recoveryAction: .refreshAccessibilityPermissionStatus
                 )
             )
         }
@@ -345,21 +350,6 @@ struct HealthService {
 
     private func enabledText(_ value: Bool) -> String {
         value ? "enabled" : "disabled"
-    }
-
-    private func recoveryAction(for settingsIssue: SettingsValidationIssue) -> HealthRecoveryAction {
-        switch settingsIssue.code {
-        case "expanded-separator-length", "collapsed-separator-override":
-            .resetSeparatorLengths
-        case "scan-interval":
-            .resetMenuBarScanInterval
-        case "second-bar-position":
-            .resetSecondBarPosition
-        case "accessibility-permission-status":
-            .refreshAccessibilityPermissionStatus
-        default:
-            .resetSettingsToDefaults
-        }
     }
 
     private static func isSaneSeparatorLength(_ length: Double) -> Bool {

@@ -58,6 +58,10 @@ final class IconMoveService {
 
     private var isMoving = false
 
+#if DEBUG
+    var isMoveInProgressForTesting: Bool { isMoving }
+#endif
+
     init(
         settingsStore: SettingsStore,
         permissionService: AccessibilityPermissionService,
@@ -118,25 +122,29 @@ final class IconMoveService {
             return record(.skipped(command: command, itemName: itemName, error: error))
         }
 
+        guard !Task.isCancelled else {
+            return cancelled(command: command, itemName: itemName, error: .moveCancelled)
+        }
+
+        isMoving = true
+        defer {
+            isMoving = false
+        }
+
         if settingsStore.iconMovingRequireConfirmation && !settingsStore.iconMovingConfirmationSuppressed {
             let decision = confirmationHandler(snapshot, command)
             if decision.suppressFutureWarnings {
                 settingsStore.iconMovingConfirmationSuppressed = true
             }
             guard decision.confirmed else {
-                return record(IconMoveResult(
-                    outcome: .cancelled,
-                    command: command,
-                    itemName: itemName,
-                    error: .confirmationCancelled,
-                    dragPlanSummary: nil,
-                    verificationSummary: nil,
-                    retries: 0
-                ))
+                return cancelled(command: command, itemName: itemName, error: .confirmationCancelled)
             }
         }
 
-        isMoving = true
+        guard !Task.isCancelled else {
+            return cancelled(command: command, itemName: itemName, error: .moveCancelled)
+        }
+
         liveStatus.iconMoveInProgress = true
         suspendRuntimeBehaviors()
         let preMoveVisibility = currentVisibilityProvider()
@@ -145,7 +153,6 @@ final class IconMoveService {
         defer {
             resumeRuntimeBehaviors()
             liveStatus.iconMoveInProgress = false
-            isMoving = false
         }
 
         var currentSnapshot = snapshot
@@ -154,6 +161,18 @@ final class IconMoveService {
         let maxRetries = settingsStore.iconMovingMaxRetries
 
         for attempt in 0...maxRetries {
+            guard !Task.isCancelled else {
+                return cancelled(
+                    command: command,
+                    itemName: itemName,
+                    error: .moveCancelled,
+                    plan: lastPlan,
+                    verification: lastVerification,
+                    retries: attempt,
+                    restoreVisibility: preMoveVisibility
+                )
+            }
+
             do {
                 let plan = try makePlan(
                     snapshot: currentSnapshot,
@@ -166,6 +185,18 @@ final class IconMoveService {
                 diagnosticsLogger.log("Icon move plan: \(plan.summary)", level: .debug)
 
                 guard await dragExecutor.execute(plan) else {
+                    if Task.isCancelled {
+                        return cancelled(
+                            command: command,
+                            itemName: itemName,
+                            error: .moveCancelled,
+                            plan: lastPlan,
+                            verification: lastVerification,
+                            retries: attempt,
+                            restoreVisibility: preMoveVisibility
+                        )
+                    }
+
                     return fail(
                         command: command,
                         itemName: itemName,
@@ -177,7 +208,18 @@ final class IconMoveService {
                     )
                 }
 
-                await pause(0.18)
+                guard await pause(0.18) else {
+                    return cancelled(
+                        command: command,
+                        itemName: itemName,
+                        error: .moveCancelled,
+                        plan: lastPlan,
+                        verification: lastVerification,
+                        retries: attempt,
+                        restoreVisibility: preMoveVisibility
+                    )
+                }
+
                 let rescanned = refreshSnapshots()
                 let verification = verifier.verify(
                     original: snapshot,
@@ -297,6 +339,30 @@ final class IconMoveService {
         ))
     }
 
+    private func cancelled(
+        command: IconMoveCommand,
+        itemName: String,
+        error: IconMoveError,
+        plan: DragPlan? = nil,
+        verification: DragVerificationResult? = nil,
+        retries: Int = 0,
+        restoreVisibility: HidingVisibilityState? = nil
+    ) -> IconMoveResult {
+        if let restoreVisibility {
+            setVisibility(restoreVisibility)
+        }
+
+        return record(IconMoveResult(
+            outcome: .cancelled,
+            command: command,
+            itemName: itemName,
+            error: error,
+            dragPlanSummary: plan?.summary,
+            verificationSummary: verification?.summary,
+            retries: retries
+        ))
+    }
+
     private func record(_ result: IconMoveResult) -> IconMoveResult {
         liveStatus.lastIconMoveResult = result.outcome.rawValue
         liveStatus.lastIconMoveError = result.error?.displayName
@@ -307,10 +373,17 @@ final class IconMoveService {
         return result
     }
 
-    private func pause(_ interval: TimeInterval) async {
-        guard interval.isFinite, interval > 0 else { return }
+    private func pause(_ interval: TimeInterval) async -> Bool {
+        guard !Task.isCancelled else { return false }
+        guard interval.isFinite, interval > 0 else { return true }
+
         let nanoseconds = UInt64((interval * 1_000_000_000).rounded())
-        try? await Task.sleep(nanoseconds: nanoseconds)
+        do {
+            try await Task.sleep(nanoseconds: nanoseconds)
+            return !Task.isCancelled
+        } catch {
+            return false
+        }
     }
 
     private func displayName(for snapshot: MenuBarItemSnapshot) -> String {

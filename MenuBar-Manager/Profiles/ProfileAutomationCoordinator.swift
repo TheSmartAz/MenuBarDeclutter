@@ -9,6 +9,7 @@ final class ProfileAutomationCoordinator {
     private let liveStatus: LiveDiagnosticsStatus
     private let accessibilityPermissionService: AccessibilityPermissionService
     private let profileApplicationService: ProfileApplicationService
+    private let settingsStore: SettingsStore
     private let refreshAfterProfileApply: () -> Void
     private let expand: () -> Void
     private let collapse: () -> Void
@@ -23,6 +24,9 @@ final class ProfileAutomationCoordinator {
         showSecondBar: showSecondBar,
         applyProfileNamed: { [weak self] name in
             self?.applyProfile(named: name) == true
+        },
+        isAutomationEnabled: { [weak self] in
+            self?.settingsStore.automationPaused == false
         }
     )
 
@@ -42,6 +46,7 @@ final class ProfileAutomationCoordinator {
         self.diagnosticsLogger = diagnosticsLogger
         self.liveStatus = liveStatus
         self.accessibilityPermissionService = accessibilityPermissionService
+        self.settingsStore = settingsStore
         self.refreshAfterProfileApply = refreshAfterProfileApply
         self.expand = expand
         self.collapse = collapse

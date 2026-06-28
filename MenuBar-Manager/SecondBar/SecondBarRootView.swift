@@ -17,14 +17,12 @@ struct SecondBarRootView: View {
     @State private var searchQuery = ""
     @FocusState private var searchFocused: Bool
 
-    private var items: [MenuBarItemSnapshot] {
-        guard unavailableState == nil else { return [] }
-        return viewModel.items(
-            from: liveStatus.scannedMenuBarItems,
-            settingsStore: settingsStore,
-            query: searchQuery
-        )
-    }
+    /// Cached filtered+sorted item list. The previous implementation recomputed `items`
+    /// on every body evaluation, and `hiddenItems`/`alwaysHiddenItems`/`itemIDs` each
+    /// re-invoked the underlying `viewModel.items(...)` filter+sort — so a single
+    /// SwiftUI invalidation paid five to seven full passes over the snapshot list.
+    /// Caching once per (snapshots, settings, query) collapse that to a single pass.
+    @State private var items: [MenuBarItemSnapshot] = []
 
     private var hiddenItems: [MenuBarItemSnapshot] {
         items.filter { $0.zone == .hidden }
@@ -32,10 +30,6 @@ struct SecondBarRootView: View {
 
     private var alwaysHiddenItems: [MenuBarItemSnapshot] {
         items.filter { $0.zone == .alwaysHidden }
-    }
-
-    private var itemIDs: [MenuBarItemSnapshot.ID] {
-        items.map(\.id)
     }
 
     var body: some View {
@@ -67,13 +61,20 @@ struct SecondBarRootView: View {
         .background(.regularMaterial)
         .onAppear {
             onRefresh()
-            synchronizeDiagnostics()
-            viewModel.selectFirstItemIfNeeded(items)
+            refreshItems()
             searchFocused = true
         }
-        .onChange(of: itemIDs) {
-            synchronizeDiagnostics()
-            viewModel.selectFirstItemIfNeeded(items)
+        .onChange(of: searchQuery) {
+            refreshItems()
+        }
+        .onChange(of: liveStatus.scannedMenuBarItems) { _, _ in
+            refreshItems()
+        }
+        .onChange(of: settingsStore.secondBarShowHiddenItems) {
+            refreshItems()
+        }
+        .onChange(of: settingsStore.secondBarShowAlwaysHiddenItems) {
+            refreshItems()
         }
         .onKeyPress(.leftArrow) {
             viewModel.moveSelection(by: -1, in: items)
@@ -324,6 +325,24 @@ struct SecondBarRootView: View {
 
     private func synchronizeDiagnostics() {
         liveStatus.secondBarItemCount = items.count
+    }
+
+    /// Re-evaluates the cached `items` against the current `(snapshots, settings,
+    /// searchQuery)` inputs and notifies the view-model of the new list. Replaces
+    /// several redundant `viewModel.items(...)` recomputations per SwiftUI body
+    /// evaluation with a single pass driven by explicit input changes.
+    private func refreshItems() {
+        guard unavailableState == nil else {
+            if !items.isEmpty { items = [] }
+            return
+        }
+        items = viewModel.items(
+            from: liveStatus.scannedMenuBarItems,
+            settingsStore: settingsStore,
+            query: searchQuery
+        )
+        synchronizeDiagnostics()
+        viewModel.selectFirstItemIfNeeded(items)
     }
 
     private func displayTitle(for snapshot: MenuBarItemSnapshot) -> String {

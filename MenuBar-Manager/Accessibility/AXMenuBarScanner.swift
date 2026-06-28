@@ -12,6 +12,22 @@ final class AXMenuBarScanner: MenuBarScanning {
     private let maxDepth = 7
     private let maxElements = 700
 
+    /// Roles that, when found on a child of the current element, indicate a dropdown
+    /// menu subtree. We never record AXMenuItem snapshots (only the menu bar items
+    /// themselves), so descending into these subtrees is wasted AX round-trips. Pruning
+    /// here typically reduces the typical scan from hundreds of elements to ~20-30.
+    private static let prunableDescendantRoles: Set<String> = [
+        "AXMenu",
+        "AXMenuItem"
+    ]
+    private static let menuBarItemRoleMarkers = [
+        "menubaritem",
+        "menu bar item",
+        "statusitem",
+        "menuextra",
+        "menu extra"
+    ]
+
     init(
         diagnosticsLogger: DiagnosticsLogger,
         reader: AXElementReader? = nil,
@@ -33,6 +49,11 @@ final class AXMenuBarScanner: MenuBarScanning {
         var traversedElementCount = 0
         var snapshots: [MenuBarItemSnapshot] = []
 
+        // Capture NSScreen.screens once at the start of the scan; `shouldIncludeSnapshot`
+        // previously re-queried AppKit on every visited element, which is a hot path
+        // during a depth-first traversal.
+        let screenFrames: [CGRect] = NSScreen.screens.map { $0.frame }
+
         for root in candidateRoots(systemWide: systemWide) {
             snapshots.append(
                 contentsOf: collectSnapshots(
@@ -41,6 +62,7 @@ final class AXMenuBarScanner: MenuBarScanning {
                     inheritedProcessIdentifier: nil,
                     primarySeparatorFrame: primarySeparatorFrame,
                     alwaysHiddenSeparatorFrame: alwaysHiddenSeparatorFrame,
+                    screenFrames: screenFrames,
                     timestamp: timestamp,
                     traversedElementCount: &traversedElementCount
                 )
@@ -77,19 +99,22 @@ final class AXMenuBarScanner: MenuBarScanning {
         let runningApps = NSWorkspace.shared.runningApplications
         for app in runningApps where app.isTerminated == false {
             let appElement = AXUIElementCreateApplication(app.processIdentifier)
+            // Each running application exposes its menu bar via `kAXMenuBarAttribute`;
+            // for `systemuiserver`, the `AXExtrasMenuBar` attribute additionally surfaces
+            // the system status items. The generic loop covers both cases, so the
+            // previously-duplicated special-case block has been consolidated into the
+            // per-app reads below.
             if let menuBar = reader.readElement(appElement, attribute: kAXMenuBarAttribute as String) {
                 roots.append(menuBar)
                 roots.append(contentsOf: reader.readChildren(menuBar))
             }
 
-            guard app.bundleIdentifier == "com.apple.systemuiserver"
-                    || app.localizedName == "SystemUIServer" else {
-                continue
-            }
-
-            if let extras = reader.readElement(appElement, attribute: "AXExtrasMenuBar") {
-                roots.append(extras)
-                roots.append(contentsOf: reader.readChildren(extras))
+            if app.bundleIdentifier == "com.apple.systemuiserver"
+                || app.localizedName == "SystemUIServer" {
+                if let extras = reader.readElement(appElement, attribute: "AXExtrasMenuBar") {
+                    roots.append(extras)
+                    roots.append(contentsOf: reader.readChildren(extras))
+                }
             }
         }
 
@@ -102,6 +127,7 @@ final class AXMenuBarScanner: MenuBarScanning {
         inheritedProcessIdentifier: pid_t?,
         primarySeparatorFrame: CGRect?,
         alwaysHiddenSeparatorFrame: CGRect?,
+        screenFrames: [CGRect],
         timestamp: Date,
         traversedElementCount: inout Int
     ) -> [MenuBarItemSnapshot] {
@@ -122,7 +148,13 @@ final class AXMenuBarScanner: MenuBarScanning {
         let frame = reader.readFrame(element)
 
         var snapshots: [MenuBarItemSnapshot] = []
-        if shouldIncludeSnapshot(role: role, subrole: subrole, frame: frame) {
+        let isIncluded = shouldIncludeSnapshot(
+            role: role,
+            subrole: subrole,
+            frame: frame,
+            screenFrames: screenFrames
+        )
+        if isIncluded {
             let app = runningApplication(pid: pid)
             let bundleIdentifier = app?.bundleIdentifier
             snapshots.append(
@@ -148,6 +180,19 @@ final class AXMenuBarScanner: MenuBarScanning {
             )
         }
 
+        // Prune descent into dropdown subtree. Once we have just captured (or are about
+        // to capture) the menu bar item snapshot, descending into its `AXMenu` child
+        // only gathers dropdown AXMenuItem nodes that are guaranteed to fail
+        // `shouldIncludeSnapshot` — pure AX round-trip waste. Also skipped when the
+        // current node's own role already marks it as a dropdown container or item.
+        if Self.shouldPruneDescendants(
+            ofIncludedNode: isIncluded,
+            role: role,
+            subrole: subrole
+        ) {
+            return snapshots
+        }
+
         for child in reader.readChildren(element) {
             snapshots.append(
                 contentsOf: collectSnapshots(
@@ -156,6 +201,7 @@ final class AXMenuBarScanner: MenuBarScanning {
                     inheritedProcessIdentifier: pid,
                     primarySeparatorFrame: primarySeparatorFrame,
                     alwaysHiddenSeparatorFrame: alwaysHiddenSeparatorFrame,
+                    screenFrames: screenFrames,
                     timestamp: timestamp,
                     traversedElementCount: &traversedElementCount
                 )
@@ -165,16 +211,13 @@ final class AXMenuBarScanner: MenuBarScanning {
         return snapshots
     }
 
-    private func shouldIncludeSnapshot(role: String?, subrole: String?, frame: CGRect?) -> Bool {
-        let text = [role, subrole]
-            .compactMap { $0?.lowercased() }
-            .joined(separator: " ")
-
-        if text.contains("menubaritem")
-            || text.contains("menu bar item")
-            || text.contains("statusitem")
-            || text.contains("menuextra")
-            || text.contains("menu extra") {
+    private func shouldIncludeSnapshot(
+        role: String?,
+        subrole: String?,
+        frame: CGRect?,
+        screenFrames: [CGRect]
+    ) -> Bool {
+        if Self.hasMenuBarItemRoleMarker(role: role, subrole: subrole) {
             return true
         }
 
@@ -182,10 +225,33 @@ final class AXMenuBarScanner: MenuBarScanning {
             return false
         }
 
-        return NSScreen.screens.contains { screen in
-            let topInset = abs(screen.frame.maxY - frame.maxY)
-            return topInset <= 6 && screen.frame.intersects(frame)
+        // Iterating the captured `[CGRect]` avoids the AppKit round-trip that the
+        // previous `NSScreen.screens.contains { ... }` call paid on every visited
+        // AX element.
+        return screenFrames.contains { screenFrame in
+            let topInset = abs(screenFrame.maxY - frame.maxY)
+            return topInset <= 6 && screenFrame.intersects(frame)
         }
+    }
+
+    static func shouldPruneDescendants(
+        ofIncludedNode isIncluded: Bool,
+        role: String?,
+        subrole: String?
+    ) -> Bool {
+        if Self.prunableDescendantRoles.contains(role ?? "") {
+            return true
+        }
+
+        return isIncluded && hasMenuBarItemRoleMarker(role: role, subrole: subrole)
+    }
+
+    private static func hasMenuBarItemRoleMarker(role: String?, subrole: String?) -> Bool {
+        let text = [role, subrole]
+            .compactMap { $0?.lowercased() }
+            .joined(separator: " ")
+
+        return menuBarItemRoleMarkers.contains { text.contains($0) }
     }
 
     private func runningApplication(pid: pid_t?) -> NSRunningApplication? {

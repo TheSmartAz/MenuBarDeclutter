@@ -89,15 +89,77 @@ struct HidingServiceTests {
         let logger = DiagnosticsLogger()
 
         var calls = 0
+        var visibilityCalls = 0
+        let notifications = HidingNotificationProbe()
         let service = HidingService(settingsStore: store, diagnosticsLogger: logger)
         service.onStateChange = { _ in calls += 1 }
+        service.onVisibilityChange = { _ in visibilityCalls += 1 }
+        NotificationCenter.default.addObserver(
+            notifications,
+            selector: #selector(HidingNotificationProbe.handleStateChange(_:)),
+            name: HidingService.stateDidChangeNotification,
+            object: service
+        )
+        NotificationCenter.default.addObserver(
+            notifications,
+            selector: #selector(HidingNotificationProbe.handleVisibilityChange(_:)),
+            name: HidingService.visibilityDidChangeNotification,
+            object: service
+        )
+        defer { NotificationCenter.default.removeObserver(notifications) }
 
         service.collapse()
         let callsAfterCollapse = calls
+        let visibilityCallsAfterCollapse = visibilityCalls
+        let stateNotificationsAfterCollapse = notifications.stateChangeCount
+        let visibilityNotificationsAfterCollapse = notifications.visibilityChangeCount
 
         service.applyState()
         #expect(calls == callsAfterCollapse + 1)
+        #expect(visibilityCalls == visibilityCallsAfterCollapse + 1)
+        #expect(notifications.stateChangeCount == stateNotificationsAfterCollapse + 1)
+        #expect(notifications.visibilityChangeCount == visibilityNotificationsAfterCollapse + 1)
         #expect(service.currentState == .collapsed)
+        #expect(logger.events.last?.message == "Visibility state re-applied (collapsed).")
+    }
+
+    @Test func noOpVisibilityTransitionDoesNotNotifyObservers() {
+        let suiteName = "HidingServiceTests.noop.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let store = SettingsStore(defaults: defaults)
+        let logger = DiagnosticsLogger()
+
+        var stateCalls = 0
+        var visibilityCalls = 0
+        let notifications = HidingNotificationProbe()
+        let service = HidingService(settingsStore: store, diagnosticsLogger: logger)
+        service.onStateChange = { _ in stateCalls += 1 }
+        service.onVisibilityChange = { _ in visibilityCalls += 1 }
+        NotificationCenter.default.addObserver(
+            notifications,
+            selector: #selector(HidingNotificationProbe.handleStateChange(_:)),
+            name: HidingService.stateDidChangeNotification,
+            object: service
+        )
+        NotificationCenter.default.addObserver(
+            notifications,
+            selector: #selector(HidingNotificationProbe.handleVisibilityChange(_:)),
+            name: HidingService.visibilityDidChangeNotification,
+            object: service
+        )
+        defer { NotificationCenter.default.removeObserver(notifications) }
+
+        service.expand()
+
+        #expect(service.visibilityState == .expanded)
+        #expect(stateCalls == 0)
+        #expect(visibilityCalls == 0)
+        #expect(notifications.stateChangeCount == 0)
+        #expect(notifications.visibilityChangeCount == 0)
+        #expect(logger.events.isEmpty)
     }
 
     @Test func reloadedStoreReflectsPersistedState() {
@@ -176,5 +238,19 @@ struct HidingServiceTests {
 
         service.setVisibility(.collapsed)
         #expect(store.isCollapsed == true)
+    }
+}
+
+@MainActor
+private final class HidingNotificationProbe: NSObject {
+    private(set) var stateChangeCount = 0
+    private(set) var visibilityChangeCount = 0
+
+    @objc func handleStateChange(_ notification: Notification) {
+        stateChangeCount += 1
+    }
+
+    @objc func handleVisibilityChange(_ notification: Notification) {
+        visibilityChangeCount += 1
     }
 }

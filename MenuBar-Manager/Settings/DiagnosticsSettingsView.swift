@@ -24,18 +24,10 @@ struct DiagnosticsSettingsView: View {
     @State private var selectedEventID: DiagnosticEvent.ID?
 
     private var filteredEvents: [DiagnosticEvent] {
-        diagnosticsLogger.events.filter { event in
-            let severityMatches: Bool
-            switch severityFilter {
-            case .all:
-                severityMatches = true
-            case .warningsAndErrors:
-                severityMatches = event.level == .warning || event.level == .error
-            }
-
-            let categoryMatches = selectedCategory.map { $0 == event.category } ?? true
-            return severityMatches && categoryMatches
-        }
+        diagnosticsLogger.events.matching(
+            severityFilter: severityFilter,
+            selectedCategory: selectedCategory
+        )
     }
 
     private var selectedEvent: DiagnosticEvent? {
@@ -45,15 +37,14 @@ struct DiagnosticsSettingsView: View {
     var body: some View {
         VStack(spacing: 0) {
             DiagnosticsToolbar(
-                eventCount: diagnosticsLogger.events.count,
-                filteredEventCount: filteredEvents.count,
+                diagnosticsLogger: diagnosticsLogger,
                 clear: diagnosticsLogger.removeAll,
                 exportFormat: $exportFormat,
                 severityFilter: $severityFilter,
                 selectedCategory: $selectedCategory,
+                selectedEventID: $selectedEventID,
                 onCopySelected: copySelectedEvent,
-                onExport: exportCurrent,
-                canCopySelected: selectedEvent != nil
+                onExport: exportCurrent
             )
 
             if let exportError {
@@ -92,20 +83,12 @@ struct DiagnosticsSettingsView: View {
                 Divider()
             }
 
-            if diagnosticsLogger.events.isEmpty {
-                ContentUnavailableView("No Events", systemImage: "list.bullet.rectangle")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if filteredEvents.isEmpty {
-                ContentUnavailableView("No Matching Events", systemImage: "line.3.horizontal.decrease.circle")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                List(selection: $selectedEventID) {
-                    ForEach(filteredEvents.reversed()) { event in
-                        DiagnosticEventRow(event: event)
-                            .tag(event.id)
-                    }
-                }
-            }
+            DiagnosticEventList(
+                diagnosticsLogger: diagnosticsLogger,
+                severityFilter: severityFilter,
+                selectedCategory: selectedCategory,
+                selectedEventID: $selectedEventID
+            )
         }
     }
 
@@ -233,16 +216,51 @@ private enum DiagnosticSeverityFilter: String, CaseIterable, Identifiable {
     }
 }
 
+private extension Array where Element == DiagnosticEvent {
+    func matching(
+        severityFilter: DiagnosticSeverityFilter,
+        selectedCategory: DiagnosticCategory?
+    ) -> [DiagnosticEvent] {
+        filter { event in
+            let severityMatches: Bool
+            switch severityFilter {
+            case .all:
+                severityMatches = true
+            case .warningsAndErrors:
+                severityMatches = event.level == .warning || event.level == .error
+            }
+
+            let categoryMatches = selectedCategory.map { $0 == event.category } ?? true
+            return severityMatches && categoryMatches
+        }
+    }
+}
+
 private struct DiagnosticsToolbar: View {
-    let eventCount: Int
-    let filteredEventCount: Int
+    @Bindable var diagnosticsLogger: DiagnosticsLogger
     let clear: () -> Void
     @Binding var exportFormat: DiagnosticsExporter.Format
     @Binding var severityFilter: DiagnosticSeverityFilter
     @Binding var selectedCategory: DiagnosticCategory?
+    @Binding var selectedEventID: DiagnosticEvent.ID?
     let onCopySelected: () -> Void
     let onExport: () -> Void
-    let canCopySelected: Bool
+
+    private var eventCount: Int {
+        diagnosticsLogger.events.count
+    }
+
+    private var filteredEventCount: Int {
+        diagnosticsLogger.events.matching(
+            severityFilter: severityFilter,
+            selectedCategory: selectedCategory
+        ).count
+    }
+
+    private var canCopySelected: Bool {
+        guard let selectedEventID else { return false }
+        return diagnosticsLogger.events.contains { $0.id == selectedEventID }
+    }
 
     var body: some View {
         HStack {
@@ -296,6 +314,37 @@ private struct DiagnosticsToolbar: View {
                 .disabled(eventCount == 0)
         }
         .padding()
+    }
+}
+
+private struct DiagnosticEventList: View {
+    @Bindable var diagnosticsLogger: DiagnosticsLogger
+    let severityFilter: DiagnosticSeverityFilter
+    let selectedCategory: DiagnosticCategory?
+    @Binding var selectedEventID: DiagnosticEvent.ID?
+
+    private var filteredEvents: [DiagnosticEvent] {
+        diagnosticsLogger.events.matching(
+            severityFilter: severityFilter,
+            selectedCategory: selectedCategory
+        )
+    }
+
+    var body: some View {
+        if diagnosticsLogger.events.isEmpty {
+            ContentUnavailableView("No Events", systemImage: "list.bullet.rectangle")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if filteredEvents.isEmpty {
+            ContentUnavailableView("No Matching Events", systemImage: "line.3.horizontal.decrease.circle")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            List(selection: $selectedEventID) {
+                ForEach(filteredEvents.reversed()) { event in
+                    DiagnosticEventRow(event: event)
+                        .tag(event.id)
+                }
+            }
+        }
     }
 }
 
@@ -552,277 +601,378 @@ private struct ScreenStatusSection: View {
 }
 
 private struct LiveStatusSection: View {
-    @Bindable var liveStatus: LiveDiagnosticsStatus
-    @Bindable var settingsStore: SettingsStore
+    let liveStatus: LiveDiagnosticsStatus
+    let settingsStore: SettingsStore
     var launchAtLoginService: LaunchAtLoginService?
     var scanCoordinator: MenuBarScanCoordinator?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text("Live Status")
-                    .font(.headline)
+            LiveStatusHeader(scanCoordinator: scanCoordinator)
 
-                Spacer()
-
-                Button("Refresh AX Scan", systemImage: "arrow.clockwise") {
-                    scanCoordinator?.requestManualRefresh()
-                }
-                .disabled(scanCoordinator?.isManualRefreshAvailable != true)
+            VStack(alignment: .leading, spacing: 4) {
+                LiveStatusCoreGrid(liveStatus: liveStatus)
+                LiveStatusAccessibilityGrid(liveStatus: liveStatus)
+                LiveStatusSearchGrid(liveStatus: liveStatus)
+                LiveStatusSecondBarGrid(liveStatus: liveStatus)
+                LiveStatusIconMoveGrid(liveStatus: liveStatus, settingsStore: settingsStore)
+                LiveStatusAutomationGrid(
+                    liveStatus: liveStatus,
+                    settingsStore: settingsStore,
+                    launchAtLoginService: launchAtLoginService
+                )
             }
-            .padding(.top, 4)
 
-            Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 4) {
-                GridRow {
-                    Text("Visibility State")
-                    Text(liveStatus.visibilityState.rawValue)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                GridRow {
-                    Text("Primary Separator Length")
-                    Text(liveStatus.primarySeparatorLength, format: .number.precision(.fractionLength(0)))
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                GridRow {
-                    Text("Always-Hidden Separator Length")
-                    Text(liveStatus.alwaysHiddenSeparatorLength, format: .number.precision(.fractionLength(0)))
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                GridRow {
-                    Text("Always-Hidden Installed")
-                    Text(liveStatus.alwaysHiddenSeparatorInstalled ? "Yes" : "No")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                GridRow {
-                    Text("Hotkey Registered")
-                    Text(liveStatus.hotkeyRegistered ? "Yes" : "No")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                GridRow {
-                    Text("Find Icon Hotkey")
-                    Text(liveStatus.searchHotkeyRegistered ? "Registered" : "Not Registered")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                GridRow {
-                    Text("Hover Polling")
-                    Text(liveStatus.hoverPollingActive ? "Active" : "Inactive")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                GridRow {
-                    Text("Auto-Rehide")
-                    Text(liveStatus.autoRehideScheduled ? "Scheduled" : "Idle")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                GridRow {
-                    Text("Last Rehide Reason")
-                    Text(liveStatus.lastRehideReason ?? "—")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                GridRow {
-                    Text("Accessibility Permission")
-                    Text(liveStatus.accessibilityPermissionStatus.displayName)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                GridRow {
-                    Text("Scanned Items")
-                    Text(liveStatus.scannedMenuBarItems.count, format: .number)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                GridRow {
-                    Text("Visible / Hidden / Always Hidden / Unknown")
-                    Text("\(liveStatus.menuBarScanVisibleCount) / \(liveStatus.menuBarScanHiddenCount) / \(liveStatus.menuBarScanAlwaysHiddenCount) / \(liveStatus.menuBarScanUnknownCount)")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                GridRow {
-                    Text("Last AX Scan")
-                    if let lastMenuBarScanTime = liveStatus.lastMenuBarScanTime {
-                        Text(lastMenuBarScanTime, format: Date.FormatStyle(date: .omitted, time: .standard))
-                            .foregroundStyle(.secondary)
-                    } else {
-                        Text("—")
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                }
-                GridRow {
-                    Text("AX Failures")
-                    Text(liveStatus.menuBarScanFailuresCount, format: .number)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                GridRow {
-                    Text("Search Index Items")
-                    Text(liveStatus.searchIndexItemCount, format: .number)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                GridRow {
-                    Text("Last Search Query")
-                    Text(liveStatus.lastSearchQuery.isEmpty ? "—" : liveStatus.lastSearchQuery)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                GridRow {
-                    Text("Last Search Selection")
-                    Text(liveStatus.lastSearchSelectedItem ?? "—")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                GridRow {
-                    Text("Last Search Activation")
-                    Text(liveStatus.lastSearchActivationOutcome ?? "—")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                GridRow {
-                    Text("Second Bar Visible")
-                    Text(liveStatus.secondBarVisible ? "Yes" : "No")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                GridRow {
-                    Text("Second Bar Items")
-                    Text(liveStatus.secondBarItemCount, format: .number)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                GridRow {
-                    Text("Second Bar Screen")
-                    Text(liveStatus.secondBarCurrentScreen ?? "—")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                GridRow {
-                    Text("Second Bar Position")
-                    Text(liveStatus.secondBarLastPosition ?? "—")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                GridRow {
-                    Text("Last Second Bar Selection")
-                    Text(liveStatus.lastSecondBarSelectedItem ?? "—")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                GridRow {
-                    Text("Icon Move In Progress")
-                    Text(liveStatus.iconMoveInProgress ? "Yes" : "No")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                GridRow {
-                    Text("Last Icon Move Result")
-                    Text(liveStatus.lastIconMoveResult ?? "—")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                GridRow {
-                    Text("Last Icon Move Error")
-                    Text(liveStatus.lastIconMoveError ?? "—")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                GridRow {
-                    Text("Last Drag Plan")
-                    Text(liveStatus.lastIconMoveDragPlanSummary ?? "—")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                GridRow {
-                    Text("Last Move Verification")
-                    Text(liveStatus.lastIconMoveVerificationSummary ?? "—")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                GridRow {
-                    Text("Move Retries")
-                    Text(liveStatus.lastIconMoveRetriesCount, format: .number)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                GridRow {
-                    Text("Experimental Icon Moving")
-                    Text(settingsStore.iconMovingEnabled ? "Enabled" : "Disabled")
-                        .foregroundStyle(settingsStore.iconMovingEnabled ? .orange : .secondary)
-                    Spacer()
-                }
-                GridRow {
-                    Text("Smart Triggers")
-                    Text(settingsStore.smartTriggersEnabled ? "Enabled" : "Disabled")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                GridRow {
-                    Text("Automation Paused")
-                    Text(settingsStore.automationPaused || liveStatus.automationPaused ? "Yes" : "No")
-                        .foregroundStyle(settingsStore.automationPaused || liveStatus.automationPaused ? .orange : .secondary)
-                    Spacer()
-                }
-                GridRow {
-                    Text("Launch at Login Status")
-                    Text(launchAtLoginService?.statusDisplayName ?? "Unavailable")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                GridRow {
-                    Text("Last Login Item Action")
-                    Text(launchAtLoginService?.lastRegistrationResult?.displayName ?? "—")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                GridRow {
-                    Text("Active Profile")
-                    Text(liveStatus.activeProfileName ?? "—")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                GridRow {
-                    Text("Last Trigger Fired")
-                    Text(liveStatus.lastTriggerFired ?? "—")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                GridRow {
-                    Text("Profile Apply Log")
-                    Text(liveStatus.lastProfileApplyLog.isEmpty ? "—" : liveStatus.lastProfileApplyLog)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                GridRow {
-                    Text("Trigger Evaluation")
-                    Text(liveStatus.triggerEvaluationLog.isEmpty ? "—" : liveStatus.triggerEvaluationLog)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-            }
-            .padding(.horizontal)
-
-            Group {
-                if liveStatus.scannedMenuBarItems.isEmpty {
-                    Text("No Accessibility snapshots yet.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal)
-                } else {
-                    MenuBarSnapshotTable(snapshots: liveStatus.scannedMenuBarItems)
-                        .frame(minHeight: 180, maxHeight: 240)
-                        .padding(.horizontal)
-                }
-            }
-            .padding(.bottom, 8)
+            LiveMenuBarSnapshotSection(liveStatus: liveStatus)
         }
+    }
+}
+
+private struct LiveStatusHeader: View {
+    var scanCoordinator: MenuBarScanCoordinator?
+
+    var body: some View {
+        HStack {
+            Text("Live Status")
+                .font(.headline)
+
+            Spacer()
+
+            Button("Refresh AX Scan", systemImage: "arrow.clockwise") {
+                scanCoordinator?.requestManualRefresh()
+            }
+            .disabled(scanCoordinator?.isManualRefreshAvailable != true)
+        }
+        .padding(.top, 4)
+    }
+}
+
+private struct LiveStatusGrid<Content: View>: View {
+    let content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    var body: some View {
+        Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 4) {
+            content
+        }
+        .padding(.horizontal)
+    }
+}
+
+private struct LiveStatusCoreGrid: View {
+    let liveStatus: LiveDiagnosticsStatus
+
+    var body: some View {
+        LiveStatusGrid {
+            GridRow {
+                Text("Visibility State")
+                Text(liveStatus.visibilityState.rawValue)
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            GridRow {
+                Text("Primary Separator Length")
+                Text(liveStatus.primarySeparatorLength, format: .number.precision(.fractionLength(0)))
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            GridRow {
+                Text("Always-Hidden Separator Length")
+                Text(liveStatus.alwaysHiddenSeparatorLength, format: .number.precision(.fractionLength(0)))
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            GridRow {
+                Text("Always-Hidden Installed")
+                Text(liveStatus.alwaysHiddenSeparatorInstalled ? "Yes" : "No")
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            GridRow {
+                Text("Hotkey Registered")
+                Text(liveStatus.hotkeyRegistered ? "Yes" : "No")
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            GridRow {
+                Text("Find Icon Hotkey")
+                Text(liveStatus.searchHotkeyRegistered ? "Registered" : "Not Registered")
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            GridRow {
+                Text("Hover Polling")
+                Text(liveStatus.hoverPollingActive ? "Active" : "Inactive")
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            GridRow {
+                Text("Auto-Rehide")
+                Text(liveStatus.autoRehideScheduled ? "Scheduled" : "Idle")
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            GridRow {
+                Text("Last Rehide Reason")
+                Text(liveStatus.lastRehideReason ?? "—")
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+        }
+    }
+}
+
+private struct LiveStatusAccessibilityGrid: View {
+    let liveStatus: LiveDiagnosticsStatus
+
+    var body: some View {
+        LiveStatusGrid {
+            GridRow {
+                Text("Accessibility Permission")
+                Text(liveStatus.accessibilityPermissionStatus.displayName)
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            GridRow {
+                Text("Scanned Items")
+                Text(liveStatus.scannedMenuBarItems.count, format: .number)
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            GridRow {
+                Text("Visible / Hidden / Always Hidden / Unknown")
+                Text("\(liveStatus.menuBarScanVisibleCount) / \(liveStatus.menuBarScanHiddenCount) / \(liveStatus.menuBarScanAlwaysHiddenCount) / \(liveStatus.menuBarScanUnknownCount)")
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            GridRow {
+                Text("Last AX Scan")
+                if let lastMenuBarScanTime = liveStatus.lastMenuBarScanTime {
+                    Text(lastMenuBarScanTime, format: Date.FormatStyle(date: .omitted, time: .standard))
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("—")
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+            GridRow {
+                Text("AX Failures")
+                Text(liveStatus.menuBarScanFailuresCount, format: .number)
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+        }
+    }
+}
+
+private struct LiveStatusSearchGrid: View {
+    let liveStatus: LiveDiagnosticsStatus
+
+    var body: some View {
+        LiveStatusGrid {
+            GridRow {
+                Text("Search Index Items")
+                Text(liveStatus.searchIndexItemCount, format: .number)
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            GridRow {
+                Text("Last Search Query")
+                Text(liveStatus.lastSearchQuery.isEmpty ? "—" : liveStatus.lastSearchQuery)
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            GridRow {
+                Text("Last Search Selection")
+                Text(liveStatus.lastSearchSelectedItem ?? "—")
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            GridRow {
+                Text("Last Search Activation")
+                Text(liveStatus.lastSearchActivationOutcome ?? "—")
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+        }
+    }
+}
+
+private struct LiveStatusSecondBarGrid: View {
+    let liveStatus: LiveDiagnosticsStatus
+
+    var body: some View {
+        LiveStatusGrid {
+            GridRow {
+                Text("Second Bar Visible")
+                Text(liveStatus.secondBarVisible ? "Yes" : "No")
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            GridRow {
+                Text("Second Bar Items")
+                Text(liveStatus.secondBarItemCount, format: .number)
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            GridRow {
+                Text("Second Bar Screen")
+                Text(liveStatus.secondBarCurrentScreen ?? "—")
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            GridRow {
+                Text("Second Bar Position")
+                Text(liveStatus.secondBarLastPosition ?? "—")
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            GridRow {
+                Text("Last Second Bar Selection")
+                Text(liveStatus.lastSecondBarSelectedItem ?? "—")
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+        }
+    }
+}
+
+private struct LiveStatusIconMoveGrid: View {
+    let liveStatus: LiveDiagnosticsStatus
+    let settingsStore: SettingsStore
+
+    var body: some View {
+        LiveStatusGrid {
+            GridRow {
+                Text("Icon Move In Progress")
+                Text(liveStatus.iconMoveInProgress ? "Yes" : "No")
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            GridRow {
+                Text("Last Icon Move Result")
+                Text(liveStatus.lastIconMoveResult ?? "—")
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            GridRow {
+                Text("Last Icon Move Error")
+                Text(liveStatus.lastIconMoveError ?? "—")
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            GridRow {
+                Text("Last Drag Plan")
+                Text(liveStatus.lastIconMoveDragPlanSummary ?? "—")
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            GridRow {
+                Text("Last Move Verification")
+                Text(liveStatus.lastIconMoveVerificationSummary ?? "—")
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            GridRow {
+                Text("Move Retries")
+                Text(liveStatus.lastIconMoveRetriesCount, format: .number)
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            GridRow {
+                Text("Experimental Icon Moving")
+                Text(settingsStore.iconMovingEnabled ? "Enabled" : "Disabled")
+                    .foregroundStyle(settingsStore.iconMovingEnabled ? .orange : .secondary)
+                Spacer()
+            }
+        }
+    }
+}
+
+private struct LiveStatusAutomationGrid: View {
+    let liveStatus: LiveDiagnosticsStatus
+    let settingsStore: SettingsStore
+    var launchAtLoginService: LaunchAtLoginService?
+
+    private var isAutomationPaused: Bool {
+        settingsStore.automationPaused || liveStatus.automationPaused
+    }
+
+    var body: some View {
+        LiveStatusGrid {
+            GridRow {
+                Text("Smart Triggers")
+                Text(settingsStore.smartTriggersEnabled ? "Enabled" : "Disabled")
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            GridRow {
+                Text("Automation Paused")
+                Text(isAutomationPaused ? "Yes" : "No")
+                    .foregroundStyle(isAutomationPaused ? .orange : .secondary)
+                Spacer()
+            }
+            GridRow {
+                Text("Launch at Login Status")
+                Text(launchAtLoginService?.statusDisplayName ?? "Unavailable")
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            GridRow {
+                Text("Last Login Item Action")
+                Text(launchAtLoginService?.lastRegistrationResult?.displayName ?? "—")
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            GridRow {
+                Text("Active Profile")
+                Text(liveStatus.activeProfileName ?? "—")
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            GridRow {
+                Text("Last Trigger Fired")
+                Text(liveStatus.lastTriggerFired ?? "—")
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            GridRow {
+                Text("Profile Apply Log")
+                Text(liveStatus.lastProfileApplyLog.isEmpty ? "—" : liveStatus.lastProfileApplyLog)
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            GridRow {
+                Text("Trigger Evaluation")
+                Text(liveStatus.triggerEvaluationLog.isEmpty ? "—" : liveStatus.triggerEvaluationLog)
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+        }
+    }
+}
+
+private struct LiveMenuBarSnapshotSection: View {
+    let liveStatus: LiveDiagnosticsStatus
+
+    var body: some View {
+        Group {
+            if liveStatus.scannedMenuBarItems.isEmpty {
+                Text("No Accessibility snapshots yet.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal)
+            } else {
+                MenuBarSnapshotTable(snapshots: liveStatus.scannedMenuBarItems)
+                    .frame(minHeight: 180, maxHeight: 240)
+                    .padding(.horizontal)
+            }
+        }
+        .padding(.bottom, 8)
     }
 }
 
