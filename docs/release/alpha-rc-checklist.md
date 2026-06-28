@@ -4,22 +4,22 @@ Do not mark an Alpha RC ready until every required item is PASS or has a written
 
 | Item | Required Result | Status | Notes |
 | --- | --- | --- | --- |
-| Working tree | Clean or documented diff | NOT TESTED | |
-| Schemes | `MenuBarDeclutter` canonical; `MenuBar-Manager` deprecated fallback | NOT TESTED | |
-| Unit/UI tests | `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS'` passes | NOT TESTED | |
-| Privacy verification | `scripts/verify_privacy_boundary.sh` passes | NOT TESTED | |
-| QA preflight | `scripts/qa_preflight.sh` passes | NOT TESTED | |
-| Basic Mode | Manual QA pass | NOT TESTED | |
-| Pro permission flow | Enable/request/grant/revoke QA pass | NOT TESTED | |
-| Icon moving | Pass or documented as experimental with known limitations | NOT TESTED | |
-| External display | Tested or explicit hardware gap documented | NOT TESTED | |
-| Notch display | Tested or explicit hardware gap documented | NOT TESTED | |
-| Launch at Login | Installed signed app test pass | NOT TESTED | |
-| Safe Mode recovery | Crash marker and next-launch flag tested | NOT TESTED | |
-| Codesign | `scripts/verify_release_artifact.sh` passes for artifact | NOT TESTED | |
-| Notarization | Attempted or skipped with explicit reason | NOT TESTED | |
-| Version/build | Marketing version and build number reviewed | NOT TESTED | |
-| Known limitations | Included in release notes | NOT TESTED | |
+| Working tree | Clean or documented diff | PASS | Automated validation started from clean commit `a30414e`; this checklist update documents results. |
+| Schemes | `MenuBarDeclutter` canonical; `MenuBar-Manager` deprecated fallback | PASS | `xcodebuild -list` showed both schemes. |
+| Unit/UI tests | `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS'` passes | PASS | Canonical scheme passed: 203 unit tests + 7 UI executions. Result bundle: `/tmp/MenuBarDeclutter-AlphaRCFull.xcresult`. |
+| Privacy verification | `scripts/verify_privacy_boundary.sh` passes | PASS | Source/project privacy check passed; built Release app check also passed with `APP_PATH`. |
+| QA preflight | `scripts/qa_preflight.sh` passes | PASS | Scripted preflight passed tests and privacy verification. |
+| Basic Mode | Manual QA pass | NOT TESTED | Requires hands-on clean first launch, menu bar drag, collapse/expand, hover, auto-rehide, and hotkey validation. |
+| Pro permission flow | Enable/request/grant/revoke QA pass | NOT TESTED | Requires System Settings Accessibility interaction. |
+| Icon moving | Pass or documented as experimental with known limitations | PASS | Experimental limitations are documented; real third-party move QA remains NOT TESTED in the QA run. |
+| External display | Tested or explicit hardware gap documented | PASS | Hardware gap documented in the QA run; not manually tested. |
+| Notch display | Tested or explicit hardware gap documented | PASS | Hardware gap documented in the QA run; not manually tested. |
+| Launch at Login | Installed signed app test pass | NOT TESTED | Requires installed signed app validation through System Settings. |
+| Safe Mode recovery | Crash marker and next-launch flag tested | NOT TESTED | Requires hands-on crash-marker / modifier-key / relaunch validation. |
+| Codesign | `scripts/verify_release_artifact.sh` passes for artifact | PASS | Local Release app passed `scripts/verify_release_artifact.sh build/DerivedData/Build/Products/Release/MenuBarDeclutter.app`. |
+| Notarization | Attempted or skipped with explicit reason | NOT TESTED | Skipped because no Developer ID notarized distribution artifact was produced. |
+| Version/build | Marketing version and build number reviewed | PASS | Release app reports marketing version `1.0`, build `1`, bundle ID `Yongjun-Zhang.MenuBarDeclutter`. |
+| Known limitations | Included in release notes | PASS | `docs/release/alpha-rc-release-notes-2026-06-28.md` links the known limitations and calls out remaining manual QA blockers. |
 
 ## Release Commands
 
