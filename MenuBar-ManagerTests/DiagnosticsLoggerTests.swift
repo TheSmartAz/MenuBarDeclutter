@@ -28,6 +28,26 @@ struct DiagnosticsLoggerTests {
         #expect(logger.events.map(\.message) == ["second"])
     }
 
+    @Test func capacityOneRetainsOnlyMostRecentEvent() {
+        let logger = DiagnosticsLogger(capacity: 1)
+
+        logger.log("first")
+        logger.log("second")
+        logger.log("third")
+
+        #expect(logger.events.map(\.message) == ["third"])
+    }
+
+    @Test func clearEmptiesLoggedEvents() {
+        let logger = DiagnosticsLogger(capacity: 2)
+
+        logger.log("first")
+        logger.log("second")
+        logger.clear()
+
+        #expect(logger.events.isEmpty)
+    }
+
     @Test func structuredEventsKeepCategorySeverityAndMetadata() {
         let logger = DiagnosticsLogger(
             now: { Date(timeIntervalSince1970: 1) },

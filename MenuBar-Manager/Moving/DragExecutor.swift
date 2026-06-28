@@ -27,7 +27,7 @@ nonisolated struct DragExecutor: DragExecuting {
         mouseEventPoster: @escaping (CGEventType, CGPoint, CGEventSource, CGEventFlags) -> Void = { type, point, source, flags in
             Self.postMouse(type, at: point, source: source, flags: flags)
         },
-        pauseHandler: @escaping (TimeInterval) async -> Bool = Self.pause,
+        pauseHandler: @escaping (TimeInterval) async -> Bool = AsyncPause.sleep,
         restoreMousePosition: Bool = true
     ) {
         self.eventSourceFactory = eventSourceFactory
@@ -143,16 +143,4 @@ nonisolated struct DragExecutor: DragExecuting {
         event?.post(tap: .cghidEventTap)
     }
 
-    private static func pause(_ interval: TimeInterval) async -> Bool {
-        guard !Task.isCancelled else { return false }
-        guard interval.isFinite, interval > 0 else { return true }
-
-        let nanoseconds = UInt64((interval * 1_000_000_000).rounded())
-        do {
-            try await Task.sleep(nanoseconds: nanoseconds)
-            return !Task.isCancelled
-        } catch {
-            return false
-        }
-    }
 }

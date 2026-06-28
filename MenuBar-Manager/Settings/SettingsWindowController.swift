@@ -14,23 +14,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private let menuBarScanCoordinator: MenuBarScanCoordinator?
     private let profileStore: ProfileStore?
     private let triggerService: TriggerService?
-
-    private let onBehaviorChanged: (() -> Void)?
-    private let onSearchChanged: (() -> Void)?
-    private let onSecondBarChanged: (() -> Void)?
-    private let onPrivacyChanged: (() -> Void)?
-    private let onProfileDryRun: ((ProfileModel) -> ProfileApplicationDryRun)?
-    private let onProfileApply: ((ProfileModel) -> ProfileApplicationDryRun)?
-    private let onTriggersChanged: (() -> Void)?
-    private let onResetLayout: (() -> Void)?
-    private let onResetAllSettings: (() -> Void)?
-    private let onResetMovingWarnings: (() -> Void)?
-    private let onShowOnboarding: (() -> Void)?
-    private let onRunHealthCheck: (() -> Void)?
-    private let onFixHealthIssues: (() -> Void)?
-    private let onResetBasicMode: (() -> Void)?
-    private let onDisableProMode: (() -> Void)?
-    private let onEnterSafeModeNextLaunch: (() -> Void)?
+    private let actions: SettingsActions
 
     init(
         settingsStore: SettingsStore,
@@ -43,22 +27,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         menuBarScanCoordinator: MenuBarScanCoordinator? = nil,
         profileStore: ProfileStore? = nil,
         triggerService: TriggerService? = nil,
-        onBehaviorChanged: (() -> Void)? = nil,
-        onSearchChanged: (() -> Void)? = nil,
-        onSecondBarChanged: (() -> Void)? = nil,
-        onPrivacyChanged: (() -> Void)? = nil,
-        onProfileDryRun: ((ProfileModel) -> ProfileApplicationDryRun)? = nil,
-        onProfileApply: ((ProfileModel) -> ProfileApplicationDryRun)? = nil,
-        onTriggersChanged: (() -> Void)? = nil,
-        onResetLayout: (() -> Void)? = nil,
-        onResetAllSettings: (() -> Void)? = nil,
-        onResetMovingWarnings: (() -> Void)? = nil,
-        onShowOnboarding: (() -> Void)? = nil,
-        onRunHealthCheck: (() -> Void)? = nil,
-        onFixHealthIssues: (() -> Void)? = nil,
-        onResetBasicMode: (() -> Void)? = nil,
-        onDisableProMode: (() -> Void)? = nil,
-        onEnterSafeModeNextLaunch: (() -> Void)? = nil
+        actions: SettingsActions = .empty
     ) {
         self.settingsStore = settingsStore
         self.diagnosticsLogger = diagnosticsLogger
@@ -70,22 +39,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         self.menuBarScanCoordinator = menuBarScanCoordinator
         self.profileStore = profileStore
         self.triggerService = triggerService
-        self.onBehaviorChanged = onBehaviorChanged
-        self.onSearchChanged = onSearchChanged
-        self.onSecondBarChanged = onSecondBarChanged
-        self.onPrivacyChanged = onPrivacyChanged
-        self.onProfileDryRun = onProfileDryRun
-        self.onProfileApply = onProfileApply
-        self.onTriggersChanged = onTriggersChanged
-        self.onResetLayout = onResetLayout
-        self.onResetAllSettings = onResetAllSettings
-        self.onResetMovingWarnings = onResetMovingWarnings
-        self.onShowOnboarding = onShowOnboarding
-        self.onRunHealthCheck = onRunHealthCheck
-        self.onFixHealthIssues = onFixHealthIssues
-        self.onResetBasicMode = onResetBasicMode
-        self.onDisableProMode = onDisableProMode
-        self.onEnterSafeModeNextLaunch = onEnterSafeModeNextLaunch
+        self.actions = actions
 
         let contentView = SettingsRootView(
             navigationModel: navigationModel,
@@ -99,22 +53,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             menuBarScanCoordinator: menuBarScanCoordinator,
             profileStore: profileStore,
             triggerService: triggerService,
-            onBehaviorChanged: onBehaviorChanged,
-            onSearchChanged: onSearchChanged,
-            onSecondBarChanged: onSecondBarChanged,
-            onPrivacyChanged: onPrivacyChanged,
-            onProfileDryRun: onProfileDryRun,
-            onProfileApply: onProfileApply,
-            onTriggersChanged: onTriggersChanged,
-            onResetLayout: onResetLayout,
-            onResetAllSettings: onResetAllSettings,
-            onResetMovingWarnings: onResetMovingWarnings,
-            onShowOnboarding: onShowOnboarding,
-            onRunHealthCheck: onRunHealthCheck,
-            onFixHealthIssues: onFixHealthIssues,
-            onResetBasicMode: onResetBasicMode,
-            onDisableProMode: onDisableProMode,
-            onEnterSafeModeNextLaunch: onEnterSafeModeNextLaunch
+            actions: actions
         )
 
         let window = NSWindow(

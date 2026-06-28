@@ -101,6 +101,42 @@ struct DiagnosticEvent: Identifiable, Equatable, Sendable {
     }
 }
 
+private struct DiagnosticEventRingBuffer {
+    private let capacity: Int
+    private var storage: [DiagnosticEvent?]
+    private var startIndex = 0
+    private(set) var count = 0
+
+    init(capacity: Int) {
+        self.capacity = max(1, capacity)
+        self.storage = Array(repeating: nil, count: self.capacity)
+    }
+
+    var events: [DiagnosticEvent] {
+        guard count > 0 else { return [] }
+
+        return (0..<count).compactMap { offset in
+            storage[(startIndex + offset) % capacity]
+        }
+    }
+
+    mutating func append(_ event: DiagnosticEvent) {
+        if count < capacity {
+            storage[(startIndex + count) % capacity] = event
+            count += 1
+        } else {
+            storage[startIndex] = event
+            startIndex = (startIndex + 1) % capacity
+        }
+    }
+
+    mutating func removeAll() {
+        storage = Array(repeating: nil, count: capacity)
+        startIndex = 0
+        count = 0
+    }
+}
+
 /// Hot-path-friendly case-insensitive substring check. Avoids the
 /// `message.lowercased()` full-string allocation previously paid on every `log()`
 /// call. `String.range(of:options:.caseInsensitive)` performs an in-place
@@ -119,18 +155,21 @@ private extension String {
 @MainActor
 @Observable
 final class DiagnosticsLogger {
-    @ObservationIgnored private let capacity: Int
     @ObservationIgnored private let now: () -> Date
     @ObservationIgnored private let idProvider: () -> UUID
 
-    private(set) var events: [DiagnosticEvent] = []
+    private var eventBuffer: DiagnosticEventRingBuffer
+
+    var events: [DiagnosticEvent] {
+        eventBuffer.events
+    }
 
     init(
         capacity: Int = AppConstants.diagnosticsRingBufferLimit,
         now: @escaping () -> Date = { Date() },
         idProvider: @escaping () -> UUID = { UUID() }
     ) {
-        self.capacity = max(1, capacity)
+        self.eventBuffer = DiagnosticEventRingBuffer(capacity: capacity)
         self.now = now
         self.idProvider = idProvider
     }
@@ -150,19 +189,19 @@ final class DiagnosticsLogger {
             metadata: Self.sanitized(metadata)
         )
 
-        events.append(event)
-
-        if events.count > capacity {
-            events.removeFirst(events.count - capacity)
-        }
+        eventBuffer.append(event)
 
         #if DEBUG
         print("[\(AppConstants.displayName)] [\(event.category.displayName)] [\(level.rawValue.uppercased())] \(message)")
         #endif
     }
 
+    func clear() {
+        eventBuffer.removeAll()
+    }
+
     func removeAll() {
-        events.removeAll()
+        clear()
     }
 
     private static func sanitized(_ metadata: [String: String]) -> [String: String] {

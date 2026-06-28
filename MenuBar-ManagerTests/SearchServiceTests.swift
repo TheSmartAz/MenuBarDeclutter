@@ -1,4 +1,3 @@
-import CoreGraphics
 import Foundation
 import Testing
 @testable import MenuBarDeclutter
@@ -91,17 +90,12 @@ struct SearchServiceTests {
         zone: MenuBarZone = .visible,
         timestamp: Date = Date(timeIntervalSince1970: 5)
     ) -> MenuBarItemSnapshot {
-        MenuBarItemSnapshot(
+        TestSnapshots.makeSnapshot(
             id: id,
             title: title,
-            role: "AXMenuBarItem",
-            subrole: nil,
-            frame: CGRect(x: 100, y: 40, width: 24, height: 22),
-            owningProcessIdentifier: 42,
             owningApplicationName: appName,
             bundleIdentifier: bundleID,
             zone: zone,
-            isLikelySystemItem: false,
             scanTimestamp: timestamp
         )
     }

@@ -5,8 +5,8 @@ import Foundation
 /// Shared test support helpers for the MenuBarDeclutter unit-test target.
 ///
 /// These tiny factories exist to remove boilerplate-duplication across test suites:
-/// - `TestDefaults.makeIsolated()` replaces the ~40 inline `UserDefaults(suiteName:)`
-///   + `removePersistentDomain` + `defer` blocks that previously appeared across 14 files.
+/// - `TestDefaults.makeIsolated()` and `TestDefaults.withIsolatedDefaults(...)` replace
+///   inline `UserDefaults(suiteName:)` + `removePersistentDomain` setup blocks.
 /// - `TestSnapshots.makeSnapshot()` unifies the 5 near-identical `MenuBarItemSnapshot`
 ///   factories re-implemented in `AccessibilityDiscoveryLogicTests`,
 ///   `IconMovePlanningTests`, `ProfileApplicationDryRunTests`, `SearchServiceTests`,
@@ -26,9 +26,8 @@ import Foundation
 
 enum TestDefaults {
     /// Returns a fresh, isolated `UserDefaults` instance with its persistent domain
-    /// pre-cleared. The caller is responsible for `defer defaults.removePersistentDomain(...)`
-    /// if they need deterministically clean teardown; see `withIsolatedDefaults` for the
-    /// auto-cleanup variant.
+    /// pre-cleared. Prefer `withIsolatedDefaults` when a test can keep setup and assertions
+    /// inside one closure and should guarantee deterministic cleanup.
     static func makeIsolated() -> UserDefaults {
         let suiteName = "MenuBarDeclutterTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!

@@ -6,238 +6,184 @@ import Testing
 @MainActor
 struct HidingServiceTests {
     @Test func defaultsToExpandedWhenStoreIsClean() {
-        let suiteName = "HidingServiceTests.clean.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
-        defaults.removePersistentDomain(forName: suiteName)
-        defer { defaults.removePersistentDomain(forName: suiteName) }
-
-        let store = SettingsStore(defaults: defaults)
-        let logger = DiagnosticsLogger()
-        let service = HidingService(settingsStore: store, diagnosticsLogger: logger)
-
-        #expect(service.currentState == .expanded)
-        #expect(store.isCollapsed == false)
+        withHidingService { _, store, _, service in
+            #expect(service.currentState == .expanded)
+            #expect(store.isCollapsed == false)
+        }
     }
 
     @Test func startsFromPersistedCollapsed() {
-        let suiteName = "HidingServiceTests.persisted.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
-        defaults.removePersistentDomain(forName: suiteName)
-        defer { defaults.removePersistentDomain(forName: suiteName) }
-
-        defaults.set(true, forKey: "isCollapsed")
-        let store = SettingsStore(defaults: defaults)
-        let logger = DiagnosticsLogger()
-        let service = HidingService(settingsStore: store, diagnosticsLogger: logger)
-
-        #expect(service.currentState == .collapsed)
-        #expect(store.isCollapsed == true)
+        withHidingService(configureDefaults: { defaults in
+            defaults.set(true, forKey: "isCollapsed")
+        }) { _, store, _, service in
+            #expect(service.currentState == .collapsed)
+            #expect(store.isCollapsed == true)
+        }
     }
 
     @Test func collapseThenExpandTransitions() {
-        let suiteName = "HidingServiceTests.transitions.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
-        defaults.removePersistentDomain(forName: suiteName)
-        defer { defaults.removePersistentDomain(forName: suiteName) }
+        withHidingService { _, store, _, service in
+            var observedStates: [HidingState] = []
+            service.onStateChange = { observedStates.append($0) }
 
-        let store = SettingsStore(defaults: defaults)
-        let logger = DiagnosticsLogger()
+            #expect(service.currentState == .expanded)
 
-        var observedStates: [HidingState] = []
-        let service = HidingService(settingsStore: store, diagnosticsLogger: logger)
-        service.onStateChange = { observedStates.append($0) }
+            service.collapse()
+            #expect(service.currentState == .collapsed)
+            #expect(store.isCollapsed == true)
 
-        #expect(service.currentState == .expanded)
+            service.expand()
+            #expect(service.currentState == .expanded)
+            #expect(store.isCollapsed == false)
 
-        service.collapse()
-        #expect(service.currentState == .collapsed)
-        #expect(store.isCollapsed == true)
-
-        service.expand()
-        #expect(service.currentState == .expanded)
-        #expect(store.isCollapsed == false)
-
-        #expect(observedStates == [.collapsed, .expanded])
+            #expect(observedStates == [.collapsed, .expanded])
+        }
     }
 
     @Test func toggleFlipsStateAndPersists() {
-        let suiteName = "HidingServiceTests.toggle.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
-        defaults.removePersistentDomain(forName: suiteName)
-        defer { defaults.removePersistentDomain(forName: suiteName) }
+        withHidingService { _, store, _, service in
+            service.toggle()
+            #expect(service.currentState == .collapsed)
+            #expect(store.isCollapsed == true)
 
-        let store = SettingsStore(defaults: defaults)
-        let logger = DiagnosticsLogger()
-        let service = HidingService(settingsStore: store, diagnosticsLogger: logger)
-
-        service.toggle()
-        #expect(service.currentState == .collapsed)
-        #expect(store.isCollapsed == true)
-
-        service.toggle()
-        #expect(service.currentState == .expanded)
-        #expect(store.isCollapsed == false)
+            service.toggle()
+            #expect(service.currentState == .expanded)
+            #expect(store.isCollapsed == false)
+        }
     }
 
     @Test func reapplyDoesNotChangeStateButReposts() {
-        let suiteName = "HidingServiceTests.reapply.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
-        defaults.removePersistentDomain(forName: suiteName)
-        defer { defaults.removePersistentDomain(forName: suiteName) }
+        withHidingService { _, _, logger, service in
+            var calls = 0
+            var visibilityCalls = 0
+            let notifications = HidingNotificationProbe()
+            service.onStateChange = { _ in calls += 1 }
+            service.onVisibilityChange = { _ in visibilityCalls += 1 }
+            NotificationCenter.default.addObserver(
+                notifications,
+                selector: #selector(HidingNotificationProbe.handleStateChange(_:)),
+                name: HidingService.stateDidChangeNotification,
+                object: service
+            )
+            NotificationCenter.default.addObserver(
+                notifications,
+                selector: #selector(HidingNotificationProbe.handleVisibilityChange(_:)),
+                name: HidingService.visibilityDidChangeNotification,
+                object: service
+            )
+            defer { NotificationCenter.default.removeObserver(notifications) }
 
-        let store = SettingsStore(defaults: defaults)
-        let logger = DiagnosticsLogger()
+            service.collapse()
+            let callsAfterCollapse = calls
+            let visibilityCallsAfterCollapse = visibilityCalls
+            let stateNotificationsAfterCollapse = notifications.stateChangeCount
+            let visibilityNotificationsAfterCollapse = notifications.visibilityChangeCount
 
-        var calls = 0
-        var visibilityCalls = 0
-        let notifications = HidingNotificationProbe()
-        let service = HidingService(settingsStore: store, diagnosticsLogger: logger)
-        service.onStateChange = { _ in calls += 1 }
-        service.onVisibilityChange = { _ in visibilityCalls += 1 }
-        NotificationCenter.default.addObserver(
-            notifications,
-            selector: #selector(HidingNotificationProbe.handleStateChange(_:)),
-            name: HidingService.stateDidChangeNotification,
-            object: service
-        )
-        NotificationCenter.default.addObserver(
-            notifications,
-            selector: #selector(HidingNotificationProbe.handleVisibilityChange(_:)),
-            name: HidingService.visibilityDidChangeNotification,
-            object: service
-        )
-        defer { NotificationCenter.default.removeObserver(notifications) }
-
-        service.collapse()
-        let callsAfterCollapse = calls
-        let visibilityCallsAfterCollapse = visibilityCalls
-        let stateNotificationsAfterCollapse = notifications.stateChangeCount
-        let visibilityNotificationsAfterCollapse = notifications.visibilityChangeCount
-
-        service.applyState()
-        #expect(calls == callsAfterCollapse + 1)
-        #expect(visibilityCalls == visibilityCallsAfterCollapse + 1)
-        #expect(notifications.stateChangeCount == stateNotificationsAfterCollapse + 1)
-        #expect(notifications.visibilityChangeCount == visibilityNotificationsAfterCollapse + 1)
-        #expect(service.currentState == .collapsed)
-        #expect(logger.events.last?.message == "Visibility state re-applied (collapsed).")
+            service.applyState()
+            #expect(calls == callsAfterCollapse + 1)
+            #expect(visibilityCalls == visibilityCallsAfterCollapse + 1)
+            #expect(notifications.stateChangeCount == stateNotificationsAfterCollapse + 1)
+            #expect(notifications.visibilityChangeCount == visibilityNotificationsAfterCollapse + 1)
+            #expect(service.currentState == .collapsed)
+            #expect(logger.events.last?.message == "Visibility state re-applied (collapsed).")
+        }
     }
 
     @Test func noOpVisibilityTransitionDoesNotNotifyObservers() {
-        let suiteName = "HidingServiceTests.noop.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
-        defaults.removePersistentDomain(forName: suiteName)
-        defer { defaults.removePersistentDomain(forName: suiteName) }
+        withHidingService { _, _, logger, service in
+            var stateCalls = 0
+            var visibilityCalls = 0
+            let notifications = HidingNotificationProbe()
+            service.onStateChange = { _ in stateCalls += 1 }
+            service.onVisibilityChange = { _ in visibilityCalls += 1 }
+            NotificationCenter.default.addObserver(
+                notifications,
+                selector: #selector(HidingNotificationProbe.handleStateChange(_:)),
+                name: HidingService.stateDidChangeNotification,
+                object: service
+            )
+            NotificationCenter.default.addObserver(
+                notifications,
+                selector: #selector(HidingNotificationProbe.handleVisibilityChange(_:)),
+                name: HidingService.visibilityDidChangeNotification,
+                object: service
+            )
+            defer { NotificationCenter.default.removeObserver(notifications) }
 
-        let store = SettingsStore(defaults: defaults)
-        let logger = DiagnosticsLogger()
+            service.expand()
 
-        var stateCalls = 0
-        var visibilityCalls = 0
-        let notifications = HidingNotificationProbe()
-        let service = HidingService(settingsStore: store, diagnosticsLogger: logger)
-        service.onStateChange = { _ in stateCalls += 1 }
-        service.onVisibilityChange = { _ in visibilityCalls += 1 }
-        NotificationCenter.default.addObserver(
-            notifications,
-            selector: #selector(HidingNotificationProbe.handleStateChange(_:)),
-            name: HidingService.stateDidChangeNotification,
-            object: service
-        )
-        NotificationCenter.default.addObserver(
-            notifications,
-            selector: #selector(HidingNotificationProbe.handleVisibilityChange(_:)),
-            name: HidingService.visibilityDidChangeNotification,
-            object: service
-        )
-        defer { NotificationCenter.default.removeObserver(notifications) }
-
-        service.expand()
-
-        #expect(service.visibilityState == .expanded)
-        #expect(stateCalls == 0)
-        #expect(visibilityCalls == 0)
-        #expect(notifications.stateChangeCount == 0)
-        #expect(notifications.visibilityChangeCount == 0)
-        #expect(logger.events.isEmpty)
+            #expect(service.visibilityState == .expanded)
+            #expect(stateCalls == 0)
+            #expect(visibilityCalls == 0)
+            #expect(notifications.stateChangeCount == 0)
+            #expect(notifications.visibilityChangeCount == 0)
+            #expect(logger.events.isEmpty)
+        }
     }
 
     @Test func reloadedStoreReflectsPersistedState() {
-        let suiteName = "HidingServiceTests.persists.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
-        defaults.removePersistentDomain(forName: suiteName)
-        defer { defaults.removePersistentDomain(forName: suiteName) }
+        withHidingService { defaults, _, logger, service in
+            service.collapse()
 
-        let store = SettingsStore(defaults: defaults)
-        let logger = DiagnosticsLogger()
-        let service = HidingService(settingsStore: store, diagnosticsLogger: logger)
-        service.collapse()
+            // Reconstruct store from the same backing defaults and assert it sees
+            // the persisted `isCollapsed` flag.
+            let reloaded = SettingsStore(defaults: defaults)
+            let reloadedService = HidingService(settingsStore: reloaded, diagnosticsLogger: logger)
 
-        // Reconstruct store from the same backing defaults and assert it sees
-        // the persisted `isCollapsed` flag.
-        let reloaded = SettingsStore(defaults: defaults)
-        let reloadedService = HidingService(settingsStore: reloaded, diagnosticsLogger: logger)
-
-        #expect(reloadedService.currentState == .collapsed)
-        #expect(reloaded.isCollapsed == true)
+            #expect(reloadedService.currentState == .collapsed)
+            #expect(reloaded.isCollapsed == true)
+        }
     }
 
     // MARK: Phase 2 visibility state
 
     @Test func visibilityStateDefaultsToExpanded() {
-        let suiteName = "HidingServiceTests.visibility.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
-        defaults.removePersistentDomain(forName: suiteName)
-        defer { defaults.removePersistentDomain(forName: suiteName) }
-
-        let store = SettingsStore(defaults: defaults)
-        let logger = DiagnosticsLogger()
-        let service = HidingService(settingsStore: store, diagnosticsLogger: logger)
-
-        #expect(service.visibilityState == .expanded)
-        #expect(service.currentState == .expanded)
+        withHidingService { _, _, _, service in
+            #expect(service.visibilityState == .expanded)
+            #expect(service.currentState == .expanded)
+        }
     }
 
     @Test func revealAllTransitions() {
-        let suiteName = "HidingServiceTests.revealAll.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
-        defaults.removePersistentDomain(forName: suiteName)
-        defer { defaults.removePersistentDomain(forName: suiteName) }
+        withHidingService { _, _, _, service in
+            var observedVisibilities: [HidingVisibilityState] = []
+            service.onVisibilityChange = { observedVisibilities.append($0) }
 
-        let store = SettingsStore(defaults: defaults)
-        let logger = DiagnosticsLogger()
-        var observedVisibilities: [HidingVisibilityState] = []
-        let service = HidingService(settingsStore: store, diagnosticsLogger: logger)
-        service.onVisibilityChange = { observedVisibilities.append($0) }
+            service.revealAll()
+            #expect(service.visibilityState == .revealAll)
+            #expect(service.currentState == .expanded)
+            #expect(observedVisibilities == [.revealAll])
 
-        service.revealAll()
-        #expect(service.visibilityState == .revealAll)
-        #expect(service.currentState == .expanded)
-        #expect(observedVisibilities == [.revealAll])
+            service.toggleRevealAll()
+            #expect(service.visibilityState == .collapsed)
 
-        service.toggleRevealAll()
-        #expect(service.visibilityState == .collapsed)
-
-        // Option-toggle cycle from collapsed should land back on revealAll.
-        service.toggleRevealAll()
-        #expect(service.visibilityState == .revealAll)
+            // Option-toggle cycle from collapsed should land back on revealAll.
+            service.toggleRevealAll()
+            #expect(service.visibilityState == .revealAll)
+        }
     }
 
     @Test func setVisibilityPersistsCollapsed() {
-        let suiteName = "HidingServiceTests.setVisibility.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
-        defaults.removePersistentDomain(forName: suiteName)
-        defer { defaults.removePersistentDomain(forName: suiteName) }
+        withHidingService { _, store, _, service in
+            service.setVisibility(.revealAll)
+            #expect(store.isCollapsed == false)
 
-        let store = SettingsStore(defaults: defaults)
-        let logger = DiagnosticsLogger()
-        let service = HidingService(settingsStore: store, diagnosticsLogger: logger)
+            service.setVisibility(.collapsed)
+            #expect(store.isCollapsed == true)
+        }
+    }
 
-        service.setVisibility(.revealAll)
-        #expect(store.isCollapsed == false)
-
-        service.setVisibility(.collapsed)
-        #expect(store.isCollapsed == true)
+    private func withHidingService(
+        configureDefaults: (UserDefaults) -> Void = { _ in },
+        _ body: (UserDefaults, SettingsStore, DiagnosticsLogger, HidingService) -> Void
+    ) {
+        TestDefaults.withIsolatedDefaults { defaults in
+            configureDefaults(defaults)
+            let store = SettingsStore(defaults: defaults)
+            let logger = DiagnosticsLogger()
+            let service = HidingService(settingsStore: store, diagnosticsLogger: logger)
+            body(defaults, store, logger, service)
+        }
     }
 }
 

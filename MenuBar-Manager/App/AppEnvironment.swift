@@ -84,64 +84,68 @@ final class AppEnvironment {
         menuBarScanCoordinator: menuBarScanCoordinator,
         profileStore: profileAutomationCoordinator.profileStore,
         triggerService: profileAutomationCoordinator.triggerService,
-        onBehaviorChanged: { [weak self] in
-            self?.refreshBehaviorSettings()
-        },
-        onSearchChanged: { [weak self] in
-            self?.refreshSearchSettings()
-        },
-        onSecondBarChanged: { [weak self] in
-            self?.refreshSecondBarSettings()
-        },
-        onPrivacyChanged: { [weak self] in
-            self?.refreshPrivacySettings()
-        },
-        onProfileDryRun: { [weak self] profile in
-            self?.dryRunProfile(profile) ?? ProfileApplicationDryRun(
-                itemsToReveal: [],
-                itemsToMove: [],
-                unavailableItems: [],
-                permissionRequirements: ["Profile service unavailable."]
-            )
-        },
-        onProfileApply: { [weak self] profile in
-            self?.applyProfile(profile) ?? ProfileApplicationDryRun(
-                itemsToReveal: [],
-                itemsToMove: [],
-                unavailableItems: [],
-                permissionRequirements: ["Profile service unavailable."]
-            )
-        },
-        onTriggersChanged: { [weak self] in
-            self?.refreshTriggerSettings()
-        },
-        onResetLayout: { [weak self] in
-            self?.resetAppLayout()
-        },
-        onResetAllSettings: { [weak self] in
-            self?.resetAllSettings()
-        },
-        onResetMovingWarnings: { [weak self] in
-            self?.resetMovingWarnings()
-        },
-        onShowOnboarding: { [weak self] in
-            self?.showOnboarding()
-        },
-        onRunHealthCheck: { [weak self] in
-            _ = self?.runHealthCheck(reason: "manual diagnostics refresh")
-        },
-        onFixHealthIssues: { [weak self] in
-            self?.fixHealthIssues()
-        },
-        onResetBasicMode: { [weak self] in
-            self?.resetAllSettings()
-        },
-        onDisableProMode: { [weak self] in
-            self?.disableProModeForDiagnostics()
-        },
-        onEnterSafeModeNextLaunch: { [weak self] in
-            self?.requestSafeModeNextLaunchForDiagnostics()
-        }
+        actions: SettingsActions(
+            behaviorChanged: { [weak self] in
+                self?.refreshBehaviorSettings()
+            },
+            searchChanged: { [weak self] in
+                self?.refreshSearchSettings()
+            },
+            secondBarChanged: { [weak self] in
+                self?.refreshSecondBarSettings()
+            },
+            privacyChanged: { [weak self] in
+                self?.refreshPrivacySettings()
+            },
+            profile: SettingsProfileActions(
+                dryRun: { [weak self] profile in
+                    self?.dryRunProfile(profile) ?? ProfileApplicationDryRun(
+                        itemsToReveal: [],
+                        itemsToMove: [],
+                        unavailableItems: [],
+                        permissionRequirements: ["Profile service unavailable."]
+                    )
+                },
+                apply: { [weak self] profile in
+                    self?.applyProfile(profile) ?? ProfileApplicationDryRun(
+                        itemsToReveal: [],
+                        itemsToMove: [],
+                        unavailableItems: [],
+                        permissionRequirements: ["Profile service unavailable."]
+                    )
+                }
+            ),
+            triggersChanged: { [weak self] in
+                self?.refreshTriggerSettings()
+            },
+            resetLayout: { [weak self] in
+                self?.resetAppLayout()
+            },
+            resetAllSettings: { [weak self] in
+                self?.resetAllSettings()
+            },
+            resetMovingWarnings: { [weak self] in
+                self?.resetMovingWarnings()
+            },
+            showOnboarding: { [weak self] in
+                self?.showOnboarding()
+            },
+            runHealthCheck: { [weak self] in
+                _ = self?.runHealthCheck(reason: "manual diagnostics refresh")
+            },
+            fixHealthIssues: { [weak self] in
+                self?.fixHealthIssues()
+            },
+            resetBasicMode: { [weak self] in
+                self?.resetAllSettings()
+            },
+            disableProMode: { [weak self] in
+                self?.disableProModeForDiagnostics()
+            },
+            enterSafeModeNextLaunch: { [weak self] in
+                self?.requestSafeModeNextLaunchForDiagnostics()
+            }
+        )
     )
 
     private lazy var onboardingWindowController = OnboardingWindowController(

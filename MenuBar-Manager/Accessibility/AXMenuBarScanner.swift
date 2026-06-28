@@ -8,6 +8,7 @@ final class AXMenuBarScanner: MenuBarScanning {
     private let diagnosticsLogger: DiagnosticsLogger
     private let reader: AXElementReader
     private let now: () -> Date
+    private var candidateCache = AXMenuBarCandidateCache()
 
     private let maxDepth = 7
     private let maxElements = 700
@@ -54,24 +55,64 @@ final class AXMenuBarScanner: MenuBarScanning {
         // during a depth-first traversal.
         let screenFrames: [CGRect] = NSScreen.screens.map { $0.frame }
 
-        for root in candidateRoots(systemWide: systemWide) {
-            snapshots.append(
-                contentsOf: collectSnapshots(
-                    from: root,
-                    depth: 0,
-                    inheritedProcessIdentifier: nil,
-                    primarySeparatorFrame: primarySeparatorFrame,
-                    alwaysHiddenSeparatorFrame: alwaysHiddenSeparatorFrame,
-                    screenFrames: screenFrames,
-                    timestamp: timestamp,
-                    traversedElementCount: &traversedElementCount
+        func collect(from roots: [AXUIElement]) {
+            for root in roots {
+                snapshots.append(
+                    contentsOf: collectSnapshots(
+                        from: root,
+                        depth: 0,
+                        inheritedProcessIdentifier: nil,
+                        primarySeparatorFrame: primarySeparatorFrame,
+                        alwaysHiddenSeparatorFrame: alwaysHiddenSeparatorFrame,
+                        screenFrames: screenFrames,
+                        timestamp: timestamp,
+                        traversedElementCount: &traversedElementCount
+                    )
                 )
-            )
 
-            if traversedElementCount >= maxElements {
-                diagnosticsLogger.log("AX scan stopped after \(maxElements) elements.", level: .warning)
-                break
+                if traversedElementCount >= maxElements {
+                    diagnosticsLogger.log("AX scan stopped after \(maxElements) elements.", level: .warning)
+                    break
+                }
             }
+        }
+
+        collect(from: systemWideCandidateRoots(systemWide: systemWide))
+
+        if traversedElementCount < maxElements {
+            let runningApps = NSWorkspace.shared.runningApplications
+                .filter { $0.isTerminated == false }
+            let runningProcessIdentifiers = runningApps.map(\.processIdentifier)
+            var runningAppsByPID: [pid_t: NSRunningApplication] = [:]
+            for app in runningApps where runningAppsByPID[app.processIdentifier] == nil {
+                runningAppsByPID[app.processIdentifier] = app
+            }
+
+            let orderedProcessIdentifiers = candidateCache.orderedProcessIdentifiers(
+                forRunningProcessIdentifiers: runningProcessIdentifiers
+            )
+            var successfulProcessIdentifiers: [pid_t] = []
+            var completedFullSweep = true
+
+            for processIdentifier in orderedProcessIdentifiers {
+                guard let app = runningAppsByPID[processIdentifier] else { continue }
+                let roots = applicationCandidateRoots(for: app)
+                if roots.isEmpty == false {
+                    successfulProcessIdentifiers.append(processIdentifier)
+                    collect(from: roots)
+                }
+
+                if traversedElementCount >= maxElements {
+                    completedFullSweep = false
+                    break
+                }
+            }
+
+            candidateCache.update(
+                successfulProcessIdentifiers: successfulProcessIdentifiers,
+                runningProcessIdentifiers: runningProcessIdentifiers,
+                completedFullSweep: completedFullSweep
+            )
         }
 
         let result = MenuBarScanResult(
@@ -86,7 +127,11 @@ final class AXMenuBarScanner: MenuBarScanning {
         return result
     }
 
-    private func candidateRoots(systemWide: AXUIElement) -> [AXUIElement] {
+    func invalidateCandidateCache() {
+        candidateCache.invalidate()
+    }
+
+    private func systemWideCandidateRoots(systemWide: AXUIElement) -> [AXUIElement] {
         var roots: [AXUIElement] = []
 
         for attribute in ["AXExtrasMenuBar", kAXMenuBarAttribute as String] {
@@ -96,25 +141,28 @@ final class AXMenuBarScanner: MenuBarScanning {
             }
         }
 
-        let runningApps = NSWorkspace.shared.runningApplications
-        for app in runningApps where app.isTerminated == false {
-            let appElement = AXUIElementCreateApplication(app.processIdentifier)
-            // Each running application exposes its menu bar via `kAXMenuBarAttribute`;
-            // for `systemuiserver`, the `AXExtrasMenuBar` attribute additionally surfaces
-            // the system status items. The generic loop covers both cases, so the
-            // previously-duplicated special-case block has been consolidated into the
-            // per-app reads below.
-            if let menuBar = reader.readElement(appElement, attribute: kAXMenuBarAttribute as String) {
-                roots.append(menuBar)
-                roots.append(contentsOf: reader.readChildren(menuBar))
-            }
+        return roots
+    }
 
-            if app.bundleIdentifier == "com.apple.systemuiserver"
-                || app.localizedName == "SystemUIServer" {
-                if let extras = reader.readElement(appElement, attribute: "AXExtrasMenuBar") {
-                    roots.append(extras)
-                    roots.append(contentsOf: reader.readChildren(extras))
-                }
+    private func applicationCandidateRoots(for app: NSRunningApplication) -> [AXUIElement] {
+        let appElement = AXUIElementCreateApplication(app.processIdentifier)
+        var roots: [AXUIElement] = []
+
+        // Each running application exposes its menu bar via `kAXMenuBarAttribute`;
+        // for `systemuiserver`, the `AXExtrasMenuBar` attribute additionally surfaces
+        // the system status items. The generic loop covers both cases, so the
+        // previously-duplicated special-case block has been consolidated into the
+        // per-app reads below.
+        if let menuBar = reader.readElement(appElement, attribute: kAXMenuBarAttribute as String) {
+            roots.append(menuBar)
+            roots.append(contentsOf: reader.readChildren(menuBar))
+        }
+
+        if app.bundleIdentifier == "com.apple.systemuiserver"
+            || app.localizedName == "SystemUIServer" {
+            if let extras = reader.readElement(appElement, attribute: "AXExtrasMenuBar") {
+                roots.append(extras)
+                roots.append(contentsOf: reader.readChildren(extras))
             }
         }
 

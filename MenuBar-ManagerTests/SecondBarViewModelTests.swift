@@ -7,7 +7,7 @@ import Testing
 struct SecondBarViewModelTests {
     @Test func filtersHiddenItemsBySearchQuery() {
         let viewModel = SecondBarViewModel()
-        let settingsStore = SettingsStore(defaults: isolatedDefaults())
+        let settingsStore = SettingsStore(defaults: TestDefaults.makeIsolated())
         let snapshots = [
             makeSnapshot(appName: "Calendar", bundleID: "com.apple.Calendar", zone: .hidden),
             makeSnapshot(appName: "Dropbox", title: "Sync", bundleID: "com.dropbox.Dropbox", zone: .hidden),
@@ -25,7 +25,7 @@ struct SecondBarViewModelTests {
 
     @Test func excludesDisabledZones() {
         let viewModel = SecondBarViewModel()
-        let settingsStore = SettingsStore(defaults: isolatedDefaults())
+        let settingsStore = SettingsStore(defaults: TestDefaults.makeIsolated())
         settingsStore.secondBarShowAlwaysHiddenItems = false
         let snapshots = [
             makeSnapshot(appName: "Hidden", zone: .hidden),
@@ -43,25 +43,15 @@ struct SecondBarViewModelTests {
         bundleID: String? = nil,
         zone: MenuBarZone
     ) -> MenuBarItemSnapshot {
-        MenuBarItemSnapshot(
+        TestSnapshots.makeSnapshot(
             id: appName,
             title: title,
-            role: "AXMenuBarItem",
-            subrole: nil,
             frame: nil,
             owningProcessIdentifier: nil,
             owningApplicationName: appName,
             bundleIdentifier: bundleID,
             zone: zone,
-            isLikelySystemItem: false,
             scanTimestamp: Date(timeIntervalSince1970: 0)
         )
-    }
-
-    private func isolatedDefaults() -> UserDefaults {
-        let suiteName = "SecondBarViewModelTests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
-        defaults.removePersistentDomain(forName: suiteName)
-        return defaults
     }
 }

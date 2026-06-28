@@ -1,43 +1,6 @@
 import AppKit
 import Foundation
 
-struct IconMoveConfirmationDecision: Equatable, Sendable {
-    let confirmed: Bool
-    let suppressFutureWarnings: Bool
-}
-
-struct IconMoveSafetyRules {
-    func validate(
-        snapshot: MenuBarItemSnapshot,
-        allowSystemItems: Bool,
-        appBundleIdentifier: String
-    ) -> IconMoveError? {
-        if isOwnItem(snapshot, appBundleIdentifier: appBundleIdentifier) {
-            return .unsafeOwnItem
-        }
-
-        if snapshot.isLikelySystemItem && !allowSystemItems {
-            return .unsafeSystemItem
-        }
-
-        if snapshot.frame == nil {
-            return .missingSourceFrame
-        }
-
-        return nil
-    }
-
-    func isOwnItem(_ snapshot: MenuBarItemSnapshot, appBundleIdentifier: String) -> Bool {
-        if snapshot.bundleIdentifier == appBundleIdentifier {
-            return true
-        }
-
-        let title = (snapshot.title ?? "").localizedLowercase
-        let appName = (snapshot.owningApplicationName ?? "").localizedLowercase
-        return title.contains("menubardeclutter") || appName.contains("menubardeclutter")
-    }
-}
-
 @MainActor
 final class IconMoveService {
     private let settingsStore: SettingsStore
@@ -211,7 +174,7 @@ final class IconMoveService {
                     )
                 }
 
-                guard await pause(0.18) else {
+                guard await AsyncPause.sleep(0.18) else {
                     return cancelled(
                         command: command,
                         itemName: itemName,
@@ -373,30 +336,12 @@ final class IconMoveService {
         return result
     }
 
-    private func pause(_ interval: TimeInterval) async -> Bool {
-        guard !Task.isCancelled else { return false }
-        guard interval.isFinite, interval > 0 else { return true }
-
-        let nanoseconds = UInt64((interval * 1_000_000_000).rounded())
-        do {
-            try await Task.sleep(nanoseconds: nanoseconds)
-            return !Task.isCancelled
-        } catch {
-            return false
-        }
-    }
-
     private func displayName(for snapshot: MenuBarItemSnapshot) -> String {
-        [
+        DisplayString.firstNonEmpty([
             snapshot.owningApplicationName,
             snapshot.title,
             snapshot.bundleIdentifier
-        ]
-        .compactMap { value in
-            let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines)
-            return trimmed?.isEmpty == false ? trimmed : nil
-        }
-        .first ?? "Menu Bar Item"
+        ]) ?? "Menu Bar Item"
     }
 
     private static func defaultConfirmation(

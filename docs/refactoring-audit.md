@@ -626,15 +626,15 @@ Failure to build stops work; the failing change is reverted before continuation.
 
 ## Completed actions
 
-All five top-leverage actions have been implemented. Follow-up Wave 1 through Wave 5
+All five top-leverage actions have been implemented. Follow-up Wave 1 through Wave 6
 subagent/local passes also closed several remaining high/medium findings called out above.
 The combined tree was verified by:
 
 - `xcodebuild -scheme MenuBarDeclutter -destination 'platform=macOS' build`
 - `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -only-testing:MenuBarDeclutterTests`
-  (169 unit tests passed)
+  (176 unit tests passed)
 - `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS'`
-  (169 unit tests + 7 UI tests passed)
+  (176 unit tests + 7 UI tests passed)
 
 | Action | Files modified | Verification |
 |---|---|---|
@@ -670,6 +670,11 @@ The combined tree was verified by:
 | M-AS5 — Second-bar screen snapshot cache | `SecondBar/SecondBarPositioningService.swift`, `SecondBar/SecondBarWindowController.swift`, `MenuBar-ManagerTests/SecondBarPositioningServiceTests.swift` (screen snapshots are cached until display-change invalidation and reused by the window controller's visible-screen checks) | Build + tests pass. |
 | M-HM1 / M-HM2 — Icon-move geometry constants and injection | `App/AppConstants.swift`, `Hiding/ScreenGeometryService.swift`, `Moving/IconMoveService.swift`, `Moving/DragPlan.swift`, `App/MenuBarItemSurfaceCoordinator.swift`, `App/AppEnvironment.swift`, `MenuBar-ManagerTests/IconMovePlanningTests.swift`, `MenuBar-ManagerTests/ScreenGeometryServiceTests.swift` (screen-frame fallback and target spacing moved behind named constants and injectable geometry service) | Build + tests pass. |
 | Low-impact cleanup — shared display-name helper | `Core/DisplayString.swift`, `Accessibility/AXMenuBarScanner.swift`, `Search/SearchService.swift`, `SecondBar/SecondBarItemView.swift`, `SecondBar/SecondBarRootView.swift`, `SecondBar/SecondBarViewModel.swift` (duplicated `firstNonEmpty` logic hoisted to a shared helper) | Build + tests pass. |
+| H11 — AX scanner candidate cache | `Accessibility/AXMenuBarScanner.swift`, `Accessibility/AXMenuBarCandidateCache.swift`, `MenuBar-ManagerTests/AXMenuBarCandidateCacheTests.swift` (scans now prioritize previously successful app menu-bar pids before sweeping remaining running apps, with deterministic cache invalidation and ordering tests) | Build + tests pass. |
+| H2 — Diagnostics logger ring buffer | `Core/DiagnosticsLogger.swift`, `MenuBar-ManagerTests/DiagnosticsLoggerTests.swift` (event retention now uses a bounded ring buffer while preserving chronological `events` reads and `clear()`/`removeAll()` semantics) | Build + tests pass. |
+| H4 / M-S1 — Settings action grouping | `Settings/SettingsActions.swift`, `Settings/SettingsWindowController.swift`, `Settings/SettingsRootView.swift`, `App/AppEnvironment.swift` (settings callbacks are grouped into compact action value types while preserving section layout and behavior) | Build + tests pass. |
+| H20 — Conservative test-helper cleanup | `MenuBar-ManagerTests/Support/TestSupport.swift`, `MenuBar-ManagerTests/HidingServiceTests.swift`, `MenuBar-ManagerTests/SearchServiceTests.swift`, `MenuBar-ManagerTests/SecondBarViewModelTests.swift` (representative duplicated isolated-defaults and snapshot factories now use shared helpers) | Build + tests pass. |
+| Low-impact moving cleanup | `Core/AsyncPause.swift`, `Moving/IconMoveSafetyRules.swift`, `Moving/IconMoveService.swift`, `Moving/DragExecutor.swift` (duplicated async sleep helper is shared; icon-move safety/confirmation types moved out of the service file; display names use `DisplayString`) | Build + tests pass. |
 
 ### Notes on decisions deferred
 
@@ -685,9 +690,9 @@ The combined tree was verified by:
   would still require a hand-rolled key-by-key `CodingKeys` declaration that mirrors
   the existing schema. The cached `ISO8601DateFormatter` removes the biggest per-call
   allocation, which is the higher-leverage win.
-- **AXMenuBarScanner off-main scan** (H11 second half) was deferred because the
-  scanner's pruning optimization alone delivers the dominant AX-cost reduction while
-  the off-main-move requires verifying `DiagnosticsLogger` `Sendable` discipline and a
+- **AXMenuBarScanner off-main scan** (remaining H11 work) was deferred because traversal
+  pruning plus candidate-pid caching now deliver the dominant AX-cost reductions while
+  the off-main move requires verifying `DiagnosticsLogger` `Sendable` discipline and a
   hop-back-to-main bridge for `liveStatus` writes.
 - **`.xcconfig` factoring** (M-TP1) was not added in this pass. Setting
   `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` on the test target handles the

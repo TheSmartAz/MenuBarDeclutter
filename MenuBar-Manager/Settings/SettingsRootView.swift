@@ -74,22 +74,7 @@ struct SettingsRootView: View {
     var menuBarScanCoordinator: MenuBarScanCoordinator?
     var profileStore: ProfileStore?
     var triggerService: TriggerService?
-    var onBehaviorChanged: (() -> Void)? = nil
-    var onSearchChanged: (() -> Void)? = nil
-    var onSecondBarChanged: (() -> Void)? = nil
-    var onPrivacyChanged: (() -> Void)? = nil
-    var onProfileDryRun: ((ProfileModel) -> ProfileApplicationDryRun)? = nil
-    var onProfileApply: ((ProfileModel) -> ProfileApplicationDryRun)? = nil
-    var onTriggersChanged: (() -> Void)? = nil
-    var onResetLayout: (() -> Void)? = nil
-    var onResetAllSettings: (() -> Void)? = nil
-    var onResetMovingWarnings: (() -> Void)? = nil
-    var onShowOnboarding: (() -> Void)? = nil
-    var onRunHealthCheck: (() -> Void)? = nil
-    var onFixHealthIssues: (() -> Void)? = nil
-    var onResetBasicMode: (() -> Void)? = nil
-    var onDisableProMode: (() -> Void)? = nil
-    var onEnterSafeModeNextLaunch: (() -> Void)? = nil
+    var actions: SettingsActions = .empty
 
     var body: some View {
         NavigationSplitView {
@@ -113,17 +98,17 @@ struct SettingsRootView: View {
             GeneralSettingsView(
                 settingsStore: settingsStore,
                 launchAtLoginService: launchAtLoginService,
-                onResetLayout: onResetLayout,
-                onResetAllSettings: onResetAllSettings,
-                onShowOnboarding: onShowOnboarding
+                onResetLayout: actions.resetLayout,
+                onResetAllSettings: actions.resetAllSettings,
+                onShowOnboarding: actions.showOnboarding
             )
         case .behavior:
-            BehaviorSettingsView(settingsStore: settingsStore, onChange: onBehaviorChanged)
+            BehaviorSettingsView(settingsStore: settingsStore, onChange: actions.behaviorChanged)
         case .search:
             SearchSettingsView(
                 settingsStore: settingsStore,
                 permissionService: accessibilityPermissionService,
-                onChange: onSearchChanged,
+                onChange: actions.searchChanged,
                 onOpenPrivacySettings: {
                     navigationModel.selectedSection = .privacy
                 }
@@ -132,7 +117,7 @@ struct SettingsRootView: View {
             SecondBarSettingsView(
                 settingsStore: settingsStore,
                 permissionService: accessibilityPermissionService,
-                onChange: onSecondBarChanged,
+                onChange: actions.secondBarChanged,
                 onOpenPrivacySettings: {
                     navigationModel.selectedSection = .privacy
                 }
@@ -141,16 +126,16 @@ struct SettingsRootView: View {
             if let profileStore,
                let triggerService,
                let liveStatus,
-               let onProfileDryRun,
-               let onProfileApply {
+               let dryRunProfile = actions.profile.dryRun,
+               let applyProfile = actions.profile.apply {
                 ProfileListView(
                     profileStore: profileStore,
                     triggerService: triggerService,
                     settingsStore: settingsStore,
                     liveStatus: liveStatus,
-                    onDryRun: onProfileDryRun,
-                    onApply: onProfileApply,
-                    onTriggersChanged: onTriggersChanged ?? {}
+                    onDryRun: dryRunProfile,
+                    onApply: applyProfile,
+                    onTriggersChanged: actions.triggersChanged ?? {}
                 )
             } else {
                 ContentUnavailableView("Profiles Unavailable", systemImage: "person.crop.rectangle.stack")
@@ -160,7 +145,7 @@ struct SettingsRootView: View {
                 settingsStore: settingsStore,
                 permissionService: accessibilityPermissionService,
                 scanCoordinator: menuBarScanCoordinator,
-                onChange: onPrivacyChanged
+                onChange: actions.privacyChanged
             )
         case .diagnostics:
             DiagnosticsSettingsView(
@@ -171,19 +156,19 @@ struct SettingsRootView: View {
                 settingsStore: settingsStore,
                 launchAtLoginService: launchAtLoginService,
                 scanCoordinator: menuBarScanCoordinator,
-                onRunHealthCheck: onRunHealthCheck,
-                onFixHealthIssues: onFixHealthIssues,
-                onResetBasicMode: onResetBasicMode,
-                onDisableProMode: onDisableProMode,
-                onEnterSafeModeNextLaunch: onEnterSafeModeNextLaunch
+                onRunHealthCheck: actions.runHealthCheck,
+                onFixHealthIssues: actions.fixHealthIssues,
+                onResetBasicMode: actions.resetBasicMode,
+                onDisableProMode: actions.disableProMode,
+                onEnterSafeModeNextLaunch: actions.enterSafeModeNextLaunch
             )
         case .advanced:
             AdvancedSettingsView(
                 settingsStore: settingsStore,
                 appSupportPaths: appSupportPaths,
-                onChange: onBehaviorChanged,
-                onAutomationChanged: onTriggersChanged,
-                onResetMovingWarnings: onResetMovingWarnings
+                onChange: actions.behaviorChanged,
+                onAutomationChanged: actions.triggersChanged,
+                onResetMovingWarnings: actions.resetMovingWarnings
             )
         }
     }
