@@ -75,6 +75,27 @@ struct AccessibilityDiscoveryLogicTests {
         )
     }
 
+    @Test func zoneClassificationUsesStrictSeparatorMidpointBoundaries() {
+        let primary = CGRect(x: 500, y: 0, width: 20, height: 24)
+        let alwaysHidden = CGRect(x: 200, y: 0, width: 20, height: 24)
+
+        #expect(
+            MenuBarZone.classify(
+                itemFrame: CGRect(x: 500, y: 0, width: 20, height: 24),
+                primarySeparatorFrame: primary,
+                alwaysHiddenSeparatorFrame: alwaysHidden
+            ) == .hidden
+        )
+
+        #expect(
+            MenuBarZone.classify(
+                itemFrame: CGRect(x: 200, y: 0, width: 20, height: 24),
+                primarySeparatorFrame: primary,
+                alwaysHiddenSeparatorFrame: alwaysHidden
+            ) == .alwaysHidden
+        )
+    }
+
     @Test func snapshotStableIDIsDeterministic() {
         let frame = CGRect(x: 100.2, y: 40.6, width: 24.2, height: 22.8)
         let first = MenuBarItemSnapshot.stableID(

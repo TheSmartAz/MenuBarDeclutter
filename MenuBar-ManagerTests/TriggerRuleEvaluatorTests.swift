@@ -7,6 +7,22 @@ import Testing
 struct TriggerRuleEvaluatorTests {
     private let evaluator = TriggerRuleEvaluator()
 
+    @Test func displayNameCoversAllRuleCases() {
+        let rulesAndNames: [(TriggerRule, String)] = [
+            (.externalDisplayConnected(minimumDisplayCount: 2), "Display count at least 2"),
+            (.appLaunched(bundleIdentifier: "com.example.editor"), "App launched: com.example.editor"),
+            (.frontmostApp(bundleIdentifier: "com.example.browser"), "Frontmost app: com.example.browser"),
+            (.batteryLow(thresholdPercent: 20), "Battery below 20%"),
+            (.timeOfDay(hour: 9, minute: 5), "Time 09:05"),
+            (.focusModePlaceholder, "Focus mode placeholder"),
+            (.wifiSSID("Studio Wi-Fi"), "Wi-Fi: Studio Wi-Fi")
+        ]
+
+        for (rule, expectedName) in rulesAndNames {
+            #expect(rule.displayName == expectedName)
+        }
+    }
+
     @Test func matchesExternalDisplayRule() {
         let context = TriggerEvaluationContext(displayCount: 2)
         #expect(evaluator.matches(rule: .externalDisplayConnected(minimumDisplayCount: 2), context: context))

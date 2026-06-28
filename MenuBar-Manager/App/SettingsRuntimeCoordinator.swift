@@ -54,15 +54,7 @@ final class SettingsRuntimeCoordinator {
 
     /// Called by Settings views when any Phase 2 behavior checkbox changes.
     func refreshBehaviorSettings() {
-        statusBarController.refreshAlwaysHiddenSeparator()
-        statusBarController.refreshHoverReveal()
-        if safeModeLaunchState.isSafeModeActive {
-            hotkeyManager.unregister(identifier: .visibilityToggle)
-        } else {
-            statusBarController.refreshGlobalHotkey()
-        }
-        statusBarController.refreshSeparatorVisuals()
-        statusBarController.refreshAutoRehide()
+        reapplyStatusBarBehavior()
         liveStatusSynchronizer.synchronize()
         if !safeModeLaunchState.isSafeModeActive {
             menuBarScanCoordinator.scanIfAllowed(reason: "behavior settings changed")
@@ -149,16 +141,9 @@ final class SettingsRuntimeCoordinator {
         launchAtLoginService.apply(enabled: false)
 
         // Re-apply live behavior.
-        statusBarController.refreshAlwaysHiddenSeparator()
-        statusBarController.refreshHoverReveal()
-        if safeModeLaunchState.isSafeModeActive {
-            hotkeyManager.unregister(identifier: .visibilityToggle)
-        } else {
-            statusBarController.refreshGlobalHotkey()
+        reapplyStatusBarBehavior {
+            self.refreshSearchHotkeyRegistration()
         }
-        refreshSearchHotkeyRegistration()
-        statusBarController.refreshSeparatorVisuals()
-        statusBarController.refreshAutoRehide()
         secondBarWindowController.refreshAfterSettingsChanged()
         refreshTriggerSettings()
         statusBarController.resetSeparatorLength()
@@ -185,6 +170,23 @@ final class SettingsRuntimeCoordinator {
 
         refreshPrivacySettings()
         refreshSearchSettings()
+    }
+
+    private func reapplyStatusBarBehavior(afterVisibilityHotkeyRefresh: (() -> Void)? = nil) {
+        statusBarController.refreshAlwaysHiddenSeparator()
+        statusBarController.refreshHoverReveal()
+        refreshVisibilityToggleHotkeyRegistration()
+        afterVisibilityHotkeyRefresh?()
+        statusBarController.refreshSeparatorVisuals()
+        statusBarController.refreshAutoRehide()
+    }
+
+    private func refreshVisibilityToggleHotkeyRegistration() {
+        if safeModeLaunchState.isSafeModeActive {
+            hotkeyManager.unregister(identifier: .visibilityToggle)
+        } else {
+            statusBarController.refreshGlobalHotkey()
+        }
     }
 
     private func refreshSearchHotkeyRegistration() {

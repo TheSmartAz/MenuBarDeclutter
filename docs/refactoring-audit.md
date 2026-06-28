@@ -626,15 +626,16 @@ Failure to build stops work; the failing change is reverted before continuation.
 
 ## Completed actions
 
-All five top-leverage actions have been implemented. Follow-up Wave 1 and Wave 2
-subagent passes also closed several remaining high/medium findings called out above.
+All five top-leverage actions have been implemented. Follow-up Wave 1, Wave 2, and
+Wave 3 subagent passes also closed several remaining high/medium findings called out
+above.
 The combined tree was verified by:
 
 - `xcodebuild -scheme MenuBarDeclutter -destination 'platform=macOS' build`
 - `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -only-testing:MenuBarDeclutterTests`
-  (148 unit tests passed)
+  (153 unit tests passed)
 - `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS'`
-  (148 unit tests + 7 UI tests passed)
+  (153 unit tests + 7 UI tests passed)
 
 | Action | Files modified | Verification |
 |---|---|---|
@@ -656,6 +657,10 @@ The combined tree was verified by:
 | H18 — Health recovery safety | `Health/HealthService.swift` (settings validation issues carry explicit optional recovery actions; unknown codes no longer fall back to reset-all-settings) | Build + tests pass. |
 | M-AS3 — App icon lookup in SwiftUI body | `Core/AppIconCache.swift`, `Search/SearchResultRowView.swift`, `SecondBar/SecondBarItemView.swift` (shared icon cache keeps LaunchServices lookup out of row body computation) | Build + tests pass. |
 | AppEnvironment cleanup | `App/AppEnvironment.swift` (shared separator-frame helper, shared hover-suppression helper, named profile-apply refresh helper, removed dead named-profile wrapper) | Build + tests pass. |
+| H9 — Status bar controller responsibilities | `StatusBar/StatusBarController.swift`, `StatusBar/StatusBarMenuPresenter.swift`, `StatusBar/DragHintPopoverView.swift` (menu presentation/open-state handling and the drag hint view moved out of the controller) | Build + tests pass. |
+| M-AC1 — Settings runtime reapply duplication | `App/SettingsRuntimeCoordinator.swift` (shared `reapplyStatusBarBehavior()` and visibility-hotkey refresh helper) | Build + tests pass. |
+| M-S5 — Settings slider repetition | `Settings/LabeledSlider.swift`, `Settings/BehaviorSettingsView.swift`, `Settings/AdvancedSettingsView.swift`, `Settings/SecondBarSettingsView.swift` (shared slider row with optional endpoint labels and monospaced value label) | Build + tests pass. |
+| Test coverage gaps — pure presentation/logic | `MenuBar-ManagerTests/HealthIssuePresentationTests.swift`, `MenuBar-ManagerTests/TriggerRuleEvaluatorTests.swift`, `MenuBar-ManagerTests/AccessibilityDiscoveryLogicTests.swift` (coverage for health labels/ranks, trigger display names, and strict separator midpoint classification) | Build + tests pass. |
 
 ### Notes on decisions deferred
 

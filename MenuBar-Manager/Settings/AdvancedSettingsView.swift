@@ -32,19 +32,15 @@ struct AdvancedSettingsView: View {
     var body: some View {
         Form {
             Section("Separator Geometry") {
-                LabeledContent("Expanded separator length") {
-                    HStack {
-                        Slider(
-                            value: $settingsStore.expandedSeparatorLength,
-                            in: 1...200,
-                            step: 1
-                        )
-                        .frame(width: 200)
-                        Text(settingsStore.expandedSeparatorLength, format: .number.precision(.fractionLength(0)))
-                            .font(.system(.body, design: .monospaced))
-                            .frame(width: 40, alignment: .trailing)
-                    }
-                }
+                LabeledSlider(
+                    "Expanded separator length",
+                    value: $settingsStore.expandedSeparatorLength,
+                    in: 1...200,
+                    step: 1,
+                    sliderWidth: 200,
+                    valueLabelWidth: 40,
+                    valueFractionLength: 0
+                )
 
                 Toggle("Use custom collapsed separator length", isOn: $showCollapsedOverride)
                     .onChange(of: showCollapsedOverride) { _, newValue in
@@ -57,22 +53,18 @@ struct AdvancedSettingsView: View {
                     }
 
                 if showCollapsedOverride {
-                    LabeledContent("Custom collapsed length") {
-                        HStack {
-                            Slider(
-                                value: Binding(
-                                    get: { settingsStore.collapsedSeparatorLengthOverride ?? 2000 },
-                                    set: { settingsStore.collapsedSeparatorLengthOverride = $0 }
-                                ),
-                                in: AppConstants.collapsedSeparatorMinimumLength...AppConstants.collapsedSeparatorMaximumLength,
-                                step: 50
-                            )
-                            .frame(width: 200)
-                            Text(settingsStore.collapsedSeparatorLengthOverride ?? 2000, format: .number.precision(.fractionLength(0)))
-                                .font(.system(.body, design: .monospaced))
-                                .frame(width: 60, alignment: .trailing)
-                        }
-                    }
+                    LabeledSlider(
+                        "Custom collapsed length",
+                        value: Binding(
+                            get: { settingsStore.collapsedSeparatorLengthOverride ?? 2000 },
+                            set: { settingsStore.collapsedSeparatorLengthOverride = $0 }
+                        ),
+                        in: AppConstants.collapsedSeparatorMinimumLength...AppConstants.collapsedSeparatorMaximumLength,
+                        step: 50,
+                        sliderWidth: 200,
+                        valueLabelWidth: 60,
+                        valueFractionLength: 0
+                    )
                     .onChange(of: settingsStore.collapsedSeparatorLengthOverride) { _, _ in onChange?() }
                 }
 
@@ -105,20 +97,14 @@ struct AdvancedSettingsView: View {
                 }
                 .disabled(!settingsStore.iconMovingEnabled)
 
-                LabeledContent("Drag duration") {
-                    HStack {
-                        Slider(
-                            value: $settingsStore.iconMovingDragDuration,
-                            in: AppConstants.minIconMovingDragDuration...AppConstants.maxIconMovingDragDuration,
-                            step: 0.05
-                        )
-                        .frame(width: 220)
-
-                        Text(settingsStore.iconMovingDragDuration, format: .number.precision(.fractionLength(2)))
-                            .font(.system(.body, design: .monospaced))
-                            .frame(width: 46, alignment: .trailing)
-                    }
-                }
+                LabeledSlider(
+                    "Drag duration",
+                    value: $settingsStore.iconMovingDragDuration,
+                    in: AppConstants.minIconMovingDragDuration...AppConstants.maxIconMovingDragDuration,
+                    step: 0.05,
+                    valueLabelWidth: 46,
+                    valueFractionLength: 2
+                )
                 .disabled(!settingsStore.iconMovingEnabled)
 
                 Toggle("Allow moving system items", isOn: $settingsStore.iconMovingAllowSystemItems)

@@ -14,20 +14,15 @@ struct BehaviorSettingsView: View {
                 Toggle("Re-hide automatically after delay", isOn: $settingsStore.autoRehideEnabled)
 
                 if settingsStore.autoRehideEnabled {
-                    LabeledContent("Delay (seconds)") {
-                        Slider(
-                            value: $settingsStore.autoRehideDelaySeconds,
-                            in: 0...60,
-                            step: 1
-                        ) {
-                            Text("Auto-rehide delay")
-                        } minimumValueLabel: {
-                            Text("0s")
-                        } maximumValueLabel: {
-                            Text("60s")
-                        }
-                        .frame(width: 220)
-                    }
+                    LabeledSlider(
+                        "Delay (seconds)",
+                        value: $settingsStore.autoRehideDelaySeconds,
+                        in: 0...60,
+                        step: 1,
+                        sliderLabel: "Auto-rehide delay",
+                        minimumValueLabel: "0s",
+                        maximumValueLabel: "60s"
+                    )
                 }
             }
 
@@ -35,20 +30,15 @@ struct BehaviorSettingsView: View {
                 Toggle("Reveal hidden items on hover", isOn: $settingsStore.hoverRevealEnabled)
 
                 if settingsStore.hoverRevealEnabled {
-                    LabeledContent("Polling interval (seconds)") {
-                        Slider(
-                            value: $settingsStore.hoverRevealPollingIntervalSeconds,
-                            in: AppConstants.minHoverRevealPollingIntervalSeconds...1.0,
-                            step: 0.05
-                        ) {
-                            Text("Hover polling interval")
-                        } minimumValueLabel: {
-                            Text("Fast")
-                        } maximumValueLabel: {
-                            Text("Slow")
-                        }
-                        .frame(width: 220)
-                    }
+                    LabeledSlider(
+                        "Polling interval (seconds)",
+                        value: $settingsStore.hoverRevealPollingIntervalSeconds,
+                        in: AppConstants.minHoverRevealPollingIntervalSeconds...1.0,
+                        step: 0.05,
+                        sliderLabel: "Hover polling interval",
+                        minimumValueLabel: "Fast",
+                        maximumValueLabel: "Slow"
+                    )
                     Text("No sensitive permissions are used for hover reveal.")
                         .font(.caption)
                         .foregroundStyle(.secondary)

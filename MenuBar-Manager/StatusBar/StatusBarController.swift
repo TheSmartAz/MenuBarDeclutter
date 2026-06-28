@@ -7,8 +7,8 @@ import SwiftUI
 /// into ``HidingService`` transitions and keeps the status item visuals in
 /// sync with the visibility state.
 @MainActor
-final class StatusBarController: NSObject, NSMenuDelegate {
-    private let menuBuilder: StatusBarMenuBuilder
+final class StatusBarController {
+    private let menuPresenter: StatusBarMenuPresenter
     private let diagnosticsLogger: DiagnosticsLogger
     private let factory: StatusItemFactory
     private let settingsStore: SettingsStore
@@ -20,14 +20,12 @@ final class StatusBarController: NSObject, NSMenuDelegate {
     private let hoverRevealController: HoverRevealController
     private let hotkeyManager: GlobalHotkeyManager
     private let liveStatus: LiveDiagnosticsStatus
-    private let statusItemMenuOpenDidChange: (Bool) -> Void
     private let autoRehideSuppressionProvider: () -> Bool
     private let hoverRevealSuppressionProvider: () -> Bool
 
     private var controlItem: NSStatusItem?
     private var didChangeScreenParametersObserver: NSObjectProtocol?
     private var dragHintPopover: NSPopover?
-    private var isStatusItemMenuOpen = false
 
     // The menu target object holds @objc callbacks invoked from menu items and
     // from the control item button. It must outlive the controller.
@@ -50,7 +48,10 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         autoRehideSuppressionProvider: @escaping () -> Bool = { false },
         hoverRevealSuppressionProvider: @escaping () -> Bool = { false }
     ) {
-        self.menuBuilder = menuBuilder
+        self.menuPresenter = StatusBarMenuPresenter(
+            menuBuilder: menuBuilder,
+            menuOpenDidChange: statusItemMenuOpenDidChange
+        )
         self.diagnosticsLogger = diagnosticsLogger
         self.factory = factory
         self.settingsStore = settingsStore
@@ -62,14 +63,12 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         self.hoverRevealController = hoverRevealController
         self.hotkeyManager = hotkeyManager
         self.liveStatus = liveStatus
-        self.statusItemMenuOpenDidChange = statusItemMenuOpenDidChange
         self.autoRehideSuppressionProvider = autoRehideSuppressionProvider
         self.hoverRevealSuppressionProvider = hoverRevealSuppressionProvider
         self.commandTarget = StatusBarCommandTarget(
             hidingService: hidingService,
             settingsStore: settingsStore
         )
-        super.init()
     }
 
     var isControlItemInstalled: Bool {
@@ -104,7 +103,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
         commandTarget.showMenu = { [weak self] button in
-            self?.showMenu(from: button)
+            self?.menuPresenter.showMenu(from: button)
         }
 
         primarySeparatorController.install(enableItem: true)
@@ -122,7 +121,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
 
         // Make sure the menu reflects the current state immediately so the
         // first click already shows the correct labels.
-        menuBuilder.refresh(for: hidingService.visibilityState)
+        menuPresenter.refresh(for: hidingService.visibilityState)
 
         observeScreenParameters()
         diagnosticsLogger.log("Status bar controller installed.")
@@ -144,7 +143,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         rehideController.cancel()
         hoverRevealController.stop()
         hotkeyManager.unregister()
-        setStatusItemMenuOpen(false)
+        menuPresenter.resetMenuOpenState()
         diagnosticsLogger.log("Status bar controller removed.")
     }
 
@@ -292,7 +291,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         if let control = controlItem {
             factory.updateSymbol(for: control, kind: .control, state: visibility.primarySeparatorState)
         }
-        menuBuilder.refresh(for: visibility)
+        menuPresenter.refresh(for: visibility)
 
         liveStatus.visibilityState = visibility
         liveStatus.primarySeparatorLength = primarySeparatorController.currentLength
@@ -316,30 +315,6 @@ final class StatusBarController: NSObject, NSMenuDelegate {
             rehideController.cancel()
             liveStatus.autoRehideScheduled = false
         }
-    }
-
-    private func showMenu(from button: NSStatusBarButton) {
-        let menu = menuBuilder.makeMenu()
-        menu.delegate = self
-        menu.popUp(
-            positioning: nil,
-            at: NSPoint(x: 0, y: button.bounds.height),
-            in: button
-        )
-    }
-
-    func menuWillOpen(_ menu: NSMenu) {
-        setStatusItemMenuOpen(true)
-    }
-
-    func menuDidClose(_ menu: NSMenu) {
-        setStatusItemMenuOpen(false)
-    }
-
-    private func setStatusItemMenuOpen(_ isOpen: Bool) {
-        guard isStatusItemMenuOpen != isOpen else { return }
-        isStatusItemMenuOpen = isOpen
-        statusItemMenuOpenDidChange(isOpen)
     }
 
     private func showDragHintPopover() {
@@ -388,21 +363,5 @@ private final class StatusBarCommandTarget: NSObject {
         }
 
         hidingService.toggle()
-    }
-}
-
-private struct DragHintPopoverView: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Position the separator")
-                .font(.headline)
-
-            Text(AppConstants.dragHintMessage)
-                .font(.body)
-                .fixedSize(horizontal: false, vertical: true)
-                .foregroundStyle(.secondary)
-        }
-        .padding(16)
-        .frame(width: 320, alignment: .leading)
     }
 }

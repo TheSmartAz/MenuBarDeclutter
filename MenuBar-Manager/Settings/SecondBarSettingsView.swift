@@ -38,20 +38,14 @@ struct SecondBarSettingsView: View {
             }
 
             Section("Appearance") {
-                LabeledContent("Icon size") {
-                    HStack {
-                        Slider(
-                            value: $settingsStore.secondBarIconSize,
-                            in: AppConstants.minSecondBarIconSize...AppConstants.maxSecondBarIconSize,
-                            step: 2
-                        )
-                        .frame(width: 220)
-
-                        Text(settingsStore.secondBarIconSize, format: .number.precision(.fractionLength(0)))
-                            .font(.system(.body, design: .monospaced))
-                            .frame(width: 36, alignment: .trailing)
-                    }
-                }
+                LabeledSlider(
+                    "Icon size",
+                    value: $settingsStore.secondBarIconSize,
+                    in: AppConstants.minSecondBarIconSize...AppConstants.maxSecondBarIconSize,
+                    step: 2,
+                    valueLabelWidth: 36,
+                    valueFractionLength: 0
+                )
                 .disabled(!settingsStore.secondBarEnabled)
 
                 Toggle("Show labels", isOn: $settingsStore.secondBarShowLabels)
