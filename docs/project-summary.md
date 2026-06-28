@@ -1,17 +1,21 @@
 # Project Summary
 
-Phases 0-9.1 are implemented for `MenuBarDeclutter`.
+Phases 0-9.1 are implemented for `MenuBarDeclutter`. The checkout also includes the post-9.1 refactoring and hardening work tracked in `docs/refactoring-audit.md`.
 
 ## Current Checkout Status
 
 - Product display name, app target, built wrapper/executable, bundle identifier, and canonical shared scheme currently use `MenuBarDeclutter`.
 - The `MenuBar-Manager` scheme is retained as a deprecated compatibility fallback. The `.xcodeproj` package and source/test folder names still use `MenuBar-Manager` because `MenuBarDeclutter` is a temporary name and the final product name will be chosen later.
 - The app is a native macOS 26.0+ LSUIElement menu bar utility with no default document window.
+- The app source is split across focused modules for App composition, StatusBar, Hiding, Hotkeys, Settings, Onboarding, Accessibility, Search, Second Bar, Moving, Profiles, Health, Permissions, and Core support.
 - Basic Mode is usable by default without Accessibility, Screen Recording, Apple Events, Input Monitoring, or network access.
 - Pro Mode is opt-in. Its user-facing surfaces are implemented, but they depend on Accessibility permission and degrade to explanatory unavailable states when Pro Mode, Accessibility Discovery, or permission is missing.
-- Automated coverage includes unit tests for pure logic plus UI workflow tests for Diagnostics, Privacy, Find Icon unavailable state, Second Bar settings requirements, and launch screenshots.
-- The latest recorded full validation for Phase 9.1 is in `docs/status/phase-9.1-final-report.md`.
-- Hands-on QA is still required for real Command-drag separator placement, third-party menu bar item movement, external display/notch behavior, Launch at Login through System Settings, real Accessibility prompt grant/revoke flows, and interactive network-monitor checks.
+- Automated coverage includes pure-logic unit tests plus UI workflow tests for Diagnostics, Privacy, Find Icon unavailable state, Second Bar settings requirements, and launch screenshots.
+- The newest Alpha RC QA/run docs record `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS'` passing with 203 unit tests and 7 UI test executions, and the deprecated `MenuBar-Manager` compatibility scheme passing the same coverage.
+- The newest Alpha RC validation snapshot is in `docs/testing/alpha-rc-qa-run-2026-06-28.md` and `docs/release/alpha-rc-release-notes-2026-06-28.md`. The earlier Phase 9.1 completion report remains in `docs/status/phase-9.1-final-report.md`.
+- Local Release artifact verification passed for `build/DerivedData/Build/Products/Release/MenuBarDeclutter.app`, including codesign, LSUIElement, URL scheme, no network entitlements, and no ScreenCaptureKit linkage. Notarization and installed-app Launch at Login validation are still not tested.
+- A non-interactive runtime `lsof` network probe for the local Release app recorded no network connections; interactive `sudo nettop` observation remains manual QA.
+- Hands-on QA is still required for clean first launch/onboarding, real Command-drag separator placement, Basic Mode runtime behavior with real menu bar items, third-party menu bar item movement, external display/notch/sleep-wake/Space behavior, Launch at Login through System Settings from an installed signed app, real Accessibility prompt grant/revoke flows, profile/trigger/Safe Mode flows, archive/notarization, and interactive network monitoring.
 
 ## Usable Features Today
 
@@ -25,6 +29,7 @@ Phases 0-9.1 are implemented for `MenuBarDeclutter`.
 - Local JSON profiles, conservative profile apply/dry-run, smart triggers for supported local signals, and command-limited `menubardeclutter://` URL automation.
 - Health checks, targeted recovery, Safe Mode, crash markers, wake/display recovery, and health report export.
 - Alpha RC hardening: temporary `MenuBarDeclutter` target/product/bundle identity, canonical `MenuBarDeclutter` scheme, privacy verification scripts/docs, QA helpers, visible experimental labels for risky Pro features, global Pause All Automation, diagnostics severity/category filters, filtered diagnostics export, and Launch at Login status/recovery support.
+- Post-9.1 codebase hardening: narrower coordinators, safer settings/logging isolation, structured diagnostics/export cleanup, cached/off-main AX scanning, indexed search, cached Second Bar derivation, trigger coalescing, safer automation URL handling, icon-move cancellation/reentrancy fixes, shared test helpers, and `.xcconfig` build-setting factoring.
 
 ## Phase 0 (project skeleton)
 
@@ -180,7 +185,22 @@ Phases 0-9.1 are implemented for `MenuBarDeclutter`.
 - Diagnostics events now include timestamp, category, severity, message, and optional privacy-safe metadata.
 - Settings -> Diagnostics supports warnings/errors filtering, category filtering, Copy Selected, Export Filtered, and rows for experimental icon moving, smart triggers, automation pause, and Launch at Login status.
 - Launch at Login settings show live `SMAppService` status, last registration action, status refresh, and Open Login Items Settings.
+- Alpha RC docs now include a dated QA run and release notes. The latest recorded QA run documents 203 unit tests plus 7 UI test executions passing on both the canonical and compatibility schemes, local Release artifact verification passing, and a non-interactive runtime network probe showing no connections.
+- Manual Alpha RC blockers remain explicit: clean first launch/onboarding, real menu bar drag/use, Accessibility grant/revoke, real icon moving, external display/notch/sleep-wake/Space behavior, profile/trigger/Safe Mode flows, installed-app Launch at Login, interactive network watch, archive, and notarization.
 - No Phase 10 work was added.
+
+## Post-9.1 Refactoring and Hardening
+
+`docs/refactoring-audit.md` now records the completed top-leverage refactoring actions and follow-up waves after Phase 9.1.
+
+- Core state and diagnostics were tightened: `SettingsStore` and `DiagnosticsLogger` are `@MainActor`, defaults/restores/clamping share central helpers, the diagnostics logger uses a bounded ring buffer, and diagnostics JSON export uses typed `Encodable` DTOs with the same field table as plain-text export.
+- Accessibility scanning was hardened with candidate caching, traversal pruning, cached screen snapshots, workspace launch/terminate invalidation, visibility-change debounce, off-main scan execution, and stale-result cancellation.
+- Search and Second Bar were optimized with `SearchIndex`, cached result/item derivation in SwiftUI, shared app-icon caching, display-change repositioning/closing, and cached screen snapshots for placement.
+- Smart triggers and URL automation were made safer through coalesced evaluation, first-match trigger precedence, batched trigger saves, ordered active-profile updates, automation pause guards, URL throttling, and clearer diagnostics.
+- Icon moving and health recovery were strengthened with pre-confirmation move locking, drag cancellation checks, decomposed move flow, explicit success/failure visibility semantics, extracted safety/confirmation types, and health validation issues that carry explicit recovery actions instead of falling back to reset-all-settings by default.
+- Status bar and Settings structure were split further: status menu presentation and drag-hint UI moved out of `StatusBarController`, settings callbacks are grouped through `SettingsActions`, and repeated settings slider/change-forwarding patterns now use shared helpers.
+- Test/build infrastructure was expanded with shared test-support helpers, unit-test `MainActor` isolation, `.xcconfig` build-setting factoring, and additional coverage for health reports, trigger persistence/runtime behavior, live diagnostics, hotkey callbacks, status menu routing, AX candidate cache, profile resilience, and diagnostics export schemas.
+- Deliberate deferrals remain: a full `SettingsStore` property-wrapper migration is still postponed, the actual Accessibility permission prompt path remains manual/system QA, and Phase 10 visual icon capture remains out of scope.
 
 ## Privacy boundary (through Phase 9.1)
 
