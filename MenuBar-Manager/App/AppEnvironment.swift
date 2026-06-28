@@ -376,6 +376,30 @@ final class AppEnvironment {
         }
     )
 
+    private lazy var settingsRuntimeCoordinator = SettingsRuntimeCoordinator(
+        settingsStore: settingsStore,
+        diagnosticsLogger: diagnosticsLogger,
+        liveStatus: liveStatus,
+        safeModeLaunchState: safeModeLaunchState,
+        launchAtLoginService: launchAtLoginService,
+        statusBarController: statusBarController,
+        hotkeyManager: hotkeyManager,
+        hoverRevealController: hoverRevealController,
+        menuBarScanCoordinator: menuBarScanCoordinator,
+        secondBarWindowController: secondBarWindowController,
+        triggerService: triggerService,
+        liveStatusSynchronizer: liveStatusSynchronizer,
+        isHoverRevealSuppressed: { [weak self] in
+            self?.isHoverRevealSuppressed == true
+        },
+        runHealthCheck: { [weak self] reason in
+            _ = self?.runHealthCheck(reason: reason)
+        },
+        showSearch: { [weak self] in
+            self?.showSearch()
+        }
+    )
+
     init(
         settingsStore: SettingsStore = SettingsStore(),
         diagnosticsLogger: DiagnosticsLogger = DiagnosticsLogger(),
@@ -580,120 +604,38 @@ final class AppEnvironment {
 
     // MARK: Settings-driven refresh
 
-    /// Called by Settings views when any Phase 2 behavior checkbox changes.
     func refreshBehaviorSettings() {
-        statusBarController.refreshAlwaysHiddenSeparator()
-        statusBarController.refreshHoverReveal()
-        if safeModeLaunchState.isSafeModeActive {
-            hotkeyManager.unregister(identifier: .visibilityToggle)
-        } else {
-            statusBarController.refreshGlobalHotkey()
-        }
-        statusBarController.refreshSeparatorVisuals()
-        statusBarController.refreshAutoRehide()
-        liveStatusSynchronizer.synchronize()
-        if !safeModeLaunchState.isSafeModeActive {
-            menuBarScanCoordinator.scanIfAllowed(reason: "behavior settings changed")
-        }
-        _ = runHealthCheck(reason: "behavior settings changed")
+        settingsRuntimeCoordinator.refreshBehaviorSettings()
     }
 
     func refreshSearchSettings() {
-        refreshSearchHotkeyRegistration()
-        liveStatusSynchronizer.refreshSearchIndexItemCount()
-        if !safeModeLaunchState.isSafeModeActive {
-            menuBarScanCoordinator.refreshAfterSettingsChanged(reason: "search settings changed")
-        }
-        _ = runHealthCheck(reason: "search settings changed")
+        settingsRuntimeCoordinator.refreshSearchSettings()
     }
 
     func refreshSecondBarSettings() {
-        secondBarWindowController.refreshAfterSettingsChanged()
-        liveStatusSynchronizer.refreshSecondBarItemCount()
-        if !safeModeLaunchState.isSafeModeActive {
-            menuBarScanCoordinator.refreshAfterSettingsChanged(reason: "second bar settings changed")
-        }
-        _ = runHealthCheck(reason: "second bar settings changed")
+        settingsRuntimeCoordinator.refreshSecondBarSettings()
     }
 
     func refreshPrivacySettings() {
-        guard !safeModeLaunchState.isSafeModeActive else {
-            diagnosticsLogger.log("Safe Mode skipped Pro privacy refresh.", level: .warning)
-            return
-        }
-        menuBarScanCoordinator.refreshAfterSettingsChanged()
-        _ = runHealthCheck(reason: "privacy settings changed")
+        settingsRuntimeCoordinator.refreshPrivacySettings()
     }
 
     func refreshTriggerSettings() {
-        if safeModeLaunchState.isSafeModeActive {
-            triggerService.stop()
-            diagnosticsLogger.log("Safe Mode disabled smart triggers.", level: .warning)
-        } else if settingsStore.smartTriggersEnabled {
-            triggerService.start()
-        } else {
-            triggerService.stop()
-        }
+        settingsRuntimeCoordinator.refreshTriggerSettings()
     }
 
     func applyInitialBehaviorSettings() {
-        if safeModeLaunchState.isSafeModeActive {
-            hotkeyManager.unregister()
-        } else {
-            statusBarController.refreshGlobalHotkey()
-        }
-        refreshSearchHotkeyRegistration()
-        if settingsStore.hoverRevealEnabled && !isHoverRevealSuppressed {
-            hoverRevealController.start()
-            liveStatus.hoverPollingActive = hoverRevealController.isPollingActive
-        } else {
-            hoverRevealController.stop()
-            liveStatus.hoverPollingActive = false
-        }
-        liveStatusSynchronizer.synchronize()
+        settingsRuntimeCoordinator.applyInitialBehaviorSettings()
     }
 
     // MARK: Phase 3 resets and onboarding
 
-    /// Resets the menu bar layout to the recommended collapsed separator length
-    /// for the widest screen, clearing any user-override.
     func resetAppLayout() {
-        settingsStore.collapsedSeparatorLengthOverride = nil
-        statusBarController.resetSeparatorLength()
-        statusBarController.refreshSeparatorVisuals()
-        diagnosticsLogger.log("App layout reset to recommended separator length.")
+        settingsRuntimeCoordinator.resetAppLayout()
     }
 
-    /// Resets all settings to defaults, then re-applies live behavior so the
-    /// user does not have to relaunch.
     func resetAllSettings() {
-        settingsStore.restoreDefaults()
-
-        // Re-run the launch-at-login reflection against the new (false) value.
-        launchAtLoginService.apply(enabled: false)
-
-        // Re-apply live behavior.
-        statusBarController.refreshAlwaysHiddenSeparator()
-        statusBarController.refreshHoverReveal()
-        if safeModeLaunchState.isSafeModeActive {
-            hotkeyManager.unregister(identifier: .visibilityToggle)
-        } else {
-            statusBarController.refreshGlobalHotkey()
-        }
-        refreshSearchHotkeyRegistration()
-        statusBarController.refreshSeparatorVisuals()
-        statusBarController.refreshAutoRehide()
-        secondBarWindowController.refreshAfterSettingsChanged()
-        refreshTriggerSettings()
-        statusBarController.resetSeparatorLength()
-
-        liveStatusSynchronizer.synchronize()
-        if !safeModeLaunchState.isSafeModeActive {
-            menuBarScanCoordinator.refreshAfterSettingsChanged(reason: "settings reset")
-        }
-        _ = runHealthCheck(reason: "settings reset")
-
-        diagnosticsLogger.log("All settings reset to defaults.")
+        settingsRuntimeCoordinator.resetAllSettings()
     }
 
     func showOnboarding() {
@@ -906,18 +848,7 @@ final class AppEnvironment {
     }
 
     func toggleProMode() {
-        if settingsStore.proModeEnabled {
-            settingsStore.proModeEnabled = false
-            settingsStore.accessibilityDiscoveryEnabled = false
-            diagnosticsLogger.log("Pro Mode disabled from status menu.")
-        } else {
-            settingsStore.proModeEnabled = true
-            settingsStore.accessibilityDiscoveryEnabled = true
-            diagnosticsLogger.log("Pro Mode enabled from status menu.")
-        }
-
-        refreshPrivacySettings()
-        refreshSearchSettings()
+        settingsRuntimeCoordinator.toggleProMode()
     }
 
     func showAbout() {
@@ -930,26 +861,5 @@ final class AppEnvironment {
 
     func quit() {
         NSApp.terminate(nil)
-    }
-
-    private func refreshSearchHotkeyRegistration() {
-        guard !safeModeLaunchState.isSafeModeActive else {
-            hotkeyManager.unregister(identifier: .findIcon)
-            liveStatus.searchHotkeyRegistered = false
-            return
-        }
-
-        if settingsStore.searchEnabled && settingsStore.searchHotkeyEnabled {
-            hotkeyManager.register(
-                identifier: .findIcon,
-                hotkey: settingsStore.effectiveSearchHotkey()
-            ) { [weak self] in
-                self?.showSearch()
-            }
-        } else {
-            hotkeyManager.unregister(identifier: .findIcon)
-        }
-
-        liveStatus.searchHotkeyRegistered = hotkeyManager.isRegistered(identifier: .findIcon)
     }
 }
