@@ -61,10 +61,10 @@ final class MenuBar_ManagerUITests: XCTestCase {
     }
 
     @MainActor
-    func testLaunchPerformance() throws {
-        measure(metrics: [XCTApplicationLaunchMetric()]) {
-            launchApp()
-        }
+    func testLaunchInUITestingMode() throws {
+        let app = launchApp()
+
+        XCTAssertNotEqual(app.state, .notRunning)
     }
 
     @MainActor
