@@ -6,16 +6,15 @@ private struct AXAttributeReadError: Error {
     let code: AXError
 }
 
-final class AXElementReader {
-    private let diagnosticsLogger: DiagnosticsLogger
+nonisolated final class AXElementReader {
     private(set) var failureCount = 0
+    private(set) var logMessages: [String] = []
 
-    init(diagnosticsLogger: DiagnosticsLogger) {
-        self.diagnosticsLogger = diagnosticsLogger
-    }
+    init() {}
 
     func resetFailureCount() {
         failureCount = 0
+        logMessages.removeAll()
     }
 
     func readString(_ element: AXUIElement, attribute: String) -> String? {
@@ -31,7 +30,7 @@ final class AXElementReader {
         switch copyAttributeValue(element, attribute: attribute) {
         case .success(let value):
             guard CFGetTypeID(value) == AXUIElementGetTypeID() else {
-                diagnosticsLogger.log("AX attribute \(attribute) did not contain an AXUIElement.", level: .debug)
+                logMessages.append("AX attribute \(attribute) did not contain an AXUIElement.")
                 return nil
             }
             let axElement = unsafeDowncast(value, to: AXUIElement.self)
@@ -87,14 +86,14 @@ final class AXElementReader {
         switch copyAttributeValue(element, attribute: attribute) {
         case .success(let value):
             guard CFGetTypeID(value) == AXValueGetTypeID() else {
-                diagnosticsLogger.log("AX attribute \(attribute) did not contain an AXValue.", level: .debug)
+                logMessages.append("AX attribute \(attribute) did not contain an AXValue.")
                 return nil
             }
 
             let axValue = unsafeDowncast(value, to: AXValue.self)
             var point = CGPoint.zero
             guard AXValueGetValue(axValue, .cgPoint, &point) else {
-                diagnosticsLogger.log("AX attribute \(attribute) could not be read as CGPoint.", level: .debug)
+                logMessages.append("AX attribute \(attribute) could not be read as CGPoint.")
                 return nil
             }
             return point
@@ -107,14 +106,14 @@ final class AXElementReader {
         switch copyAttributeValue(element, attribute: attribute) {
         case .success(let value):
             guard CFGetTypeID(value) == AXValueGetTypeID() else {
-                diagnosticsLogger.log("AX attribute \(attribute) did not contain an AXValue.", level: .debug)
+                logMessages.append("AX attribute \(attribute) did not contain an AXValue.")
                 return nil
             }
 
             let axValue = unsafeDowncast(value, to: AXValue.self)
             var size = CGSize.zero
             guard AXValueGetValue(axValue, .cgSize, &size) else {
-                diagnosticsLogger.log("AX attribute \(attribute) could not be read as CGSize.", level: .debug)
+                logMessages.append("AX attribute \(attribute) could not be read as CGSize.")
                 return nil
             }
             return size
@@ -125,6 +124,6 @@ final class AXElementReader {
 
     private func logFailure(attribute: String, error: AXError) {
         failureCount += 1
-        diagnosticsLogger.log("AX read failed for \(attribute): \(error).", level: .debug)
+        logMessages.append("AX read failed for \(attribute): \(error).")
     }
 }

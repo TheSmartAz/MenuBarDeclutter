@@ -1,6 +1,6 @@
 import Foundation
 
-struct AXMenuBarCandidateCache {
+nonisolated struct AXMenuBarCandidateCache {
     private(set) var cachedProcessIdentifiers: [pid_t] = []
 
     func orderedProcessIdentifiers(forRunningProcessIdentifiers runningProcessIdentifiers: [pid_t]) -> [pid_t] {

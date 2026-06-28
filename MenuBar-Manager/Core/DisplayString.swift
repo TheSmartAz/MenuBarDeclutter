@@ -1,6 +1,6 @@
 import Foundation
 
-enum DisplayString {
+nonisolated enum DisplayString {
     static func firstNonEmpty(_ values: [String?]) -> String? {
         values
             .compactMap { value in

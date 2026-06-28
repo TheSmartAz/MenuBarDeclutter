@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
 
-enum MenuBarZone: String, CaseIterable, Identifiable, Codable, Sendable {
+nonisolated enum MenuBarZone: String, CaseIterable, Identifiable, Codable, Sendable {
     case visible
     case hidden
     case alwaysHidden

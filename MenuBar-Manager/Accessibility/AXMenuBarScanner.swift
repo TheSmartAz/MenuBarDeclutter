@@ -3,11 +3,20 @@ import ApplicationServices
 import CoreGraphics
 import Foundation
 
-@MainActor
-final class AXMenuBarScanner: MenuBarScanning {
-    private let diagnosticsLogger: DiagnosticsLogger
+actor AXMenuBarScanner: MenuBarScanning {
+    private struct ScannerLogEntry: Sendable {
+        let message: String
+        let level: DiagnosticLevel
+    }
+
+    private struct ScanOutput: Sendable {
+        let result: MenuBarScanResult
+        let logs: [ScannerLogEntry]
+    }
+
+    private let log: @MainActor @Sendable (String, DiagnosticLevel, DiagnosticCategory?) -> Void
     private let reader: AXElementReader
-    private let now: () -> Date
+    private let now: @Sendable () -> Date
     private var candidateCache = AXMenuBarCandidateCache()
 
     private let maxDepth = 7
@@ -17,11 +26,11 @@ final class AXMenuBarScanner: MenuBarScanning {
     /// menu subtree. We never record AXMenuItem snapshots (only the menu bar items
     /// themselves), so descending into these subtrees is wasted AX round-trips. Pruning
     /// here typically reduces the typical scan from hundreds of elements to ~20-30.
-    private static let prunableDescendantRoles: Set<String> = [
+    nonisolated private static let prunableDescendantRoles: Set<String> = [
         "AXMenu",
         "AXMenuItem"
     ]
-    private static let menuBarItemRoleMarkers = [
+    nonisolated private static let menuBarItemRoleMarkers = [
         "menubaritem",
         "menu bar item",
         "statusitem",
@@ -32,46 +41,56 @@ final class AXMenuBarScanner: MenuBarScanning {
     init(
         diagnosticsLogger: DiagnosticsLogger,
         reader: AXElementReader? = nil,
-        now: @escaping () -> Date = { Date() }
+        now: @escaping @Sendable () -> Date = { Date() }
     ) {
-        self.diagnosticsLogger = diagnosticsLogger
-        self.reader = reader ?? AXElementReader(diagnosticsLogger: diagnosticsLogger)
+        let log: @MainActor @Sendable (String, DiagnosticLevel, DiagnosticCategory?) -> Void = { message, level, category in
+            diagnosticsLogger.log(message, level: level, category: category)
+        }
+        self.log = log
+        self.reader = reader ?? AXElementReader()
         self.now = now
     }
 
-    func scan(
-        primarySeparatorFrame: CGRect?,
-        alwaysHiddenSeparatorFrame: CGRect?
-    ) -> MenuBarScanResult {
+    func scan(context: MenuBarScanContext) async -> MenuBarScanResult {
+        let output = performScan(context: context)
+        for logEntry in output.logs {
+            await log(logEntry.message, logEntry.level, .scan)
+        }
+        return output.result
+    }
+
+    private func performScan(context: MenuBarScanContext) -> ScanOutput {
         reader.resetFailureCount()
 
         let timestamp = now()
         let systemWide = AXUIElementCreateSystemWide()
         var traversedElementCount = 0
         var snapshots: [MenuBarItemSnapshot] = []
+        var stoppedAtMaxElements = false
+        var runningApplicationsByPID: [pid_t: RunningApplicationSnapshot] = [:]
 
-        // Capture NSScreen.screens once at the start of the scan; `shouldIncludeSnapshot`
-        // previously re-queried AppKit on every visited element, which is a hot path
-        // during a depth-first traversal.
-        let screenFrames: [CGRect] = NSScreen.screens.map { $0.frame }
+        for app in context.runningApplications where runningApplicationsByPID[app.processIdentifier] == nil {
+            runningApplicationsByPID[app.processIdentifier] = app
+        }
 
         func collect(from roots: [AXUIElement]) {
             for root in roots {
+                guard Task.isCancelled == false else { break }
+
                 snapshots.append(
                     contentsOf: collectSnapshots(
                         from: root,
                         depth: 0,
                         inheritedProcessIdentifier: nil,
-                        primarySeparatorFrame: primarySeparatorFrame,
-                        alwaysHiddenSeparatorFrame: alwaysHiddenSeparatorFrame,
-                        screenFrames: screenFrames,
+                        context: context,
+                        runningApplicationsByPID: runningApplicationsByPID,
                         timestamp: timestamp,
                         traversedElementCount: &traversedElementCount
                     )
                 )
 
                 if traversedElementCount >= maxElements {
-                    diagnosticsLogger.log("AX scan stopped after \(maxElements) elements.", level: .warning)
+                    stoppedAtMaxElements = true
                     break
                 }
             }
@@ -79,14 +98,8 @@ final class AXMenuBarScanner: MenuBarScanning {
 
         collect(from: systemWideCandidateRoots(systemWide: systemWide))
 
-        if traversedElementCount < maxElements {
-            let runningApps = NSWorkspace.shared.runningApplications
-                .filter { $0.isTerminated == false }
-            let runningProcessIdentifiers = runningApps.map(\.processIdentifier)
-            var runningAppsByPID: [pid_t: NSRunningApplication] = [:]
-            for app in runningApps where runningAppsByPID[app.processIdentifier] == nil {
-                runningAppsByPID[app.processIdentifier] = app
-            }
+        if traversedElementCount < maxElements, Task.isCancelled == false {
+            let runningProcessIdentifiers = context.runningApplications.map(\.processIdentifier)
 
             let orderedProcessIdentifiers = candidateCache.orderedProcessIdentifiers(
                 forRunningProcessIdentifiers: runningProcessIdentifiers
@@ -95,7 +108,11 @@ final class AXMenuBarScanner: MenuBarScanning {
             var completedFullSweep = true
 
             for processIdentifier in orderedProcessIdentifiers {
-                guard let app = runningAppsByPID[processIdentifier] else { continue }
+                guard Task.isCancelled == false else {
+                    completedFullSweep = false
+                    break
+                }
+                guard let app = runningApplicationsByPID[processIdentifier] else { continue }
                 let roots = applicationCandidateRoots(for: app)
                 if roots.isEmpty == false {
                     successfulProcessIdentifiers.append(processIdentifier)
@@ -120,11 +137,20 @@ final class AXMenuBarScanner: MenuBarScanning {
             scanTimestamp: timestamp,
             axFailuresCount: reader.failureCount
         )
-        diagnosticsLogger.log(
-            "AX menu bar scan read \(result.snapshots.count) item snapshots with \(result.axFailuresCount) AX failures.",
+        var logs = reader.logMessages.map {
+            ScannerLogEntry(message: $0, level: .debug)
+        }
+        if stoppedAtMaxElements {
+            logs.append(ScannerLogEntry(
+                message: "AX scan stopped after \(maxElements) elements.",
+                level: .warning
+            ))
+        }
+        logs.append(ScannerLogEntry(
+            message: "AX menu bar scan read \(result.snapshots.count) item snapshots with \(result.axFailuresCount) AX failures.",
             level: .debug
-        )
-        return result
+        ))
+        return ScanOutput(result: result, logs: logs)
     }
 
     func invalidateCandidateCache() {
@@ -144,7 +170,7 @@ final class AXMenuBarScanner: MenuBarScanning {
         return roots
     }
 
-    private func applicationCandidateRoots(for app: NSRunningApplication) -> [AXUIElement] {
+    private func applicationCandidateRoots(for app: RunningApplicationSnapshot) -> [AXUIElement] {
         let appElement = AXUIElementCreateApplication(app.processIdentifier)
         var roots: [AXUIElement] = []
 
@@ -173,13 +199,14 @@ final class AXMenuBarScanner: MenuBarScanning {
         from element: AXUIElement,
         depth: Int,
         inheritedProcessIdentifier: pid_t?,
-        primarySeparatorFrame: CGRect?,
-        alwaysHiddenSeparatorFrame: CGRect?,
-        screenFrames: [CGRect],
+        context: MenuBarScanContext,
+        runningApplicationsByPID: [pid_t: RunningApplicationSnapshot],
         timestamp: Date,
         traversedElementCount: inout Int
     ) -> [MenuBarItemSnapshot] {
-        guard depth <= maxDepth, traversedElementCount < maxElements else {
+        guard Task.isCancelled == false,
+              depth <= maxDepth,
+              traversedElementCount < maxElements else {
             return []
         }
 
@@ -200,10 +227,10 @@ final class AXMenuBarScanner: MenuBarScanning {
             role: role,
             subrole: subrole,
             frame: frame,
-            screenFrames: screenFrames
+            screenFrames: context.screenFrames
         )
         if isIncluded {
-            let app = runningApplication(pid: pid)
+            let app = runningApplicationsByPID[pid ?? 0]
             let bundleIdentifier = app?.bundleIdentifier
             snapshots.append(
                 MenuBarItemSnapshot(
@@ -216,8 +243,8 @@ final class AXMenuBarScanner: MenuBarScanning {
                     bundleIdentifier: bundleIdentifier,
                     zone: MenuBarZone.classify(
                         itemFrame: frame,
-                        primarySeparatorFrame: primarySeparatorFrame,
-                        alwaysHiddenSeparatorFrame: alwaysHiddenSeparatorFrame
+                        primarySeparatorFrame: context.primarySeparatorFrame,
+                        alwaysHiddenSeparatorFrame: context.alwaysHiddenSeparatorFrame
                     ),
                     isLikelySystemItem: Self.isLikelySystemItem(
                         bundleIdentifier: bundleIdentifier,
@@ -247,9 +274,8 @@ final class AXMenuBarScanner: MenuBarScanning {
                     from: child,
                     depth: depth + 1,
                     inheritedProcessIdentifier: pid,
-                    primarySeparatorFrame: primarySeparatorFrame,
-                    alwaysHiddenSeparatorFrame: alwaysHiddenSeparatorFrame,
-                    screenFrames: screenFrames,
+                    context: context,
+                    runningApplicationsByPID: runningApplicationsByPID,
                     timestamp: timestamp,
                     traversedElementCount: &traversedElementCount
                 )
@@ -282,7 +308,7 @@ final class AXMenuBarScanner: MenuBarScanning {
         }
     }
 
-    static func shouldPruneDescendants(
+    nonisolated static func shouldPruneDescendants(
         ofIncludedNode isIncluded: Bool,
         role: String?,
         subrole: String?
@@ -294,7 +320,7 @@ final class AXMenuBarScanner: MenuBarScanning {
         return isIncluded && hasMenuBarItemRoleMarker(role: role, subrole: subrole)
     }
 
-    private static func hasMenuBarItemRoleMarker(role: String?, subrole: String?) -> Bool {
+    private nonisolated static func hasMenuBarItemRoleMarker(role: String?, subrole: String?) -> Bool {
         let text = [role, subrole]
             .compactMap { $0?.lowercased() }
             .joined(separator: " ")
@@ -302,12 +328,7 @@ final class AXMenuBarScanner: MenuBarScanning {
         return menuBarItemRoleMarkers.contains { text.contains($0) }
     }
 
-    private func runningApplication(pid: pid_t?) -> NSRunningApplication? {
-        guard let pid else { return nil }
-        return NSRunningApplication(processIdentifier: pid)
-    }
-
-    private static func isLikelySystemItem(
+    private nonisolated static func isLikelySystemItem(
         bundleIdentifier: String?,
         applicationName: String?
     ) -> Bool {

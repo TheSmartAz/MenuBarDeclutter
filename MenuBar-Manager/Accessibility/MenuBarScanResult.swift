@@ -1,6 +1,6 @@
 import Foundation
 
-struct MenuBarScanResult: Equatable, Sendable {
+nonisolated struct MenuBarScanResult: Equatable, Sendable {
     let snapshots: [MenuBarItemSnapshot]
     let scanTimestamp: Date
     let axFailuresCount: Int

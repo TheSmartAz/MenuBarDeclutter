@@ -7,7 +7,7 @@ import Testing
 @Suite("MenuBarScanCoordinator")
 @MainActor
 struct MenuBarScanCoordinatorTests {
-    @Test func manualRefreshAvailableWhenConfiguredEvenIfPermissionCacheIsStale() {
+    @Test func manualRefreshAvailableWhenConfiguredEvenIfPermissionCacheIsStale() async {
         var isTrusted = false
         let harness = makeHarness(isTrusted: { isTrusted })
         defer { harness.tearDown() }
@@ -20,13 +20,15 @@ struct MenuBarScanCoordinatorTests {
 
         isTrusted = true
         harness.coordinator.requestManualRefresh()
+        await waitUntilScanCount(1, scanner: harness.scanner)
+        await waitUntil { harness.liveStatus.scannedMenuBarItems.count == 1 }
 
         #expect(harness.permissionService.status == .granted)
-        #expect(harness.scanner.scanCount == 1)
+        #expect(await harness.scanner.scanCount == 1)
         #expect(harness.liveStatus.scannedMenuBarItems.count == 1)
     }
 
-    @Test func revokedPermissionClearsExistingDiagnosticsWithoutScanningAgain() {
+    @Test func revokedPermissionClearsExistingDiagnosticsWithoutScanningAgain() async {
         var isTrusted = true
         let harness = makeHarness(isTrusted: { isTrusted })
         defer { harness.tearDown() }
@@ -34,21 +36,23 @@ struct MenuBarScanCoordinatorTests {
         harness.store.accessibilityDiscoveryEnabled = true
 
         harness.coordinator.requestManualRefresh()
+        await waitUntilScanCount(1, scanner: harness.scanner)
+        await waitUntil { harness.liveStatus.scannedMenuBarItems.count == 1 }
         #expect(harness.permissionService.status == .granted)
-        #expect(harness.scanner.scanCount == 1)
+        #expect(await harness.scanner.scanCount == 1)
         #expect(harness.liveStatus.scannedMenuBarItems.count == 1)
 
         isTrusted = false
         harness.coordinator.requestManualRefresh()
 
         #expect(harness.permissionService.status == .denied)
-        #expect(harness.scanner.scanCount == 1)
+        #expect(await harness.scanner.scanCount == 1)
         #expect(harness.liveStatus.scannedMenuBarItems.isEmpty)
         #expect(harness.liveStatus.lastMenuBarScanTime == nil)
         #expect(harness.liveStatus.menuBarScanFailuresCount == 0)
     }
 
-    @Test func automaticScansAreThrottledButManualRefreshBypassesThrottle() {
+    @Test func automaticScansAreThrottledButManualRefreshBypassesThrottle() async {
         var now = Date(timeIntervalSince1970: 100)
         let harness = makeHarness(isTrusted: { true }, now: { now })
         defer { harness.tearDown() }
@@ -57,14 +61,16 @@ struct MenuBarScanCoordinatorTests {
         harness.store.menuBarScanIntervalSeconds = 10
 
         harness.coordinator.scanIfAllowed(reason: "launch")
-        #expect(harness.scanner.scanCount == 1)
+        await waitUntilScanCount(1, scanner: harness.scanner)
+        #expect(await harness.scanner.scanCount == 1)
 
         now = Date(timeIntervalSince1970: 101)
         harness.coordinator.scanIfAllowed(reason: "visibility change")
-        #expect(harness.scanner.scanCount == 1)
+        #expect(await harness.scanner.scanCount == 1)
 
         harness.coordinator.requestManualRefresh()
-        #expect(harness.scanner.scanCount == 2)
+        await waitUntilScanCount(2, scanner: harness.scanner)
+        #expect(await harness.scanner.scanCount == 2)
     }
 
     @Test func rapidVisibilityNotificationsCoalesceIntoOneScan() async {
@@ -85,7 +91,8 @@ struct MenuBarScanCoordinatorTests {
         harness.store.menuBarScanIntervalSeconds = 0.5
 
         harness.coordinator.start()
-        #expect(harness.scanner.scanCount == 1)
+        await waitUntilScanCount(1, scanner: harness.scanner)
+        #expect(await harness.scanner.scanCount == 1)
 
         now = Date(timeIntervalSince1970: 101)
         notificationCenter.post(name: HidingService.visibilityDidChangeNotification, object: nil)
@@ -94,7 +101,7 @@ struct MenuBarScanCoordinatorTests {
 
         await waitUntilScanCount(2, scanner: harness.scanner)
 
-        #expect(harness.scanner.scanCount == 2)
+        #expect(await harness.scanner.scanCount == 2)
     }
 
     @Test func applicationLifecycleNotificationsInvalidateScannerCandidateCache() async {
@@ -109,16 +116,16 @@ struct MenuBarScanCoordinatorTests {
         }
 
         harness.coordinator.start()
-        #expect(harness.scanner.scanCount == 0)
-        #expect(harness.scanner.invalidateCandidateCacheCount == 0)
+        #expect(await harness.scanner.scanCount == 0)
+        #expect(await harness.scanner.invalidateCandidateCacheCount == 0)
 
         workspaceNotificationCenter.post(name: NSWorkspace.didLaunchApplicationNotification, object: nil)
         workspaceNotificationCenter.post(name: NSWorkspace.didTerminateApplicationNotification, object: nil)
 
         await waitUntilInvalidationCount(2, scanner: harness.scanner)
 
-        #expect(harness.scanner.invalidateCandidateCacheCount == 2)
-        #expect(harness.scanner.scanCount == 0)
+        #expect(await harness.scanner.invalidateCandidateCacheCount == 2)
+        #expect(await harness.scanner.scanCount == 0)
     }
 
     @Test func stopRemovesApplicationLifecycleObservers() async {
@@ -137,25 +144,47 @@ struct MenuBarScanCoordinatorTests {
 
         try? await Task.sleep(nanoseconds: 30_000_000)
 
-        #expect(harness.scanner.invalidateCandidateCacheCount == 0)
-        #expect(harness.scanner.scanCount == 0)
+        #expect(await harness.scanner.invalidateCandidateCacheCount == 0)
+        #expect(await harness.scanner.scanCount == 0)
     }
 
-    @Test func disabledProModeClearsScanStateAndDoesNotScan() {
+    @Test func disabledProModeClearsScanStateAndDoesNotScan() async {
         let harness = makeHarness(isTrusted: { true })
         defer { harness.tearDown() }
         harness.store.proModeEnabled = true
         harness.store.accessibilityDiscoveryEnabled = true
         harness.coordinator.requestManualRefresh()
+        await waitUntilScanCount(1, scanner: harness.scanner)
+        await waitUntil { harness.liveStatus.scannedMenuBarItems.count == 1 }
         #expect(harness.liveStatus.scannedMenuBarItems.count == 1)
 
         harness.store.proModeEnabled = false
         harness.coordinator.scanIfAllowed(reason: "settings changed")
 
-        #expect(harness.scanner.scanCount == 1)
+        #expect(await harness.scanner.scanCount == 1)
         #expect(harness.liveStatus.scannedMenuBarItems.isEmpty)
         #expect(harness.coordinator.isManualRefreshAvailable == false)
         #expect(harness.coordinator.canScan == false)
+    }
+
+    @Test func staleAsyncScanResultIsIgnoredAfterScanningIsDisabled() async {
+        let harness = makeHarness(
+            isTrusted: { true },
+            scanDelayNanoseconds: 80_000_000
+        )
+        defer { harness.tearDown() }
+        harness.store.proModeEnabled = true
+        harness.store.accessibilityDiscoveryEnabled = true
+
+        harness.coordinator.requestManualRefresh()
+        harness.store.proModeEnabled = false
+        harness.coordinator.scanIfAllowed(reason: "settings changed")
+
+        try? await Task.sleep(nanoseconds: 150_000_000)
+
+        #expect(harness.liveStatus.scannedMenuBarItems.isEmpty)
+        #expect(harness.coordinator.lastResult == nil)
+        #expect(harness.coordinator.lastSkipReason == "Pro Mode disabled")
     }
 
     private func makeHarness(
@@ -163,6 +192,7 @@ struct MenuBarScanCoordinatorTests {
         notificationCenter: NotificationCenter = NotificationCenter(),
         workspaceNotificationCenter: NotificationCenter = NotificationCenter(),
         visibilityScanDebounceNanoseconds: UInt64 = 250_000_000,
+        scanDelayNanoseconds: UInt64 = 0,
         now: @escaping () -> Date = { Date(timeIntervalSince1970: 100) }
     ) -> CoordinatorHarness {
         let suiteName = "MenuBarScanCoordinatorTests.\(UUID().uuidString)"
@@ -179,7 +209,7 @@ struct MenuBarScanCoordinatorTests {
             systemSettingsOpener: { true }
         )
         let liveStatus = LiveDiagnosticsStatus()
-        let scanner = FakeMenuBarScanner()
+        let scanner = FakeMenuBarScanner(scanDelayNanoseconds: scanDelayNanoseconds)
         let coordinator = MenuBarScanCoordinator(
             settingsStore: store,
             permissionService: permissionService,
@@ -216,7 +246,7 @@ struct MenuBarScanCoordinatorTests {
     ) async {
         let deadline = ContinuousClock.now + .nanoseconds(Int64(timeoutNanoseconds))
 
-        while scanner.scanCount < expectedCount,
+        while await scanner.scanCount < expectedCount,
               ContinuousClock.now < deadline {
             try? await Task.sleep(nanoseconds: 10_000_000)
         }
@@ -229,7 +259,19 @@ struct MenuBarScanCoordinatorTests {
     ) async {
         let deadline = ContinuousClock.now + .nanoseconds(Int64(timeoutNanoseconds))
 
-        while scanner.invalidateCandidateCacheCount < expectedCount,
+        while await scanner.invalidateCandidateCacheCount < expectedCount,
+              ContinuousClock.now < deadline {
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+    }
+
+    private func waitUntil(
+        timeoutNanoseconds: UInt64 = 1_000_000_000,
+        condition: @escaping () -> Bool
+    ) async {
+        let deadline = ContinuousClock.now + .nanoseconds(Int64(timeoutNanoseconds))
+
+        while !condition(),
               ContinuousClock.now < deadline {
             try? await Task.sleep(nanoseconds: 10_000_000)
         }
@@ -251,15 +293,20 @@ private struct CoordinatorHarness {
     }
 }
 
-@MainActor
-private final class FakeMenuBarScanner: MenuBarScanning {
+private actor FakeMenuBarScanner: MenuBarScanning {
+    private let scanDelayNanoseconds: UInt64
     private(set) var scanCount = 0
     private(set) var invalidateCandidateCacheCount = 0
 
-    func scan(
-        primarySeparatorFrame: CGRect?,
-        alwaysHiddenSeparatorFrame: CGRect?
-    ) -> MenuBarScanResult {
+    init(scanDelayNanoseconds: UInt64 = 0) {
+        self.scanDelayNanoseconds = scanDelayNanoseconds
+    }
+
+    func scan(context: MenuBarScanContext) async -> MenuBarScanResult {
+        if scanDelayNanoseconds > 0 {
+            try? await Task.sleep(nanoseconds: scanDelayNanoseconds)
+        }
+
         scanCount += 1
 
         return MenuBarScanResult(
@@ -275,8 +322,8 @@ private final class FakeMenuBarScanner: MenuBarScanning {
                     bundleIdentifier: "local.fake",
                     zone: MenuBarZone.classify(
                         itemFrame: CGRect(x: 600, y: 0, width: 20, height: 24),
-                        primarySeparatorFrame: primarySeparatorFrame,
-                        alwaysHiddenSeparatorFrame: alwaysHiddenSeparatorFrame
+                        primarySeparatorFrame: context.primarySeparatorFrame,
+                        alwaysHiddenSeparatorFrame: context.alwaysHiddenSeparatorFrame
                     ),
                     isLikelySystemItem: false,
                     scanTimestamp: Date(timeIntervalSince1970: Double(scanCount))
@@ -287,7 +334,7 @@ private final class FakeMenuBarScanner: MenuBarScanning {
         )
     }
 
-    func invalidateCandidateCache() {
+    func invalidateCandidateCache() async {
         invalidateCandidateCacheCount += 1
     }
 }

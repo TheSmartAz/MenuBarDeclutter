@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
 
-struct MenuBarItemSnapshot: Identifiable, Equatable, Sendable {
+nonisolated struct MenuBarItemSnapshot: Identifiable, Equatable, Sendable {
     let id: String
     let title: String?
     let role: String?

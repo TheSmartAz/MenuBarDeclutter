@@ -3,22 +3,32 @@ import CoreGraphics
 import Foundation
 import Observation
 
-struct MenuBarSeparatorFrames {
+nonisolated struct MenuBarSeparatorFrames: Sendable {
     let primary: CGRect?
     let alwaysHidden: CGRect?
 }
 
-protocol MenuBarScanning: AnyObject {
-    func scan(
-        primarySeparatorFrame: CGRect?,
-        alwaysHiddenSeparatorFrame: CGRect?
-    ) -> MenuBarScanResult
+nonisolated struct RunningApplicationSnapshot: Equatable, Sendable {
+    let processIdentifier: pid_t
+    let bundleIdentifier: String?
+    let localizedName: String?
+}
 
-    func invalidateCandidateCache()
+nonisolated struct MenuBarScanContext: Sendable {
+    let primarySeparatorFrame: CGRect?
+    let alwaysHiddenSeparatorFrame: CGRect?
+    let screenFrames: [CGRect]
+    let runningApplications: [RunningApplicationSnapshot]
+}
+
+nonisolated protocol MenuBarScanning: Sendable {
+    func scan(context: MenuBarScanContext) async -> MenuBarScanResult
+
+    func invalidateCandidateCache() async
 }
 
 extension MenuBarScanning {
-    func invalidateCandidateCache() {}
+    func invalidateCandidateCache() async {}
 }
 
 @MainActor
@@ -30,15 +40,17 @@ final class MenuBarScanCoordinator {
     @ObservationIgnored private let diagnosticsLogger: DiagnosticsLogger
     @ObservationIgnored private let liveStatus: LiveDiagnosticsStatus
     @ObservationIgnored private let separatorFramesProvider: () -> MenuBarSeparatorFrames
-    @ObservationIgnored nonisolated(unsafe) private let notificationCenter: NotificationCenter
-    @ObservationIgnored nonisolated(unsafe) private let workspaceNotificationCenter: NotificationCenter
+    @ObservationIgnored private let notificationCenter: NotificationCenter
+    @ObservationIgnored private let workspaceNotificationCenter: NotificationCenter
     @ObservationIgnored private let visibilityScanDebounceNanoseconds: UInt64
     @ObservationIgnored private let now: () -> Date
 
     @ObservationIgnored nonisolated(unsafe) private var visibilityObserver: NSObjectProtocol?
     @ObservationIgnored nonisolated(unsafe) private var workspaceLifecycleObservers: [NSObjectProtocol] = []
     @ObservationIgnored private var pendingVisibilityScanTask: Task<Void, Never>?
+    @ObservationIgnored private var pendingScanTask: Task<Void, Never>?
     @ObservationIgnored private var visibilityScanRequestID = 0
+    @ObservationIgnored private var scanRequestID = 0
     @ObservationIgnored private var lastScanDate: Date?
 
     private(set) var lastResult: MenuBarScanResult?
@@ -93,6 +105,7 @@ final class MenuBarScanCoordinator {
         visibilityScanRequestID += 1
         pendingVisibilityScanTask?.cancel()
         pendingVisibilityScanTask = nil
+        cancelPendingScan()
     }
 
     func refreshAfterSettingsChanged(reason: String = "settings changed") {
@@ -134,23 +147,70 @@ final class MenuBarScanCoordinator {
             return lastResult
         }
 
-        let frames = separatorFramesProvider()
-        let result = scanner.scan(
-            primarySeparatorFrame: frames.primary,
-            alwaysHiddenSeparatorFrame: frames.alwaysHidden
-        )
-        lastResult = result
+        let context = makeScanContext()
         lastScanDate = currentDate
+        lastSkipReason = nil
+        startScan(context: context, reason: reason)
+        return lastResult
+    }
+
+    private func startScan(context: MenuBarScanContext, reason: String) {
+        scanRequestID += 1
+        let requestID = scanRequestID
+        let scanner = scanner
+
+        pendingScanTask?.cancel()
+        pendingScanTask = Task { @MainActor [weak self] in
+            let result = await scanner.scan(context: context)
+            self?.completeScan(result: result, requestID: requestID, reason: reason)
+        }
+    }
+
+    private func completeScan(result: MenuBarScanResult, requestID: Int, reason: String) {
+        guard scanRequestID == requestID,
+              pendingScanTask?.isCancelled == false else {
+            diagnosticsLogger.log("AX scan result ignored for \(reason): stale request.", level: .debug)
+            return
+        }
+
+        lastResult = result
         lastSkipReason = nil
         apply(result: result)
 
         diagnosticsLogger.log(
             "AX scan completed for \(reason): \(result.snapshots.count) items, \(result.axFailuresCount) AX failures."
         )
-        return result
+        pendingScanTask = nil
+    }
+
+    private func makeScanContext() -> MenuBarScanContext {
+        let frames = separatorFramesProvider()
+        let runningApplications = NSWorkspace.shared.runningApplications
+            .filter { $0.isTerminated == false }
+            .map {
+                RunningApplicationSnapshot(
+                    processIdentifier: $0.processIdentifier,
+                    bundleIdentifier: $0.bundleIdentifier,
+                    localizedName: $0.localizedName
+                )
+            }
+
+        return MenuBarScanContext(
+            primarySeparatorFrame: frames.primary,
+            alwaysHiddenSeparatorFrame: frames.alwaysHidden,
+            screenFrames: NSScreen.screens.map(\.frame),
+            runningApplications: runningApplications
+        )
+    }
+
+    private func cancelPendingScan() {
+        scanRequestID += 1
+        pendingScanTask?.cancel()
+        pendingScanTask = nil
     }
 
     private func clearScanState(skipReason: String) {
+        cancelPendingScan()
         lastSkipReason = skipReason
         lastResult = nil
         lastScanDate = nil
@@ -237,7 +297,9 @@ final class MenuBarScanCoordinator {
     }
 
     private func invalidateScannerCandidateCache(reason: String) {
-        scanner.invalidateCandidateCache()
+        Task { [scanner] in
+            await scanner.invalidateCandidateCache()
+        }
         diagnosticsLogger.log("AX scanner candidate cache invalidated after \(reason).", level: .debug)
     }
 

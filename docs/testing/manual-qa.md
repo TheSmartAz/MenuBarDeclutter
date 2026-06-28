@@ -304,6 +304,17 @@ This checklist verifies the Phase 1 hiding MVP. Later-phase features such as glo
 - Attach or detach an external display if available.
 - Confirm the app does not crash and Diagnostics can refresh scans after the screen configuration changes.
 
+### Async scan race smoke test
+
+- Enable Pro Mode and Accessibility Discovery with Accessibility permission granted.
+- Open Settings -> Diagnostics and click "Refresh AX Scan" repeatedly while also collapsing/expanding the menu bar.
+- If available, attach or detach an external display while refreshes may still be pending.
+- Disable Pro Mode or revoke Accessibility permission while a refresh may still be pending.
+- Confirm Settings and Diagnostics stay responsive during the refresh burst.
+- Confirm stale scan results do not repopulate snapshots after Pro Mode is disabled or Accessibility permission is revoked.
+- Confirm that when multiple refreshes overlap while Pro Mode remains enabled, the latest successful refresh wins.
+- Confirm Basic Mode collapse/expand still works and no Screen Recording, Apple Events, Input Monitoring, or network prompt appears.
+
 ### Deny or revoke permission
 
 - If permission has not been granted, click "Request Permission" and deny/leave it disabled.
