@@ -14,9 +14,9 @@ followed.
 - **HIGH-impact findings:** 20
 - **MEDIUM-impact findings:** 28
 - **LOW-impact findings (quick wins):** ~20
-- **Original test coverage gaps:** 7 pure-logic files without unit tests; most are now
-  covered by follow-up waves, with direct `TriggerService` service-lifecycle tests still
-  the main remaining pure-logic gap.
+- **Original test coverage gaps:** 7 pure-logic files without unit tests; follow-up waves
+  now cover the pure logic and service behavior, with only the user-driven Accessibility
+  permission prompt path left as system/manual coverage.
 - **Top-leverage actions:** 5 (see "Highest-Leverage Actions" below)
 
 ## Risk Categories
@@ -550,7 +550,7 @@ because test target lacks `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`.
 | `MenuBar-Manager/Health/HealthReport.swift:24-71` | `status`, `isHealthy`, `sortedIssues`, `plainText` | Covered by `HealthReportTests`. |
 | `MenuBar-Manager/Health/HealthIssue.swift` | `HealthSeverity.displayName`/`sortRank` | Covered by `HealthIssuePresentationTests`. |
 | `MenuBar-Manager/Profiles/TriggerModel.swift:12-30` | `TriggerRule.displayName` for 7 cases | Covered by `TriggerRuleEvaluatorTests`. |
-| `MenuBar-Manager/Profiles/TriggerService.swift:49-188` | `load`/`save`/`addTrigger`/`delete`/`evaluate(context:reason:)` | Partially covered through trigger-rule and profile-application tests; direct `TriggerService` lifecycle/coalescing tests remain. |
+| `MenuBar-Manager/Profiles/TriggerService.swift:49-188` | `load`/`save`/`addTrigger`/`delete`/`evaluate(context:reason:)` | Covered by `TriggerServicePersistenceTests` and `TriggerServiceTests`, including persistence, start/stop lifecycle, coalescing, first-match precedence, paused evaluation, loop guard, save count, and apply ordering. |
 | `MenuBar-Manager/Permissions/AccessibilityPermissionService.swift:78-102` | `refreshStatus`, `requestPromptFromUserAction` | Cached status, forced refresh, stale invalidation, and mapping are covered by `AccessibilityDiscoveryLogicTests`; the user-prompt path remains system-level/manual. |
 
 ---
@@ -628,15 +628,15 @@ Failure to build stops work; the failing change is reverted before continuation.
 
 ## Completed actions
 
-All five top-leverage actions have been implemented. Follow-up Wave 1 through Wave 7
+All five top-leverage actions have been implemented. Follow-up Wave 1 through Wave 8
 subagent/local passes also closed several remaining high/medium findings called out above.
 The combined tree was verified by:
 
 - `xcodebuild -scheme MenuBarDeclutter -destination 'platform=macOS' build`
 - `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -only-testing:MenuBarDeclutterTests`
-  (188 unit tests passed)
+  (197 unit tests passed)
 - `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS'`
-  (188 unit tests + 7 UI test executions passed)
+  (197 unit tests + 7 UI test executions passed)
 
 | Action | Files modified | Verification |
 |---|---|---|
@@ -682,6 +682,7 @@ The combined tree was verified by:
 | M-HP4 — Global hotkey Carbon safety | `Hotkeys/GlobalHotkeyManager.swift`, `Hotkeys/HotkeyCallbackResolver.swift`, `MenuBar-ManagerTests/HotkeyCallbackResolverTests.swift` (Carbon refs are held in synchronized nonisolated resources, active-manager callback storage is weak, callback resolution is pure/tested, and single-registration fallback is explicit) | Build + tests pass. |
 | M-HM6 / M-HM8 — Icon move decomposition and visibility semantics | `Moving/IconMoveService.swift`, `MenuBar-ManagerTests/IconMovePlanningTests.swift` (move flow is split into preflight, confirmation, session setup/teardown, planning, and retry execution; tests now pin that failures/cancellations restore pre-move visibility while success leaves the bar revealed) | Build + tests pass. |
 | Test coverage gap — Health report pure logic | `MenuBar-ManagerTests/HealthReportTests.swift` (covers health status precedence, `isHealthy`, sorted issue ordering, and plain-text rendering including recovery-action formatting) | Build + tests pass. |
+| H16 / M-HP1 — TriggerService direct coverage | `Profiles/TriggerService.swift`, `MenuBar-ManagerTests/TriggerServiceTests.swift`, `MenuBar-ManagerTests/TriggerServicePersistenceTests.swift` (trigger persistence round-trips through App Support, `ProfileStore` ignores `triggers.json`, missing/corrupt trigger files are handled safely, start/stop observer lifecycle is pinned, event bursts coalesce through injected centers, first-match precedence saves once, paused/loop-guard paths skip cleanly, and skipped matches no longer report as fired) | Build + tests pass. |
 
 ### Notes on decisions deferred
 

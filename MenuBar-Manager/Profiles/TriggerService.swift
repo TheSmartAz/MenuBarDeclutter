@@ -31,6 +31,12 @@ final class TriggerService {
     private let evaluator: TriggerRuleEvaluator
     private let fileManager: FileManager
     private let now: () -> Date
+    private let notificationCenter: NotificationCenter
+    private let workspaceNotificationCenter: NotificationCenter
+    private let evaluationDebounceInterval: Duration
+    private let batteryPercentProvider: () -> Int?
+    private let currentContextProvider: (() -> TriggerEvaluationContext)?
+    private let didSave: () -> Void
 
     /// Pairs of `(notification center, observer)` so `stop()` removes each observer
     /// from the center it was actually registered with (the previous implementation
@@ -66,7 +72,13 @@ final class TriggerService {
         liveStatus: LiveDiagnosticsStatus,
         evaluator: TriggerRuleEvaluator = TriggerRuleEvaluator(),
         fileManager: FileManager = .default,
-        now: @escaping () -> Date = { Date() }
+        now: @escaping () -> Date = { Date() },
+        notificationCenter: NotificationCenter = .default,
+        workspaceNotificationCenter: NotificationCenter = NSWorkspace.shared.notificationCenter,
+        evaluationDebounceInterval: Duration = TriggerService.evaluationDebounceInterval,
+        batteryPercentProvider: @escaping () -> Int? = { TriggerService.currentBatteryPercent() },
+        currentContextProvider: (() -> TriggerEvaluationContext)? = nil,
+        didSave: @escaping () -> Void = {}
     ) {
         self.settingsStore = settingsStore
         self.profileStore = profileStore
@@ -77,6 +89,12 @@ final class TriggerService {
         self.evaluator = evaluator
         self.fileManager = fileManager
         self.now = now
+        self.notificationCenter = notificationCenter
+        self.workspaceNotificationCenter = workspaceNotificationCenter
+        self.evaluationDebounceInterval = evaluationDebounceInterval
+        self.batteryPercentProvider = batteryPercentProvider
+        self.currentContextProvider = currentContextProvider
+        self.didSave = didSave
     }
 
     func load() {
@@ -106,6 +124,7 @@ final class TriggerService {
             encoder.dateEncodingStrategy = .iso8601
             let data = try encoder.encode(triggers)
             try data.write(to: storageURL, options: .atomic)
+            didSave()
             lastError = nil
         } catch {
             lastError = error.localizedDescription
@@ -126,8 +145,8 @@ final class TriggerService {
         guard observers.isEmpty else { return }
 
         observers.append((
-            center: NotificationCenter.default,
-            observer: NotificationCenter.default.addObserver(
+            center: notificationCenter,
+            observer: notificationCenter.addObserver(
                 forName: NSApplication.didChangeScreenParametersNotification,
                 object: NSApp,
                 queue: .main
@@ -139,8 +158,8 @@ final class TriggerService {
         ))
 
         observers.append((
-            center: NSWorkspace.shared.notificationCenter,
-            observer: NSWorkspace.shared.notificationCenter.addObserver(
+            center: workspaceNotificationCenter,
+            observer: workspaceNotificationCenter.addObserver(
                 forName: NSWorkspace.didLaunchApplicationNotification,
                 object: nil,
                 queue: .main
@@ -152,8 +171,8 @@ final class TriggerService {
         ))
 
         observers.append((
-            center: NSWorkspace.shared.notificationCenter,
-            observer: NSWorkspace.shared.notificationCenter.addObserver(
+            center: workspaceNotificationCenter,
+            observer: workspaceNotificationCenter.addObserver(
                 forName: NSWorkspace.didActivateApplicationNotification,
                 object: nil,
                 queue: .main
@@ -169,14 +188,14 @@ final class TriggerService {
                 // Refresh the cached battery value on the timer tick; event-driven
                 // evaluations reuse this cache instead of paying the IOPSCopy IPC on
                 // every didActivateApplication burst.
-                self?.cachedBatteryPercent = Self.currentBatteryPercent()
+                self?.cachedBatteryPercent = self?.batteryPercentProvider()
                 self?.scheduleEvaluation(reason: "timer")
             }
         }
 
         // Prime the battery cache so the first event-driven evaluation has a
         // meaningful value before the first 60s tick elapses.
-        cachedBatteryPercent = Self.currentBatteryPercent()
+        cachedBatteryPercent = batteryPercentProvider()
 
         liveStatus.automationPaused = false
         diagnosticsLogger.log("Smart triggers started.", level: .debug, category: .trigger)
@@ -241,9 +260,12 @@ final class TriggerService {
             return
         }
 
-        fire(matchingTrigger, now: currentDate)
-        // `fire` returns without saving if the profile is missing or the loop guard
-        // blocks the apply; only persist when we actually mutated `lastFiredAt`.
+        guard fire(matchingTrigger, now: currentDate) else {
+            liveStatus.triggerEvaluationLog = "Matched \(matchingTrigger.name) but skipped (\(reason))."
+            return
+        }
+
+        // Only persist when we actually mutated `lastFiredAt`.
         if let index = triggers.firstIndex(where: { $0.id == matchingTrigger.id }),
            triggers[index].lastFiredAt == currentDate {
             // Single atomic write per evaluation (previously `save()` ran once per
@@ -264,22 +286,24 @@ final class TriggerService {
         pendingEvaluationTask?.cancel()
         pendingEvaluationReason = reason
         let capturedReason = reason
+        let debounceInterval = evaluationDebounceInterval
         pendingEvaluationTask = Task { @MainActor in
-            try? await Task.sleep(for: Self.evaluationDebounceInterval)
+            try? await Task.sleep(for: debounceInterval)
             if Task.isCancelled { return }
             self.evaluateCurrentContext(reason: capturedReason)
         }
     }
 
-    private func fire(_ trigger: TriggerModel, now: Date) {
+    @discardableResult
+    private func fire(_ trigger: TriggerModel, now: Date) -> Bool {
         guard let profile = profileStore.profiles.first(where: { $0.id == trigger.profileID }) else {
             diagnosticsLogger.log("Trigger \(trigger.name) skipped; profile missing.", level: .warning)
-            return
+            return false
         }
 
         if liveStatus.activeProfileID == profile.id.uuidString {
             diagnosticsLogger.log("Trigger \(trigger.name) skipped to avoid a profile loop.", level: .debug)
-            return
+            return false
         }
 
         // Set the active profile id first so a concurrent or coalesced trigger
@@ -303,9 +327,14 @@ final class TriggerService {
 
         liveStatus.lastTriggerFired = trigger.name
         diagnosticsLogger.log("Smart trigger fired: \(trigger.name) -> \(profile.name).")
+        return true
     }
 
     private func currentContext() -> TriggerEvaluationContext {
+        if let currentContextProvider {
+            return currentContextProvider()
+        }
+
         let runningBundleIDs = Set(NSWorkspace.shared.runningApplications.compactMap(\.bundleIdentifier))
         let frontmost = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
         let components = Calendar.current.dateComponents([.hour, .minute], from: now())
@@ -345,4 +374,14 @@ final class TriggerService {
     private var storageURL: URL {
         appSupportPaths.profilesDirectory.appendingPathComponent(Self.storageFilename)
     }
+
+    #if DEBUG
+    var observerCountForTesting: Int {
+        observers.count
+    }
+
+    var hasTimerForTesting: Bool {
+        timer != nil
+    }
+    #endif
 }
