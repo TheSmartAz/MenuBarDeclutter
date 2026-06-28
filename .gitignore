@@ -15,3 +15,6 @@ build/
 # Local signing and notarization material
 private/
 *.p8
+
+# Intentionally untracked local planning drafts
+/docs/plans/PHASE-9.1.md

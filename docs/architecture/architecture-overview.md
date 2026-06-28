@@ -7,9 +7,22 @@ MenuBarDeclutter uses Swift, AppKit, and SwiftUI for a native macOS 26.0+ app.
 - `MenuBarDeclutterApp` uses the SwiftUI app lifecycle.
 - `AppDelegate` is attached through `@NSApplicationDelegateAdaptor`.
 - `AppDelegate` sets the app activation policy to `.accessory` and owns `AppEnvironment`.
-- `AppEnvironment` owns long-lived services and coordinates user commands.
+- `AppEnvironment` is the composition root and lifecycle facade. It wires long-lived services, owns launch/shutdown ordering, and keeps public command methods for `AppDelegate`, Settings callbacks, and status menu commands.
 - On launch, `AppEnvironment` detects Safe Mode/crash markers, starts expanded, installs status items, runs a health check, applies recovery when needed, and only then honors a collapsed launch preference if health is OK.
-- During runtime, `AppEnvironment` observes screen parameter changes, workspace wake, and active Space changes to pause auto-rehide, reapply geometry, optionally rescan Pro Accessibility snapshots, and log a fresh health report.
+- During runtime, `AppEnvironmentSystemRecoveryCoordinator` observes screen parameter changes, workspace wake, and active Space changes, then calls back into the environment recovery path to pause auto-rehide, reapply geometry, optionally rescan Pro Accessibility snapshots, and log a fresh health report.
+
+## AppEnvironment Coordinator Split
+
+`AppEnvironment` stays intentionally thin around lifecycle ordering and cross-domain wiring. Behavior-heavy runtime domains are split into focused `@MainActor` coordinators:
+
+- `AppHealthCoordinator` owns health snapshot construction, `HealthService` / `RecoveryService` wiring, automatic repair actions, Pro disablement, Safe Mode next-launch requests, and temporary auto-rehide / hover-reveal suppression.
+- `SettingsRuntimeCoordinator` owns settings-driven side effects: behavior/search/Second Bar/privacy refreshes, initial behavior application, trigger start/stop decisions, Reset App Layout, Reset All Settings, Pro Mode toggling, and Find Icon hotkey registration.
+- `ProfileAutomationCoordinator` owns the local profile store, profile application service, trigger service, and `menubardeclutter://` URL handler lifecycle. It applies profiles through conservative Basic settings and invokes environment refresh callbacks after profile apply.
+- `MenuBarItemSurfaceCoordinator` owns Find Icon, Second Bar, menu bar item refresh, Second Bar activation, explicit icon move dispatch, move warning reset, and runtime suspension/resume during icon moves.
+- `AppEnvironmentLiveStatusSynchronizer` centralizes updates from runtime services into `LiveDiagnosticsStatus`, including visibility, separator lengths, hotkey state, hover/auto-rehide state, Accessibility status, search index count, and Second Bar item count.
+- `AppEnvironmentSystemRecoveryCoordinator` owns notification observer installation/removal for display, wake, and active-Space recovery events.
+
+The split keeps `AppEnvironment` as the dependency graph owner while avoiding a single massive app delegate-style object. Cross-domain calls remain explicit closures so Basic Mode can keep working when Pro features are disabled, permission is missing, or Safe Mode suppresses optional services.
 
 ## Services
 
@@ -39,11 +52,13 @@ MenuBarDeclutter uses Swift, AppKit, and SwiftUI for a native macOS 26.0+ app.
 - `AutomationURLHandler` (Phase 8) installs a `kAEGetURL` handler for the registered `menubardeclutter://` scheme. It supports expand, collapse, reveal-all, show second bar, and apply-profile-by-name commands without adding Apple Events scripting dictionaries, network access, or background automation.
 - `HealthService` (Phase 9) turns a runtime `HealthCheckSnapshot` into a `HealthReport`. Checks cover missing control/separator items, invalid separator lengths, invalid screen geometry, corrupted settings, hotkey registration drift, stuck auto-rehide/hover timers, Pro permission mismatches, repeated AX failures, and stale Pro scans.
 - `RecoveryService` (Phase 9) maps health issues to focused repair actions: recreate missing status items, reset separator lengths, expand all, temporarily disable auto-rehide/hover reveal, reset corrupted scan interval / Second Bar position / Accessibility status cache, disable Pro Mode, reset settings as an explicit fallback, and request Safe Mode for the next launch.
-- `AppEnvironment` is the single owner for screen/wake/active-Space recovery. It reapplies status item geometry, refreshes Second Bar placement, forces Pro rescans when allowed, and reruns health after system changes.
+- `AppHealthCoordinator` adapts pure health/recovery services to the live AppKit runtime. It builds snapshots from status items, settings, permissions, timers, scans, and Safe Mode state, then runs targeted recovery without requesting new permissions.
+- `AppEnvironmentSystemRecoveryCoordinator` owns screen/wake/active-Space observers. `AppEnvironment` still owns the recovery action itself: cancel auto-rehide, reapply status item geometry, refresh Second Bar placement, force Pro rescans when allowed, and rerun health after system changes.
 - `SafeModeService` (Phase 9) owns launch-safe flags and crash markers. Holding Option at launch, a one-shot `safe-mode-next-launch.flag`, or a leftover `running.marker` enters Safe Mode; clean termination removes the marker. Safe Mode starts expanded and suppresses auto-rehide, hover reveal, Pro scans, icon moving, hotkeys, and smart triggers while keeping the control item and reset menu available.
 - `SettingsWindowController` owns the AppKit settings window and hosts SwiftUI content, including the new Behavior section and live diagnostics.
+- `SettingsRuntimeCoordinator` applies user setting changes to live runtime services and keeps settings refresh ordering consistent across Settings, status menu commands, profile application, and health recovery.
 - `SettingsStore` owns typed UserDefaults-backed preferences (Phase 0 through Phase 8 fields). It clamps user-entered delay/polling/scan/Second Bar/icon-moving values to documented bounds and exposes helper accessors/mutator methods for the global visibility hotkey, Find Icon hotkey, and Second Bar placement.
-- `LiveDiagnosticsStatus` is an `@Observable` snapshot of runtime state (visibility state, separator lengths, hotkey/hover/auto-rehide flags, last rehide reason, Accessibility permission status, latest Pro scan counts, AX failure count, scanned item snapshots, search state, Second Bar state, icon moving state, active profile, trigger logs, profile apply logs, Safe Mode state, and latest health report). Owned by `AppEnvironment`, surfaced in the Diagnostics view.
+- `LiveDiagnosticsStatus` is an `@Observable` snapshot of runtime state (visibility state, separator lengths, hotkey/hover/auto-rehide flags, last rehide reason, Accessibility permission status, latest Pro scan counts, AX failure count, scanned item snapshots, search state, Second Bar state, icon moving state, active profile, trigger logs, profile apply logs, Safe Mode state, and latest health report). It is instantiated by `AppEnvironment`, synchronized by `AppEnvironmentLiveStatusSynchronizer`, and surfaced in the Diagnostics view.
 - `DiagnosticsLogger` owns an in-memory ring buffer of diagnostic events.
 - `AppSupportPaths` centralizes the Application Support directory tree (`MenuBarDeclutter/`, `Diagnostics/`, `Profiles/`, `Backups/`) and ensures they exist lazily. Phase 3 writes diagnostics exports only on explicit user action; Phase 8 stores local profile and trigger JSON under `Profiles/`.
 - `LaunchAtLoginService` (Phase 3) wraps the public `SMAppService.mainApp` API. `register()` is only called when the user explicitly enables the Settings toggle; `unregister()` when disabled. Failure paths are surfaced through `.lastRegistrationResult` and logged to Diagnostics. The service never auto-enables. Works inside the App Sandbox.
@@ -79,7 +94,7 @@ MenuBarDeclutter uses Swift, AppKit, and SwiftUI for a native macOS 26.0+ app.
 - Hiding is achieved with public `NSStatusItem` behavior only, no private APIs.
 - The separator item sits to the left of the user's menu bar icons. When collapsed, its `length` grows large enough to push later items off the visible menu bar (the macOS menu bar is arranged left-to-right in declaration order).
 - `HidingService.applyState()` recomputes the separator length and updates the control and separator SF Symbols (`chevron.left` / `chevron.right` family).
-- The app observes `NSApplication.didChangeScreenParametersNotification` and re-applies the collapsed length after display changes.
+- `AppEnvironmentSystemRecoveryCoordinator` observes `NSApplication.didChangeScreenParametersNotification`; the environment recovery path re-applies the collapsed length after display changes.
 - State persists across launches via `SettingsStore.isCollapsed`.
 
 ## Phase 2 Behavior Layer
