@@ -2,6 +2,28 @@
 
 Phases 0-9 are implemented for `MenuBarDeclutter`.
 
+## Current Checkout Status
+
+- Product display name is `MenuBarDeclutter`; the Xcode project and active scheme are still `MenuBar-Manager`.
+- The app is a native macOS 26.0+ LSUIElement menu bar utility with no default document window.
+- Basic Mode is usable by default without Accessibility, Screen Recording, Apple Events, Input Monitoring, or network access.
+- Pro Mode is opt-in. Its user-facing surfaces are implemented, but they depend on Accessibility permission and degrade to explanatory unavailable states when Pro Mode, Accessibility Discovery, or permission is missing.
+- Automated coverage includes unit tests for pure logic plus UI workflow tests for Diagnostics, Privacy, Find Icon unavailable state, Second Bar settings requirements, and launch screenshots.
+- The latest recorded full validation is `xcodebuild test -scheme MenuBar-Manager -destination 'platform=macOS'`, which passed on 2026-06-28. See `docs/testing/manual-qa-run-2026-06-28.md`.
+- Hands-on QA is still required for real Command-drag separator placement, third-party menu bar item movement, external display/notch behavior, Launch at Login through System Settings, real Accessibility prompt grant/revoke flows, and interactive network-monitor checks.
+
+## Usable Features Today
+
+- Permission-free Basic Mode hiding with expand, collapse, toggle, reveal-all, drag hint, separator length reset, persisted state, and display-change reapplication.
+- Daily-use Basic behavior controls: auto-rehide, hover reveal, optional always-hidden zone, Option-click reveal all, separator visual markers, and an optional global visibility hotkey.
+- Settings, onboarding, Launch at Login opt-in, diagnostics live status, privacy-safe diagnostics export, reset actions, and Application Support directory management.
+- Opt-in Pro discovery of menu bar item metadata through Accessibility, with read-only scanning, zone classification, manual refresh, diagnostics tables, and graceful permission handling.
+- Find Icon search panel with keyboard navigation, non-clicking reveal/highlight activation, optional Find Icon hotkey, and privacy-preserving diagnostics.
+- Floating Second Bar for hidden and always-hidden items using Accessibility metadata and app/bundle icons, with search, keyboard navigation, placement settings, and non-clicking activation.
+- Explicit Pro icon moving commands from Search or Second Bar, guarded by settings, permission checks, first-use confirmation, safety rules, retry/verification, and diagnostics.
+- Local JSON profiles, conservative profile apply/dry-run, smart triggers for supported local signals, and command-limited `menubardeclutter://` URL automation.
+- Health checks, targeted recovery, Safe Mode, crash markers, wake/display recovery, and health report export.
+
 ## Phase 0 (project skeleton)
 
 - Native macOS 26.0+ Swift/AppKit/SwiftUI bootstrap.
@@ -42,7 +64,7 @@ Phases 0-9 are implemented for `MenuBarDeclutter`.
 - First-run **Onboarding**: SwiftUI paged `TabView` hosted in an AppKit window, gated by `SettingsStore.hasCompletedOnboarding`; "Show Onboarding Again" reachable from Settings → General.
 - **Launch at Login** via the public `SMAppService.mainApp` API (ServiceManagement). Only enabled on explicit user opt-in — never auto-enabled — and works inside the App Sandbox; errors are surfaced in Diagnostics.
 - **Diagnostics export** to privacy-safe `.txt` / `.json` through an `NSSavePanel`. The bundle contains app version, macOS version, machine architecture, screen frames only, current settings, and recent log events. It explicitly excludes screenshots, screen contents, personal file paths, and network data.
-- **Application Support** directory tree (`MenuBarDeclutter/`, `Diagnostics/`, `Profiles/`, `Backups/`) created lazily by `AppSupportPaths.ensureDirectoriesExist()`. `Profiles/` and `Backups/` are reserved for future phases.
+- **Application Support** directory tree (`MenuBarDeclutter/`, `Diagnostics/`, `Profiles/`, `Backups/`) created lazily by `AppSupportPaths.ensureDirectoriesExist()`. Diagnostics exports and local profile/trigger JSON use this tree; `Backups/` remains reserved.
 - New `startCollapsed` setting honoring the "Start collapsed" preference on launch.
 - App version, marketing version, and build number surfaced in Settings → General → App.
 - **Reset App Layout** and **Reset All Settings** actions in Settings → General.
