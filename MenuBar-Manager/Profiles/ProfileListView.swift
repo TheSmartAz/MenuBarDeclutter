@@ -166,8 +166,15 @@ struct ProfileListView: View {
                         onTriggersChanged()
                     }
 
-                Spacer()
+                Toggle("Pause all automation", isOn: $settingsStore.automationPaused)
+                    .onChange(of: settingsStore.automationPaused) { _, _ in
+                        onTriggersChanged()
+                    }
 
+                Spacer()
+            }
+
+            HStack {
                 Picker("Trigger", selection: $triggerDraftKind) {
                     ForEach(TriggerDraftKind.allCases) { kind in
                         Text(kind.displayName).tag(kind)
@@ -181,6 +188,12 @@ struct ProfileListView: View {
                     addConfiguredTrigger()
                 }
                 .disabled(selectedProfile == nil || !canAddConfiguredTrigger)
+            }
+
+            if settingsStore.automationPaused {
+                Label("Automation is paused. Smart triggers will not apply profiles until resumed.", systemImage: "pause.circle")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             if triggerService.triggers.isEmpty {

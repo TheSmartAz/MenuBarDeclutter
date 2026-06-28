@@ -169,6 +169,7 @@ struct SettingsRootView: View {
                 appSupportPaths: appSupportPaths,
                 exporter: diagnosticsExporter,
                 settingsStore: settingsStore,
+                launchAtLoginService: launchAtLoginService,
                 scanCoordinator: menuBarScanCoordinator,
                 onRunHealthCheck: onRunHealthCheck,
                 onFixHealthIssues: onFixHealthIssues,
@@ -181,6 +182,7 @@ struct SettingsRootView: View {
                 settingsStore: settingsStore,
                 appSupportPaths: appSupportPaths,
                 onChange: onBehaviorChanged,
+                onAutomationChanged: onTriggersChanged,
                 onResetMovingWarnings: onResetMovingWarnings
             )
         }

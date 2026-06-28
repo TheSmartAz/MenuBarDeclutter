@@ -656,3 +656,60 @@ This checklist verifies the Phase 1 hiding MVP. Later-phase features such as glo
 - Confirm Phase 9 health checks do not prompt for Accessibility, Screen Recording, Apple Events, Input Monitoring, or network access.
 - Confirm Safe Mode and crash markers are local Application Support files only.
 - Confirm Health Report export contains only health status, issue codes/details, and suggested recovery actions.
+
+## Phase 9.1 Checklist - Alpha RC Validation And Release Hardening
+
+### Schemes and scripts
+
+- Run `xcodebuild -list` and confirm both `MenuBarDeclutter` and deprecated fallback `MenuBar-Manager` schemes are listed.
+- Run `scripts/build_debug.sh` and confirm it uses `MenuBarDeclutter`.
+- Run `scripts/test.sh` and confirm it uses `MenuBarDeclutter`.
+- Run `scripts/qa_preflight.sh` and record PASS/FAIL/BLOCKED.
+
+### Privacy boundary
+
+- Run `scripts/verify_privacy_boundary.sh`.
+- Confirm no ScreenCaptureKit, Screen Recording usage string, Apple Events usage string, Input Monitoring usage string, or network entitlement is reported.
+- Confirm `menubardeclutter://` remains registered.
+- Confirm diagnostics filtered export excludes screenshots, screen contents, live search text, selected item identity, personal file paths, and network data.
+- Run `scripts/qa_network_watch.sh MenuBarDeclutter` while exercising Basic Mode and Pro surfaces; confirm no unexpected network connections.
+
+### Experimental Pro surfaces
+
+- Open Settings -> Advanced and confirm a Labs / Experimental section is visible.
+- Attempt to enable icon moving and confirm the warning appears before it turns on.
+- Cancel the warning and confirm icon moving remains disabled.
+- Enable icon moving, then Reset All Settings and confirm icon moving returns to disabled.
+- Confirm Diagnostics shows Experimental Icon Moving as Enabled/Disabled.
+
+### Automation pause
+
+- Enable Smart Triggers in Settings -> Profiles.
+- Turn on Pause All Automation and confirm configured triggers stop applying profiles.
+- Confirm the status menu shows Resume Automation.
+- Resume automation from the status menu and confirm trigger evaluation resumes.
+- Pause automation from the status menu and confirm Settings -> Profiles reflects the paused state.
+- Confirm Diagnostics shows Automation Paused.
+
+### Diagnostics filtering
+
+- Generate info, warning, and error events if available.
+- In Settings -> Diagnostics, filter to Warnings/Errors and confirm info/debug events are hidden.
+- Filter by a specific category and confirm only that category appears.
+- Select an event and click Copy Selected; paste into a text editor and confirm category, severity, and message are present.
+- Click Export Filtered and confirm the exported file contains only the filtered event set.
+
+### Launch at Login installed-app support
+
+- Open Settings -> General and confirm SMAppService Status is visible.
+- Click Refresh Login Item Status and confirm the status updates without crashing.
+- Click Open Login Items Settings and confirm System Settings opens.
+- Test Launch at Login from an installed, signed app; do not treat Xcode-only behavior as a release pass.
+- If registration is stale, remove stale entries in System Settings and retry.
+
+### Alpha RC docs
+
+- Complete `docs/testing/alpha-rc-qa-run-template.md`.
+- Review `docs/testing/known-risk-areas.md`.
+- Complete `docs/release/alpha-rc-checklist.md`.
+- Include `docs/release/alpha-rc-known-limitations.md` in release notes.

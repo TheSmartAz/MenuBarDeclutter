@@ -45,6 +45,7 @@ final class AppEnvironmentLiveStatusSynchronizer {
         liveStatus.autoRehideScheduled = rehideController.isScheduled
         liveStatus.lastRehideReason = rehideController.lastReason?.rawValue
         liveStatus.accessibilityPermissionStatus = accessibilityPermissionService.status
+        liveStatus.automationPaused = settingsStore.automationPaused
         refreshSearchAndSecondBarItemCounts()
     }
 

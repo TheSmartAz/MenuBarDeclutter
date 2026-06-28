@@ -8,6 +8,7 @@ struct DiagnosticsSettingsView: View {
     let appSupportPaths: AppSupportPaths
     let exporter: DiagnosticsExporter
     @Bindable var settingsStore: SettingsStore
+    var launchAtLoginService: LaunchAtLoginService? = nil
     var scanCoordinator: MenuBarScanCoordinator?
     var onRunHealthCheck: (() -> Void)?
     var onFixHealthIssues: (() -> Void)?
@@ -18,14 +19,41 @@ struct DiagnosticsSettingsView: View {
     @State private var exportFormat: DiagnosticsExporter.Format = .txt
     @State private var exportError: String?
     @State private var lastExportedURL: URL?
+    @State private var severityFilter: DiagnosticSeverityFilter = .all
+    @State private var selectedCategory: DiagnosticCategory?
+    @State private var selectedEventID: DiagnosticEvent.ID?
+
+    private var filteredEvents: [DiagnosticEvent] {
+        diagnosticsLogger.events.filter { event in
+            let severityMatches: Bool
+            switch severityFilter {
+            case .all:
+                severityMatches = true
+            case .warningsAndErrors:
+                severityMatches = event.level == .warning || event.level == .error
+            }
+
+            let categoryMatches = selectedCategory.map { $0 == event.category } ?? true
+            return severityMatches && categoryMatches
+        }
+    }
+
+    private var selectedEvent: DiagnosticEvent? {
+        diagnosticsLogger.events.first { $0.id == selectedEventID }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             DiagnosticsToolbar(
                 eventCount: diagnosticsLogger.events.count,
+                filteredEventCount: filteredEvents.count,
                 clear: diagnosticsLogger.removeAll,
                 exportFormat: $exportFormat,
-                onExport: exportCurrent
+                severityFilter: $severityFilter,
+                selectedCategory: $selectedCategory,
+                onCopySelected: copySelectedEvent,
+                onExport: exportCurrent,
+                canCopySelected: selectedEvent != nil
             )
 
             if let exportError {
@@ -57,6 +85,8 @@ struct DiagnosticsSettingsView: View {
             if let liveStatus {
                 LiveStatusSection(
                     liveStatus: liveStatus,
+                    settingsStore: settingsStore,
+                    launchAtLoginService: launchAtLoginService,
                     scanCoordinator: scanCoordinator
                 )
                 Divider()
@@ -65,9 +95,15 @@ struct DiagnosticsSettingsView: View {
             if diagnosticsLogger.events.isEmpty {
                 ContentUnavailableView("No Events", systemImage: "list.bullet.rectangle")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if filteredEvents.isEmpty {
+                ContentUnavailableView("No Matching Events", systemImage: "line.3.horizontal.decrease.circle")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                List(diagnosticsLogger.events.reversed()) { event in
-                    DiagnosticEventRow(event: event)
+                List(selection: $selectedEventID) {
+                    ForEach(filteredEvents.reversed()) { event in
+                        DiagnosticEventRow(event: event)
+                            .tag(event.id)
+                    }
                 }
             }
         }
@@ -96,7 +132,11 @@ struct DiagnosticsSettingsView: View {
         let response = panel.runModal()
         guard response == .OK, let url = panel.url else { return }
 
-        let snapshot = exporter.makeSnapshot(settingsStore: settingsStore, logger: diagnosticsLogger)
+        let snapshot = exporter.makeSnapshot(
+            settingsStore: settingsStore,
+            logger: diagnosticsLogger,
+            events: filteredEvents
+        )
         do {
             let data = try exporter.serialize(
                 snapshot,
@@ -113,6 +153,13 @@ struct DiagnosticsSettingsView: View {
             lastExportedURL = nil
             diagnosticsLogger.log("Diagnostics export failed: \(error.localizedDescription)", level: .error)
         }
+    }
+
+    private func copySelectedEvent() {
+        guard let selectedEvent else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(selectedEvent.formattedSummary, forType: .string)
+        diagnosticsLogger.log("Diagnostic event copied.", level: .debug, category: .privacy)
     }
 
     private func exportHealthReport() {
@@ -170,11 +217,32 @@ struct DiagnosticsSettingsView: View {
     }
 }
 
+private enum DiagnosticSeverityFilter: String, CaseIterable, Identifiable {
+    case all
+    case warningsAndErrors
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .all:
+            "All"
+        case .warningsAndErrors:
+            "Warnings/Errors"
+        }
+    }
+}
+
 private struct DiagnosticsToolbar: View {
     let eventCount: Int
+    let filteredEventCount: Int
     let clear: () -> Void
     @Binding var exportFormat: DiagnosticsExporter.Format
+    @Binding var severityFilter: DiagnosticSeverityFilter
+    @Binding var selectedCategory: DiagnosticCategory?
+    let onCopySelected: () -> Void
     let onExport: () -> Void
+    let canCopySelected: Bool
 
     var body: some View {
         HStack {
@@ -182,10 +250,31 @@ private struct DiagnosticsToolbar: View {
                 .font(.title3)
                 .bold()
 
-            Text(eventCount, format: .number)
+            Text("\(filteredEventCount) / \(eventCount)")
                 .foregroundStyle(.secondary)
 
             Spacer()
+
+            Picker("Severity", selection: $severityFilter) {
+                ForEach(DiagnosticSeverityFilter.allCases) { filter in
+                    Text(filter.displayName)
+                        .tag(filter)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.segmented)
+            .frame(width: 180)
+
+            Picker("Category", selection: $selectedCategory) {
+                Text("All Categories")
+                    .tag(Optional<DiagnosticCategory>.none)
+                ForEach(DiagnosticCategory.allCases) { category in
+                    Text(category.displayName)
+                        .tag(Optional(category))
+                }
+            }
+            .labelsHidden()
+            .frame(width: 170)
 
             Picker("Export format", selection: $exportFormat) {
                 ForEach(DiagnosticsExporter.Format.allCases) { format in
@@ -197,7 +286,11 @@ private struct DiagnosticsToolbar: View {
             .pickerStyle(.segmented)
             .frame(width: 90)
 
-            Button("Export…", systemImage: "square.and.arrow.up", action: onExport)
+            Button("Copy Selected", systemImage: "doc.on.doc", action: onCopySelected)
+                .disabled(!canCopySelected)
+
+            Button("Export Filtered…", systemImage: "square.and.arrow.up", action: onExport)
+                .disabled(filteredEventCount == 0)
 
             Button("Clear", systemImage: "trash", action: clear)
                 .disabled(eventCount == 0)
@@ -460,6 +553,8 @@ private struct ScreenStatusSection: View {
 
 private struct LiveStatusSection: View {
     @Bindable var liveStatus: LiveDiagnosticsStatus
+    @Bindable var settingsStore: SettingsStore
+    var launchAtLoginService: LaunchAtLoginService?
     var scanCoordinator: MenuBarScanCoordinator?
 
     var body: some View {
@@ -658,6 +753,36 @@ private struct LiveStatusSection: View {
                     Spacer()
                 }
                 GridRow {
+                    Text("Experimental Icon Moving")
+                    Text(settingsStore.iconMovingEnabled ? "Enabled" : "Disabled")
+                        .foregroundStyle(settingsStore.iconMovingEnabled ? .orange : .secondary)
+                    Spacer()
+                }
+                GridRow {
+                    Text("Smart Triggers")
+                    Text(settingsStore.smartTriggersEnabled ? "Enabled" : "Disabled")
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
+                GridRow {
+                    Text("Automation Paused")
+                    Text(settingsStore.automationPaused || liveStatus.automationPaused ? "Yes" : "No")
+                        .foregroundStyle(settingsStore.automationPaused || liveStatus.automationPaused ? .orange : .secondary)
+                    Spacer()
+                }
+                GridRow {
+                    Text("Launch at Login Status")
+                    Text(launchAtLoginService?.statusDisplayName ?? "Unavailable")
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
+                GridRow {
+                    Text("Last Login Item Action")
+                    Text(launchAtLoginService?.lastRegistrationResult?.displayName ?? "—")
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
+                GridRow {
                     Text("Active Profile")
                     Text(liveStatus.activeProfileName ?? "—")
                         .foregroundStyle(.secondary)
@@ -758,6 +883,10 @@ private struct DiagnosticEventRow: View {
                     .bold()
                     .foregroundStyle(levelStyle)
 
+                Text(event.category.displayName)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
                 Spacer()
 
                 Text(event.timestamp, format: Date.FormatStyle(date: .omitted, time: .standard))
@@ -767,6 +896,13 @@ private struct DiagnosticEventRow: View {
 
             Text(event.message)
                 .textSelection(.enabled)
+
+            if !event.metadata.isEmpty {
+                Text(event.metadata.description)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+            }
         }
         .padding(.vertical, 4)
     }

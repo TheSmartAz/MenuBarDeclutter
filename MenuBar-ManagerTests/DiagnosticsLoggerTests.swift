@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import MenuBar_Manager
+@testable import MenuBarDeclutter
 
 @Suite("DiagnosticsLogger")
 @MainActor
@@ -26,5 +26,25 @@ struct DiagnosticsLoggerTests {
         logger.log("second")
 
         #expect(logger.events.map(\.message) == ["second"])
+    }
+
+    @Test func structuredEventsKeepCategorySeverityAndMetadata() {
+        let logger = DiagnosticsLogger(
+            now: { Date(timeIntervalSince1970: 1) },
+            idProvider: { UUID(uuidString: "00000000-0000-0000-0000-000000000002")! }
+        )
+
+        logger.log(
+            "Automation paused for QA.",
+            level: .warning,
+            category: .trigger,
+            metadata: ["source": "test\ncase"]
+        )
+
+        let event = logger.events[0]
+        #expect(event.level == .warning)
+        #expect(event.category == .trigger)
+        #expect(event.metadata["source"] == "test case")
+        #expect(event.formattedSummary.contains("Automation paused for QA."))
     }
 }

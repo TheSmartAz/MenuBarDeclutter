@@ -33,13 +33,35 @@ struct GeneralSettingsView: View {
                         launchAtLoginService?.apply(enabled: newValue)
                     }
 
-                if let service = launchAtLoginService, let result = service.lastRegistrationResult, result.isFailure {
-                    HStack(spacing: 8) {
-                        Image(systemName: "exclamationmark.triangle")
-                            .foregroundStyle(.orange)
-                        Text("Launch at Login could not be configured. See Diagnostics for details.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                if let service = launchAtLoginService {
+                    LabeledContent("SMAppService Status", value: service.statusDisplayName)
+
+                    if let result = service.lastRegistrationResult {
+                        LabeledContent("Last Login Item Action", value: result.displayName)
+                    }
+
+                    HStack {
+                        Button("Refresh Login Item Status", systemImage: "arrow.clockwise") {
+                            service.refreshStatus()
+                        }
+
+                        Button("Open Login Items Settings", systemImage: "gearshape") {
+                            _ = service.openLoginItemsSettings()
+                        }
+                    }
+
+                    Text("Launch at Login must be validated from an installed, signed app. Xcode runs can report a different SMAppService status.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    if let result = service.lastRegistrationResult, result.isFailure {
+                        HStack(spacing: 8) {
+                            Image(systemName: "exclamationmark.triangle")
+                                .foregroundStyle(.orange)
+                            Text("Launch at Login could not be configured. Open Login Items Settings, remove stale entries, then try again from the installed app.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
 
@@ -91,6 +113,9 @@ struct GeneralSettingsView: View {
         }
         .formStyle(.grouped)
         .padding()
+        .onAppear {
+            launchAtLoginService?.refreshStatus()
+        }
     }
 }
 

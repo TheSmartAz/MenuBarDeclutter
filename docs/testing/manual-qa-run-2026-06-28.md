@@ -14,13 +14,13 @@ This run covered the manual-adjacent checks that can be exercised reliably from 
 ## Commands Run
 
 ```sh
-xcodebuild test -scheme MenuBar-Manager -destination 'platform=macOS' -only-testing:MenuBar-ManagerUITests/MenuBar_ManagerUITests
+xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -only-testing:MenuBarDeclutterUITests/MenuBar_ManagerUITests
 ```
 
 Result: `** TEST SUCCEEDED **` on 2026-06-28. Executed 5 UI workflow tests with 0 failures.
 
 ```sh
-xcodebuild test -scheme MenuBar-Manager -destination 'platform=macOS'
+xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS'
 ```
 
 Result: `** TEST SUCCEEDED **` on 2026-06-28. The combined run passed unit tests, 5 UI workflow tests, and 2 launch screenshot tests. Xcode reported the recurring duplicate matching macOS destination warning.

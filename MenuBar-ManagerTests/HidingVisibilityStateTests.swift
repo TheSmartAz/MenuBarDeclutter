@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import MenuBar_Manager
+@testable import MenuBarDeclutter
 
 @Suite("HidingVisibilityState")
 @MainActor

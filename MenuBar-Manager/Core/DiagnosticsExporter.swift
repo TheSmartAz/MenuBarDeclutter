@@ -130,6 +130,7 @@ struct DiagnosticsExporter {
         let iconMovingDragDuration: Double
         let iconMovingAllowSystemItems: Bool
         let smartTriggersEnabled: Bool
+        let automationPaused: Bool
         let showPrimarySeparator: Bool
         let showSeparators: Bool
         let autoRehideEnabled: Bool
@@ -146,7 +147,8 @@ struct DiagnosticsExporter {
 
     func makeSnapshot(
         settingsStore: SettingsStore,
-        logger: DiagnosticsLogger
+        logger: DiagnosticsLogger,
+        events: [DiagnosticEvent]? = nil
     ) -> Snapshot {
         Snapshot(
             generatedAt: dateProvider(),
@@ -158,7 +160,7 @@ struct DiagnosticsExporter {
             architecture: architectureProvider(),
             screens: screensProvider(),
             settings: makeSettingsSnapshot(settingsStore),
-            events: logger.events
+            events: events ?? logger.events
         )
     }
 
@@ -192,6 +194,7 @@ struct DiagnosticsExporter {
             iconMovingDragDuration: store.iconMovingDragDuration,
             iconMovingAllowSystemItems: store.iconMovingAllowSystemItems,
             smartTriggersEnabled: store.smartTriggersEnabled,
+            automationPaused: store.automationPaused,
             showPrimarySeparator: store.showPrimarySeparator,
             showSeparators: store.showSeparators,
             autoRehideEnabled: store.autoRehideEnabled,
@@ -289,6 +292,7 @@ struct DiagnosticsExporter {
         lines.append("Icon Moving Drag Duration: \(s.iconMovingDragDuration)")
         lines.append("Icon Moving Allow System Items: \(s.iconMovingAllowSystemItems)")
         lines.append("Smart Triggers Enabled: \(s.smartTriggersEnabled)")
+        lines.append("Automation Paused: \(s.automationPaused)")
         lines.append("Show Primary Separator: \(s.showPrimarySeparator)")
         lines.append("Show Separators: \(s.showSeparators)")
         lines.append("Auto-Rehide Enabled: \(s.autoRehideEnabled)")
@@ -316,12 +320,15 @@ struct DiagnosticsExporter {
             lines.append("(none)")
         } else {
             for event in snapshot.events {
-                lines.append("[\(event.level.rawValue.uppercased())] \(formatter.string(from: event.timestamp)) — \(event.message)")
+                let metadata = event.metadata.isEmpty ? "" : " metadata=\(event.metadata)"
+                lines.append(
+                    "[\(event.level.rawValue.uppercased())] [\(event.category.displayName)] \(formatter.string(from: event.timestamp)) - \(event.message)\(metadata)"
+                )
             }
         }
         lines.append("")
         lines.append("== Excluded by design ==")
-        lines.append("Screenshots, screen contents, personal file paths, network data.")
+        lines.append("Screenshots, screen contents, live search text, selected item identity, personal file paths, network data.")
         let text = lines.joined(separator: "\n")
         guard let data = text.data(using: .utf8) else {
             throw DiagnosticsExportError.encodingFailed
@@ -385,6 +392,7 @@ struct DiagnosticsExporter {
                 "iconMovingDragDuration": snapshot.settings.iconMovingDragDuration,
                 "iconMovingAllowSystemItems": snapshot.settings.iconMovingAllowSystemItems,
                 "smartTriggersEnabled": snapshot.settings.smartTriggersEnabled,
+                "automationPaused": snapshot.settings.automationPaused,
                 "showPrimarySeparator": snapshot.settings.showPrimarySeparator,
                 "showSeparators": snapshot.settings.showSeparators,
                 "autoRehideEnabled": snapshot.settings.autoRehideEnabled,
@@ -400,14 +408,19 @@ struct DiagnosticsExporter {
             ] as [String: Any],
             "logs": snapshot.events.map { event in
                 [
+                    "category": event.category.rawValue,
                     "level": event.level.rawValue,
+                    "severity": event.level.rawValue,
                     "timestamp": Self.iso(event.timestamp),
-                    "message": event.message
+                    "message": event.message,
+                    "metadata": event.metadata
                 ] as [String: Any]
             },
             "excludedByDesign": [
                 "screenshots",
                 "screenContents",
+                "liveSearchText",
+                "selectedItemIdentity",
                 "personalFilePaths",
                 "networkData"
             ]

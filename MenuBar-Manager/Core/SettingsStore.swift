@@ -63,6 +63,7 @@ final class SettingsStore {
 
         // Phase 8 — profiles and smart triggers
         case smartTriggersEnabled
+        case automationPaused
 
         // Phase 2 — Basic UX polish
         case autoRehideEnabled
@@ -297,6 +298,10 @@ final class SettingsStore {
         didSet { defaults.set(smartTriggersEnabled, forKey: Key.smartTriggersEnabled.rawValue) }
     }
 
+    var automationPaused: Bool {
+        didSet { defaults.set(automationPaused, forKey: Key.automationPaused.rawValue) }
+    }
+
     // MARK: Phase 2 behavior settings
 
     var autoRehideEnabled: Bool {
@@ -407,6 +412,7 @@ final class SettingsStore {
             Key.iconMovingDragDuration.rawValue: AppConstants.defaultIconMovingDragDuration,
             Key.iconMovingAllowSystemItems.rawValue: false,
             Key.smartTriggersEnabled.rawValue: false,
+            Key.automationPaused.rawValue: false,
             Key.autoRehideEnabled.rawValue: true,
             Key.autoRehideDelaySeconds.rawValue: AppConstants.defaultAutoRehideDelaySeconds,
             Key.hoverRevealEnabled.rawValue: false,
@@ -501,6 +507,7 @@ final class SettingsStore {
 
         self.iconMovingAllowSystemItems = defaults.bool(forKey: Key.iconMovingAllowSystemItems.rawValue)
         self.smartTriggersEnabled = defaults.bool(forKey: Key.smartTriggersEnabled.rawValue)
+        self.automationPaused = defaults.bool(forKey: Key.automationPaused.rawValue)
 
         self.autoRehideEnabled = defaults.object(forKey: Key.autoRehideEnabled.rawValue) as? Bool ?? true
 
@@ -567,6 +574,7 @@ final class SettingsStore {
         iconMovingDragDuration = AppConstants.defaultIconMovingDragDuration
         iconMovingAllowSystemItems = false
         smartTriggersEnabled = false
+        automationPaused = false
 
         autoRehideEnabled = true
         autoRehideDelaySeconds = AppConstants.defaultAutoRehideDelaySeconds

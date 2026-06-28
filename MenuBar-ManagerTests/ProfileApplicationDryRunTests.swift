@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
 import Testing
-@testable import MenuBar_Manager
+@testable import MenuBarDeclutter
 
 @Suite("ProfileApplicationDryRun")
 @MainActor

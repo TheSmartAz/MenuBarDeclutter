@@ -20,6 +20,8 @@ final class StatusBarMenuBuilder {
         let refreshMenuBarItems: () -> Void
         let toggleProMode: () -> Void
         let proModeTitle: () -> String
+        let toggleAutomationPaused: () -> Void
+        let automationPausedTitle: () -> String
         let canRefreshMenuBarItems: () -> Bool
         let resetSeparatorLength: () -> Void
         let showDragHint: () -> Void
@@ -126,6 +128,14 @@ final class StatusBarMenuBuilder {
             menuItem(
                 title: actions.proModeTitle(),
                 action: #selector(StatusBarMenuCommandTarget.toggleProMode(_:)),
+                keyEquivalent: ""
+            )
+        )
+
+        menu.addItem(
+            menuItem(
+                title: actions.automationPausedTitle(),
+                action: #selector(StatusBarMenuCommandTarget.toggleAutomationPaused(_:)),
                 keyEquivalent: ""
             )
         )
@@ -263,6 +273,10 @@ private final class StatusBarMenuCommandTarget: NSObject {
 
     @objc func toggleProMode(_ sender: NSMenuItem) {
         actions.toggleProMode()
+    }
+
+    @objc func toggleAutomationPaused(_ sender: NSMenuItem) {
+        actions.toggleAutomationPaused()
     }
 
     @objc func resetSeparatorLength(_ sender: NSMenuItem) {

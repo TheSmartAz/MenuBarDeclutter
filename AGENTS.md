@@ -6,13 +6,15 @@ Guidance for coding agents working in this repository.
 
 - Product/app name: `MenuBarDeclutter`.
 - Current Xcode project in this checkout: `MenuBar-Manager.xcodeproj`.
-- Current scheme reported by `xcodebuild -list`: `MenuBar-Manager`.
+- Current canonical scheme reported by `xcodebuild -list`: `MenuBarDeclutter`.
+- Deprecated compatibility scheme retained: `MenuBar-Manager`.
+- Current app target/product/wrapper/executable/bundle identity: `MenuBarDeclutter`.
 - Current app display name: `MenuBarDeclutter` via the explicit Info.plist at `Config/MenuBarDeclutter-Info.plist`.
 - Target platform: native macOS 26.0+ only.
 - Language and frameworks: Swift, AppKit, and SwiftUI.
 - Primary goal: build a privacy-first macOS menu bar decluttering utility similar to Hidden Bar / Dozer first, then add selected Bartender-like Pro features.
 
-If the scheme/project has not yet been renamed to `MenuBarDeclutter`, use the currently listed scheme when running local builds and tests. Once the rename lands, prefer the canonical `MenuBarDeclutter` commands below.
+Prefer the canonical `MenuBarDeclutter` commands below. The `MenuBar-Manager` scheme remains only as a deprecated compatibility fallback during the temporary naming transition.
 
 ## Phase 0 Baseline
 
@@ -92,14 +94,14 @@ First inspect available schemes:
 xcodebuild -list
 ```
 
-Canonical commands after the scheme is renamed to `MenuBarDeclutter`:
+Canonical commands:
 
 ```sh
 xcodebuild -scheme MenuBarDeclutter -destination 'platform=macOS' build
 xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS'
 ```
 
-Current checkout fallback commands if the scheme is still `MenuBar-Manager`:
+Deprecated compatibility fallback commands:
 
 ```sh
 xcodebuild -scheme MenuBar-Manager -destination 'platform=macOS' build

@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import MenuBar_Manager
+@testable import MenuBarDeclutter
 
 @Suite("SettingsStore")
 @MainActor
@@ -368,6 +368,7 @@ struct SettingsStoreTests {
         #expect(store.iconMovingDragDuration == AppConstants.defaultIconMovingDragDuration)
         #expect(store.iconMovingAllowSystemItems == false)
         #expect(store.smartTriggersEnabled == false)
+        #expect(store.automationPaused == false)
     }
 
     @Test func phase6To8FieldsPersistAndClamp() {
@@ -384,6 +385,7 @@ struct SettingsStoreTests {
         store.iconMovingMaxRetries = 999
         store.iconMovingDragDuration = 999
         store.smartTriggersEnabled = true
+        store.automationPaused = true
 
         let reloaded = SettingsStore(defaults: defaults)
 
@@ -394,6 +396,7 @@ struct SettingsStoreTests {
         #expect(reloaded.iconMovingMaxRetries == AppConstants.maxIconMovingMaxRetries)
         #expect(reloaded.iconMovingDragDuration == AppConstants.maxIconMovingDragDuration)
         #expect(reloaded.smartTriggersEnabled == true)
+        #expect(reloaded.automationPaused == true)
     }
 
     @Test func restoreDefaultsResetsPhase6To8Fields() {
@@ -410,6 +413,7 @@ struct SettingsStoreTests {
         store.iconMovingConfirmationSuppressed = true
         store.iconMovingAllowSystemItems = true
         store.smartTriggersEnabled = true
+        store.automationPaused = true
 
         store.restoreDefaults()
 
@@ -420,5 +424,6 @@ struct SettingsStoreTests {
         #expect(store.iconMovingConfirmationSuppressed == false)
         #expect(store.iconMovingAllowSystemItems == false)
         #expect(store.smartTriggersEnabled == false)
+        #expect(store.automationPaused == false)
     }
 }

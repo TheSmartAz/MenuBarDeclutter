@@ -191,6 +191,10 @@ final class AppEnvironment {
             proModeTitle: { [weak self] in
                 self?.settingsStore.proModeEnabled == true ? "Disable Pro Mode" : "Enable Pro Mode"
             },
+            toggleAutomationPaused: { [weak self] in self?.toggleAutomationPaused() },
+            automationPausedTitle: { [weak self] in
+                self?.settingsStore.automationPaused == true ? "Resume Automation" : "Pause Automation"
+            },
             canRefreshMenuBarItems: { [weak self] in
                 self?.menuBarScanCoordinator.isManualRefreshAvailable == true
             },
@@ -542,6 +546,17 @@ final class AppEnvironment {
 
     func refreshTriggerSettings() {
         settingsRuntimeCoordinator.refreshTriggerSettings()
+    }
+
+    func toggleAutomationPaused() {
+        settingsStore.automationPaused.toggle()
+        refreshTriggerSettings()
+        updateLiveStatusFromServices()
+        diagnosticsLogger.log(
+            settingsStore.automationPaused ? "Automation paused from status menu." : "Automation resumed from status menu.",
+            level: .info,
+            category: .trigger
+        )
     }
 
     func applyInitialBehaviorSettings() {

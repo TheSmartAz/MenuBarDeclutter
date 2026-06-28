@@ -84,6 +84,12 @@ final class TriggerService {
             stop()
             return
         }
+        guard !settingsStore.automationPaused else {
+            stop()
+            liveStatus.automationPaused = true
+            diagnosticsLogger.log("Automation paused; smart triggers not started.", level: .info, category: .trigger)
+            return
+        }
         guard observers.isEmpty else { return }
 
         observers.append(NotificationCenter.default.addObserver(
@@ -122,7 +128,8 @@ final class TriggerService {
             }
         }
 
-        diagnosticsLogger.log("Smart triggers started.", level: .debug)
+        liveStatus.automationPaused = false
+        diagnosticsLogger.log("Smart triggers started.", level: .debug, category: .trigger)
         evaluateCurrentContext(reason: "start")
     }
 
@@ -134,7 +141,7 @@ final class TriggerService {
         observers.removeAll()
         timer?.invalidate()
         timer = nil
-        diagnosticsLogger.log("Smart triggers stopped.", level: .debug)
+        diagnosticsLogger.log("Smart triggers stopped.", level: .debug, category: .trigger)
     }
 
     @discardableResult
@@ -160,6 +167,12 @@ final class TriggerService {
 
     func evaluate(context: TriggerEvaluationContext, reason: String) {
         guard settingsStore.smartTriggersEnabled else { return }
+        guard !settingsStore.automationPaused else {
+            liveStatus.automationPaused = true
+            liveStatus.triggerEvaluationLog = "Automation paused; skipped trigger evaluation (\(reason))."
+            diagnosticsLogger.log("Automation paused; skipped trigger evaluation.", level: .debug, category: .trigger)
+            return
+        }
 
         let currentDate = now()
         var logs: [String] = []

@@ -44,6 +44,7 @@ final class LiveDiagnosticsStatus {
     var lastTriggerFired: String? = nil
     var triggerEvaluationLog: String = ""
     var lastProfileApplyLog: String = ""
+    var automationPaused: Bool = false
     var healthReport: HealthReport? = nil
     var safeModeActive: Bool = false
     var safeModeReasonSummary: String = "Inactive"

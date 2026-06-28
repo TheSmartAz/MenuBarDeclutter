@@ -8,19 +8,23 @@ struct AdvancedSettingsView: View {
     @Bindable var settingsStore: SettingsStore
     let appSupportPaths: AppSupportPaths
     var onChange: (() -> Void)? = nil
+    var onAutomationChanged: (() -> Void)? = nil
     var onResetMovingWarnings: (() -> Void)? = nil
 
     @State private var showCollapsedOverride: Bool
+    @State private var showIconMovingConfirmation = false
 
     init(
         settingsStore: SettingsStore,
         appSupportPaths: AppSupportPaths,
         onChange: (() -> Void)? = nil,
+        onAutomationChanged: (() -> Void)? = nil,
         onResetMovingWarnings: (() -> Void)? = nil
     ) {
         self.settingsStore = settingsStore
         self.appSupportPaths = appSupportPaths
         self.onChange = onChange
+        self.onAutomationChanged = onAutomationChanged
         self.onResetMovingWarnings = onResetMovingWarnings
         _showCollapsedOverride = State(initialValue: settingsStore.collapsedSeparatorLengthOverride != nil)
     }
@@ -77,8 +81,18 @@ struct AdvancedSettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
-            Section("Icon Moving") {
-                Toggle("Enable icon moving", isOn: $settingsStore.iconMovingEnabled)
+            Section("Labs / Experimental") {
+                Label("Experimental Pro features", systemImage: "testtube.2")
+                    .font(.headline)
+
+                Text("Experimental: uses simulated Command-drag and may fail depending on macOS, display layout, and third-party menu bar apps.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Toggle("Pause all automation", isOn: $settingsStore.automationPaused)
+                    .onChange(of: settingsStore.automationPaused) { _, _ in onAutomationChanged?() }
+
+                Toggle("Enable icon moving", isOn: iconMovingEnabledBinding)
 
                 Toggle("Require confirmation before moving", isOn: $settingsStore.iconMovingRequireConfirmation)
                     .disabled(!settingsStore.iconMovingEnabled)
@@ -144,6 +158,33 @@ struct AdvancedSettingsView: View {
         .onChange(of: settingsStore.iconMovingMaxRetries) { _, _ in onChange?() }
         .onChange(of: settingsStore.iconMovingDragDuration) { _, _ in onChange?() }
         .onChange(of: settingsStore.iconMovingAllowSystemItems) { _, _ in onChange?() }
+        .confirmationDialog(
+            "Enable experimental icon moving?",
+            isPresented: $showIconMovingConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Enable Experimental Icon Moving") {
+                settingsStore.iconMovingEnabled = true
+                onChange?()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Experimental: uses simulated Command-drag and may fail depending on macOS, display layout, and third-party menu bar apps.")
+        }
+    }
+
+    private var iconMovingEnabledBinding: Binding<Bool> {
+        Binding(
+            get: { settingsStore.iconMovingEnabled },
+            set: { newValue in
+                if newValue {
+                    showIconMovingConfirmation = true
+                } else {
+                    settingsStore.iconMovingEnabled = false
+                    onChange?()
+                }
+            }
+        )
     }
 
     private func revealInFinder(_ url: URL) {

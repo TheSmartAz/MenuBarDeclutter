@@ -3,7 +3,7 @@ import Carbon
 import Carbon.HIToolbox
 import Foundation
 import Testing
-@testable import MenuBar_Manager
+@testable import MenuBarDeclutter
 
 @Suite("HotkeyModel")
 @MainActor

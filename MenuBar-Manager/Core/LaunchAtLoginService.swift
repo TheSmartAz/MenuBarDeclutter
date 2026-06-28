@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Observation
 import ServiceManagement
@@ -21,6 +22,7 @@ final class LaunchAtLoginService {
     /// Settings toggle can render without blocking on a live SMAppService call
     /// during view updates.
     private(set) var isCurrentlyRegistered: Bool = false
+    private(set) var statusDisplayName: String = "Not Registered"
 
     @ObservationIgnored private let service: SMAppService
     @ObservationIgnored private let diagnosticsLogger: DiagnosticsLogger?
@@ -47,6 +49,17 @@ final class LaunchAtLoginService {
             if case .failed = self { return true }
             return false
         }
+
+        var displayName: String {
+            switch self {
+            case .registered:
+                "Registered"
+            case .unregistered:
+                "Unregistered"
+            case .failed(let message):
+                "Failed: \(message)"
+            }
+        }
     }
 
     // MARK: Actions
@@ -59,11 +72,13 @@ final class LaunchAtLoginService {
             try service.register()
             lastRegistrationResult = .registered
             isCurrentlyRegistered = true
+            refreshStatus()
             diagnosticsLogger?.log("Launch at Login enabled via SMAppService.", level: .info)
         } catch {
             let message = Self.describe(error)
             lastRegistrationResult = .failed(message: message)
             isCurrentlyRegistered = false
+            refreshStatus()
             diagnosticsLogger?.log("Launch at Login registration failed: \(message)", level: .error)
         }
     }
@@ -74,10 +89,12 @@ final class LaunchAtLoginService {
             try service.unregister()
             lastRegistrationResult = .unregistered
             isCurrentlyRegistered = false
+            refreshStatus()
             diagnosticsLogger?.log("Launch at Login disabled via SMAppService.", level: .info)
         } catch {
             let message = Self.describe(error)
             lastRegistrationResult = .failed(message: message)
+            refreshStatus()
             diagnosticsLogger?.log("Launch at Login unregistration failed: \(message)", level: .error)
         }
     }
@@ -97,7 +114,23 @@ final class LaunchAtLoginService {
 
     /// Refreshes `isCurrentlyRegistered` from the live `SMAppService` status.
     func refreshStatus() {
-        isCurrentlyRegistered = service.status == .enabled
+        let status = service.status
+        isCurrentlyRegistered = status == .enabled
+        statusDisplayName = Self.displayName(for: status)
+    }
+
+    @discardableResult
+    func openLoginItemsSettings() -> Bool {
+        guard let url = URL(string: "x-apple.systempreferences:com.apple.LoginItems-Settings.extension") else {
+            return false
+        }
+        let opened = NSWorkspace.shared.open(url)
+        diagnosticsLogger?.log(
+            opened ? "Opened Login Items settings." : "Could not open Login Items settings.",
+            level: opened ? .info : .warning,
+            category: .launchAtLogin
+        )
+        return opened
     }
 
     // MARK: Helpers
@@ -111,5 +144,20 @@ final class LaunchAtLoginService {
         }
         let nsError = error as NSError
         return "\(nsError.domain)(\(nsError.code)): \(nsError.localizedDescription)"
+    }
+
+    static func displayName(for status: SMAppService.Status) -> String {
+        switch status {
+        case .notRegistered:
+            "Not Registered"
+        case .enabled:
+            "Enabled"
+        case .requiresApproval:
+            "Requires Approval"
+        case .notFound:
+            "Not Found"
+        @unknown default:
+            "Unknown"
+        }
     }
 }

@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import MenuBar_Manager
+@testable import MenuBarDeclutter
 
 @Suite("DiagnosticsExporter")
 @MainActor
@@ -55,6 +55,8 @@ struct DiagnosticsExportTests {
         let logs = try #require(object["logs"] as? [[String: Any]])
         #expect(logs.count == 1)
         #expect(try #require(logs[0]["message"] as? String) == "hello")
+        #expect(try #require(logs[0]["category"] as? String) == DiagnosticCategory.inferred(from: "hello").rawValue)
+        #expect(try #require(logs[0]["severity"] as? String) == DiagnosticLevel.info.rawValue)
 
         let app = try #require(object["application"] as? [String: Any])
         #expect(try #require(app["marketingVersion"] as? String) == "1.0")
@@ -70,6 +72,8 @@ struct DiagnosticsExportTests {
         let excluded = try #require(object["excludedByDesign"] as? [String])
         #expect(excluded.contains("screenshots"))
         #expect(excluded.contains("screenContents"))
+        #expect(excluded.contains("liveSearchText"))
+        #expect(excluded.contains("selectedItemIdentity"))
         #expect(excluded.contains("networkData"))
     }
 
@@ -92,7 +96,7 @@ struct DiagnosticsExportTests {
         #expect(text.contains("at (0, 25)"))
         #expect(text.contains("warm up"))
         #expect(text.contains("Excluded by design"))
-        #expect(text.contains("Screenshots, screen contents, personal file paths, network data"))
+        #expect(text.contains("Screenshots, screen contents, live search text, selected item identity, personal file paths, network data"))
     }
 
     @Test func neverIncludesAppSupportPathByDefault() throws {
@@ -128,6 +132,7 @@ struct DiagnosticsExportTests {
         #expect(snapshot.settings.alwaysHiddenEnabled == true)
         #expect(snapshot.settings.globalHotkeyEnabled == true)
         #expect(snapshot.settings.globalHotkeyDisplayName == "⌥⌘B")
+        #expect(snapshot.settings.automationPaused == false)
     }
 
     @Test func excludesNetworkDataAndScreenshotsFromSettings() {

@@ -49,9 +49,30 @@ Status: implemented.
 - `scripts/notarize_template.sh` and an expanded `docs/release-checklist.md`.
 - Manual QA + unit tests for the new pure logic.
 
+## Phase 4-9: Pro Features And Hardening
+
+Status: implemented.
+
+- Opt-in Accessibility discovery, Find Icon, Second Bar, explicit icon moving, profiles, smart triggers, URL automation, health checks, recovery, Safe Mode, and macOS 26 hardening.
+- Basic Mode remains fully usable with Pro Mode disabled or permission unavailable.
+- Icon moving is disabled by default and only runs after explicit user action.
+- Profiles apply conservative Basic settings and never silently run bulk icon moves.
+
+## Phase 9.1: Alpha RC Validation And Release Hardening
+
+Status: implemented.
+
+- Canonical shared scheme: `MenuBarDeclutter`.
+- Deprecated compatibility scheme retained: `MenuBar-Manager`.
+- Privacy boundary verification script and docs.
+- Alpha QA matrix, run template, known-risk docs, and release checklist.
+- Settings now labels risky Pro surfaces as experimental and provides global Pause All Automation.
+- Diagnostics now includes category/severity filters, copy-selected event, filtered export, experimental state, automation pause state, and Launch at Login status.
+- Launch at Login settings now show `SMAppService` status and provide an Open Login Items Settings recovery action.
+
 ## Future Phases
 
-- Phase 4+: Optional Pro capabilities behind explicit opt-in (Accessibility-based icon discovery, search, second bar, profiles, hardening). Pro Mode degrades to Basic Mode when permissions are missing.
+- Phase 10: visual capture research remains postponed. Do not add ScreenCaptureKit, Screen Recording, Apple Events, Input Monitoring, or network access without a separate opt-in design review.
 
 ## Product Principles
 

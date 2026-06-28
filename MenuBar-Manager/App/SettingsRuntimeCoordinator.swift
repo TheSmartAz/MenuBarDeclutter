@@ -101,10 +101,16 @@ final class SettingsRuntimeCoordinator {
         if safeModeLaunchState.isSafeModeActive {
             triggerService.stop()
             diagnosticsLogger.log("Safe Mode disabled smart triggers.", level: .warning)
+        } else if settingsStore.automationPaused {
+            triggerService.stop()
+            liveStatus.automationPaused = true
+            diagnosticsLogger.log("Automation paused; smart triggers disabled.", level: .info, category: .trigger)
         } else if settingsStore.smartTriggersEnabled {
+            liveStatus.automationPaused = false
             triggerService.start()
         } else {
             triggerService.stop()
+            liveStatus.automationPaused = false
         }
     }
 

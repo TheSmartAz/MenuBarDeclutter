@@ -1,15 +1,16 @@
 # Project Summary
 
-Phases 0-9 are implemented for `MenuBarDeclutter`.
+Phases 0-9.1 are implemented for `MenuBarDeclutter`.
 
 ## Current Checkout Status
 
-- Product display name is `MenuBarDeclutter`; the Xcode project and active scheme are still `MenuBar-Manager`.
+- Product display name, app target, built wrapper/executable, bundle identifier, and canonical shared scheme currently use `MenuBarDeclutter`.
+- The `MenuBar-Manager` scheme is retained as a deprecated compatibility fallback. The `.xcodeproj` package and source/test folder names still use `MenuBar-Manager` because `MenuBarDeclutter` is a temporary name and the final product name will be chosen later.
 - The app is a native macOS 26.0+ LSUIElement menu bar utility with no default document window.
 - Basic Mode is usable by default without Accessibility, Screen Recording, Apple Events, Input Monitoring, or network access.
 - Pro Mode is opt-in. Its user-facing surfaces are implemented, but they depend on Accessibility permission and degrade to explanatory unavailable states when Pro Mode, Accessibility Discovery, or permission is missing.
 - Automated coverage includes unit tests for pure logic plus UI workflow tests for Diagnostics, Privacy, Find Icon unavailable state, Second Bar settings requirements, and launch screenshots.
-- The latest recorded full validation is `xcodebuild test -scheme MenuBar-Manager -destination 'platform=macOS'`, which passed on 2026-06-28. See `docs/testing/manual-qa-run-2026-06-28.md`.
+- The latest recorded full validation for Phase 9.1 is in `docs/status/phase-9.1-final-report.md`.
 - Hands-on QA is still required for real Command-drag separator placement, third-party menu bar item movement, external display/notch behavior, Launch at Login through System Settings, real Accessibility prompt grant/revoke flows, and interactive network-monitor checks.
 
 ## Usable Features Today
@@ -23,6 +24,7 @@ Phases 0-9 are implemented for `MenuBarDeclutter`.
 - Explicit Pro icon moving commands from Search or Second Bar, guarded by settings, permission checks, first-use confirmation, safety rules, retry/verification, and diagnostics.
 - Local JSON profiles, conservative profile apply/dry-run, smart triggers for supported local signals, and command-limited `menubardeclutter://` URL automation.
 - Health checks, targeted recovery, Safe Mode, crash markers, wake/display recovery, and health report export.
+- Alpha RC hardening: temporary `MenuBarDeclutter` target/product/bundle identity, canonical `MenuBarDeclutter` scheme, privacy verification scripts/docs, QA helpers, visible experimental labels for risky Pro features, global Pause All Automation, diagnostics severity/category filters, filtered diagnostics export, and Launch at Login status/recovery support.
 
 ## Phase 0 (project skeleton)
 
@@ -161,8 +163,27 @@ Phases 0-9 are implemented for `MenuBarDeclutter`.
 - Settings -> Diagnostics now shows Health status, issue rows, Fix Automatically, Reset Basic Mode, Disable Pro Mode, Export Health Report, and Safe Mode Next Launch.
 - Unit tests cover missing separator detection, corrupted settings detection, targeted settings repair actions, stale AX scan detection, recovery length reset, Pro failure disablement, crash-marker Safe Mode, one-shot Safe Mode flags, and clean marker removal.
 
-## Privacy boundary (through Phase 9)
+## Phase 9.1 (Alpha RC Validation + Release Hardening)
 
-Basic Mode is the default and remains fully usable without sensitive permissions. Phase 4-9 Pro features request only Accessibility, only after explicit opt-in and an explicit permission button click, and degrade gracefully to Basic Mode if permission is missing or revoked.
+- Temporary app target/product/wrapper/executable/bundle identity renamed to `MenuBarDeclutter`; deprecated `MenuBar-Manager` compatibility scheme retained.
+- Build/test scripts prefer `MenuBarDeclutter`.
+- Privacy verification and QA scripts added:
+  - `scripts/verify_privacy_boundary.sh`
+  - `scripts/qa_preflight.sh`
+  - `scripts/qa_collect_artifacts.sh`
+  - `scripts/qa_network_watch.sh`
+  - `scripts/verify_release_artifact.sh`
+- Privacy, QA, known-risk, and release docs added under `docs/privacy/`, `docs/testing/`, `docs/release/`, and `docs/status/`.
+- Settings -> Advanced now has a Labs / Experimental section, explicit icon-moving warning before enablement, and Pause All Automation.
+- Settings -> Profiles also exposes Pause All Automation; smart triggers do not evaluate while paused.
+- Status menu adds Pause Automation / Resume Automation.
+- Diagnostics events now include timestamp, category, severity, message, and optional privacy-safe metadata.
+- Settings -> Diagnostics supports warnings/errors filtering, category filtering, Copy Selected, Export Filtered, and rows for experimental icon moving, smart triggers, automation pause, and Launch at Login status.
+- Launch at Login settings show live `SMAppService` status, last registration action, status refresh, and Open Login Items Settings.
+- No Phase 10 work was added.
 
-Second Bar and Find Icon depend on the Pro Accessibility discovery index and show explanatory unavailable states when requirements are missing. Second Bar uses app/bundle icons and AX metadata, not screenshots or ScreenCaptureKit. Icon moving is disabled by default, Pro-only, and only runs after explicit user action. Profiles and triggers are local JSON; triggers apply conservative Basic settings and never silently run bulk icon moves. The URL automation surface is local and command-limited. Health reports and crash markers are local Application Support artifacts. No Screen Recording, Apple Events, Input Monitoring, network access, pixel capture, cloud sync, or telemetry is introduced through Phase 9.
+## Privacy boundary (through Phase 9.1)
+
+Basic Mode is the default and remains fully usable without sensitive permissions. Phase 4-9.1 Pro features request only Accessibility, only after explicit opt-in and an explicit permission button click, and degrade gracefully to Basic Mode if permission is missing or revoked.
+
+Second Bar and Find Icon depend on the Pro Accessibility discovery index and show explanatory unavailable states when requirements are missing. Second Bar uses app/bundle icons and AX metadata, not screenshots or ScreenCaptureKit. Icon moving is disabled by default, Pro-only, experimental, and only runs after explicit user action. Profiles and triggers are local JSON; triggers apply conservative Basic settings, can be paused globally, and never silently run bulk icon moves. The URL automation surface is local and command-limited. Health reports and crash markers are local Application Support artifacts. No Screen Recording, Apple Events, Input Monitoring, network access, pixel capture, cloud sync, or telemetry is introduced through Phase 9.1.
