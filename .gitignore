@@ -1,0 +1,17 @@
+.DS_Store
+
+# Xcode user state
+xcuserdata/
+*.xcuserstate
+
+# Build products
+DerivedData/
+.build/
+build/
+
+# Swift Package Manager workspace metadata
+.swiftpm/
+
+# Local signing and notarization material
+private/
+*.p8

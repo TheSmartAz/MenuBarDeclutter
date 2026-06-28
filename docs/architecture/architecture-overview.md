@@ -1,0 +1,180 @@
+# Architecture Overview
+
+MenuBarDeclutter uses Swift, AppKit, and SwiftUI for a native macOS 26.0+ app.
+
+## App Lifecycle
+
+- `MenuBarDeclutterApp` uses the SwiftUI app lifecycle.
+- `AppDelegate` is attached through `@NSApplicationDelegateAdaptor`.
+- `AppDelegate` sets the app activation policy to `.accessory` and owns `AppEnvironment`.
+- `AppEnvironment` owns long-lived services and coordinates user commands.
+- On launch, `AppEnvironment` detects Safe Mode/crash markers, starts expanded, installs status items, runs a health check, applies recovery when needed, and only then honors a collapsed launch preference if health is OK.
+- During runtime, `AppEnvironment` observes screen parameter changes, workspace wake, and active Space changes to pause auto-rehide, reapply geometry, optionally rescan Pro Accessibility snapshots, and log a fresh health report.
+
+## Services
+
+- `StatusBarController` owns the control `NSStatusItem` (square length, left-click toggles hiding, right-click opens the menu, Option-click reveals all) and delegates separator state to two `SeparatorController` instances (primary and always-hidden).
+- `SeparatorController` owns a single separator `NSStatusItem` (variable length) and translates `HidingState` into a concrete separator length. The same controller type powers both the primary and the always-hidden separators; the `StatusItemKind` parameter carries symbol/label variants.
+- `StatusItemFactory` builds `NSStatusItem` instances and applies SF Symbol images, accessibility labels, length updates, and an optional `showVisualMarker` mode used by the Phase 2 "show separators" toggle.
+- `StatusBarMenuBuilder` constructs the menu and bridges menu item selectors to closures. Phase 5 adds "Find Icon...", "Refresh Menu Bar Items", and a dynamic Enable/Disable Pro Mode command. Phase 6 adds Show/Hide/Toggle Second Bar.
+- `HidingService` owns the current `HidingVisibilityState` (`collapsed` / `expanded` / `revealAll`) and derives a binary `currentState` (per primary separator) for Phase 1 callers. Exposes `expand()`, `collapse()`, `toggle()`, `revealAll()`, `toggleRevealAll()`, `setVisibility()`, and `applyState()`; persists `isCollapsed` through `SettingsStore`; notifies observers via closures and two `NotificationCenter` notifications.
+- `HidingVisibilityState` describes the three-state menu bar surface introduced in Phase 2 and maps each case to its per-separator `HidingState` (`primarySeparatorState` and `alwaysHiddenSeparatorState`).
+- `ScreenGeometryService` computes widest screen width, the recommended collapsed separator length (`max(width * 2, 1200)` capped at `10000`), menu bar band rectangles, and a hit-test helper. Width provider is injectable for unit tests.
+- `RehideController` owns the one-shot auto-rehide timer introduced in Phase 2. Postpones when the cursor is in any menu bar band, when the Settings window is key, or (heuristically) when a status item menu is open. Pure logic is split into `processTick` so tests can drive deterministic timelines; the runtime half uses a `Timer.scheduledTimer`.
+- `HoverRevealController` polls `NSEvent.mouseLocation` on a configurable timer and calls `ScreenGeometryService.isPointInAnyMenuBarBand` to decide whether to reveal hidden items. Pure logic lives in `processMouseLocation` so tests stay deterministic; no event taps or permissions required.
+- `Hotkeys/HotkeyModel` is a pure value type describing a global hotkey (virtual key code + Carbon modifier flags). Includes display-name helpers and `NSEvent` translation. Safe to construct in unit tests.
+- `Hotkeys/GlobalHotkeyManager` owns Carbon `RegisterEventHotKey` registrations for named app hotkeys. Phase 5 supports both the Basic visibility toggle and the optional Find Icon hotkey. Failures are logged to Diagnostics and never crash. A shared `Mutex<GlobalHotkeyManager?>` is used by the Carbon C callback to dispatch the pressed hotkey ID back to `MainActor`.
+- `SearchService` (Phase 5) is pure ranking logic over the latest `MenuBarItemSnapshot` list. It ranks exact app-name matches, exact title matches, prefix matches, fuzzy contains, bundle identifier matches, and boosts hidden / always-hidden zones because users are likely searching for missing items.
+- `SearchWindowController` (Phase 5) owns the floating AppKit `NSPanel` and hosts `SearchRootView`.
+- `MenuItemActivator` (Phase 5) handles selection from search results. It expands hidden items or reveals all for always-hidden items when configured, highlights the approximate item frame, and instructs the user to click manually. It never simulates click, drag, or activation events.
+- `HighlightOverlayWindow` (Phase 5) shows a transparent borderless overlay around a menu bar item frame for two seconds, ignores mouse events, handles secondary-screen coordinates, and does not capture or inspect screen contents.
+- `SecondBarPositioningService` (Phase 6) is pure placement logic for the floating Second Bar. It chooses a screen from mouse/last-position context, supports below-menu-bar / near-mouse / last-position modes, clamps to visible frames, and models notch avoidance for tests.
+- `SecondBarViewModel` (Phase 6) filters, searches, and sorts hidden / always-hidden `MenuBarItemSnapshot` values and owns keyboard selection state for the SwiftUI Second Bar.
+- `SecondBarWindowController` (Phase 6) owns a floating, non-activating AppKit `NSPanel` hosting `SecondBarRootView`. It closes on Escape, can close on outside click through `hidesOnDeactivate`, follows display changes, and updates live diagnostics. It does not require Screen Recording and does not click original menu bar items.
+- `IconMoveService` (Phase 7) coordinates optional explicit icon moves. It gates moves behind the icon-moving setting, Pro Mode, granted Accessibility permission, first-use confirmation, safety rules, and one-at-a-time locking. It reveals required zones, suspends runtime behaviors, asynchronously executes a drag plan, rescans, verifies, retries, and restores visibility on failure.
+- `DragPlanFactory`, `DragExecutor`, and `DragVerificationService` (Phase 7) split icon moving into testable planning, nonisolated async runtime `CGEvent` execution, and post-move verification. Unit tests exercise planning, verification, and move-service cleanup only; real drags are manual-QA territory.
+- `ProfileStore` (Phase 8) persists local JSON profiles under `Application Support/MenuBarDeclutter/Profiles/` and supports create, duplicate, update, delete, import, and export.
+- `ProfileApplicationService` (Phase 8) applies conservative profile settings and produces dry-run summaries. It applies Basic settings and visibility immediately, reports zone move requirements, and never silently runs bulk CGEvent moves.
+- `TriggerRuleEvaluator` and `TriggerService` (Phase 8) model and run smart triggers. The runtime observes local public signals for display changes, launched apps, frontmost app changes, minute-based evaluation, and public battery capacity when available. Trigger firing is debounced, avoids profile loops, and applies profiles through the conservative profile application service.
+- `AutomationURLHandler` (Phase 8) installs a `kAEGetURL` handler for the registered `menubardeclutter://` scheme. It supports expand, collapse, reveal-all, show second bar, and apply-profile-by-name commands without adding Apple Events scripting dictionaries, network access, or background automation.
+- `HealthService` (Phase 9) turns a runtime `HealthCheckSnapshot` into a `HealthReport`. Checks cover missing control/separator items, invalid separator lengths, invalid screen geometry, corrupted settings, hotkey registration drift, stuck auto-rehide/hover timers, Pro permission mismatches, repeated AX failures, and stale Pro scans.
+- `RecoveryService` (Phase 9) maps health issues to focused repair actions: recreate missing status items, reset separator lengths, expand all, temporarily disable auto-rehide/hover reveal, reset corrupted scan interval / Second Bar position / Accessibility status cache, disable Pro Mode, reset settings as an explicit fallback, and request Safe Mode for the next launch.
+- `AppEnvironment` is the single owner for screen/wake/active-Space recovery. It reapplies status item geometry, refreshes Second Bar placement, forces Pro rescans when allowed, and reruns health after system changes.
+- `SafeModeService` (Phase 9) owns launch-safe flags and crash markers. Holding Option at launch, a one-shot `safe-mode-next-launch.flag`, or a leftover `running.marker` enters Safe Mode; clean termination removes the marker. Safe Mode starts expanded and suppresses auto-rehide, hover reveal, Pro scans, icon moving, hotkeys, and smart triggers while keeping the control item and reset menu available.
+- `SettingsWindowController` owns the AppKit settings window and hosts SwiftUI content, including the new Behavior section and live diagnostics.
+- `SettingsStore` owns typed UserDefaults-backed preferences (Phase 0 through Phase 8 fields). It clamps user-entered delay/polling/scan/Second Bar/icon-moving values to documented bounds and exposes helper accessors/mutator methods for the global visibility hotkey, Find Icon hotkey, and Second Bar placement.
+- `LiveDiagnosticsStatus` is an `@Observable` snapshot of runtime state (visibility state, separator lengths, hotkey/hover/auto-rehide flags, last rehide reason, Accessibility permission status, latest Pro scan counts, AX failure count, scanned item snapshots, search state, Second Bar state, icon moving state, active profile, trigger logs, profile apply logs, Safe Mode state, and latest health report). Owned by `AppEnvironment`, surfaced in the Diagnostics view.
+- `DiagnosticsLogger` owns an in-memory ring buffer of diagnostic events.
+- `AppSupportPaths` centralizes the Application Support directory tree (`MenuBarDeclutter/`, `Diagnostics/`, `Profiles/`, `Backups/`) and ensures they exist lazily. Phase 3 writes diagnostics exports only on explicit user action; Phase 8 stores local profile and trigger JSON under `Profiles/`.
+- `LaunchAtLoginService` (Phase 3) wraps the public `SMAppService.mainApp` API. `register()` is only called when the user explicitly enables the Settings toggle; `unregister()` when disabled. Failure paths are surfaced through `.lastRegistrationResult` and logged to Diagnostics. The service never auto-enables. Works inside the App Sandbox.
+- `DiagnosticsExporter` (Phase 3+) builds a privacy-safe diagnostics snapshot (app version, macOS version, machine architecture, screen frames only, current settings including Pro opt-in flags, Second Bar settings, icon moving settings, smart trigger enablement, and recent log events) and serializes it to `.txt` or `.json`. The bundle explicitly excludes screenshots, screen contents, personal file paths, live query text, selected-item identities, and network data. Used by the Diagnostics tab "Export..." button through an `NSSavePanel`.
+- `AccessibilityPermissionService` (Phase 4) wraps `AXIsProcessTrustedWithOptions`. It checks permission without prompting by default, shows the system prompt only from the explicit "Request Permission" button, stores the last mapped status in `SettingsStore`, opens the Accessibility privacy pane when requested, and logs permission transitions.
+- `AXElementReader` (Phase 4) is the defensive Accessibility attribute adapter. It reads only safe public attributes (role, subrole, title, description, position, size, identifier, process id, children), returns optional/result-style values, logs failed reads, and maintains an AX failure count for diagnostics.
+- `AXMenuBarScanner` (Phase 4) creates a system-wide AX element and walks menu bar / menu extra roots where available. It never clicks, drags, activates, records the screen, or uses private APIs. It produces `MenuBarItemSnapshot` values with stable generated IDs, ownership metadata, frame, zone, system-item heuristic, and timestamp.
+- `MenuBarScanCoordinator` (Phase 4) gates scanning behind `SettingsStore.proModeEnabled`, `SettingsStore.accessibilityDiscoveryEnabled`, and granted Accessibility permission. It scans on launch, display changes, visibility changes, and manual refresh, with `menuBarScanIntervalSeconds` throttling automatic scans. Manual refresh stays available whenever Pro discovery is configured so the coordinator can re-check a newly granted or revoked Accessibility permission before deciding whether to scan.
+
+## UI
+
+- AppKit controls real menu bar integration through `NSStatusItem`.
+- SwiftUI owns Settings views (General, Behavior, Privacy, Diagnostics, Advanced), the Onboarding window, and the diagnostics display.
+- The Phase 1/2 app has no default document/content window; the menu bar is the primary surface.
+- Phase 3 Settings adds an "Advanced" tab with separator geometry tweaks, App Support discovery (reveal in Finder), and read-only metadata (ring buffer capacity, bundle id).
+- Phase 3 Onboarding is a SwiftUI paged `TabView` hosted in an AppKit `OnboardingWindowController`. It runs once on first launch (gated by `SettingsStore.hasCompletedOnboarding`) and can be replayed from Settings → General → Show Onboarding Again.
+- Phase 4 Privacy settings add explicit Pro Mode enable/disable controls, an Accessibility Discovery toggle, a "Request Permission" button, an "Open Settings" button, and a scan throttle stepper.
+- Phase 4 Diagnostics adds Accessibility permission status, scan counts by zone, last scan time, AX failure count, manual scan refresh, and a table of scanned menu bar snapshots.
+- Phase 5 Search settings add Find Icon enablement, reveal-on-selection, highlight-on-selection, a disabled-by-default Find Icon hotkey, and requirement status rows for Pro Mode / Accessibility Discovery / permission.
+- Phase 5 Search UI is a floating `NSPanel` with a focused SwiftUI search field, keyboard navigation, app icons, app/title/bundle metadata, zone, and last-seen timestamp. If Pro Mode or Accessibility permission is unavailable, the panel explains the requirement and offers explicit user actions.
+- Phase 5 Diagnostics adds Find Icon hotkey registration, search index item count, last query, last selected item, and last activation outcome.
+- Phase 6 Second Bar settings add enablement, item source toggles, auto-close, placement mode, icon size, labels, close-on-outside-click, and optional owning-app activation.
+- Phase 6 Second Bar UI is a floating SwiftUI panel showing hidden and always-hidden items using app/bundle icons and AX metadata. It supports search, keyboard navigation, context menus, and clear unavailable states for missing Pro requirements.
+- Phase 7 Advanced settings add Icon Moving enablement, confirmation behavior, retry count, drag duration, system-item allowance, and warning reset.
+- Phase 7 Search and Second Bar rows expose explicit move commands from context menus only. There are no automatic move actions on launch, wake, profile apply, or trigger firing.
+- Phase 8 Profiles settings add local profile management, dry-run/apply actions, import/export, and initial Smart Trigger controls.
+- Phase 8 Diagnostics adds live Second Bar, icon moving, active profile, last trigger, trigger evaluation, and profile apply rows.
+- Phase 9 Diagnostics adds Health status (OK / Warning / Critical), issue rows, Fix Automatically, Reset Basic Mode, Disable Pro Mode, Export Health Report, and Safe Mode Next Launch actions.
+- All Phase 3 SwiftUI surfaces use semantic colors and `.formStyle(.grouped)`, support light/dark mode, increased contrast, and reduce transparency. No custom transparent effects that would conflict with macOS 26 Liquid Glass are introduced; settings controls remain readable over a transparent menu bar context.
+
+## Hiding Mechanism (Phase 1)
+
+- Hiding is achieved with public `NSStatusItem` behavior only, no private APIs.
+- The separator item sits to the left of the user's menu bar icons. When collapsed, its `length` grows large enough to push later items off the visible menu bar (the macOS menu bar is arranged left-to-right in declaration order).
+- `HidingService.applyState()` recomputes the separator length and updates the control and separator SF Symbols (`chevron.left` / `chevron.right` family).
+- The app observes `NSApplication.didChangeScreenParametersNotification` and re-applies the collapsed length after display changes.
+- State persists across launches via `SettingsStore.isCollapsed`.
+
+## Phase 2 Behavior Layer
+
+- **Visibility state machine**: `HidingVisibilityState` adds a `revealAll` state. Both separators can be expanded, only the primary, or both collapsed.
+- **Auto-rehide**: when the user expands or reveals all, `RehideController` starts a one-shot countdown; conditions (mouse in band, Settings key, menu open) postpone the deadline. Manual collapse cancels the countdown.
+- **Hover reveal**: `HoverRevealController` polls `NSEvent.mouseLocation` and expands the hidden items when the cursor enters any menu bar band. Leaving the band re-arms auto-rehide if it is enabled.
+- **Global hotkey**: `GlobalHotkeyManager` registers a Carbon hotkey (default `Option+Command+B`) and dispatches it back to `HidingService.toggle()`. Disabled by default, enabled in Settings → Behavior.
+- **Always-hidden separator**: an optional second `SeparatorController` of kind `.alwaysHiddenSeparator` collapses independently to provide the always-hidden zone.
+- **Option-click**: `StatusBarCommandTarget.controlItemClicked` differentiates Option-click from normal click. With `revealAllOnOptionClick` enabled, Option-click cycles between `revealAll`/`collapsed`.
+- **Separator visuals**: `showSeparators` toggles only the separator button's image/title; the underlying `NSStatusItem` length is preserved.
+
+## Phase 4 Accessibility Discovery
+
+- Pro Mode is represented by explicit booleans (`proModeEnabled`, `accessibilityDiscoveryEnabled`) rather than replacing Basic Mode. Basic Mode remains the default and continues to work with Pro disabled.
+- Permission status is modeled as `notRequested`, `denied`, `granted`, or `unknown`. A normal status refresh uses `AXIsProcessTrustedWithOptions` with the prompt option set to `false`; the prompt option is `true` only when the user clicks "Request Permission".
+- Scanning is read-only. It uses `AXUIElementCreateSystemWide`, app menu bar roots, and SystemUIServer menu extra roots where available; reads safe attributes only; and treats missing/unsupported attributes as logged failures, not crashes.
+- Zone classification compares item frames to separator frames: right of the primary separator is `visible`, left of primary but right of the always-hidden separator is `hidden`, left of the always-hidden separator is `alwaysHidden`, and missing/insufficient frames are `unknown`.
+- The coordinator has no default polling timer. Automatic triggers are launch, screen changes, and expand/collapse visibility changes, all throttled by the scan interval using the coordinator clock. Manual refresh bypasses the throttle and refreshes permission first, which covers the common System Settings grant/revoke flow without requiring an app restart.
+- No Screen Recording, ScreenCaptureKit, Apple Events, Input Monitoring, click simulation, drag simulation, search window, second bar, or icon moving is implemented in Phase 4.
+
+## Phase 5 Find Icon
+
+- Find Icon is a Pro surface layered on top of Phase 4 Accessibility Discovery. It is enabled in settings by default but remains unavailable until Pro Mode, Accessibility Discovery, and granted Accessibility permission are all present.
+- Opening Find Icon from the status menu or optional search hotkey requests a manual AX refresh, which re-checks permission and updates the latest snapshot list when allowed.
+- Search does not perform system automation. Selecting a visible item highlights its frame and tells the user to click manually. Selecting a hidden item expands the primary hidden zone; selecting an always-hidden item enters `revealAll`; both paths can show a short-lived overlay around the last known or clamped approximate frame.
+- Search settings allow the user to disable Find Icon, disable automatic reveal-on-selection, disable highlighting, and separately opt into the Find Icon hotkey (`Option+Command+F` by default).
+- The highlight overlay is a transparent, mouse-ignoring AppKit window. It does not use Screen Recording, ScreenCaptureKit, screenshots, or pixel sampling.
+- Live diagnostics show search index size, last query, last selected item, and activation outcome for supportability. The diagnostics exporter records only search settings, not query or selected-item identity.
+
+## Phase 6 Second Bar
+
+- Second Bar is a Pro surface that reuses the Phase 4 Accessibility snapshot index. It is unavailable when Pro Mode, Accessibility Discovery, or Accessibility permission is missing.
+- The window is a floating AppKit `NSPanel` with SwiftUI content. It can sit below the menu bar, near the mouse, or at the last position; the placement service keeps it inside visible screen frames and responds to display changes.
+- The UI shows hidden and always-hidden items with app icons, app names, optional titles, and zone badges. Icons come from `NSRunningApplication` or bundle metadata, not from screen capture.
+- Selecting an item calls the same non-clicking activation path as Find Icon: hidden zones are revealed, always-hidden items use reveal-all, and a highlight overlay can point to the approximate original frame.
+- The Second Bar does not use Screen Recording, ScreenCaptureKit, pixel sampling, private APIs, or automatic clicking.
+
+## Phase 7 Icon Moving
+
+- Icon moving is Pro-only, disabled by default, and requires an explicit user action from Search or Second Bar.
+- `IconMoveService` is the safety boundary. It rejects moves when the feature is disabled, Pro Mode is disabled, Accessibility permission is missing, another move is active, the item is MenuBarDeclutter's own item, the source frame is missing, or a likely system item is selected while system moves are not allowed.
+- First-use confirmation explains the simulated Command-drag behavior and can be suppressed by the user. Suppression can be reset from Settings.
+- Drag planning is separated from execution. The plan contains the source frame, target zone, target point, Command modifier, duration, retry count, and previous visibility state.
+- Runtime execution uses `CGEvent` to simulate a conservative Command-drag with non-blocking async waits. Auto-rehide and hover reveal are suspended during the move, then restored.
+- Verification rescans Accessibility snapshots and checks that the item is found in the requested zone. Failures restore the previous visibility state and surface user-visible diagnostics.
+- No icon moving runs from startup, wake, profile application, smart triggers, or URL automation.
+
+## Phase 8 Profiles, Triggers, Automation
+
+- Profiles are local JSON records stored in Application Support. They describe visibility state, Second Bar visibility, auto-rehide, hover reveal, optional target zones by bundle id, and notes.
+- Profile application is intentionally conservative. Basic settings and visibility state apply immediately; zone moves are reported through dry-run summaries and require separate explicit move actions.
+- Smart triggers are opt-in. Runtime observers cover display changes, app launch, frontmost app changes, and a one-minute timer for time-based rules. Trigger evaluation is debounced and skips firing when the target profile is already active.
+- The trigger UI can configure display-count, launched-app, frontmost-app, battery-low, and time-of-day rules. Runtime context supplies display count, running/frontmost bundle IDs, time, and battery percentage when public power-source APIs expose it. Focus and Wi-Fi rules remain model-level placeholders until safe providers are added.
+- URL automation is the implemented lightweight automation path. The app registers `menubardeclutter://` in `Info.plist` and handles `expand`, `collapse`, `reveal-all`, `second-bar`, and `profile/<name>` through `AutomationURLHandler`.
+- AppleScript dictionary and richer Shortcuts actions remain future work documented in `docs/automation-roadmap.md`.
+- Profiles, triggers, and URL automation are local-only. They do not add network calls, telemetry, cloud sync, or background icon moving.
+
+## Phase 9 Health, Recovery, macOS 26 Hardening
+
+- Startup is recovery-first. The app writes a `running.marker` after Application Support is ready and removes it on clean termination; a leftover marker on the next launch is treated as a previous crash and forces Safe Mode plus an expanded/reveal-all start.
+- Collapsed launch requests are deferred until after status items are installed and health has passed. If health is unhealthy, recovery runs first and the bar stays expanded.
+- Safe Mode can be entered by holding Option at launch, by setting a one-shot flag from Diagnostics, or by the previous-crash marker. It suppresses auto-rehide, hover reveal, Pro AX scans, icon moving, hotkeys, and smart triggers for that launch while keeping Basic Mode control visible.
+- Wake/display recovery observes screen parameter changes, workspace wake, and active Space changes. It cancels pending auto-rehide, recomputes separator geometry, reapplies current visibility, refreshes Second Bar placement, forces a Pro scan only when Pro requirements are already met, and logs the resulting health report.
+- Diagnostics can export a standalone health report. The report contains health status, issue codes, details, and suggested recovery actions; it does not include screenshots, screen contents, network data, or personal file paths.
+
+## Phase Status
+
+- Phase 0: implemented (project skeleton).
+- Phase 1: implemented (no-permission core hiding MVP).
+- Phase 2: implemented (Basic UX polish: hotkey, auto-rehide, hover reveal, always-hidden zone, option-click reveal all, separator visuals).
+- Phase 3: implemented (full Settings UI with Advanced tab, first-run Onboarding, Launch at Login via `SMAppService.mainApp`, privacy-safe Diagnostics export to `.txt`/`.json`, Application Support directory tree, App version/build number metadata, Reset App Layout / Reset All Settings, macOS 26-friendly Settings styling, notarize template, expanded tests and manual QA).
+- Phase 4: implemented (opt-in Pro Mode Accessibility permission flow, defensive menu bar scanner, scan coordinator, diagnostics table, pure-logic tests, manual QA).
+- Phase 5: implemented (Find Icon search panel, ranking service, non-clicking reveal/highlight activation, optional search hotkey, settings/diagnostics/manual QA).
+- Phase 6: implemented (Second Bar floating panel, placement service, settings/diagnostics/manual QA).
+- Phase 7: implemented (explicit Pro icon moving, drag planning/execution/verification, safety settings/diagnostics/manual QA).
+- Phase 8: implemented (local profiles, smart triggers, URL automation, settings/diagnostics/manual QA).
+- Phase 9: implemented (health checks, recovery actions, Safe Mode, crash marker, wake/display recovery, diagnostics repair UI, manual QA).
+- Phase 10+: planned (polish, release readiness).
+
+## Basic Mode Architecture (Phase 9 boundary)
+
+Basic Mode is a deliberately permission-free utility:
+
+- Real menu bar hiding uses only public `NSStatusItem` behavior (variable-length separator that pushes later items off-screen). No private APIs.
+- "Launch at Login" uses `SMAppService.mainApp` (ServiceManagement), which does **not** require Accessibility, Apple Events, or Input Monitoring and works inside the App Sandbox. It is only ever activated on explicit user opt-in.
+- Hover reveal and the shortcuts menu work by polling `NSEvent.mouseLocation` and using `ScreenGeometryService`; no event taps and no Input Monitoring.
+- Diagnostics is an in-memory ring buffer plus an on-demand privacy-safe export — no automatic telemetry, no network calls, no personal file paths in the export.
+- Health and Safe Mode are local-only recovery features. They use Application Support marker files and public AppKit notifications; they do not add sensitive permission requests.
+- Onboarding is fully local SwiftUI content with no telemetry.
+
+## Why Basic Mode does not request permissions
+
+Basic Mode deliberately stays permission-free so the app is usable immediately and trustworthy by default. Phase 4 adds Pro Mode as a separate opt-in capability, not as a replacement for Basic Mode. Phase 5 Find Icon and Phase 6 Second Bar depend on that Pro discovery index and degrade to explanatory panels when Pro Mode or Accessibility permission is unavailable. Phase 7 icon moving is disabled by default and additionally requires explicit user actions. Phase 8 profiles/triggers apply conservative Basic settings unless the user separately initiates Pro moves. Phase 9 Safe Mode suppresses Pro scans, icon moving, hotkeys, and triggers while preserving the visible Basic control and reset menu. If Pro Mode is disabled, Accessibility Discovery is disabled, or Accessibility permission is denied/revoked/unavailable, the scan coordinator clears Pro diagnostics and the Basic `NSStatusItem` hiding workflow continues unchanged.
+
+## Privacy Boundary
+
+Basic Mode does not request sensitive permissions and does not use network access. Phase 4-9 Pro Mode requests only Accessibility, only after explicit user action, and only for menu bar item frames/labels used by discovery, search, Second Bar display, and explicit icon moving. Health reports and crash markers are local files under Application Support and do not include screenshots or screen contents. The app does not request Screen Recording, Apple Events, Input Monitoring, or network access. Phase 2/5 hotkeys use Carbon's `RegisterEventHotKey`, which does not require Input Monitoring on macOS 26+. URL automation uses a local custom URL scheme and does not add a scripting permission prompt.

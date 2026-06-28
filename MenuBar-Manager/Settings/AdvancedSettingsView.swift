@@ -1,0 +1,164 @@
+import AppKit
+import SwiftUI
+
+/// Phase 3 "Advanced" settings: separator geometry tweaks, App Support
+/// discovery, and read-only build/diagnostics metadata. Most users should not
+/// need to touch this surface, which is why it lives behind its own tab.
+struct AdvancedSettingsView: View {
+    @Bindable var settingsStore: SettingsStore
+    let appSupportPaths: AppSupportPaths
+    var onChange: (() -> Void)? = nil
+    var onResetMovingWarnings: (() -> Void)? = nil
+
+    @State private var showCollapsedOverride: Bool
+
+    init(
+        settingsStore: SettingsStore,
+        appSupportPaths: AppSupportPaths,
+        onChange: (() -> Void)? = nil,
+        onResetMovingWarnings: (() -> Void)? = nil
+    ) {
+        self.settingsStore = settingsStore
+        self.appSupportPaths = appSupportPaths
+        self.onChange = onChange
+        self.onResetMovingWarnings = onResetMovingWarnings
+        _showCollapsedOverride = State(initialValue: settingsStore.collapsedSeparatorLengthOverride != nil)
+    }
+
+    var body: some View {
+        Form {
+            Section("Separator Geometry") {
+                LabeledContent("Expanded separator length") {
+                    HStack {
+                        Slider(
+                            value: $settingsStore.expandedSeparatorLength,
+                            in: 1...200,
+                            step: 1
+                        )
+                        .frame(width: 200)
+                        Text(settingsStore.expandedSeparatorLength, format: .number.precision(.fractionLength(0)))
+                            .font(.system(.body, design: .monospaced))
+                            .frame(width: 40, alignment: .trailing)
+                    }
+                }
+
+                Toggle("Use custom collapsed separator length", isOn: $showCollapsedOverride)
+                    .onChange(of: showCollapsedOverride) { _, newValue in
+                        if newValue {
+                            settingsStore.collapsedSeparatorLengthOverride = 2000
+                        } else {
+                            settingsStore.collapsedSeparatorLengthOverride = nil
+                        }
+                        onChange?()
+                    }
+
+                if showCollapsedOverride {
+                    LabeledContent("Custom collapsed length") {
+                        HStack {
+                            Slider(
+                                value: Binding(
+                                    get: { settingsStore.collapsedSeparatorLengthOverride ?? 2000 },
+                                    set: { settingsStore.collapsedSeparatorLengthOverride = $0 }
+                                ),
+                                in: AppConstants.collapsedSeparatorMinimumLength...AppConstants.collapsedSeparatorMaximumLength,
+                                step: 50
+                            )
+                            .frame(width: 200)
+                            Text(settingsStore.collapsedSeparatorLengthOverride ?? 2000, format: .number.precision(.fractionLength(0)))
+                                .font(.system(.body, design: .monospaced))
+                                .frame(width: 60, alignment: .trailing)
+                        }
+                    }
+                    .onChange(of: settingsStore.collapsedSeparatorLengthOverride) { _, _ in onChange?() }
+                }
+
+                Text("When disabled, the collapsed length recomputes from the widest screen.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section("Icon Moving") {
+                Toggle("Enable icon moving", isOn: $settingsStore.iconMovingEnabled)
+
+                Toggle("Require confirmation before moving", isOn: $settingsStore.iconMovingRequireConfirmation)
+                    .disabled(!settingsStore.iconMovingEnabled)
+
+                Stepper(
+                    value: $settingsStore.iconMovingMaxRetries,
+                    in: AppConstants.minIconMovingMaxRetries...AppConstants.maxIconMovingMaxRetries
+                ) {
+                    Text("Max retries: \(settingsStore.iconMovingMaxRetries)")
+                }
+                .disabled(!settingsStore.iconMovingEnabled)
+
+                LabeledContent("Drag duration") {
+                    HStack {
+                        Slider(
+                            value: $settingsStore.iconMovingDragDuration,
+                            in: AppConstants.minIconMovingDragDuration...AppConstants.maxIconMovingDragDuration,
+                            step: 0.05
+                        )
+                        .frame(width: 220)
+
+                        Text(settingsStore.iconMovingDragDuration, format: .number.precision(.fractionLength(2)))
+                            .font(.system(.body, design: .monospaced))
+                            .frame(width: 46, alignment: .trailing)
+                    }
+                }
+                .disabled(!settingsStore.iconMovingEnabled)
+
+                Toggle("Allow moving system items", isOn: $settingsStore.iconMovingAllowSystemItems)
+                    .disabled(!settingsStore.iconMovingEnabled)
+
+                Button("Reset moving warnings") {
+                    onResetMovingWarnings?()
+                }
+
+                Text("Icon moving is Pro-only and only runs after an explicit menu action. It simulates Command-drag and may fail for some apps or system items.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section("Application Support") {
+                LabeledContent("Diagnostics Directory") {
+                    Text(appSupportPaths.diagnosticsDirectory.path)
+                        .font(.system(.caption, design: .monospaced))
+                        .lineLimit(2)
+                        .truncationMode(.middle)
+                        .textSelection(.enabled)
+                }
+                Button("Reveal Diagnostics Folder in Finder") {
+                    revealInFinder(appSupportPaths.diagnosticsDirectory)
+                }
+            }
+
+            Section("Diagnostics") {
+                LabeledContent("Ring Buffer Capacity", value: "\(AppConstants.diagnosticsRingBufferLimit) events")
+                LabeledContent("Bundle Identifier", value: AppConstants.bundleIdentifier)
+            }
+        }
+        .formStyle(.grouped)
+        .padding()
+        .onChange(of: settingsStore.iconMovingEnabled) { _, _ in onChange?() }
+        .onChange(of: settingsStore.iconMovingRequireConfirmation) { _, _ in onChange?() }
+        .onChange(of: settingsStore.iconMovingMaxRetries) { _, _ in onChange?() }
+        .onChange(of: settingsStore.iconMovingDragDuration) { _, _ in onChange?() }
+        .onChange(of: settingsStore.iconMovingAllowSystemItems) { _, _ in onChange?() }
+    }
+
+    private func revealInFinder(_ url: URL) {
+        do {
+            try appSupportPaths.ensureDirectoriesExist()
+            NSWorkspace.shared.activateFileViewerSelecting([url])
+        } catch {
+            NSWorkspace.shared.open(url.deletingLastPathComponent())
+        }
+    }
+}
+
+#Preview {
+    AdvancedSettingsView(
+        settingsStore: SettingsStore(),
+        appSupportPaths: AppSupportPaths()
+    )
+}
