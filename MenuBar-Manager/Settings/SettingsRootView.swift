@@ -159,6 +159,10 @@ struct SettingsRootView: View {
             SearchSettingsView(
                 settingsStore: settingsStore,
                 permissionService: accessibilityPermissionService,
+                commandAvailability: commandSummary(for: MenuBarCommand(
+                    action: .showFindIcon,
+                    source: .statusMenu
+                )),
                 onChange: actions.searchChanged,
                 onOpenPrivacySettings: {
                     navigationModel.selectedSection = .privacy
@@ -168,6 +172,16 @@ struct SettingsRootView: View {
             SecondBarSettingsView(
                 settingsStore: settingsStore,
                 permissionService: accessibilityPermissionService,
+                commandAvailability: commandSummary(for: MenuBarCommand(
+                    action: .showSecondBar,
+                    target: .secondBar,
+                    source: .statusMenu
+                )),
+                iconPanelAvailability: commandSummary(for: MenuBarCommand(
+                    action: .showIconPanel,
+                    target: .iconPanel,
+                    source: .statusMenu
+                )),
                 onChange: actions.secondBarChanged,
                 onOpenPrivacySettings: {
                     navigationModel.selectedSection = .privacy
@@ -188,6 +202,13 @@ struct SettingsRootView: View {
                     proModeAvailable: settingsStore.proModeEnabled && settingsStore.accessibilityDiscoveryEnabled,
                     onOpenPrivacySettings: {
                         navigationModel.selectedSection = .privacy
+                    },
+                    commandAvailability: { group in
+                        commandSummary(for: MenuBarCommand(
+                            action: .showGroupPanel,
+                            target: .group(group.id),
+                            source: .settings
+                        ))
                     },
                     onGroupsChanged: actions.groupsChanged
                 )
@@ -229,6 +250,13 @@ struct SettingsRootView: View {
                     liveStatus: liveStatus,
                     onDryRun: dryRunProfile,
                     onApply: applyProfile,
+                    commandAvailability: { profile in
+                        commandSummary(for: MenuBarCommand(
+                            action: .applyProfile,
+                            target: .profileID(profile.id),
+                            source: .settings
+                        ))
+                    },
                     onTriggersChanged: actions.triggersChanged ?? {}
                 )
             } else {
@@ -288,6 +316,13 @@ struct SettingsRootView: View {
                 onResetMovingWarnings: actions.resetMovingWarnings
             )
         }
+    }
+
+    private func commandSummary(for command: MenuBarCommand) -> MenuBarCommandAvailabilitySummary? {
+        guard let availability = actions.commandAvailability?(command) else {
+            return nil
+        }
+        return MenuBarCommandAvailabilitySummary(command: command, availability: availability)
     }
 }
 
@@ -592,6 +627,64 @@ struct ClearGlassStatusValue: View {
                 .font(.callout)
                 .foregroundStyle(style.foreground)
         }
+    }
+}
+
+struct CommandAvailabilityRow: View {
+    let summary: MenuBarCommandAvailabilitySummary
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 14) {
+            Image(systemName: summary.systemImage)
+                .font(.system(size: 18, weight: .regular))
+                .foregroundStyle(summary.tone.clearGlassTint)
+                .frame(width: 26, height: 26)
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(summary.title)
+                    .font(.body)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                ClearGlassStatusValue(
+                    text: summary.statusText,
+                    style: summary.tone.clearGlassStyle
+                )
+
+                Text(summary.detail)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(3)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(.vertical, 7)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private extension MenuBarCommandAvailabilityTone {
+    var clearGlassStyle: ClearGlassStatusStyle {
+        switch self {
+        case .success:
+            .success
+        case .warning:
+            .warning
+        case .danger:
+            .danger
+        case .info:
+            .info
+        case .secondary:
+            .secondary
+        }
+    }
+
+    var clearGlassTint: Color {
+        clearGlassStyle.tint
     }
 }
 

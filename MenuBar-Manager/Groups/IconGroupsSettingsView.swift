@@ -8,6 +8,7 @@ struct IconGroupsSettingsView: View {
     let snapshots: [MenuBarItemSnapshot]
     let proModeAvailable: Bool
     let onOpenPrivacySettings: () -> Void
+    var commandAvailability: ((IconGroup) -> MenuBarCommandAvailabilitySummary?)?
     var onGroupsChanged: (() -> Void)?
 
     @State private var selectedID: UUID?
@@ -86,6 +87,12 @@ struct IconGroupsSettingsView: View {
                                 isProtectedRedacted: selectedGroup.isProtected && settingsStore.protectedGroupsRequireAuth
                             )
 
+                            if let commandAvailability = commandAvailability?(selectedGroup) {
+                                CommandAvailabilityRow(summary: commandAvailability)
+
+                                ClearGlassDivider()
+                            }
+
                             HStack(spacing: 10) {
                                 Button("Edit", systemImage: "pencil") {
                                     editingGroup = selectedGroup
@@ -101,6 +108,7 @@ struct IconGroupsSettingsView: View {
                                     notifyChanged()
                                 }
                             }
+                            .controlSize(.small)
                         } else {
                             ContentUnavailableView("No Groups", systemImage: "person.2", description: Text("Create a group to organize menu bar items."))
                                 .frame(maxWidth: .infinity, minHeight: 220)

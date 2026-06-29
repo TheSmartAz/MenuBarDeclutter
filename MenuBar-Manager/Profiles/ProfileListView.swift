@@ -10,6 +10,7 @@ struct ProfileListView: View {
 
     let onDryRun: (ProfileModel) -> ProfileApplicationDryRun
     let onApply: (ProfileModel) -> ProfileApplicationDryRun
+    var commandAvailability: ((ProfileModel) -> MenuBarCommandAvailabilitySummary?)?
     let onTriggersChanged: () -> Void
 
     @State private var selectedProfileID: ProfileModel.ID?
@@ -147,6 +148,13 @@ struct ProfileListView: View {
                     ProfileEditorView(profile: binding)
 
                     Divider()
+
+                    if let draftProfile,
+                       let commandAvailability = commandAvailability?(draftProfile) {
+                        CommandAvailabilityRow(summary: commandAvailability)
+
+                        Divider()
+                    }
 
                     VStack(alignment: .leading, spacing: 8) {
                         profileActionButtons

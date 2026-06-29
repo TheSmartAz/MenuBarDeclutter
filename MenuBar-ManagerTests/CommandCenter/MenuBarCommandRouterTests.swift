@@ -159,6 +159,36 @@ struct MenuBarCommandRouterTests {
         #expect(event.metadata["target"] == "profile")
     }
 
+    @Test func availabilitySummaryRedactsTargetValues() {
+        let command = MenuBarCommand(
+            action: .applyProfile,
+            target: .profileName("Secret Client Profile"),
+            source: .settings
+        )
+        let availability = MenuBarCommandAvailability.unavailable(
+            status: .requiresUnlock,
+            message: "This command requires Private Access unlock.",
+            diagnosticReason: "privateAccessLocked",
+            failedGate: .privateAccess
+        )
+
+        let summary = MenuBarCommandAvailabilitySummary(
+            command: command,
+            availability: availability
+        )
+
+        let summaryText = [
+            summary.title,
+            summary.statusText,
+            summary.detail,
+            summary.failedGateText ?? "",
+            summary.targetKind
+        ].joined(separator: " ")
+        #expect(summary.statusText == "Unlock Needed")
+        #expect(summary.targetKind == "profile")
+        #expect(!summaryText.contains("Secret Client Profile"))
+    }
+
     private func makeStore() -> SettingsStore {
         let suiteName = "command-router-tests-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!

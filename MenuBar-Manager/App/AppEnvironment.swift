@@ -123,6 +123,15 @@ final class AppEnvironment {
             automationSettingsChanged: { [weak self] in
                 self?.refreshAutomationSettings()
             },
+            commandAvailability: { [weak self] command in
+                self?.commandRouter.availability(for: command)
+                    ?? MenuBarCommandAvailability.unavailable(
+                        status: .failed,
+                        message: "Command router is unavailable.",
+                        diagnosticReason: "routerUnavailable",
+                        failedGate: .targetAvailable
+                    )
+            },
             profile: SettingsProfileActions(
                 dryRun: { [weak self] profile in
                     self?.dryRunProfile(profile) ?? ProfileApplicationDryRun(
