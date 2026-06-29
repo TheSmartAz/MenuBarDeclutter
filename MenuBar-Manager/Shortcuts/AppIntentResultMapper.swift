@@ -9,6 +9,8 @@ nonisolated struct AppIntentResultMapper {
             "Done."
         case .blocked(let reason):
             "Blocked: \(reason)"
+        case .dryRunOnly(let reason):
+            "Dry run only: \(reason)"
         case .requiresPrivateAccess:
             "This action requires Private Access. Please unlock in the MenuBarDeclutter app."
         case .requiresProMode:

@@ -67,7 +67,7 @@ struct AppIntentExecutionServiceTests {
     @Test func applyProfileBlockedWhenDisabled() {
         let (service, _) = makeService(appIntentsCanApplyProfiles: false)
         let result = service.applyProfile(name: "Test")
-        #expect(result == .blocked("App Intents profile application is disabled."))
+        #expect(result == .blocked("Profile automation is disabled."))
     }
 
     @Test func applyProfileBlockedWhenPaused() {
@@ -93,6 +93,16 @@ struct AppIntentExecutionServiceTests {
         let result = service.setLayoutSpacingPreset("compact")
         guard case .blocked = result else {
             Issue.record("expected .blocked but got \(result)")
+            return
+        }
+        #expect(Bool(true))
+    }
+
+    @Test func spacingPresetApplyIsDryRunOnlyWhenLabsAreEnabled() {
+        let (service, _) = makeService(appIntentsCanAccessLabs: true, menuBarSpacingLabsEnabled: true)
+        let result = service.setLayoutSpacingPreset("compact")
+        guard case .dryRunOnly = result else {
+            Issue.record("expected .dryRunOnly but got \(result)")
             return
         }
         #expect(Bool(true))

@@ -495,6 +495,10 @@ final class AppEnvironment {
         safeModeActive: { [weak self] in
             self?.safeModeLaunchState.isSafeModeActive == true
         },
+        accessibilityStatus: { [weak self] in
+            self?.accessibilityPermissionService.status ?? .notRequested
+        },
+        privateAccess: protectedActionGate,
         expand: { [weak self] in self?.expandHiddenItems() },
         collapse: { [weak self] in self?.collapseHiddenItems() },
         revealAll: { [weak self] in self?.revealAllHiddenItems() },
