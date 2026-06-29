@@ -133,6 +133,42 @@ struct MenuBarCommandRouterTests {
         #expect(!didShow)
     }
 
+    @Test func itemUtilityActionsUseRoutedHandlers() {
+        let store = makeStore()
+        store.proModeEnabled = true
+        store.accessibilityDiscoveryEnabled = true
+        var highlightedID: String?
+        var openedID: String?
+        var handlers = MenuBarCommandHandlers()
+        handlers.highlightItem = { id in
+            highlightedID = id
+            return true
+        }
+        handlers.openOwningApp = { id in
+            openedID = id
+            return true
+        }
+        let router = MenuBarCommandRouter(
+            settingsStore: store,
+            accessibilityStatus: { .granted },
+            handlers: handlers
+        )
+
+        let highlightResult = router.route(MenuBarCommand(
+            action: .highlightItem,
+            target: .menuBarItem(id: "item-1")
+        ))
+        let openResult = router.route(MenuBarCommand(
+            action: .openOwningApp,
+            target: .menuBarItem(id: "item-2")
+        ))
+
+        #expect(highlightResult.status == .success)
+        #expect(highlightedID == "item-1")
+        #expect(openResult.status == .success)
+        #expect(openedID == "item-2")
+    }
+
     @Test func commandDiagnosticsRedactTargetValues() throws {
         let store = makeStore()
         store.automationPaused = false
@@ -157,6 +193,60 @@ struct MenuBarCommandRouterTests {
         let metadataText = event.metadata.values.joined(separator: " ")
         #expect(!metadataText.contains("Secret Client Profile"))
         #expect(event.metadata["target"] == "profile")
+    }
+
+    @Test func highlightItemRunsHandlerThroughRouter() {
+        let store = makeStore()
+        store.proModeEnabled = true
+        store.accessibilityDiscoveryEnabled = true
+        var highlightedItemID: String?
+        var handlers = MenuBarCommandHandlers()
+        handlers.highlightItem = { itemID in
+            highlightedItemID = itemID
+            return true
+        }
+        let router = MenuBarCommandRouter(
+            settingsStore: store,
+            accessibilityStatus: { .granted },
+            handlers: handlers
+        )
+
+        let result = router.route(MenuBarCommand(
+            action: .highlightItem,
+            target: .menuBarItem(id: "item-1"),
+            source: .findIcon
+        ))
+
+        #expect(result.status == .success)
+        #expect(result.message == "Menu bar item highlighted.")
+        #expect(highlightedItemID == "item-1")
+    }
+
+    @Test func openOwningAppFailureStaysStructured() {
+        let store = makeStore()
+        store.proModeEnabled = true
+        store.accessibilityDiscoveryEnabled = true
+        var didAttemptOpen = false
+        var handlers = MenuBarCommandHandlers()
+        handlers.openOwningApp = { _ in
+            didAttemptOpen = true
+            return false
+        }
+        let router = MenuBarCommandRouter(
+            settingsStore: store,
+            accessibilityStatus: { .granted },
+            handlers: handlers
+        )
+
+        let result = router.route(MenuBarCommand(
+            action: .openOwningApp,
+            target: .menuBarItem(id: "item-1"),
+            source: .secondBar
+        ))
+
+        #expect(result.status == .unavailable)
+        #expect(result.diagnosticReason == "itemUnavailable")
+        #expect(didAttemptOpen)
     }
 
     @Test func availabilitySummaryRedactsTargetValues() {

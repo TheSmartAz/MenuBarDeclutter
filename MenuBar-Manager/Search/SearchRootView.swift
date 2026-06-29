@@ -7,7 +7,7 @@ struct SearchRootView: View {
 
     let searchService: SearchService
     let onRefresh: () -> Void
-    let onActivate: (MenuBarSearchResult) -> MenuItemActivationResult
+    let onCommand: (MenuBarCommand) -> MenuBarCommandResult
     let onMove: @MainActor (MenuBarSearchResult, IconMoveCommand) async -> IconMoveResult
     let onSettingsChanged: () -> Void
     let onOpenPrivacySettings: () -> Void
@@ -194,6 +194,19 @@ struct SearchRootView: View {
                                 .buttonStyle(.plain)
                                 .id(result.id)
                                 .contextMenu {
+                                    Button("Reveal", systemImage: "eye") {
+                                        route(.revealItem, result: result)
+                                    }
+                                    Button("Highlight", systemImage: "scope") {
+                                        route(.highlightItem, result: result)
+                                    }
+                                    Button("Show in Second Bar", systemImage: "menubar.rectangle") {
+                                        route(.showItemInSecondBar, result: result)
+                                    }
+                                    Button("Open Owning App", systemImage: "app.badge") {
+                                        route(.openOwningApp, result: result)
+                                    }
+                                    Divider()
                                     Button("Move to Visible", systemImage: "arrow.right.to.line") {
                                         move(result, command: .moveToZone(.visible))
                                     }
@@ -361,10 +374,24 @@ struct SearchRootView: View {
     }
 
     private func activate(_ result: MenuBarSearchResult) {
-        let activationResult = onActivate(result)
-        activationMessage = activationResult.message
+        let commandResult = route(.revealItem, result: result)
         liveStatus.lastSearchSelectedItem = result.displayTitle
-        liveStatus.lastSearchActivationOutcome = activationResult.outcome.displayName
+        liveStatus.lastSearchActivationOutcome = commandResult.status.displayName
+    }
+
+    @discardableResult
+    private func route(
+        _ action: MenuBarCommandAction,
+        result: MenuBarSearchResult
+    ) -> MenuBarCommandResult {
+        selectedID = result.id
+        let commandResult = onCommand(MenuBarCommand(
+            action: action,
+            target: .menuBarItem(id: result.id),
+            source: .findIcon
+        ))
+        activationMessage = commandResult.message
+        return commandResult
     }
 
     private func move(_ result: MenuBarSearchResult, command: IconMoveCommand) {
@@ -488,8 +515,8 @@ private struct SearchUnavailableView: View {
         liveStatus: live,
         searchService: SearchService(),
         onRefresh: {},
-        onActivate: { _ in
-            MenuItemActivationResult(outcome: .selectedWithoutHighlight, message: "Preview activation")
+        onCommand: { command in
+            MenuBarCommandResult.success(command, message: "Preview command")
         },
         onMove: { result, command in
             IconMoveResult.skipped(command: command, itemName: result.displayTitle, error: .disabled)

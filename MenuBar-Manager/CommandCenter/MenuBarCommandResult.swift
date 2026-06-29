@@ -11,6 +11,31 @@ nonisolated enum MenuBarCommandResultStatus: String, Equatable, Hashable, Sendab
     case dryRunOnly
     case failed
     case noOp
+
+    var displayName: String {
+        switch self {
+        case .success:
+            "Success"
+        case .unavailable:
+            "Unavailable"
+        case .blocked:
+            "Blocked"
+        case .requiresPermission:
+            "Permission needed"
+        case .requiresUnlock:
+            "Unlock needed"
+        case .requiresPro:
+            "Pro required"
+        case .requiresLabs:
+            "Labs required"
+        case .dryRunOnly:
+            "Preview only"
+        case .failed:
+            "Failed"
+        case .noOp:
+            "No change"
+        }
+    }
 }
 
 nonisolated struct MenuBarCommandResult: Equatable, Sendable {

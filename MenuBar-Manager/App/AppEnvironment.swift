@@ -214,8 +214,8 @@ final class AppEnvironment {
             expand: { [weak self] in self?.expandHiddenItems() },
             collapse: { [weak self] in self?.collapseHiddenItems() },
             toggle: { [weak self] in self?.toggleHiddenItems() },
-            revealAll: { [weak self] in self?.revealAllHiddenItems() },
-            toggleRevealAll: { [weak self] in self?.toggleRevealAll() },
+            revealAll: { [weak self] in self?.revealAllFromStatusMenu() },
+            toggleRevealAll: { [weak self] in self?.toggleRevealAllFromStatusMenu() },
             emergencyRevealAndResetSeparators: { [weak self] in self?.emergencyRevealAndResetSeparators() },
             findIcon: { [weak self] in self?.showSearch() },
             showSecondBar: { [weak self] in self?.showSecondBar() },
@@ -229,6 +229,15 @@ final class AppEnvironment {
             toggleAutomationPaused: { [weak self] in self?.toggleAutomationPaused() },
             automationPausedTitle: { [weak self] in
                 self?.settingsStore.automationPaused == true ? "Resume Automation" : "Pause Automation"
+            },
+            automationPaused: { [weak self] in
+                self?.settingsStore.automationPaused == true
+            },
+            secondBarVisible: { [weak self] in
+                self?.liveStatus.secondBarVisible == true
+            },
+            routeCommand: { [weak self] command in
+                self?.routeStatusMenuCommand(command)
             },
             canRefreshMenuBarItems: { [weak self] in
                 self?.menuBarScanCoordinator.isManualRefreshAvailable == true
@@ -327,6 +336,15 @@ final class AppEnvironment {
         },
         openPrivacySettings: { [weak self] in
             self?.settingsWindowController.show(section: SettingsSection.privacy)
+        },
+        routeCommand: { [weak self] command in
+            self?.commandRouter.route(command)
+                ?? MenuBarCommandResult.stopped(
+                    command,
+                    status: .failed,
+                    message: "Command router is unavailable.",
+                    diagnosticReason: "routerUnavailable"
+                )
         }
     )
 
@@ -490,7 +508,11 @@ final class AppEnvironment {
         factory: IconGroupStatusItemFactory(diagnosticsLogger: diagnosticsLogger),
         diagnosticsLogger: diagnosticsLogger,
         openGroup: { [weak self] group in
-            self?.showGroupPanel(group)
+            self?.routeStatusMenuCommand(MenuBarCommand(
+                action: .showGroupPanel,
+                target: .group(group.id),
+                source: .statusMenu
+            ))
         },
         editGroup: { [weak self] _ in
             self?.showSettings(section: .groups)
@@ -788,6 +810,96 @@ final class AppEnvironment {
 
     func toggleRevealAll() {
         statusBarController.toggleRevealAll()
+    }
+
+    private func revealAllFromStatusMenu() {
+        guard shouldProtectAlwaysHiddenReveal else {
+            revealAllHiddenItems()
+            return
+        }
+
+        routeStatusMenuCommand(MenuBarCommand(
+            action: .revealAlwaysHiddenZone,
+            target: .globalVisibility,
+            source: .statusMenu
+        ))
+    }
+
+    private func toggleRevealAllFromStatusMenu() {
+        guard !hidingService.visibilityState.isRevealAll else {
+            toggleRevealAll()
+            return
+        }
+
+        guard shouldProtectAlwaysHiddenReveal else {
+            toggleRevealAll()
+            return
+        }
+
+        routeStatusMenuCommand(MenuBarCommand(
+            action: .revealAlwaysHiddenZone,
+            target: .globalVisibility,
+            source: .statusMenu
+        ))
+    }
+
+    private var shouldProtectAlwaysHiddenReveal: Bool {
+        settingsStore.alwaysHiddenEnabled && privateAccessCoordinator.isProtected(.alwaysHiddenZone)
+    }
+
+    private func routeStatusMenuCommand(_ command: MenuBarCommand) {
+        guard let resource = command.action.privateAccessResource(for: command.target),
+              !protectedActionGate.canAccessWithoutPrompt(resource) else {
+            _ = commandRouter.route(command)
+            return
+        }
+
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            var didRoute = false
+            let didUnlockAndRun = await self.protectedActionGate.execute(
+                resource: resource,
+                reason: self.statusMenuUnlockReason(for: command)
+            ) {
+                didRoute = true
+                _ = self.commandRouter.route(command)
+            }
+
+            guard !didUnlockAndRun, !didRoute else { return }
+            let result = MenuBarCommandResult.stopped(
+                command,
+                status: .requiresUnlock,
+                message: "This command requires Private Access unlock.",
+                diagnosticReason: "privateAccessLocked"
+            )
+            self.diagnosticsLogger.log(
+                "Status menu command did not run because Private Access unlock was not completed.",
+                level: .info,
+                category: .privacy,
+                metadata: MenuBarCommandDiagnostics.metadata(for: result, source: command.source)
+            )
+        }
+    }
+
+    private func statusMenuUnlockReason(for command: MenuBarCommand) -> String {
+        switch command.action {
+        case .revealAlwaysHiddenZone:
+            "Unlock to reveal always-hidden menu bar items."
+        case .showFindIcon:
+            "Unlock to open Find Icon."
+        case .showSecondBar, .showIconPanel, .showItemInSecondBar:
+            "Unlock to open Second Bar."
+        case .showGroupPanel, .revealGroup:
+            "Unlock to open this protected group."
+        case .applyProfile:
+            "Unlock to apply this profile."
+        case .spacingPresetApply:
+            "Unlock to apply Menu Bar Spacing Labs changes."
+        case .experimentalActivateItem:
+            "Unlock to move this menu bar item."
+        default:
+            "Unlock to run this protected command."
+        }
     }
 
     // MARK: Phase 10 Layout actions
@@ -1111,6 +1223,12 @@ final class AppEnvironment {
         handlers.revealItem = { [weak self] itemID in
             self?.revealMenuBarItem(id: itemID) == true
         }
+        handlers.highlightItem = { [weak self] itemID in
+            self?.highlightMenuBarItem(id: itemID) == true
+        }
+        handlers.openOwningApp = { [weak self] itemID in
+            self?.openOwningAppForMenuBarItem(id: itemID) == true
+        }
         handlers.showItemInSecondBar = { [weak self] itemID in
             self?.showMenuBarItemInSecondBar(id: itemID) == true
         }
@@ -1205,6 +1323,34 @@ final class AppEnvironment {
         }
         _ = groupActivationService.activate(snapshot: snapshot)
         return true
+    }
+
+    private func highlightMenuBarItem(id: String) -> Bool {
+        refreshMenuBarItems()
+        guard let snapshot = liveStatus.scannedMenuBarItems.first(where: { $0.id == id }) else {
+            diagnosticsLogger.log("Command Center item highlight target unavailable.", level: .warning, category: .layout)
+            return false
+        }
+
+        let result = groupMenuItemActivator.highlight(snapshot)
+        diagnosticsLogger.log("Command Center item highlight: \(result.message)", level: .debug, category: .layout)
+        return result.outcome != .missingFrame
+    }
+
+    private func openOwningAppForMenuBarItem(id: String) -> Bool {
+        refreshMenuBarItems()
+        guard let snapshot = liveStatus.scannedMenuBarItems.first(where: { $0.id == id }) else {
+            diagnosticsLogger.log("Command Center owning app target unavailable.", level: .warning, category: .layout)
+            return false
+        }
+
+        guard let processIdentifier = snapshot.owningProcessIdentifier,
+              let application = NSRunningApplication(processIdentifier: processIdentifier) else {
+            diagnosticsLogger.log("Command Center owning app is unavailable.", level: .warning, category: .layout)
+            return false
+        }
+
+        return application.activate(options: [])
     }
 
     private func showMenuBarItemInSecondBar(id: String) -> Bool {

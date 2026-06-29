@@ -23,6 +23,8 @@ struct MenuBarCommandHandlers {
     var pauseAutomation: () -> Void = {}
     var resumeAutomation: () -> Void = {}
     var revealItem: (String) -> Bool = { _ in false }
+    var highlightItem: (String) -> Bool = { _ in false }
+    var openOwningApp: (String) -> Bool = { _ in false }
     var showItemInSecondBar: (String) -> Bool = { _ in false }
     var showGroupPanel: (UUID) -> Bool = { _ in false }
     var applyProfileNamed: (String) -> Bool = { _ in false }
@@ -258,10 +260,18 @@ final class MenuBarCommandRouter {
             return executeItem(command, message: "Menu bar item shown in Second Bar.") { id in
                 handlers.showItemInSecondBar(id)
             }
+        case .highlightItem:
+            return executeItem(command, message: "Menu bar item highlighted.") { id in
+                handlers.highlightItem(id)
+            }
+        case .openOwningApp:
+            return executeItem(command, message: "Owning app opened.") { id in
+                handlers.openOwningApp(id)
+            }
         case .showGroupPanel, .revealGroup:
             return executeGroup(command)
-        case .highlightItem, .openOwningApp, .addItemToGroup, .removeItemFromGroup,
-             .assignHotkey, .protectResource, .unlockProtectedAction,
+        case .addItemToGroup, .removeItemFromGroup, .assignHotkey,
+             .protectResource, .unlockProtectedAction,
              .experimentalActivateItem:
             return .stopped(
                 command,

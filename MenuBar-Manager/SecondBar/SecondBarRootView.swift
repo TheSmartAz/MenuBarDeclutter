@@ -6,7 +6,7 @@ struct SecondBarRootView: View {
     @Bindable var liveStatus: LiveDiagnosticsStatus
 
     let onRefresh: () -> Void
-    let onActivate: (MenuBarItemSnapshot) -> MenuItemActivationResult
+    let onCommand: (MenuBarCommand) -> MenuBarCommandResult
     let onMove: (@MainActor (MenuBarItemSnapshot, IconMoveCommand) async -> IconMoveResult)?
     let onSettingsChanged: () -> Void
     let onOpenPrivacySettings: () -> Void
@@ -326,6 +326,16 @@ struct SecondBarRootView: View {
         .id(snapshot.id)
         .disabled(liveStatus.iconMoveInProgress)
         .contextMenu {
+            Button("Reveal", systemImage: "eye") {
+                route(.revealItem, snapshot: snapshot)
+            }
+            Button("Highlight", systemImage: "scope") {
+                route(.highlightItem, snapshot: snapshot)
+            }
+            Button("Open Owning App", systemImage: "app.badge") {
+                route(.openOwningApp, snapshot: snapshot)
+            }
+            Divider()
             Button("Move to Visible", systemImage: "arrow.right.to.line") {
                 move(snapshot, command: .moveToZone(.visible))
             }
@@ -354,13 +364,34 @@ struct SecondBarRootView: View {
     }
 
     private func activate(_ snapshot: MenuBarItemSnapshot) {
-        let result = onActivate(snapshot)
+        let result = route(.revealItem, snapshot: snapshot)
         liveStatus.lastSecondBarSelectedItem = displayTitle(for: snapshot)
-        statusMessage = result.outcome.displayName
+
+        if settingsStore.secondBarActivateOwningAppOnSelection {
+            let openResult = route(.openOwningApp, snapshot: snapshot)
+            if !openResult.didRun {
+                statusMessage = result.message
+            }
+        }
 
         if settingsStore.secondBarAutoCloseAfterSelection {
             onDismiss()
         }
+    }
+
+    @discardableResult
+    private func route(
+        _ action: MenuBarCommandAction,
+        snapshot: MenuBarItemSnapshot
+    ) -> MenuBarCommandResult {
+        viewModel.selectedID = snapshot.id
+        let result = onCommand(MenuBarCommand(
+            action: action,
+            target: .menuBarItem(id: snapshot.id),
+            source: .secondBar
+        ))
+        statusMessage = result.message
+        return result
     }
 
     private func move(_ snapshot: MenuBarItemSnapshot, command: IconMoveCommand) {
@@ -539,8 +570,8 @@ private struct SecondBarUnavailableView: View {
         permissionService: permission,
         liveStatus: live,
         onRefresh: {},
-        onActivate: { _ in
-            MenuItemActivationResult(outcome: .hiddenRevealed, message: "Preview")
+        onCommand: { command in
+            MenuBarCommandResult.success(command, message: "Preview")
         },
         onMove: nil,
         onSettingsChanged: {},

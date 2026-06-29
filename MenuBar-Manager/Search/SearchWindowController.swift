@@ -10,9 +10,9 @@ final class SearchWindowController: NSWindowController, NSWindowDelegate {
         permissionService: AccessibilityPermissionService,
         liveStatus: LiveDiagnosticsStatus,
         searchService: SearchService,
-        menuItemActivator: MenuItemActivator,
         diagnosticsLogger: DiagnosticsLogger,
         onRefresh: @escaping () -> Void,
+        onCommand: @escaping (MenuBarCommand) -> MenuBarCommandResult,
         onMove: @escaping @MainActor (MenuBarSearchResult, IconMoveCommand) async -> IconMoveResult,
         onSettingsChanged: @escaping () -> Void,
         onOpenPrivacySettings: @escaping () -> Void
@@ -47,9 +47,7 @@ final class SearchWindowController: NSWindowController, NSWindowDelegate {
             liveStatus: liveStatus,
             searchService: searchService,
             onRefresh: onRefresh,
-            onActivate: { result in
-                menuItemActivator.activate(result)
-            },
+            onCommand: onCommand,
             onMove: onMove,
             onSettingsChanged: onSettingsChanged,
             onOpenPrivacySettings: onOpenPrivacySettings,

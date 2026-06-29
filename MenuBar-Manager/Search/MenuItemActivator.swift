@@ -80,6 +80,25 @@ final class MenuItemActivator {
         return activationResult
     }
 
+    func highlight(_ snapshot: MenuBarItemSnapshot) -> MenuItemActivationResult {
+        guard let frame = snapshot.frame else {
+            let result = MenuItemActivationResult(
+                outcome: .missingFrame,
+                message: "No item frame was available to highlight."
+            )
+            diagnosticsLogger.log("Menu bar item highlight: \(result.message)")
+            return result
+        }
+
+        highlightOverlay.show(around: frame)
+        let result = MenuItemActivationResult(
+            outcome: .highlightedWithoutReveal,
+            message: "Highlighted the item's last known frame. Click the original icon manually."
+        )
+        diagnosticsLogger.log("Menu bar item highlight: \(result.message)")
+        return result
+    }
+
     private func revealIfNeeded(for zone: MenuBarZone) -> Bool {
         guard settingsStore.searchRevealOnSelection else { return false }
 

@@ -31,7 +31,7 @@ final class SecondBarWindowController: NSWindowController, NSWindowDelegate {
         positioningService: SecondBarPositioningService,
         diagnosticsLogger: DiagnosticsLogger,
         onRefresh: @escaping () -> Void,
-        onActivate: @escaping (MenuBarItemSnapshot) -> MenuItemActivationResult,
+        onCommand: @escaping (MenuBarCommand) -> MenuBarCommandResult,
         onMove: @escaping @MainActor (MenuBarItemSnapshot, IconMoveCommand) async -> IconMoveResult,
         onSettingsChanged: @escaping () -> Void,
         onOpenPrivacySettings: @escaping () -> Void
@@ -64,7 +64,7 @@ final class SecondBarWindowController: NSWindowController, NSWindowDelegate {
             permissionService: permissionService,
             liveStatus: liveStatus,
             onRefresh: onRefresh,
-            onActivate: onActivate,
+            onCommand: onCommand,
             onMove: onMove,
             onSettingsChanged: onSettingsChanged,
             onOpenPrivacySettings: onOpenPrivacySettings,

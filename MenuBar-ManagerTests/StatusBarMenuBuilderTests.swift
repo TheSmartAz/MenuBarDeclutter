@@ -78,11 +78,110 @@ struct StatusBarMenuBuilderTests {
         }
     }
 
+    @Test func routeableMenuCommandsUseCommandCenterHookWhenProvided() throws {
+        let recorder = MenuActionRecorder()
+        let builder = StatusBarMenuBuilder(
+            actions: Self.makeActions(
+                recorder: recorder,
+                routeCommands: true
+            )
+        )
+        let menu = builder.makeMenu()
+
+        try perform("Find Icon...", in: menu)
+        #expect(recorder.routedCommands.last == MenuBarCommand(
+            action: .showFindIcon,
+            source: .statusMenu
+        ))
+
+        try perform("Show Second Bar", in: menu)
+        #expect(recorder.routedCommands.last == MenuBarCommand(
+            action: .showSecondBar,
+            target: .secondBar,
+            source: .statusMenu
+        ))
+
+        try perform("Hide Second Bar", in: menu)
+        #expect(recorder.routedCommands.last == MenuBarCommand(
+            action: .hideSecondBar,
+            target: .secondBar,
+            source: .statusMenu
+        ))
+
+        try perform("Toggle Second Bar", in: menu)
+        #expect(recorder.routedCommands.last == MenuBarCommand(
+            action: .showSecondBar,
+            target: .secondBar,
+            source: .statusMenu
+        ))
+
+        try perform("Pause Automation", in: menu)
+        #expect(recorder.routedCommands.last == MenuBarCommand(
+            action: .pauseAutomation,
+            target: .automation,
+            source: .statusMenu
+        ))
+
+        try perform("Enter Full Menu Bar Mode", in: menu)
+        #expect(recorder.routedCommands.last == MenuBarCommand(
+            action: .enterFullMenuBarMode,
+            target: .fullMenuBarMode,
+            source: .statusMenu
+        ))
+
+        try perform("Layout Suggestions…", in: menu)
+        #expect(recorder.routedCommands.last == MenuBarCommand(
+            action: .showLayoutSuggestions,
+            target: .layoutSuggestions,
+            source: .statusMenu
+        ))
+    }
+
+    @Test func routedToggleCommandsRespectCurrentMenuState() throws {
+        let recorder = MenuActionRecorder()
+        let builder = StatusBarMenuBuilder(
+            actions: Self.makeActions(
+                recorder: recorder,
+                automationPausedTitle: "Resume Automation",
+                automationPaused: true,
+                secondBarVisible: true,
+                fullMenuBarModeIsActive: true,
+                routeCommands: true
+            )
+        )
+        let menu = builder.makeMenu()
+
+        try perform("Toggle Second Bar", in: menu)
+        #expect(recorder.routedCommands.last == MenuBarCommand(
+            action: .hideSecondBar,
+            target: .secondBar,
+            source: .statusMenu
+        ))
+
+        try perform("Resume Automation", in: menu)
+        #expect(recorder.routedCommands.last == MenuBarCommand(
+            action: .resumeAutomation,
+            target: .automation,
+            source: .statusMenu
+        ))
+
+        try perform("Exit Full Menu Bar Mode", in: menu)
+        #expect(recorder.routedCommands.last == MenuBarCommand(
+            action: .exitFullMenuBarMode,
+            target: .fullMenuBarMode,
+            source: .statusMenu
+        ))
+    }
+
     private static func makeActions(
         recorder: MenuActionRecorder = MenuActionRecorder(),
         proModeTitle: String = "Enable Pro Mode",
         automationPausedTitle: String = "Pause Automation",
-        canRefreshMenuBarItems: Bool = true
+        automationPaused: Bool = false,
+        secondBarVisible: Bool = false,
+        fullMenuBarModeIsActive: Bool = false,
+        canRefreshMenuBarItems: Bool = true,
+        routeCommands: Bool = false
     ) -> StatusBarMenuBuilder.Actions {
         StatusBarMenuBuilder.Actions(
             expand: { recorder.record(.expand) },
@@ -100,6 +199,9 @@ struct StatusBarMenuBuilderTests {
             proModeTitle: { proModeTitle },
             toggleAutomationPaused: { recorder.record(.toggleAutomationPaused) },
             automationPausedTitle: { automationPausedTitle },
+            automationPaused: { automationPaused },
+            secondBarVisible: { secondBarVisible },
+            routeCommand: routeCommands ? { recorder.route($0) } : nil,
             canRefreshMenuBarItems: { canRefreshMenuBarItems },
             resetSeparatorLength: { recorder.record(.resetSeparatorLength) },
             showDragHint: { recorder.record(.showDragHint) },
@@ -109,7 +211,7 @@ struct StatusBarMenuBuilderTests {
             quit: { recorder.record(.quit) },
             enterFullMenuBarMode: { recorder.record(.enterFullMenuBarMode) },
             exitFullMenuBarMode: { recorder.record(.exitFullMenuBarMode) },
-            fullMenuBarModeIsActive: { false },
+            fullMenuBarModeIsActive: { fullMenuBarModeIsActive },
             showLayoutSuggestions: { recorder.record(.showLayoutSuggestions) },
             openLayoutSettings: { recorder.record(.openLayoutSettings) },
             addSpacerDivider: { recorder.record(.addSpacerDivider) },
@@ -118,6 +220,13 @@ struct StatusBarMenuBuilderTests {
             revealInlineAnyway: { recorder.record(.revealInlineAnyway) },
             crowdedRevealIntercepted: { false }
         )
+    }
+
+    private func perform(_ title: String, in menu: NSMenu) throws {
+        let item = try #require(menu.items.first { $0.title == title })
+        let action = try #require(item.action)
+        let didSendAction = NSApplication.shared.sendAction(action, to: item.target, from: item)
+        #expect(didSendAction)
     }
 }
 
@@ -154,8 +263,13 @@ private final class MenuActionRecorder {
     }
 
     var commands: [Command] = []
+    var routedCommands: [MenuBarCommand] = []
 
     func record(_ command: Command) {
         commands.append(command)
+    }
+
+    func route(_ command: MenuBarCommand) {
+        routedCommands.append(command)
     }
 }

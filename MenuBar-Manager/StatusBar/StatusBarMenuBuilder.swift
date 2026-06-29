@@ -23,6 +23,9 @@ final class StatusBarMenuBuilder {
         let proModeTitle: () -> String
         let toggleAutomationPaused: () -> Void
         let automationPausedTitle: () -> String
+        var automationPaused: () -> Bool = { false }
+        var secondBarVisible: () -> Bool = { false }
+        var routeCommand: ((MenuBarCommand) -> Void)?
         let canRefreshMenuBarItems: () -> Bool
         let resetSeparatorLength: () -> Void
         let showDragHint: () -> Void
@@ -352,6 +355,12 @@ private enum StatusBarMenuCommand: Int {
     case revealInlineAnyway
 
     func perform(using actions: StatusBarMenuBuilder.Actions) {
+        if let command = routedCommand(using: actions),
+           let routeCommand = actions.routeCommand {
+            routeCommand(command)
+            return
+        }
+
         switch self {
         case .expand:
             actions.expand()
@@ -407,6 +416,37 @@ private enum StatusBarMenuCommand: Int {
             actions.toggleSpacerMarkers()
         case .revealInlineAnyway:
             actions.revealInlineAnyway()
+        }
+    }
+
+    private func routedCommand(using actions: StatusBarMenuBuilder.Actions) -> MenuBarCommand? {
+        switch self {
+        case .findIcon:
+            MenuBarCommand(action: .showFindIcon, source: .statusMenu)
+        case .showSecondBar:
+            MenuBarCommand(action: .showSecondBar, target: .secondBar, source: .statusMenu)
+        case .hideSecondBar:
+            MenuBarCommand(action: .hideSecondBar, target: .secondBar, source: .statusMenu)
+        case .toggleSecondBar:
+            MenuBarCommand(
+                action: actions.secondBarVisible() ? .hideSecondBar : .showSecondBar,
+                target: .secondBar,
+                source: .statusMenu
+            )
+        case .toggleAutomationPaused:
+            MenuBarCommand(
+                action: actions.automationPaused() ? .resumeAutomation : .pauseAutomation,
+                target: .automation,
+                source: .statusMenu
+            )
+        case .enterFullMenuBarMode:
+            MenuBarCommand(action: .enterFullMenuBarMode, target: .fullMenuBarMode, source: .statusMenu)
+        case .exitFullMenuBarMode:
+            MenuBarCommand(action: .exitFullMenuBarMode, target: .fullMenuBarMode, source: .statusMenu)
+        case .showLayoutSuggestions:
+            MenuBarCommand(action: .showLayoutSuggestions, target: .layoutSuggestions, source: .statusMenu)
+        default:
+            nil
         }
     }
 }
