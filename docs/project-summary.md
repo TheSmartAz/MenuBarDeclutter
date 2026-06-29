@@ -2,7 +2,7 @@
 
 `MenuBarDeclutter` is a native macOS 26.0+ menu bar utility written in Swift, AppKit, and SwiftUI. Its product direction is privacy-first menu bar decluttering: ship a permission-free Basic Mode similar to Hidden Bar / Dozer, then layer selected Bartender-like power features behind explicit opt-in gates.
 
-The current checkout is far beyond the original Phase 0 skeleton. Phases 0 through 11 are implemented in the source tree, with Phase 9.1-9.5 hardening, Phase 10 layout work, and Phase 11 power-user surfaces present. Local automated validation and dry-run alpha packaging are documented as passing, but public distribution is still blocked by Developer ID notarization credentials and several hands-on macOS system QA gates.
+The current checkout is far beyond the original Phase 0 skeleton. Phases 0 through 12 are implemented in the source tree, with Phase 9.1-9.5 hardening, Phase 10 layout work, Phase 11 power-user surfaces, and Phase 12 v0.1.1 release-confidence/trust hardening present. Local automated validation, dry-run alpha packaging, installed-app verification, and privacy-boundary checks are documented as passing. Public distribution is still blocked by Developer ID notarization credentials and several hands-on macOS system QA gates.
 
 ## Current Checkout
 
@@ -29,7 +29,7 @@ Basic Mode is the default and remains the core product promise. It uses only pub
 
 Pro Mode is opt-in. It adds read-only Accessibility discovery for menu bar item metadata, then powers optional features such as Find Icon, Second Bar, explicit icon moving, richer layout estimates, groups, and some automation. Pro surfaces degrade to visible unavailable states when Pro Mode is off, Accessibility Discovery is off, Accessibility permission is missing, Safe Mode is active, or a feature-specific gate is disabled.
 
-Power-user features exist, but v0.1 remains centered on safe defaults. Risky or system-sensitive features are off, paused, or Labs-gated by default: Pro discovery, Find Icon, Second Bar, icon moving, Smart Triggers, dynamic hotkeys, Private Access, group status items, and Menu Bar Spacing Labs all require explicit enablement or opt-in context. Layout guidance, groups, and App Intents UI are present, but some Phase 10/11 paths are service/UI scaffolding rather than fully wired end-user workflows, and public-release confidence still depends on manual system QA.
+Power-user features exist, but `v0.1.1` remains centered on safe defaults. Risky or system-sensitive features are off, paused, Preview-labeled, Experimental, or Labs-gated by default: Pro discovery, Find Icon, Second Bar, icon moving, Smart Triggers, dynamic hotkeys, Private Access, group status items, App Intents automation, Import/Export migration, and Menu Bar Spacing Labs all require explicit enablement or opt-in context. Phase 12 made the release claims, feature gates, and Settings copy more honest, but Phase 13 is still needed to turn the Phase 10/11 Pro scaffolding into cohesive end-user workflows.
 
 ## Architecture
 
@@ -188,7 +188,7 @@ Real menu bar control lives in AppKit services under `StatusBar/`, `Hiding/`, `L
 - Import / Export and Migration Assistant UI with export, dry-run import, and backup concepts.
 - Profile integration for groups, protected groups, dynamic hotkeys, layout preferences, Full Menu Bar Mode preference, and Labs-gated settings.
 
-Some Phase 11 surfaces are better described as implemented scaffolding or guarded local UI rather than fully release-proven automation. In particular, settings export currently writes placeholder setting values, import is dry-run only with backup creation, App Intent execution does not uniformly enforce every advertised app/Private Access/Pro gate, spacing preset intents log/validate rather than applying presets, and protected-action coverage needs deeper validation before broad public claims.
+Some Phase 11 surfaces are better described as implemented scaffolding or guarded local UI rather than fully release-proven automation. Phase 12 replaced placeholder settings export values with real privacy-safe local values plus omission metadata, but import remains dry-run only with backup creation. App Intents, URL automation, Private Access coverage, profile workflows, dynamic hotkeys, groups, and spacing preset actions still need Phase 13 command-routing and gate-unification work before broad public claims.
 
 ## Privacy Boundary
 
@@ -239,19 +239,21 @@ Safe Mode suppresses optional automation, Pro scanning, icon moving, hotkeys, ho
 
 ## Testing And Validation
 
-The latest documented Phase 10/11 validation snapshot records:
+The latest documented Phase 12 validation snapshot records:
 
 - `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS'`: passed.
-- Swift/unit tests: 310 tests in 60 suites passed.
+- Swift Testing tests: 321 tests in 60 suites passed.
 - UI tests: 7 tests passed.
 - `scripts/qa_preflight.sh`: passed.
 - `scripts/verify_privacy_boundary.sh`: passed.
+- `APP_PATH=/Applications/MenuBarDeclutter.app scripts/verify_privacy_boundary.sh`: passed.
 - `scripts/qa_dogfood_preflight.sh`: passed.
-- `scripts/build_release.sh`: passed.
-- Release artifact verification: passed for the Release app.
-- Installed-app verification: passed after replacing a stale `/Applications/MenuBarDeclutter.app`.
-- Installed app network socket probe: passed with no sockets observed.
-- Local alpha package creation: passed for `build/Dist/MenuBarDeclutter-alpha.zip` and `build/Dist/MenuBarDeclutter-v0.1.0.zip`.
+- `scripts/build_release.sh --dry-run --install --verify-installed`: passed.
+- `scripts/verify_release_artifact.sh build/Export/MenuBarDeclutter.app --expected-version 0.1.1 --expected-build 2`: passed.
+- Installed-app verification passed for `/Applications/MenuBarDeclutter.app`.
+- Notarization dry-run passed with credentials unset.
+- Real notarization submission with credentials unset failed safely before upload with a clear missing-credentials message.
+- Local alpha package creation passed for `build/Dist/MenuBarDeclutter-v0.1.1-alpha.zip` and `build/Dist/MenuBarDeclutter-v0.1.1.zip`.
 
 Important test coverage areas include settings defaults/migration, diagnostics export privacy, hiding/reveal/auto-rehide/hover, Accessibility discovery logic, scan gating and throttling, search ranking, Second Bar placement/view model behavior, profile store and trigger logic, URL automation, App Intents execution, hotkey models and dynamic registration, layout capacity/suggestions, Full Menu Bar Mode, crowded rescue, spacers, spacing service, icon moving safety/planning/verification, groups, Private Access, health/recovery/Safe Mode, dogfood storage, and QA script wiring.
 
@@ -269,7 +271,7 @@ The local release workflow exists:
 6. Run notarization in dry-run mode or real mode when credentials exist.
 7. Staple and validate Gatekeeper.
 8. Install locally to `/Applications`.
-9. Verify installed app and run network watch.
+9. Verify the installed app and privacy boundary.
 10. Collect local QA artifacts.
 
 Current status:
@@ -277,10 +279,13 @@ Current status:
 - Local archive/export/package/install dry-runs are documented as passing.
 - The app is signed with available local development signing.
 - Strict code signing checks pass in local validation.
+- `Config/ExportOptions.plist` is present for Developer ID export without secrets.
+- Release artifact verification checks bundle ID, version/build, `LSUIElement`, app category, local URL scheme, sensitive usage strings, sandbox entitlement, hardened runtime metadata, network entitlements, ScreenCaptureKit linkage, code signature, `spctl`, and stapler state.
+- Installed-app verification checks the same privacy and packaging boundary on `/Applications/MenuBarDeclutter.app`.
+- App category metadata is set to `public.app-category.utilities`.
 - Public distribution is blocked by missing Developer ID Application identity/notarization credentials.
 - Gatekeeper/stapler warnings are expected for non-notarized dry-run artifacts.
-- `Config/ExportOptions.plist` is not present; release export currently falls back to deterministic archive copy behavior.
-- An App Category archive warning is documented and should be resolved before broad distribution.
+- Manual system QA is partially complete through Codex Computer Use and local shell verification; physical menu bar, display, permission, login, sleep/wake, and real Shortcuts flows remain hands-on gates.
 
 ## Remaining Manual Gates
 
@@ -288,11 +293,11 @@ Before public or stable claims, these require hands-on macOS validation or expli
 
 - Real command-drag placement of the Basic control/separators.
 - Collapse, expand, reveal-all, and reset behavior against a live crowded menu bar.
+- Hover-only reveal behavior against the live menu bar band.
 - Launch at Login across install, restart, logout/login, and removal.
 - Accessibility grant, revoke, restart, and degraded-state flows.
 - Safe Mode via Option launch, one-shot flag, and crash marker recovery.
 - External displays, notch layouts, sleep/wake, active Space changes, and menu bar appearance variants.
-- Interactive network observation in a real session.
 - Touch ID/password success, cancel, unavailable, and failure flows.
 - Shortcuts app discovery and manual execution of App Intents.
 - Command-drag of app-owned spacer and group status items.
@@ -303,7 +308,7 @@ Before public or stable claims, these require hands-on macOS validation or expli
 ## Known Limitations
 
 - Basic hiding is separator-based; it does not use private Apple menu bar APIs and does not directly control third-party status items.
-- `showPrimarySeparator` is persisted and exported, but the primary separator is currently always installed by `StatusBarController`.
+- The primary Basic Mode separator is required and recoverable; legacy `showPrimarySeparator = false` state is repaired and excluded from real diagnostics/settings migration snapshots to avoid false configurability.
 - Menu bar ordering and command-drag placement depend on macOS behavior and user setup.
 - Crowded Reveal Rescue has a service, diagnostics, and status-menu override hook, but automatic interception of the normal expand/reveal path still needs wiring validation.
 - Some menu bar items expose incomplete or stale Accessibility metadata.
@@ -315,8 +320,8 @@ Before public or stable claims, these require hands-on macOS validation or expli
 - Focus and Wi-Fi trigger providers remain inactive.
 - Private Access gates app-owned UI actions only; it is not encryption.
 - Competitor config auto-import is not implemented.
-- Settings export/import is incomplete for real migration: exported settings are placeholders, import has dry-run analysis and backup creation but no apply/commit path.
-- App Intent execution is incomplete for broad claims: the global enable flag and some Private Access/Pro requirements are not uniformly enforced, and the spacing preset intent does not apply a preset yet.
+- Import/Export Preview writes a real local JSON settings package with privacy-safe values and omission metadata; import has dry-run analysis and backup creation but no apply/commit path.
+- App Intents and URL automation remain Preview surfaces until Phase 13 unifies gate enforcement and predictable structured results across app, Private Access, Pro, Labs, and automation-pause states.
 - Spacing Labs has service-level dry-run/apply/restore/reset code, but the Settings UI currently lacks explicit apply/restore/reset controls and backup persistence is not sufficient for reliable real restore semantics.
 - Dynamic hotkeys and group status items are local app-owned conveniences, not system-wide menu bar ownership.
 - Launch at Login must be validated from an installed `/Applications` app, not only from Xcode or DerivedData.
@@ -328,7 +333,7 @@ Before public or stable claims, these require hands-on macOS validation or expli
 - Phase plans: `docs/plans/`.
 - Phase progress snapshots: `docs/progress/`.
 - Feature docs: `docs/features/`.
-- Privacy boundary: `docs/privacy/privacy-boundary.md`, plus Phase 10/11 privacy docs.
+- Privacy boundary: `docs/privacy/privacy-boundary.md`, Phase 10/11 privacy docs, and `docs/privacy/v0.1.1-privacy-claims.md`.
 - Manual QA and matrix docs: `docs/testing/`.
 - Dogfood docs: `docs/testing/dogfood/` and `docs/dogfood/`.
 - Release docs: `docs/release/`.
@@ -359,6 +364,8 @@ Historical phase/progress files intentionally preserve older test counts, scheme
 - Phase 9.5: v0.1 Basic Stable Freeze docs, defaults, migration, and release validation.
 - Phase 10: Capacity & Layout Pack, excluding deferred visual capture.
 - Phase 11: Private Access & Power User Pack.
+- Phase 12: v0.1.1 release confidence, trust hardening, release tooling, public claims, support docs, manual QA evidence, installed-app verification, and auto-rehide runtime fix.
+- Phase 13: planned v0.1.1 Pro workflow completion and command-routing unification.
 
 ## Roadmap
 
@@ -366,10 +373,9 @@ Immediate release work:
 
 - Complete manual system QA gates.
 - Configure Developer ID Application signing and notary credentials.
-- Add explicit Developer ID export configuration.
-- Resolve the App Category archive warning.
 - Run real notarization, stapling, Gatekeeper validation, and installed-app regression.
-- Tighten any Phase 10/11 paths that are currently scaffolded or only smoke-tested.
+- Start Phase 13 command-routing work so Find Icon, Second Bar, groups, profiles, hotkeys, App Intents, URL automation, and Private Access share one predictable gate/result model.
+- Tighten Phase 10/11 Pro workflows that are currently scaffolded, preview-only, or only smoke-tested.
 
 Post-v0.1 candidates:
 
