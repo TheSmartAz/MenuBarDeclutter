@@ -38,6 +38,10 @@
 - UI tests: 7 tests passed.
 - `scripts/verify_privacy_boundary.sh`: **PASSED**.
 - `scripts/qa_preflight.sh`: **PASSED**.
+- `scripts/build_release.sh`: **BUILD SUCCEEDED**.
+- `scripts/verify_release_artifact.sh /Users/thesmartaz/Library/Developer/Xcode/DerivedData/MenuBar-Manager-csxowpoejceahkfttjignkqzaccl/Build/Products/Release/MenuBarDeclutter.app`: **PASSED**.
+- `scripts/qa_network_watch.sh --installed`: helper completed; installed
+  app was not running, so no PID socket probe was performed.
 
 ## Privacy Verification
 - No Screen Recording, ScreenCaptureKit, Apple Events, Input Monitoring, network, or telemetry added.

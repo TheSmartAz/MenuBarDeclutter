@@ -46,6 +46,9 @@ network access, telemetry, or cloud sync.
 - No bulk icon moves from groups, profiles, imports, or shortcuts.
 
 ## Files
+- `private-access-plan.md`, `power-user-plan.md`, and
+  `competitor-import-roadmap.md` record the Phase 11 implementation boundaries.
+- `risk-register.md` tracks Phase 11 risks and mitigations.
 - `Groups/` — Icon group domain model, store, matcher, validation, import/export.
 - `PrivateAccess/` — ProtectedResource, policy, AuthenticationService,
   UnlockSession, PrivateAccessCoordinator, ProtectedActionGate.

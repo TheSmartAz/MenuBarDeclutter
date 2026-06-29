@@ -42,6 +42,9 @@ capacity estimates via Accessibility but is optional. No new permissions are
 required.
 
 ## Files
+- `layout-capacity-plan.md` records the implementation plan and validation
+  shape for capacity/layout work.
+- `risk-register.md` tracks Phase 10 risks and mitigations.
 - `Layout/` module containing all Phase 10 services.
 - `Settings/LayoutSettingsView.swift` for the Layout settings tab.
 - `Settings/SettingsRootView.swift` updated with `.layout` section.
