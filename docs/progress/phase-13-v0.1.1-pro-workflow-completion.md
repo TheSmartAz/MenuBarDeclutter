@@ -5,7 +5,7 @@ Last updated: 2026-06-29
 
 ## Summary
 
-Phase 13 implementation has started on the `v0.1.1` release line. This phase is not `v0.2`.
+Phase 13 implementation is underway on the `v0.1.1` release line. This phase is not `v0.2`.
 
 Branch context:
 
@@ -29,6 +29,10 @@ Completed in this pass:
 - Routed `AppIntentExecutionService` through the shared command router.
 - Kept Spacing Labs apply honest by returning a dry-run-only result instead of claiming mutation through App Intents.
 - Added focused Command Center unit tests for successful execution, Safe Mode, Pro and Accessibility gates, automation pause, Labs dry-run-only behavior, Private Access lock status, and diagnostic redaction.
+- Migrated local `menubardeclutter://` URL automation to construct `MenuBarCommand` values and let the shared router enforce automation pause, profile automation opt-in, Pro gates, Labs gates, and profile availability.
+- Migrated Dynamic Hotkey execution to route `HotkeyAction` values through the shared command router and record structured command failures instead of relying on boolean executor closures.
+- Added router handlers for item reveal, item-in-Second-Bar, group panel, profile apply, and profile dry-run targets.
+- Expanded focused tests for URL automation and Dynamic Hotkeys to cover shared Pro gates, automation pause, unavailable profile targets, and routed hotkey execution.
 
 Not in scope for the first slice:
 
@@ -74,11 +78,17 @@ Current Phase 13 changes:
 - `MenuBar-Manager/CommandCenter/MenuBarCommandResult.swift`
 - `MenuBar-Manager/CommandCenter/MenuBarCommandRouter.swift`
 - `MenuBar-Manager/CommandCenter/MenuBarCommandTarget.swift`
+- `MenuBar-Manager/Hotkeys/DynamicHotkeyRegistrationService.swift`
+- `MenuBar-Manager/Profiles/AutomationURLHandler.swift`
+- `MenuBar-Manager/Profiles/ProfileAutomationCoordinator.swift`
 - `MenuBar-Manager/Shortcuts/AppIntentExecutionService.swift`
 - `MenuBar-Manager/Shortcuts/AppIntentResultMapper.swift`
+- `MenuBar-ManagerTests/AutomationURLHandlerTests.swift`
 - `MenuBar-ManagerTests/AppIntentExecutionServiceTests.swift`
 - `MenuBar-ManagerTests/CommandCenter/MenuBarCommandRouterTests.swift`
+- `MenuBar-ManagerTests/DynamicHotkeyRegistrationServiceTests.swift`
 - `docs/progress/phase-13-v0.1.1-pro-workflow-completion.md`
+- `docs/project-summary.md`
 
 ## Validation Results
 
@@ -87,10 +97,13 @@ Current Phase 13 changes:
 | `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -only-testing:MenuBarDeclutterTests/MenuBarCommandRouterTests -only-testing:MenuBarDeclutterTests/AppIntentExecutionServiceTests` | PASS | 19 focused tests in 2 suites passed after fixing the router's Private Access checker ownership. |
 | `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS'` | PASS | Full run passed with 330 Swift Testing tests in 61 suites and 7 UI tests. Result bundle: `~/Library/Developer/Xcode/DerivedData/MenuBar-Manager-csxowpoejceahkfttjignkqzaccl/Logs/Test/Test-MenuBarDeclutter-2026.06.29_11-46-53--0700.xcresult`. |
 | `scripts/verify_privacy_boundary.sh` | PASS | Source/config privacy checks passed; built-app checks skipped because `APP_PATH` was not set. |
+| `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -only-testing:MenuBarDeclutterTests/AutomationURLHandlerTests -only-testing:MenuBarDeclutterTests/DynamicHotkeyRegistrationServiceTests -only-testing:MenuBarDeclutterTests/MenuBarCommandRouterTests -only-testing:MenuBarDeclutterTests/AppIntentExecutionServiceTests` | PASS | 30 focused tests in 4 suites passed after migrating URL automation and Dynamic Hotkeys through the command router. Result bundle: `~/Library/Developer/Xcode/DerivedData/MenuBar-Manager-csxowpoejceahkfttjignkqzaccl/Logs/Test/Test-MenuBarDeclutter-2026.06.29_11-56-19--0700.xcresult`. |
+| `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS'` | PASS | Final full run passed with 332 Swift Testing tests in 61 suites and 7 UI tests after the coordinator API cleanup. Result bundle: `~/Library/Developer/Xcode/DerivedData/MenuBar-Manager-csxowpoejceahkfttjignkqzaccl/Logs/Test/Test-MenuBarDeclutter-2026.06.29_11-59-33--0700.xcresult`. |
+| `scripts/verify_privacy_boundary.sh` | PASS | Source/config privacy checks passed; built-app checks skipped because `APP_PATH` was not set. |
 
 ## Manual QA Notes
 
-No new manual QA has been performed for Phase 13 yet.
+No new live manual QA has been performed for this command-routing slice. The changed behavior is covered by focused unit tests; live QA remains necessary once user-facing command explanations and interactive Settings/status-menu surfaces are migrated.
 
 Phase 13 manual QA will be needed for:
 
@@ -104,8 +117,8 @@ Phase 13 manual QA will be needed for:
 
 ## Known Limitations
 
-- The shared command router is implemented, but only App Intent execution has been migrated to it so far.
-- Find Icon, Second Bar/Icon Panel, Groups, Hotkeys, Profiles UI, and URL automation still use their existing Phase 10/11 paths until they are migrated.
+- The shared command router is implemented; App Intent execution, URL automation, and Dynamic Hotkey execution now route through it.
+- Find Icon, Second Bar/Icon Panel, Groups UI, and Profiles UI still use existing Phase 10/11 presentation paths until their user-facing command availability/explanation surfaces are migrated.
 - Private Access is currently represented in the command router as a lock-status gate; UI-mediated unlock execution still needs to be wired for protected command paths.
 - Import remains dry-run only from Phase 12.
 - Spacing Labs remains guarded; apply/restore/reset must either become fully reliable and tested or stay safely deferred.
@@ -113,7 +126,6 @@ Phase 13 manual QA will be needed for:
 
 ## Remaining Deferred Work
 
-- Implement Command Center Core and unit tests.
-- Refactor advanced action surfaces through the command router.
+- Refactor remaining advanced UI surfaces through the command router.
 - Add a user-facing command availability/explanation model.
 - Keep diagnostics privacy-safe by excluding live queries, selected item identities, protected names, protected target IDs, and full file paths unless explicitly chosen in a supported export flow.

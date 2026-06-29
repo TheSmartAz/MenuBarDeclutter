@@ -44,8 +44,22 @@ struct DynamicHotkeyRegistrationServiceTests {
         #expect(harness.service.lastSnapshot.registeredCount == 0)
     }
 
+    @Test func firedBindingRoutesThroughCommandResult() async {
+        let harness = Harness()
+        harness.store.dynamicHotkeysEnabled = true
+        let binding = harness.bindingStore.add(binding: HotkeyBinding(action: .enterFullMenuBarMode, keyCode: 37, modifiersRaw: 0x0900))
+        harness.service.refreshRegistrations()
+
+        harness.manager.fire(identifier: .dynamic(binding.id))
+        await Task.yield()
+        await Task.yield()
+
+        #expect(harness.routedActions == [.enterFullMenuBarMode])
+    }
+
     private final class MockHotkeyManager: DynamicHotkeyManaging {
         var registered: [GlobalHotkeyManager.RegistrationIdentifier: HotkeyModel] = [:]
+        var actions: [GlobalHotkeyManager.RegistrationIdentifier: () -> Void] = [:]
         var unregistered: [GlobalHotkeyManager.RegistrationIdentifier] = []
 
         func register(
@@ -55,18 +69,25 @@ struct DynamicHotkeyRegistrationServiceTests {
         ) {
             if let hotkey {
                 registered[identifier] = hotkey
+                actions[identifier] = action
             } else {
                 registered.removeValue(forKey: identifier)
+                actions.removeValue(forKey: identifier)
             }
         }
 
         func unregister(identifier: GlobalHotkeyManager.RegistrationIdentifier) {
             registered.removeValue(forKey: identifier)
+            actions.removeValue(forKey: identifier)
             unregistered.append(identifier)
         }
 
         func isRegistered(identifier: GlobalHotkeyManager.RegistrationIdentifier) -> Bool {
             registered[identifier] != nil
+        }
+
+        func fire(identifier: GlobalHotkeyManager.RegistrationIdentifier) {
+            actions[identifier]?()
         }
     }
 
@@ -74,7 +95,24 @@ struct DynamicHotkeyRegistrationServiceTests {
         let store: SettingsStore
         let bindingStore: HotkeyBindingStore
         let manager = MockHotkeyManager()
-        let service: DynamicHotkeyRegistrationService
+        var routedActions: [HotkeyAction] = []
+
+        lazy var service = DynamicHotkeyRegistrationService(
+            settingsStore: store,
+            bindingStore: bindingStore,
+            hotkeyManager: manager,
+            diagnosticsLogger: DiagnosticsLogger(),
+            routeAction: { [self] action in
+                routedActions.append(action)
+                return MenuBarCommandResult(
+                    status: .success,
+                    message: "ok",
+                    diagnosticReason: "success",
+                    commandName: action.displayLabel,
+                    targetKind: "test"
+                )
+            }
+        )
 
         init() {
             let suiteName = "DynamicHotkeyRegistrationServiceTests.\(UUID().uuidString)"
@@ -84,13 +122,6 @@ struct DynamicHotkeyRegistrationServiceTests {
             let root = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
                 .appendingPathComponent(UUID().uuidString, isDirectory: true)
             bindingStore = HotkeyBindingStore(directory: root, backupsDirectory: root.appendingPathComponent("Backups", isDirectory: true))
-            service = DynamicHotkeyRegistrationService(
-                settingsStore: store,
-                bindingStore: bindingStore,
-                hotkeyManager: manager,
-                diagnosticsLogger: DiagnosticsLogger(),
-                performAction: { _ in true }
-            )
         }
     }
 }

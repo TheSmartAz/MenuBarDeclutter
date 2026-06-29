@@ -22,6 +22,9 @@ struct MenuBarCommandHandlers {
     var exitFullMenuBarMode: () -> Void = {}
     var pauseAutomation: () -> Void = {}
     var resumeAutomation: () -> Void = {}
+    var revealItem: (String) -> Bool = { _ in false }
+    var showItemInSecondBar: (String) -> Bool = { _ in false }
+    var showGroupPanel: (UUID) -> Bool = { _ in false }
     var applyProfileNamed: (String) -> Bool = { _ in false }
     var applyProfileID: (UUID) -> Bool = { _ in false }
     var dryRunProfileNamed: (String) -> Bool = { _ in false }
@@ -210,7 +213,7 @@ final class MenuBarCommandRouter {
         case .showFindIcon:
             handlers.showFindIcon()
             return .success(command, message: "Find Icon opened.")
-        case .showSecondBar, .showItemInSecondBar:
+        case .showSecondBar:
             handlers.showSecondBar()
             return .success(command, message: "Second Bar opened.")
         case .hideSecondBar:
@@ -247,9 +250,19 @@ final class MenuBarCommandRouter {
                 message: "Spacing preset apply is deferred; preview only.",
                 diagnosticReason: "spacingApplyDeferred"
             )
-        case .revealItem, .highlightItem, .openOwningApp, .showGroupPanel, .revealGroup,
-             .addItemToGroup, .removeItemFromGroup, .assignHotkey, .protectResource,
-             .unlockProtectedAction, .experimentalActivateItem:
+        case .revealItem:
+            return executeItem(command, message: "Menu bar item revealed.") { id in
+                handlers.revealItem(id)
+            }
+        case .showItemInSecondBar:
+            return executeItem(command, message: "Menu bar item shown in Second Bar.") { id in
+                handlers.showItemInSecondBar(id)
+            }
+        case .showGroupPanel, .revealGroup:
+            return executeGroup(command)
+        case .highlightItem, .openOwningApp, .addItemToGroup, .removeItemFromGroup,
+             .assignHotkey, .protectResource, .unlockProtectedAction,
+             .experimentalActivateItem:
             return .stopped(
                 command,
                 status: .dryRunOnly,
@@ -257,6 +270,34 @@ final class MenuBarCommandRouter {
                 diagnosticReason: "executorPending"
             )
         }
+    }
+
+    private func executeItem(
+        _ command: MenuBarCommand,
+        message: String,
+        handler: (String) -> Bool
+    ) -> MenuBarCommandResult {
+        guard case .menuBarItem(let id) = command.target, handler(id) else {
+            return .stopped(
+                command,
+                status: .unavailable,
+                message: "Item target is unavailable.",
+                diagnosticReason: "itemUnavailable"
+            )
+        }
+        return .success(command, message: message)
+    }
+
+    private func executeGroup(_ command: MenuBarCommand) -> MenuBarCommandResult {
+        guard case .group(let id) = command.target, handlers.showGroupPanel(id) else {
+            return .stopped(
+                command,
+                status: .unavailable,
+                message: "Group target is unavailable.",
+                diagnosticReason: "groupUnavailable"
+            )
+        }
+        return .success(command, message: "Group panel opened.")
     }
 
     private func executeProfile(_ command: MenuBarCommand, dryRun: Bool) -> MenuBarCommandResult {

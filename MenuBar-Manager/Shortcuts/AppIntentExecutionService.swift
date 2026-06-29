@@ -20,6 +20,10 @@ final class AppIntentExecutionService {
 
     private let commandRouter: MenuBarCommandRouter
 
+    init(commandRouter: MenuBarCommandRouter) {
+        self.commandRouter = commandRouter
+    }
+
     init(
         settingsStore: SettingsStore,
         diagnosticsLogger: DiagnosticsLogger,

@@ -2,7 +2,7 @@
 
 `MenuBarDeclutter` is a native macOS 26.0+ menu bar utility written in Swift, AppKit, and SwiftUI. Its product direction is privacy-first menu bar decluttering: ship a permission-free Basic Mode similar to Hidden Bar / Dozer, then layer selected Bartender-like power features behind explicit opt-in gates.
 
-The current checkout is far beyond the original Phase 0 skeleton. Phases 0 through 12 are implemented in the source tree, with Phase 9.1-9.5 hardening, Phase 10 layout work, Phase 11 power-user surfaces, and Phase 12 v0.1.1 release-confidence/trust hardening present. Local automated validation, dry-run alpha packaging, installed-app verification, and privacy-boundary checks are documented as passing. Public distribution is still blocked by Developer ID notarization credentials and several hands-on macOS system QA gates.
+The current checkout is far beyond the original Phase 0 skeleton. Phases 0 through 12 are implemented in the source tree, with Phase 9.1-9.5 hardening, Phase 10 layout work, Phase 11 power-user surfaces, and Phase 12 v0.1.1 release-confidence/trust hardening present. Phase 13 is now in progress on the `v0.1.1` line: the shared Command Center router exists, and App Intents, URL automation, and Dynamic Hotkey execution route through it. Local automated validation, dry-run alpha packaging, installed-app verification, and privacy-boundary checks are documented as passing. Public distribution is still blocked by Developer ID notarization credentials and several hands-on macOS system QA gates.
 
 ## Current Checkout
 
@@ -29,7 +29,7 @@ Basic Mode is the default and remains the core product promise. It uses only pub
 
 Pro Mode is opt-in. It adds read-only Accessibility discovery for menu bar item metadata, then powers optional features such as Find Icon, Second Bar, explicit icon moving, richer layout estimates, groups, and some automation. Pro surfaces degrade to visible unavailable states when Pro Mode is off, Accessibility Discovery is off, Accessibility permission is missing, Safe Mode is active, or a feature-specific gate is disabled.
 
-Power-user features exist, but `v0.1.1` remains centered on safe defaults. Risky or system-sensitive features are off, paused, Preview-labeled, Experimental, or Labs-gated by default: Pro discovery, Find Icon, Second Bar, icon moving, Smart Triggers, dynamic hotkeys, Private Access, group status items, App Intents automation, Import/Export migration, and Menu Bar Spacing Labs all require explicit enablement or opt-in context. Phase 12 made the release claims, feature gates, and Settings copy more honest, but Phase 13 is still needed to turn the Phase 10/11 Pro scaffolding into cohesive end-user workflows.
+Power-user features exist, but `v0.1.1` remains centered on safe defaults. Risky or system-sensitive features are off, paused, Preview-labeled, Experimental, or Labs-gated by default: Pro discovery, Find Icon, Second Bar, icon moving, Smart Triggers, dynamic hotkeys, Private Access, group status items, App Intents automation, Import/Export migration, and Menu Bar Spacing Labs all require explicit enablement or opt-in context. Phase 12 made the release claims, feature gates, and Settings copy more honest. Phase 13 has started turning the Phase 10/11 Pro scaffolding into cohesive command-routed workflows, with remaining UI-facing command explanations still to complete.
 
 ## Architecture
 
@@ -54,6 +54,7 @@ Real menu bar control lives in AppKit services under `StatusBar/`, `Hiding/`, `L
 ## Major Source Areas
 
 - `App/`: lifecycle, dependency graph, runtime coordinators, app constants.
+- `CommandCenter/`: shared command actions, targets, sources, availability, result mapping, diagnostics, and routing.
 - `StatusBar/`: `NSStatusItem` control, separators, status menu, drag hint.
 - `Hiding/`: Basic visibility state, separator-based hiding, auto-rehide, hover reveal, screen geometry.
 - `Hotkeys/`: Carbon global hotkey model/manager plus Phase 11 dynamic hotkey bindings.
@@ -146,7 +147,7 @@ Real menu bar control lives in AppKit services under `StatusBar/`, `Hiding/`, `L
 - Profile application applies conservative Basic settings and visibility; target-zone moves are reported rather than silently bulk-moved.
 - Smart Triggers are opt-in and paused by default.
 - Trigger rules cover display count, launched app, frontmost app, battery-low, and time of day; Focus and Wi-Fi remain modeled but inactive until safe providers exist.
-- URL automation supports local command-limited routes such as expand, collapse, reveal-all, second bar, profiles, Full Menu Bar Mode, and layout suggestions.
+- URL automation supports local command-limited routes such as expand, collapse, reveal-all, second bar, profiles, Full Menu Bar Mode, and layout suggestions through the shared Command Center router.
 - Automation pause prevents triggers and URL commands without blocking manual Basic Mode controls.
 
 ### Health, Recovery, And Safe Mode
@@ -183,12 +184,12 @@ Real menu bar control lives in AppKit services under `StatusBar/`, `Hiding/`, `L
 - Optional app-owned group status items, off by default.
 - Private Access with LocalAuthentication, unlock sessions, protected resources, policies, and protected-action gate.
 - Dynamic hotkey bindings with conflict detection, max count, registration service, and Settings UI.
-- App Intents / Shortcuts provider with actions for visibility, Second Bar, Full Menu Bar Mode, profile apply, automation pause/resume, and spacing preset requests.
+- App Intents / Shortcuts provider with command-routed actions for visibility, Second Bar, Full Menu Bar Mode, profile apply, automation pause/resume, and spacing preset requests.
 - Automation Settings UI for App Intents, profile apply, and Labs access.
 - Import / Export and Migration Assistant UI with export, dry-run import, and backup concepts.
 - Profile integration for groups, protected groups, dynamic hotkeys, layout preferences, Full Menu Bar Mode preference, and Labs-gated settings.
 
-Some Phase 11 surfaces are better described as implemented scaffolding or guarded local UI rather than fully release-proven automation. Phase 12 replaced placeholder settings export values with real privacy-safe local values plus omission metadata, but import remains dry-run only with backup creation. App Intents, URL automation, Private Access coverage, profile workflows, dynamic hotkeys, groups, and spacing preset actions still need Phase 13 command-routing and gate-unification work before broad public claims.
+Some Phase 11 surfaces are better described as implemented scaffolding or guarded local UI rather than fully release-proven automation. Phase 12 replaced placeholder settings export values with real privacy-safe local values plus omission metadata, but import remains dry-run only with backup creation. Phase 13 command-routing now covers App Intents, URL automation, and Dynamic Hotkey execution. Private Access unlock flows, profile UI explanations, groups, Find Icon, Second Bar/Icon Panel UI, and spacing preset actions still need more gate-unification work before broad public claims.
 
 ## Privacy Boundary
 
@@ -239,11 +240,12 @@ Safe Mode suppresses optional automation, Pro scanning, icon moving, hotkeys, ho
 
 ## Testing And Validation
 
-The latest documented Phase 12 validation snapshot records:
+The latest documented Phase 13 command-routing validation snapshot records:
 
 - `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS'`: passed.
-- Swift Testing tests: 321 tests in 60 suites passed.
+- Swift Testing tests: 332 tests in 61 suites passed.
 - UI tests: 7 tests passed.
+- Focused Command Center/App Intents/URL automation/Dynamic Hotkey tests: 30 tests in 4 suites passed.
 - `scripts/qa_preflight.sh`: passed.
 - `scripts/verify_privacy_boundary.sh`: passed.
 - `APP_PATH=/Applications/MenuBarDeclutter.app scripts/verify_privacy_boundary.sh`: passed.

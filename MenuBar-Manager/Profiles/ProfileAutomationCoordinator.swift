@@ -9,28 +9,12 @@ final class ProfileAutomationCoordinator {
     private let liveStatus: LiveDiagnosticsStatus
     private let accessibilityPermissionService: AccessibilityPermissionService
     private let profileApplicationService: ProfileApplicationService
-    private let settingsStore: SettingsStore
     private let refreshAfterProfileApply: () -> Void
-    private let expand: () -> Void
-    private let collapse: () -> Void
-    private let revealAll: () -> Void
-    private let showSecondBar: () -> Void
-    private let enterFullMenuBarMode: () -> Void
-    private let exitFullMenuBarMode: () -> Void
-    private let refreshGroups: () -> Void
+    private let routeCommand: (MenuBarCommand) -> MenuBarCommandResult
 
     private lazy var automationURLHandler = AutomationURLHandler(
         diagnosticsLogger: diagnosticsLogger,
-        expand: expand,
-        collapse: collapse,
-        revealAll: revealAll,
-        showSecondBar: showSecondBar,
-        applyProfileNamed: { [weak self] name in
-            self?.applyProfile(named: name) == true
-        },
-        isAutomationEnabled: { [weak self] in
-            self?.settingsStore.automationPaused == false
-        }
+        routeCommand: routeCommand
     )
 
     init(
@@ -41,26 +25,16 @@ final class ProfileAutomationCoordinator {
         accessibilityPermissionService: AccessibilityPermissionService,
         setVisibility: @escaping (HidingVisibilityState) -> Void,
         refreshAfterProfileApply: @escaping () -> Void,
-        expand: @escaping () -> Void,
-        collapse: @escaping () -> Void,
-        revealAll: @escaping () -> Void,
-        showSecondBar: @escaping () -> Void,
         enterFullMenuBarMode: @escaping () -> Void = {},
         exitFullMenuBarMode: @escaping () -> Void = {},
-        refreshGroups: @escaping () -> Void = {}
+        refreshGroups: @escaping () -> Void = {},
+        routeCommand: @escaping (MenuBarCommand) -> MenuBarCommandResult
     ) {
         self.diagnosticsLogger = diagnosticsLogger
         self.liveStatus = liveStatus
         self.accessibilityPermissionService = accessibilityPermissionService
-        self.settingsStore = settingsStore
         self.refreshAfterProfileApply = refreshAfterProfileApply
-        self.expand = expand
-        self.collapse = collapse
-        self.revealAll = revealAll
-        self.showSecondBar = showSecondBar
-        self.enterFullMenuBarMode = enterFullMenuBarMode
-        self.exitFullMenuBarMode = exitFullMenuBarMode
-        self.refreshGroups = refreshGroups
+        self.routeCommand = routeCommand
 
         let profileStore = ProfileStore(appSupportPaths: appSupportPaths)
         let profileApplicationService = ProfileApplicationService(

@@ -12,9 +12,18 @@ struct AutomationURLHandlerTests {
         #expect(handler.handle(url: try #require(URL(string: "menubardeclutter://expand"))))
         #expect(handler.handle(url: try #require(URL(string: "menubardeclutter://collapse"))))
         #expect(handler.handle(url: try #require(URL(string: "menubardeclutter://reveal-all"))))
-        #expect(handler.handle(url: try #require(URL(string: "menubardeclutter://second-bar"))))
 
-        #expect(recorder.commands == ["expand", "collapse", "revealAll", "secondBar"])
+        #expect(recorder.commands == ["expand", "collapse", "revealAll"])
+    }
+
+    @Test func secondBarCommandUsesSharedProGate() throws {
+        let recorder = AutomationRecorder()
+        let handler = recorder.makeHandler()
+
+        #expect(!handler.handle(url: try #require(URL(string: "menubardeclutter://second-bar"))))
+
+        #expect(recorder.commands.isEmpty)
+        #expect(recorder.loggedCommandReason("proModeDisabled"))
     }
 
     @Test func appliesProfileByDecodedName() throws {
@@ -48,7 +57,7 @@ struct AutomationURLHandlerTests {
         #expect(recorder.profileNames == ["Missing"])
         #expect(recorder.logged("Automation URL rejected: unsupported scheme."))
         #expect(recorder.logged("Automation URL rejected: unknown command."))
-        #expect(recorder.logged("Automation URL rejected: profile not found."))
+        #expect(recorder.loggedCommandReason("profileUnavailable"))
         #expect(recorder.logged("Automation URL rejected: profile command missing profile name."))
     }
 
@@ -60,7 +69,7 @@ struct AutomationURLHandlerTests {
         #expect(!handler.handle(url: try #require(URL(string: "menubardeclutter://expand"))))
 
         #expect(recorder.commands.isEmpty)
-        #expect(recorder.logged("Automation URL rejected: automation paused."))
+        #expect(recorder.loggedCommandReason("automationPaused"))
     }
 
     @Test func rateLimitsRepeatedCommandsPerCommand() throws {
@@ -84,6 +93,7 @@ struct AutomationURLHandlerTests {
 private final class AutomationRecorder {
     private let profilesThatApply: Set<String>
 
+    let store: SettingsStore
     let logger = DiagnosticsLogger()
     var automationEnabled = true
     var commands: [String] = []
@@ -92,20 +102,34 @@ private final class AutomationRecorder {
 
     init(profilesThatApply: Set<String> = []) {
         self.profilesThatApply = profilesThatApply
+        let suiteName = "AutomationURLHandlerTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        store = SettingsStore(defaults: defaults)
     }
 
     func makeHandler(minimumCommandInterval: TimeInterval = 0.5) -> AutomationURLHandler {
-        AutomationURLHandler(
+        store.automationPaused = !automationEnabled
+        store.appIntentsCanApplyProfiles = true
+        var handlers = MenuBarCommandHandlers()
+        handlers.expand = { [self] in commands.append("expand") }
+        handlers.collapse = { [self] in commands.append("collapse") }
+        handlers.revealAll = { [self] in commands.append("revealAll") }
+        handlers.showSecondBar = { [self] in commands.append("secondBar") }
+        handlers.applyProfileNamed = { [self] name in
+            profileNames.append(name)
+            return profilesThatApply.contains(name)
+        }
+        let router = MenuBarCommandRouter(
+            settingsStore: store,
             diagnosticsLogger: logger,
-            expand: { [self] in commands.append("expand") },
-            collapse: { [self] in commands.append("collapse") },
-            revealAll: { [self] in commands.append("revealAll") },
-            showSecondBar: { [self] in commands.append("secondBar") },
-            applyProfileNamed: { [self] name in
-                profileNames.append(name)
-                return profilesThatApply.contains(name)
-            },
-            isAutomationEnabled: { [self] in automationEnabled },
+            accessibilityStatus: { .granted },
+            handlers: handlers
+        )
+
+        return AutomationURLHandler(
+            diagnosticsLogger: logger,
+            routeCommand: { command in router.route(command) },
             now: { [self] in currentDate },
             minimumCommandInterval: minimumCommandInterval
         )
@@ -117,5 +141,11 @@ private final class AutomationRecorder {
 
     func logged(_ message: String) -> Bool {
         logger.events.contains { $0.message == message }
+    }
+
+    func loggedCommandReason(_ reason: String) -> Bool {
+        logger.events.contains { event in
+            event.metadata["reason"] == reason
+        }
     }
 }
