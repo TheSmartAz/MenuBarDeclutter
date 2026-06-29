@@ -42,6 +42,12 @@
 - `scripts/verify_release_artifact.sh /Users/thesmartaz/Library/Developer/Xcode/DerivedData/MenuBar-Manager-csxowpoejceahkfttjignkqzaccl/Build/Products/Release/MenuBarDeclutter.app`: **PASSED**.
 - `scripts/qa_network_watch.sh --installed`: **PASSED** with Release app
   running; no network sockets observed for PID 10050.
+- 2026-06-29 installed-app sweep:
+  `docs/testing/phase-10-11-qa-run-2026-06-29.md` records full preflight,
+  release verification, installed-app verification, no-network watch, dogfood
+  preflight, and read-only Layout UI smoke. The stale `/Applications` app copy
+  found during the run was replaced with the fresh Release artifact and
+  re-verified.
 
 ## Privacy Verification
 - No Screen Recording, ScreenCaptureKit, Apple Events, Input Monitoring, network, or telemetry added.
