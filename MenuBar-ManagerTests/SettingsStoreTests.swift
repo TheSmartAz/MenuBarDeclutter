@@ -16,12 +16,17 @@ struct SettingsStoreTests {
         #expect(store.hasCompletedOnboarding == false)
         #expect(store.launchAtLoginEnabled == false)
         #expect(store.lastKnownAppVersion == "")
+        #expect(store.settingsMigrationVersion == "")
+        #expect(store.v01SafeDefaultsNoticePending == false)
         #expect(store.appMode == .basic)
         #expect(store.isCollapsed == false)
         #expect(store.expandedSeparatorLength == AppConstants.defaultExpandedSeparatorLength)
         #expect(store.collapsedSeparatorLengthOverride == nil)
         #expect(store.hasSeenDragHint == false)
         #expect(store.showPrimarySeparator == true)
+        #expect(store.dogfoodModeEnabled == false)
+        #expect(store.dogfoodRunID == nil)
+        #expect(store.dogfoodNotesEnabled == true)
     }
 
     @Test func valuesPersistToUserDefaults() {
@@ -35,6 +40,9 @@ struct SettingsStoreTests {
         store.launchAtLoginEnabled = true
         store.lastKnownAppVersion = "1.0 (42)"
         store.appMode = .basic
+        store.dogfoodModeEnabled = true
+        store.dogfoodRunID = "dogfood-2026-06-28-120000"
+        store.dogfoodNotesEnabled = false
 
         let reloadedStore = SettingsStore(defaults: defaults)
 
@@ -42,6 +50,9 @@ struct SettingsStoreTests {
         #expect(reloadedStore.launchAtLoginEnabled == true)
         #expect(reloadedStore.lastKnownAppVersion == "1.0 (42)")
         #expect(reloadedStore.appMode == .basic)
+        #expect(reloadedStore.dogfoodModeEnabled == true)
+        #expect(reloadedStore.dogfoodRunID == "dogfood-2026-06-28-120000")
+        #expect(reloadedStore.dogfoodNotesEnabled == false)
     }
 
     @Test func phase1HidingFieldsPersist() {
@@ -90,7 +101,7 @@ struct SettingsStoreTests {
 
         let store = SettingsStore(defaults: defaults)
 
-        #expect(store.autoRehideEnabled == true)
+        #expect(store.autoRehideEnabled == false)
         #expect(store.autoRehideDelaySeconds == AppConstants.defaultAutoRehideDelaySeconds)
         #expect(store.hoverRevealEnabled == false)
         #expect(store.hoverRevealPollingIntervalSeconds == AppConstants.defaultHoverRevealPollingIntervalSeconds)
@@ -199,7 +210,7 @@ struct SettingsStoreTests {
 
         store.restoreDefaults()
 
-        #expect(store.autoRehideEnabled == true)
+        #expect(store.autoRehideEnabled == false)
         #expect(store.autoRehideDelaySeconds == AppConstants.defaultAutoRehideDelaySeconds)
         #expect(store.hoverRevealEnabled == false)
         #expect(store.hoverRevealPollingIntervalSeconds == AppConstants.defaultHoverRevealPollingIntervalSeconds)
@@ -342,6 +353,8 @@ struct SettingsStoreTests {
 
         #expect(store.hasCompletedOnboarding == false)
         #expect(store.launchAtLoginEnabled == false)
+        #expect(store.settingsMigrationVersion == AppConstants.currentSettingsMigrationVersion)
+        #expect(store.v01SafeDefaultsNoticePending == false)
         #expect(store.startCollapsed == false)
         #expect(store.isCollapsed == false)
     }
@@ -368,7 +381,7 @@ struct SettingsStoreTests {
         #expect(store.iconMovingDragDuration == AppConstants.defaultIconMovingDragDuration)
         #expect(store.iconMovingAllowSystemItems == false)
         #expect(store.smartTriggersEnabled == false)
-        #expect(store.automationPaused == false)
+        #expect(store.automationPaused == true)
     }
 
     @Test func phase6To8FieldsPersistAndClamp() {
@@ -424,7 +437,7 @@ struct SettingsStoreTests {
         #expect(store.iconMovingConfirmationSuppressed == false)
         #expect(store.iconMovingAllowSystemItems == false)
         #expect(store.smartTriggersEnabled == false)
-        #expect(store.automationPaused == false)
+        #expect(store.automationPaused == true)
     }
 
     @Test func restoreDefaultsRemovesOptionalDefaults() {
@@ -439,7 +452,8 @@ struct SettingsStoreTests {
             .searchHotkeyKeyCode,
             .searchHotkeyModifiersRaw,
             .globalHotkeyKeyCode,
-            .globalHotkeyModifiersRaw
+            .globalHotkeyModifiersRaw,
+            .dogfoodRunID
         ]
 
         let store = SettingsStore(defaults: defaults)
@@ -449,6 +463,7 @@ struct SettingsStoreTests {
         store.searchHotkeyModifiersRaw = 0x0100
         store.globalHotkeyKeyCode = 11
         store.globalHotkeyModifiersRaw = 0x0900
+        store.dogfoodRunID = "dogfood-2026-06-28-120000"
         for key in optionalKeys {
             #expect(defaults.object(forKey: key.rawValue) != nil)
         }
@@ -461,6 +476,7 @@ struct SettingsStoreTests {
         #expect(store.searchHotkeyModifiersRaw == nil)
         #expect(store.globalHotkeyKeyCode == nil)
         #expect(store.globalHotkeyModifiersRaw == nil)
+        #expect(store.dogfoodRunID == nil)
         for key in optionalKeys {
             #expect(defaults.object(forKey: key.rawValue) == nil)
         }
@@ -472,6 +488,25 @@ struct SettingsStoreTests {
         #expect(reloaded.searchHotkeyModifiersRaw == nil)
         #expect(reloaded.globalHotkeyKeyCode == nil)
         #expect(reloaded.globalHotkeyModifiersRaw == nil)
+        #expect(reloaded.dogfoodRunID == nil)
+    }
+
+    @Test func restoreDefaultsResetsDogfoodFields() {
+        let suiteName = "SettingsStoreTests.restoreDogfood.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let store = SettingsStore(defaults: defaults)
+        store.dogfoodModeEnabled = true
+        store.dogfoodRunID = "dogfood-2026-06-28-120000"
+        store.dogfoodNotesEnabled = false
+
+        store.restoreDefaults()
+
+        #expect(store.dogfoodModeEnabled == false)
+        #expect(store.dogfoodRunID == nil)
+        #expect(store.dogfoodNotesEnabled == true)
     }
 
     @Test func invalidPersistedClampedValuesAreRepairedOnLoad() {

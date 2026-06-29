@@ -13,6 +13,7 @@ final class StatusBarMenuBuilder {
         let toggle: () -> Void
         let revealAll: () -> Void
         let toggleRevealAll: () -> Void
+        let emergencyRevealAndResetSeparators: () -> Void
         let findIcon: () -> Void
         let showSecondBar: () -> Void
         let hideSecondBar: () -> Void
@@ -29,6 +30,17 @@ final class StatusBarMenuBuilder {
         let showDiagnostics: () -> Void
         let showAbout: () -> Void
         let quit: () -> Void
+        // Phase 10 layout actions
+        var enterFullMenuBarMode: () -> Void = {}
+        var exitFullMenuBarMode: () -> Void = {}
+        var fullMenuBarModeIsActive: () -> Bool = { false }
+        var showLayoutSuggestions: () -> Void = {}
+        var openLayoutSettings: () -> Void = {}
+        var addSpacerDivider: () -> Void = {}
+        var addSpacer: () -> Void = {}
+        var toggleSpacerMarkers: () -> Void = {}
+        var revealInlineAnyway: () -> Void = {}
+        var crowdedRevealIntercepted: () -> Bool = { false }
     }
 
     private let actions: Actions
@@ -78,6 +90,14 @@ final class StatusBarMenuBuilder {
             menuItem(
                 title: "Toggle Reveal All",
                 command: .toggleRevealAll,
+                keyEquivalent: ""
+            )
+        )
+
+        menu.addItem(
+            menuItem(
+                title: "Emergency: Reveal All + Reset Separators",
+                command: .emergencyRevealAndResetSeparators,
                 keyEquivalent: ""
             )
         )
@@ -160,6 +180,79 @@ final class StatusBarMenuBuilder {
 
         menu.addItem(.separator())
 
+        // Phase 10 — Layout menu items
+        if actions.fullMenuBarModeIsActive() {
+            menu.addItem(
+                menuItem(
+                    title: "Exit Full Menu Bar Mode",
+                    command: .exitFullMenuBarMode,
+                    keyEquivalent: ""
+                )
+            )
+        } else {
+            menu.addItem(
+                menuItem(
+                    title: "Enter Full Menu Bar Mode",
+                    command: .enterFullMenuBarMode,
+                    keyEquivalent: ""
+                )
+            )
+        }
+
+        menu.addItem(
+            menuItem(
+                title: "Layout Suggestions…",
+                command: .showLayoutSuggestions,
+                keyEquivalent: ""
+            )
+        )
+
+        if actions.crowdedRevealIntercepted() {
+            menu.addItem(
+                menuItem(
+                    title: "Reveal Inline Anyway",
+                    command: .revealInlineAnyway,
+                    keyEquivalent: ""
+                )
+            )
+        }
+
+        menu.addItem(.separator())
+
+        menu.addItem(
+            menuItem(
+                title: "Add Divider",
+                command: .addSpacerDivider,
+                keyEquivalent: ""
+            )
+        )
+
+        menu.addItem(
+            menuItem(
+                title: "Add Spacer",
+                command: .addSpacer,
+                keyEquivalent: ""
+            )
+        )
+
+        menu.addItem(
+            menuItem(
+                title: "Toggle Spacer Markers",
+                command: .toggleSpacerMarkers,
+                keyEquivalent: ""
+            )
+        )
+
+        menu.addItem(
+            menuItem(
+                title: "Open Layout Settings",
+                command: .openLayoutSettings,
+                keyEquivalent: ""
+            )
+        )
+
+        menu.addItem(.separator())
+
         menu.addItem(
             menuItem(
                 title: "Settings...",
@@ -234,6 +327,7 @@ private enum StatusBarMenuCommand: Int {
     case toggle
     case revealAll
     case toggleRevealAll
+    case emergencyRevealAndResetSeparators
     case findIcon
     case showSecondBar
     case hideSecondBar
@@ -247,6 +341,15 @@ private enum StatusBarMenuCommand: Int {
     case showDiagnostics
     case showAbout
     case quit
+    // Phase 10 layout commands
+    case enterFullMenuBarMode
+    case exitFullMenuBarMode
+    case showLayoutSuggestions
+    case openLayoutSettings
+    case addSpacerDivider
+    case addSpacer
+    case toggleSpacerMarkers
+    case revealInlineAnyway
 
     func perform(using actions: StatusBarMenuBuilder.Actions) {
         switch self {
@@ -260,6 +363,8 @@ private enum StatusBarMenuCommand: Int {
             actions.revealAll()
         case .toggleRevealAll:
             actions.toggleRevealAll()
+        case .emergencyRevealAndResetSeparators:
+            actions.emergencyRevealAndResetSeparators()
         case .findIcon:
             actions.findIcon()
         case .showSecondBar:
@@ -286,6 +391,22 @@ private enum StatusBarMenuCommand: Int {
             actions.showAbout()
         case .quit:
             actions.quit()
+        case .enterFullMenuBarMode:
+            actions.enterFullMenuBarMode()
+        case .exitFullMenuBarMode:
+            actions.exitFullMenuBarMode()
+        case .showLayoutSuggestions:
+            actions.showLayoutSuggestions()
+        case .openLayoutSettings:
+            actions.openLayoutSettings()
+        case .addSpacerDivider:
+            actions.addSpacerDivider()
+        case .addSpacer:
+            actions.addSpacer()
+        case .toggleSpacerMarkers:
+            actions.toggleSpacerMarkers()
+        case .revealInlineAnyway:
+            actions.revealInlineAnyway()
         }
     }
 }

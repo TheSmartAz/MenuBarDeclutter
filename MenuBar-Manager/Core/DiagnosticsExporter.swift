@@ -28,7 +28,7 @@ struct DiagnosticsExporter {
         }
     }
 
-    struct ScreenSnapshot: Encodable, Equatable, Sendable {
+    struct ScreenSnapshot: Codable, Equatable, Sendable {
         let index: Int
         let x: Double
         let y: Double
@@ -97,6 +97,7 @@ struct DiagnosticsExporter {
         let screens: [ScreenSnapshot]
         let settings: SettingsSnapshot
         let events: [DiagnosticEvent]
+        let dogfood: DogfoodDiagnosticsMetadata?
     }
 
     /// A minimal, human-readable settings snapshot. Never embeds file paths or
@@ -131,6 +132,8 @@ struct DiagnosticsExporter {
         let iconMovingAllowSystemItems: Bool
         let smartTriggersEnabled: Bool
         let automationPaused: Bool
+        let dogfoodModeEnabled: Bool
+        let dogfoodNotesEnabled: Bool
         let showPrimarySeparator: Bool
         let showSeparators: Bool
         let autoRehideEnabled: Bool
@@ -167,7 +170,8 @@ struct DiagnosticsExporter {
             architecture: architectureProvider(),
             screens: screensProvider(),
             settings: makeSettingsSnapshot(settingsStore),
-            events: events ?? logger.events
+            events: events ?? logger.events,
+            dogfood: makeDogfoodMetadata(settingsStore)
         )
     }
 
@@ -202,6 +206,8 @@ struct DiagnosticsExporter {
             iconMovingAllowSystemItems: store.iconMovingAllowSystemItems,
             smartTriggersEnabled: store.smartTriggersEnabled,
             automationPaused: store.automationPaused,
+            dogfoodModeEnabled: store.dogfoodModeEnabled,
+            dogfoodNotesEnabled: store.dogfoodNotesEnabled,
             showPrimarySeparator: store.showPrimarySeparator,
             showSeparators: store.showSeparators,
             autoRehideEnabled: store.autoRehideEnabled,
@@ -215,6 +221,15 @@ struct DiagnosticsExporter {
             expandedSeparatorLength: store.expandedSeparatorLength,
             collapsedSeparatorLengthOverride: store.collapsedSeparatorLengthOverride
         )
+    }
+
+    func makeDogfoodMetadata(_ store: SettingsStore) -> DogfoodDiagnosticsMetadata? {
+        guard store.dogfoodModeEnabled,
+              let runID = store.dogfoodRunID?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !runID.isEmpty else {
+            return nil
+        }
+        return DogfoodDiagnosticsMetadata(runID: runID)
     }
 
     // MARK: Serialization
@@ -250,6 +265,9 @@ struct DiagnosticsExporter {
         lines.append("Marketing Version: \(snapshot.marketingVersion.isEmpty ? "—" : snapshot.marketingVersion)")
         lines.append("Build Number: \(snapshot.buildNumber.isEmpty ? "—" : snapshot.buildNumber)")
         lines.append("App Version: \(snapshot.appVersion)")
+        if let dogfood = snapshot.dogfood {
+            lines.append("Dogfood Run ID: \(dogfood.runID)")
+        }
         lines.append("")
         lines.append("== System ==")
         lines.append("macOS Version: \(snapshot.macOSVersion)")
@@ -324,6 +342,7 @@ struct DiagnosticsExporter {
         let logs: [Log]
         let excludedByDesign: [String]
         let appSupport: AppSupport?
+        let dogfood: DogfoodDiagnosticsMetadata?
 
         init(snapshot: Snapshot, includeAppSupportPath: Bool, appSupportPath: URL?) {
             self.generatedAt = DiagnosticsExporter.iso(snapshot.generatedAt)
@@ -336,6 +355,7 @@ struct DiagnosticsExporter {
             self.appSupport = includeAppSupportPath
                 ? appSupportPath.map { AppSupport(diagnosticsDirectory: $0.path) }
                 : nil
+            self.dogfood = snapshot.dogfood
         }
 
         enum CodingKeys: String, CodingKey {
@@ -347,6 +367,7 @@ struct DiagnosticsExporter {
             case logs
             case excludedByDesign
             case appSupport
+            case dogfood
         }
 
         func encode(to encoder: Encoder) throws {
@@ -359,6 +380,7 @@ struct DiagnosticsExporter {
             try container.encode(logs, forKey: .logs)
             try container.encode(excludedByDesign, forKey: .excludedByDesign)
             try container.encodeIfPresent(appSupport, forKey: .appSupport)
+            try container.encodeIfPresent(dogfood, forKey: .dogfood)
         }
 
         struct Application: Encodable {
@@ -534,6 +556,8 @@ struct DiagnosticsExporter {
         },
         SettingsField(key: "smartTriggersEnabled", label: "Smart Triggers Enabled") { .bool($0.smartTriggersEnabled) },
         SettingsField(key: "automationPaused", label: "Automation Paused") { .bool($0.automationPaused) },
+        SettingsField(key: "dogfoodModeEnabled", label: "Dogfood Mode Enabled") { .bool($0.dogfoodModeEnabled) },
+        SettingsField(key: "dogfoodNotesEnabled", label: "Dogfood Notes Enabled") { .bool($0.dogfoodNotesEnabled) },
         SettingsField(key: "showPrimarySeparator", label: "Show Primary Separator") { .bool($0.showPrimarySeparator) },
         SettingsField(key: "showSeparators", label: "Show Separators") { .bool($0.showSeparators) },
         SettingsField(key: "autoRehideEnabled", label: "Auto-Rehide Enabled") { .bool($0.autoRehideEnabled) },

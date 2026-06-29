@@ -1,9 +1,11 @@
+import AppKit
 import Observation
 import SwiftUI
 
 enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
     case general
     case behavior
+    case layout
     case search
     case secondBar
     case profiles
@@ -19,6 +21,8 @@ enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
             "General"
         case .behavior:
             "Behavior"
+        case .layout:
+            "Layout"
         case .search:
             "Search"
         case .secondBar:
@@ -39,7 +43,9 @@ enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         case .general:
             "gearshape"
         case .behavior:
-            "wand.and.rays"
+            "slider.horizontal.3"
+        case .layout:
+            "rectangle.split.3x1"
         case .search:
             "magnifyingglass"
         case .secondBar:
@@ -47,11 +53,11 @@ enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         case .profiles:
             "person.crop.rectangle.stack"
         case .privacy:
-            "hand.raised"
+            "shield.lefthalf.filled"
         case .diagnostics:
-            "stethoscope"
+            "waveform.path.ecg"
         case .advanced:
-            "wrench.and.screwdriver"
+            "chevron.left.forwardslash.chevron.right"
         }
     }
 }
@@ -70,6 +76,7 @@ struct SettingsRootView: View {
     var launchAtLoginService: LaunchAtLoginService?
     var appSupportPaths: AppSupportPaths
     var diagnosticsExporter: DiagnosticsExporter
+    @Bindable var dogfoodStore: DogfoodStore
     var accessibilityPermissionService: AccessibilityPermissionService?
     var menuBarScanCoordinator: MenuBarScanCoordinator?
     var profileStore: ProfileStore?
@@ -77,18 +84,18 @@ struct SettingsRootView: View {
     var actions: SettingsActions = .empty
 
     var body: some View {
-        NavigationSplitView {
-            List(SettingsSection.allCases, selection: $navigationModel.selectedSection) { section in
-                Label(section.title, systemImage: section.systemImage)
-                    .tag(section)
-            }
-            .navigationTitle("Settings")
-            .frame(minWidth: 180)
-        } detail: {
+        HStack(spacing: 0) {
+            ClearGlassSettingsSidebar(selection: $navigationModel.selectedSection)
+
+            Rectangle()
+                .fill(.primary.opacity(0.12))
+                .frame(width: 1)
+
             detailView(for: navigationModel.selectedSection ?? .general)
-                .navigationTitle((navigationModel.selectedSection ?? .general).title)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(minWidth: 720, minHeight: 480)
+        .frame(minWidth: 920, minHeight: 580)
+        .background(ClearGlassWindowBackground())
     }
 
     @ViewBuilder
@@ -104,6 +111,12 @@ struct SettingsRootView: View {
             )
         case .behavior:
             BehaviorSettingsView(settingsStore: settingsStore, onChange: actions.behaviorChanged)
+        case .layout:
+            LayoutSettingsView(
+                settingsStore: settingsStore,
+                diagnosticsLogger: diagnosticsLogger,
+                liveStatus: liveStatus
+            )
         case .search:
             SearchSettingsView(
                 settingsStore: settingsStore,
@@ -138,7 +151,15 @@ struct SettingsRootView: View {
                     onTriggersChanged: actions.triggersChanged ?? {}
                 )
             } else {
-                ContentUnavailableView("Profiles Unavailable", systemImage: "person.crop.rectangle.stack")
+                ClearGlassSettingsPage(
+                    "Profiles",
+                    subtitle: "Profile controls are available once profile services are attached."
+                ) {
+                    ClearGlassSection("Profiles Unavailable") {
+                        ContentUnavailableView("Profiles Unavailable", systemImage: "person.crop.rectangle.stack")
+                            .frame(maxWidth: .infinity, minHeight: 220)
+                    }
+                }
             }
         case .privacy:
             PrivacySettingsView(
@@ -153,6 +174,7 @@ struct SettingsRootView: View {
                 liveStatus: liveStatus,
                 appSupportPaths: appSupportPaths,
                 exporter: diagnosticsExporter,
+                dogfoodStore: dogfoodStore,
                 settingsStore: settingsStore,
                 launchAtLoginService: launchAtLoginService,
                 scanCoordinator: menuBarScanCoordinator,
@@ -174,6 +196,561 @@ struct SettingsRootView: View {
     }
 }
 
+struct ClearGlassSettingsPage<Content: View>: View {
+    private let title: String
+    private let subtitle: String?
+    private let badges: [ClearGlassBadgeStyle]
+    @ViewBuilder private let content: Content
+
+    init(
+        _ title: String,
+        subtitle: String? = nil,
+        badges: [ClearGlassBadgeStyle] = [],
+        @ViewBuilder content: () -> Content
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.badges = badges
+        self.content = content()
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                ClearGlassPageHeader(title: title, subtitle: subtitle, badges: badges)
+                content
+            }
+            .padding(.horizontal, 28)
+            .padding(.top, 34)
+            .padding(.bottom, 32)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+        }
+        .scrollClipDisabled()
+    }
+}
+
+struct ClearGlassSection<Content: View>: View {
+    private let title: String
+    private let subtitle: String?
+    @ViewBuilder private let content: Content
+
+    init(
+        _ title: String,
+        subtitle: String? = nil,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            content
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.regularMaterial, in: .rect(cornerRadius: 8))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(.primary.opacity(0.12), lineWidth: 1)
+        }
+    }
+}
+
+struct ClearGlassControlRow<Accessory: View>: View {
+    private let systemImage: String
+    private let title: String
+    private let subtitle: String?
+    private let iconTint: Color
+    @ViewBuilder private let accessory: Accessory
+
+    init(
+        systemImage: String,
+        title: String,
+        subtitle: String? = nil,
+        iconTint: Color = .secondary,
+        @ViewBuilder accessory: () -> Accessory
+    ) {
+        self.systemImage = systemImage
+        self.title = title
+        self.subtitle = subtitle
+        self.iconTint = iconTint
+        self.accessory = accessory()
+    }
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 14) {
+            Image(systemName: systemImage)
+                .font(.system(size: 18, weight: .regular))
+                .foregroundStyle(iconTint)
+                .frame(width: 26, height: 26)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.body)
+                    .foregroundStyle(.primary)
+
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            Spacer(minLength: 16)
+
+            accessory
+        }
+        .padding(.vertical, 7)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+extension ClearGlassControlRow where Accessory == EmptyView {
+    init(
+        systemImage: String,
+        title: String,
+        subtitle: String? = nil,
+        iconTint: Color = .secondary
+    ) {
+        self.init(
+            systemImage: systemImage,
+            title: title,
+            subtitle: subtitle,
+            iconTint: iconTint
+        ) {
+            EmptyView()
+        }
+    }
+}
+
+struct ClearGlassValueRow<ValueContent: View>: View {
+    private let title: String
+    private let subtitle: String?
+    @ViewBuilder private let value: ValueContent
+
+    init(
+        _ title: String,
+        subtitle: String? = nil,
+        @ViewBuilder value: () -> ValueContent
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.value = value()
+    }
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 16) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.body)
+                    .foregroundStyle(.primary)
+
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Spacer(minLength: 16)
+
+            value
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.trailing)
+        }
+        .padding(.vertical, 7)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+struct ClearGlassSliderRow: View {
+    private let title: String
+    private let subtitle: String?
+    @Binding private var value: Double
+    private let range: ClosedRange<Double>
+    private let step: Double
+    private let valueSuffix: String
+    private let valueFractionLength: Int
+    private let valueWidth: CGFloat
+
+    init(
+        _ title: String,
+        subtitle: String? = nil,
+        value: Binding<Double>,
+        in range: ClosedRange<Double>,
+        step: Double = 1,
+        valueSuffix: String = "",
+        valueFractionLength: Int = 0,
+        valueWidth: CGFloat = 58
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        _value = value
+        self.range = range
+        self.step = step
+        self.valueSuffix = valueSuffix
+        self.valueFractionLength = valueFractionLength
+        self.valueWidth = valueWidth
+    }
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 16) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.body)
+
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(minWidth: 180, alignment: .leading)
+
+            Spacer(minLength: 16)
+
+            Slider(value: $value, in: range, step: step)
+                .frame(maxWidth: 320)
+
+            Text(formattedValue)
+                .font(.system(.body, design: .monospaced))
+                .foregroundStyle(.secondary)
+                .frame(width: valueWidth, alignment: .trailing)
+        }
+        .padding(.vertical, 7)
+    }
+
+    private var formattedValue: String {
+        value.formatted(.number.precision(.fractionLength(valueFractionLength))) + valueSuffix
+    }
+}
+
+struct ClearGlassDivider: View {
+    var body: some View {
+        Rectangle()
+            .fill(.primary.opacity(0.10))
+            .frame(height: 1)
+    }
+}
+
+struct ClearGlassInlineMessage: View {
+    let text: String
+    var systemImage: String = "info.circle"
+    var style: ClearGlassStatusStyle = .secondary
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: systemImage)
+                .foregroundStyle(style.tint)
+                .frame(width: 18)
+
+            Text(text)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(style.tint.opacity(0.08), in: .rect(cornerRadius: 7))
+        .overlay {
+            RoundedRectangle(cornerRadius: 7)
+                .stroke(style.tint.opacity(0.20), lineWidth: 1)
+        }
+    }
+}
+
+struct ClearGlassStatusValue: View {
+    let text: String
+    var style: ClearGlassStatusStyle = .secondary
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(style.tint)
+                .frame(width: 8, height: 8)
+
+            Text(text)
+                .font(.callout)
+                .foregroundStyle(style.foreground)
+        }
+    }
+}
+
+enum ClearGlassStatusStyle {
+    case success
+    case warning
+    case danger
+    case info
+    case secondary
+
+    var tint: Color {
+        switch self {
+        case .success:
+            .green
+        case .warning:
+            .orange
+        case .danger:
+            .red
+        case .info:
+            .blue
+        case .secondary:
+            .secondary
+        }
+    }
+
+    var foreground: Color {
+        switch self {
+        case .success:
+            .green
+        case .warning:
+            .orange
+        case .danger:
+            .red
+        case .info:
+            .blue
+        case .secondary:
+            .secondary
+        }
+    }
+}
+
+struct ClearGlassBadge: View {
+    let style: ClearGlassBadgeStyle
+
+    var body: some View {
+        Label(style.title, systemImage: style.systemImage)
+            .font(.system(size: 12, weight: .medium))
+            .foregroundStyle(style.tint)
+            .labelStyle(.titleAndIcon)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(style.tint.opacity(0.12), in: .rect(cornerRadius: 7))
+            .overlay {
+                RoundedRectangle(cornerRadius: 7)
+                    .stroke(style.tint.opacity(0.24), lineWidth: 1)
+            }
+    }
+}
+
+enum ClearGlassBadgeStyle: Hashable {
+    case basicMode
+    case privacySafe
+    case proMode
+    case accessibilityRequired
+    case diagnostics
+    case experimental
+    case actionNeeded
+
+    var title: String {
+        switch self {
+        case .basicMode:
+            "Basic Mode"
+        case .privacySafe:
+            "Privacy Safe"
+        case .proMode:
+            "Pro Mode"
+        case .accessibilityRequired:
+            "Accessibility Required"
+        case .diagnostics:
+            "Diagnostics"
+        case .experimental:
+            "Experimental"
+        case .actionNeeded:
+            "Action Needed"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .basicMode:
+            "checkmark.shield"
+        case .privacySafe:
+            "shield.lefthalf.filled"
+        case .proMode:
+            "star"
+        case .accessibilityRequired:
+            "figure.circle"
+        case .diagnostics:
+            "waveform.path.ecg"
+        case .experimental:
+            "testtube.2"
+        case .actionNeeded:
+            "exclamationmark.circle"
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .basicMode, .privacySafe:
+            .green
+        case .proMode:
+            .primary
+        case .accessibilityRequired, .diagnostics:
+            .blue
+        case .experimental:
+            .orange
+        case .actionNeeded:
+            .red
+        }
+    }
+}
+
+private struct ClearGlassSettingsSidebar: View {
+    @Binding var selection: SettingsSection?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            appIdentity
+
+            VStack(alignment: .leading, spacing: 6) {
+                sectionRows([.general, .behavior, .layout, .search, .secondBar, .profiles])
+                ClearGlassSidebarDivider()
+                sectionRows([.privacy, .diagnostics])
+                ClearGlassSidebarDivider()
+                sectionRows([.advanced])
+            }
+
+            Spacer()
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, 58)
+        .padding(.bottom, 18)
+        .frame(width: 220)
+        .background(.regularMaterial)
+    }
+
+    private var appIdentity: some View {
+        HStack(spacing: 12) {
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .frame(width: 44, height: 44)
+                .clipShape(.rect(cornerRadius: 8))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(.primary.opacity(0.16), lineWidth: 1)
+                }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(AppConstants.displayName)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+
+                Text("Settings")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 6)
+        .padding(.bottom, 8)
+    }
+
+    @ViewBuilder
+    private func sectionRows(_ sections: [SettingsSection]) -> some View {
+        ForEach(sections) { section in
+            ClearGlassSidebarButton(
+                section: section,
+                isSelected: (selection ?? .general) == section
+            ) {
+                selection = section
+            }
+        }
+    }
+}
+
+private struct ClearGlassSidebarButton: View {
+    let section: SettingsSection
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: section.systemImage)
+                    .font(.system(size: 17, weight: .regular))
+                    .frame(width: 22)
+
+                Text(section.title)
+                    .font(.body)
+                    .lineLimit(1)
+
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(isSelected ? .white : .primary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(isSelected ? Color.accentColor : Color.clear, in: .rect(cornerRadius: 8))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct ClearGlassSidebarDivider: View {
+    var body: some View {
+        Rectangle()
+            .fill(.primary.opacity(0.14))
+            .frame(height: 1)
+            .padding(.vertical, 6)
+            .padding(.horizontal, 6)
+    }
+}
+
+private struct ClearGlassPageHeader: View {
+    let title: String
+    let subtitle: String?
+    let badges: [ClearGlassBadgeStyle]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.system(size: 28, weight: .semibold))
+                .foregroundStyle(.primary)
+
+            if let subtitle {
+                Text(subtitle)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if !badges.isEmpty {
+                HStack(spacing: 8) {
+                    ForEach(badges, id: \.self) { badge in
+                        ClearGlassBadge(style: badge)
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct ClearGlassWindowBackground: View {
+    var body: some View {
+        Rectangle()
+            .fill(Color(nsColor: .windowBackgroundColor))
+            .overlay(.ultraThinMaterial)
+    }
+}
+
 #Preview {
     SettingsRootView(
         navigationModel: SettingsNavigationModel(),
@@ -181,6 +758,7 @@ struct SettingsRootView: View {
         diagnosticsLogger: DiagnosticsLogger(),
         liveStatus: nil,
         appSupportPaths: AppSupportPaths(),
-        diagnosticsExporter: DiagnosticsExporter()
+        diagnosticsExporter: DiagnosticsExporter(),
+        dogfoodStore: DogfoodStore(appSupportPaths: AppSupportPaths())
     )
 }

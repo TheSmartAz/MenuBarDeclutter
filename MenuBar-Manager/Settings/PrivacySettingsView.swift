@@ -7,116 +7,231 @@ struct PrivacySettingsView: View {
     var onChange: (() -> Void)? = nil
 
     var body: some View {
-        Form {
-            Section("Basic Mode (default, fully usable)") {
+        ClearGlassSettingsPage(
+            "Privacy",
+            subtitle: "Basic Mode is fully usable without sensitive permissions. Pro Mode is optional.",
+            badges: [.privacySafe, .accessibilityRequired, .diagnostics, .experimental]
+        ) {
+            ClearGlassSection("Basic Mode", subtitle: "Fully usable without permissions.") {
                 PrivacyCapabilityRow(
                     title: "Accessibility",
                     status: settingsStore.proModeEnabled ? accessibilityStatusText : "Not Requested",
                     systemImage: "hand.raised"
                 )
+
+                ClearGlassDivider()
+
                 PrivacyCapabilityRow(
                     title: "Screen Recording",
                     status: "Not Requested",
                     systemImage: "rectangle.on.rectangle"
                 )
+
+                ClearGlassDivider()
+
                 PrivacyCapabilityRow(
                     title: "Apple Events",
                     status: "Not Requested",
                     systemImage: "apple.terminal"
                 )
+
+                ClearGlassDivider()
+
                 PrivacyCapabilityRow(
                     title: "Input Monitoring",
                     status: "Not Requested",
                     systemImage: "keyboard"
                 )
+
+                ClearGlassDivider()
+
                 PrivacyCapabilityRow(
                     title: "Network Access",
                     status: "Not Used",
                     systemImage: "network"
                 )
 
-                Text("Basic Mode is fully usable without any of these permissions. Your menu bar hiding setup never sends anything off your Mac.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                ClearGlassInlineMessage(
+                    text: "Basic Mode is fully usable without any of these permissions. Your menu bar hiding setup never sends anything off your Mac.",
+                    systemImage: "checkmark.shield",
+                    style: .success
+                )
             }
+            .accessibilityIdentifier("privacy.basicMode.section")
 
-            Section("Pro Mode (optional, opt-in)") {
+            ClearGlassSection("Pro Mode", subtitle: "Unlock advanced features with opt-in permissions.") {
                 if settingsStore.proModeEnabled {
-                    Label("Pro Mode Enabled", systemImage: "lock.open")
-                        .foregroundStyle(.green)
+                    ClearGlassControlRow(
+                        systemImage: "lock.open",
+                        title: "Pro Mode Enabled",
+                        subtitle: "Disable Pro Mode at any time.",
+                        iconTint: .green
+                    ) {
+                        ClearGlassStatusValue(text: "Enabled", style: .success)
+                    }
                 } else {
-                    Button("Enable Pro Mode", systemImage: "lock.open") {
-                        settingsStore.proModeEnabled = true
-                        settingsStore.accessibilityDiscoveryEnabled = true
-                        permissionService?.refreshStatus()
-                        notifyPrivacyChanged()
+                    ClearGlassControlRow(
+                        systemImage: "star",
+                        title: "Pro Mode",
+                        subtitle: "Optional features that depend on local Accessibility discovery."
+                    ) {
+                        Button("Enable Pro Mode", systemImage: "lock.open") {
+                            settingsStore.proModeEnabled = true
+                            settingsStore.accessibilityDiscoveryEnabled = true
+                            permissionService?.refreshStatus()
+                            notifyPrivacyChanged()
+                        }
                     }
                 }
 
-                Toggle("Accessibility Discovery", isOn: $settingsStore.accessibilityDiscoveryEnabled)
-                    .disabled(!settingsStore.proModeEnabled)
-                    .onChange(of: settingsStore.accessibilityDiscoveryEnabled) {
-                        notifyPrivacyChanged()
-                    }
+                ClearGlassDivider()
 
-                HStack {
-                    PrivacyCapabilityRow(
-                        title: "Accessibility",
-                        status: accessibilityStatusText,
-                        systemImage: "hand.raised"
-                    )
-
-                    Spacer()
-
-                    Button("Request Permission") {
-                        permissionService?.requestPromptFromUserAction()
-                        notifyPrivacyChanged()
-                    }
-                    .disabled(!settingsStore.proModeEnabled || permissionService?.status == .granted)
-
-                    Button("Open Settings") {
-                        permissionService?.openSystemSettingsPrivacyPane()
-                    }
-                    .disabled(!settingsStore.proModeEnabled)
-                }
-
-                Stepper(
-                    value: $settingsStore.menuBarScanIntervalSeconds,
-                    in: AppConstants.minMenuBarScanIntervalSeconds...AppConstants.maxMenuBarScanIntervalSeconds,
-                    step: 0.5
+                ClearGlassControlRow(
+                    systemImage: "figure.circle",
+                    title: "Accessibility Discovery",
+                    subtitle: "Read menu bar item frames and labels locally for Pro features.",
+                    iconTint: .blue
                 ) {
-                    Text("Scan throttle: \(settingsStore.menuBarScanIntervalSeconds, format: .number.precision(.fractionLength(1))) seconds")
+                    Toggle("Accessibility Discovery", isOn: $settingsStore.accessibilityDiscoveryEnabled)
+                        .labelsHidden()
+                        .disabled(!settingsStore.proModeEnabled)
+                        .onChange(of: settingsStore.accessibilityDiscoveryEnabled) {
+                            notifyPrivacyChanged()
+                        }
                 }
-                .disabled(!settingsStore.proModeEnabled || !settingsStore.accessibilityDiscoveryEnabled)
+                .opacity(settingsStore.proModeEnabled ? 1 : 0.55)
+
+                ClearGlassDivider()
+
+                ClearGlassControlRow(
+                    systemImage: "hand.raised",
+                    title: "Accessibility",
+                    subtitle: "Required only for Pro discovery, Search, and Second Bar.",
+                    iconTint: accessibilityStatusStyle.tint
+                ) {
+                    HStack(spacing: 10) {
+                        ClearGlassStatusValue(
+                            text: accessibilityStatusText,
+                            style: accessibilityStatusStyle
+                        )
+
+                        Button("Request Permission") {
+                            permissionService?.requestPromptFromUserAction()
+                            notifyPrivacyChanged()
+                        }
+                        .disabled(!settingsStore.proModeEnabled || permissionService?.status == .granted)
+
+                        Button("Open Settings") {
+                            permissionService?.openSystemSettingsPrivacyPane()
+                        }
+                        .disabled(!settingsStore.proModeEnabled)
+                    }
+                }
+                .opacity(settingsStore.proModeEnabled ? 1 : 0.55)
+
+                ClearGlassDivider()
+
+                ClearGlassControlRow(
+                    systemImage: "clock",
+                    title: "Scan throttle",
+                    subtitle: "Reduce system impact by slowing discovery scans."
+                ) {
+                    HStack(spacing: 10) {
+                        Text("\(settingsStore.menuBarScanIntervalSeconds, format: .number.precision(.fractionLength(1)))s")
+                            .font(.system(.body, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 54, alignment: .trailing)
+
+                        Stepper(
+                            "Scan throttle",
+                            value: $settingsStore.menuBarScanIntervalSeconds,
+                            in: AppConstants.minMenuBarScanIntervalSeconds...AppConstants.maxMenuBarScanIntervalSeconds,
+                            step: 0.5
+                        )
+                        .labelsHidden()
+                    }
+                    .disabled(!settingsStore.proModeEnabled || !settingsStore.accessibilityDiscoveryEnabled)
+                }
+                .opacity(settingsStore.proModeEnabled && settingsStore.accessibilityDiscoveryEnabled ? 1 : 0.55)
                 .onChange(of: settingsStore.menuBarScanIntervalSeconds) {
                     notifyPrivacyChanged()
                 }
 
-                Button("Disable Pro Mode", systemImage: "lock", role: .destructive) {
-                    settingsStore.proModeEnabled = false
-                    settingsStore.accessibilityDiscoveryEnabled = false
-                    notifyPrivacyChanged()
-                }
-                .disabled(!settingsStore.proModeEnabled)
+                ClearGlassDivider()
 
-                Text("Accessibility discovery reads menu bar item frames and labels so future Pro features can support search and a second bar. It does not use screen recording, keylogging, network access, Apple Events, or Input Monitoring.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                ClearGlassControlRow(
+                    systemImage: "lock",
+                    title: "Disable Pro Mode",
+                    subtitle: "Turn off Pro Mode and Accessibility Discovery.",
+                    iconTint: .red
+                ) {
+                    Button("Disable Pro Mode", systemImage: "lock", role: .destructive) {
+                        settingsStore.proModeEnabled = false
+                        settingsStore.accessibilityDiscoveryEnabled = false
+                        notifyPrivacyChanged()
+                    }
+                    .disabled(!settingsStore.proModeEnabled)
+                }
             }
 
-            Section("Diagnostics Export") {
-                Text("The exported diagnostics bundle contains app version, macOS version, machine architecture, screen frames, current settings, and recent log messages. It excludes screenshots, screen contents, personal file paths, and network data.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            ClearGlassSection("Your Data Stays Local", subtitle: "All data is processed on your Mac and never leaves your device.") {
+                HStack(spacing: 12) {
+                    localDataStep(systemImage: "macbook", title: "Your Mac")
+                    Image(systemName: "arrow.right")
+                        .foregroundStyle(.secondary)
+                    localDataStep(systemImage: "internaldrive", title: "Local Index")
+                    Image(systemName: "arrow.right")
+                        .foregroundStyle(.secondary)
+                    localDataStep(systemImage: "network.slash", title: "No Network")
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+
+                ClearGlassInlineMessage(
+                    text: "Privacy by design: MenuBarDeclutter does not collect, store, or transmit personal data.",
+                    systemImage: "checkmark.shield",
+                    style: .success
+                )
+            }
+
+            ClearGlassSection("Diagnostics Export", subtitle: "Privacy notes for support bundles.") {
+                ClearGlassInlineMessage(
+                    text: "The exported diagnostics bundle contains app version, macOS version, machine architecture, screen frames, current settings, and recent log messages. It excludes screenshots, screen contents, personal file paths, and network data.",
+                    systemImage: "doc.zipper",
+                    style: .info
+                )
             }
         }
-        .formStyle(.grouped)
-        .padding()
     }
 
     private var accessibilityStatusText: String {
         permissionService?.status.displayName
             ?? AccessibilityPermissionStatus.notRequested.displayName
+    }
+
+    private var accessibilityStatusStyle: ClearGlassStatusStyle {
+        switch permissionService?.status ?? .notRequested {
+        case .granted:
+            .success
+        case .denied:
+            .danger
+        case .notRequested:
+            .warning
+        case .unknown:
+            .secondary
+        }
+    }
+
+    private func localDataStep(systemImage: String, title: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: systemImage)
+                .font(.system(size: 28, weight: .regular))
+                .foregroundStyle(.secondary)
+
+            Text(title)
+                .font(.callout)
+                .foregroundStyle(.primary)
+        }
+        .frame(width: 120)
     }
 
     private func notifyPrivacyChanged() {
@@ -134,34 +249,49 @@ private struct PrivacyCapabilityRow: View {
     let systemImage: String
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: systemImage)
-                .frame(width: 18)
-                .foregroundStyle(.secondary)
+        ClearGlassControlRow(
+            systemImage: systemImage,
+            title: title,
+            iconTint: .secondary
+        ) {
+            ClearGlassStatusValue(text: status, style: statusStyle)
+        }
+    }
 
-            Text(title)
-
-            Spacer()
-
-            Text(status)
-                .foregroundStyle(.secondary)
+    private var statusStyle: ClearGlassStatusStyle {
+        switch status {
+        case "Granted":
+            .success
+        case "Denied":
+            .danger
+        case "Unknown":
+            .secondary
+        default:
+            .success
         }
     }
 }
 
 #Preview {
-    let store = SettingsStore()
-    let logger = DiagnosticsLogger()
-    let permissionService = AccessibilityPermissionService(
-        settingsStore: store,
-        diagnosticsLogger: logger,
-        trustProvider: { false },
-        promptTrustProvider: { false },
-        systemSettingsOpener: { true }
-    )
-    return PrivacySettingsView(
-        settingsStore: store,
-        permissionService: permissionService,
-        scanCoordinator: nil
-    )
+    PrivacySettingsPreviewFactory.make()
+}
+
+private enum PrivacySettingsPreviewFactory {
+    @MainActor
+    static func make() -> PrivacySettingsView {
+        let store = SettingsStore()
+        let logger = DiagnosticsLogger()
+        let permissionService = AccessibilityPermissionService(
+            settingsStore: store,
+            diagnosticsLogger: logger,
+            trustProvider: { false },
+            promptTrustProvider: { false },
+            systemSettingsOpener: { true }
+        )
+        return PrivacySettingsView(
+            settingsStore: store,
+            permissionService: permissionService,
+            scanCoordinator: nil
+        )
+    }
 }

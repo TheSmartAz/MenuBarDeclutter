@@ -180,6 +180,28 @@ struct DiagnosticsExportTests {
         }
     }
 
+    @Test func dogfoodMetadataIsOnlyExportedWhenEnabledWithRunID() throws {
+        let exporter = makeExporter()
+        let store = makeStore()
+        let logger = DiagnosticsLogger()
+
+        var snapshot = exporter.makeSnapshot(settingsStore: store, logger: logger)
+        var data = try exporter.serialize(snapshot, format: .json)
+        var object = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        #expect(object["dogfood"] == nil)
+
+        store.dogfoodModeEnabled = true
+        store.dogfoodRunID = "dogfood-2026-06-28-120000"
+        snapshot = exporter.makeSnapshot(settingsStore: store, logger: logger)
+        data = try exporter.serialize(snapshot, format: .json)
+        object = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let dogfood = try #require(object["dogfood"] as? [String: Any])
+        #expect(try #require(dogfood["runID"] as? String) == "dogfood-2026-06-28-120000")
+
+        let text = String(data: try exporter.serialize(snapshot, format: .txt), encoding: .utf8) ?? ""
+        #expect(text.contains("Dogfood Run ID: dogfood-2026-06-28-120000"))
+    }
+
     @Test func snapshotReflectsCurrentSettings() {
         let exporter = makeExporter()
         let store = makeStore()
@@ -198,7 +220,7 @@ struct DiagnosticsExportTests {
         #expect(snapshot.settings.alwaysHiddenEnabled == true)
         #expect(snapshot.settings.globalHotkeyEnabled == true)
         #expect(snapshot.settings.globalHotkeyDisplayName == "⌥⌘B")
-        #expect(snapshot.settings.automationPaused == false)
+        #expect(snapshot.settings.automationPaused == true)
     }
 
     @Test func excludesNetworkDataAndScreenshotsFromSettings() {
@@ -231,6 +253,8 @@ struct DiagnosticsExportTests {
         "autoRehideEnabled",
         "automationPaused",
         "collapsedSeparatorLengthOverride",
+        "dogfoodModeEnabled",
+        "dogfoodNotesEnabled",
         "expandedSeparatorLength",
         "globalHotkeyDisplayName",
         "globalHotkeyEnabled",

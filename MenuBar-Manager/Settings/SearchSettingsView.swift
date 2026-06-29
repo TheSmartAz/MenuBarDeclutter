@@ -7,87 +7,155 @@ struct SearchSettingsView: View {
     var onOpenPrivacySettings: (() -> Void)? = nil
 
     var body: some View {
-        Form {
-            Section("Find Icon") {
-                Toggle("Enable Find Icon", isOn: $settingsStore.searchEnabled)
+        ClearGlassSettingsPage(
+            "Search",
+            subtitle: "Find Icon controls for locating menu bar items from the local discovery index.",
+            badges: [.proMode, .accessibilityRequired]
+        ) {
+            ClearGlassSection("Find Icon", subtitle: "Enable the floating search surface and selection behavior.") {
+                ClearGlassControlRow(
+                    systemImage: "magnifyingglass",
+                    title: "Enable Find Icon",
+                    subtitle: "Show the Find Icon button in the status menu and floating panel.",
+                    iconTint: .blue
+                ) {
+                    Toggle("Enable Find Icon", isOn: $settingsStore.searchEnabled)
+                        .labelsHidden()
+                }
 
-                Toggle("Reveal item when selected", isOn: $settingsStore.searchRevealOnSelection)
-                    .disabled(!settingsStore.searchEnabled)
+                ClearGlassDivider()
 
-                Toggle("Highlight selected item", isOn: $settingsStore.searchHighlightOnSelection)
-                    .disabled(!settingsStore.searchEnabled)
+                ClearGlassControlRow(
+                    systemImage: "eye",
+                    title: "Reveal item when selected",
+                    subtitle: "Temporarily reveal the selected menu bar item."
+                ) {
+                    Toggle("Reveal item when selected", isOn: $settingsStore.searchRevealOnSelection)
+                        .labelsHidden()
+                        .disabled(!settingsStore.searchEnabled)
+                }
+                .opacity(settingsStore.searchEnabled ? 1 : 0.55)
 
-                Text("Find Icon uses the local Accessibility discovery index only after Pro Mode is enabled. It does not click, drag, record the screen, or use the network.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                ClearGlassDivider()
+
+                ClearGlassControlRow(
+                    systemImage: "square.dashed",
+                    title: "Highlight selected item",
+                    subtitle: "Visually highlight the selected result in the list."
+                ) {
+                    Toggle("Highlight selected item", isOn: $settingsStore.searchHighlightOnSelection)
+                        .labelsHidden()
+                        .disabled(!settingsStore.searchEnabled)
+                }
+                .opacity(settingsStore.searchEnabled ? 1 : 0.55)
+
+                ClearGlassInlineMessage(
+                    text: "Find Icon uses the local Accessibility discovery index only after Pro Mode is enabled. It does not click, drag, record the screen, or use the network.",
+                    systemImage: "checkmark.shield",
+                    style: .success
+                )
             }
 
-            Section("Search Hotkey") {
-                Toggle("Enable Find Icon hotkey", isOn: $settingsStore.searchHotkeyEnabled)
-                    .disabled(!settingsStore.searchEnabled)
+            ClearGlassSection("Search Hotkey", subtitle: "Keyboard access for the Find Icon panel.") {
+                ClearGlassControlRow(
+                    systemImage: "keyboard",
+                    title: "Enable Find Icon hotkey",
+                    subtitle: "Default: Option + Command + F. The hotkey is disabled until you turn it on."
+                ) {
+                    Toggle("Enable Find Icon hotkey", isOn: $settingsStore.searchHotkeyEnabled)
+                        .labelsHidden()
+                        .disabled(!settingsStore.searchEnabled)
+                }
+                .opacity(settingsStore.searchEnabled ? 1 : 0.55)
 
                 if settingsStore.searchHotkeyEnabled {
-                    LabeledContent("Current Hotkey") {
-                        Text(settingsStore.effectiveSearchHotkey().displayName)
-                            .font(.system(.body, design: .monospaced))
-                    }
+                    ClearGlassDivider()
 
-                    Button("Reset to Default") {
-                        settingsStore.resetSearchHotkeyToDefault()
-                        onChange?()
+                    ClearGlassValueRow("Current Hotkey") {
+                        HStack(spacing: 10) {
+                            Text(settingsStore.effectiveSearchHotkey().displayName)
+                                .font(.system(.body, design: .monospaced))
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 6)
+                                .background(.thinMaterial, in: .rect(cornerRadius: 7))
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 7)
+                                        .stroke(.primary.opacity(0.12), lineWidth: 1)
+                                }
+
+                            Button("Reset to Default") {
+                                settingsStore.resetSearchHotkeyToDefault()
+                                onChange?()
+                            }
+                        }
                     }
                 }
-
-                Text("Default: Option + Command + F. The hotkey is disabled until you turn it on.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
 
-            Section("Requirements") {
+            ClearGlassSection("Requirements", subtitle: "Find Icon remains unavailable until all Pro requirements are satisfied.") {
                 SearchRequirementRow(
                     title: "Pro Mode",
+                    detail: "Find Icon is available only in opt-in Pro Mode.",
                     status: settingsStore.proModeEnabled ? "Enabled" : "Disabled",
-                    isSatisfied: settingsStore.proModeEnabled
-                )
-                SearchRequirementRow(
-                    title: "Accessibility Discovery",
-                    status: settingsStore.accessibilityDiscoveryEnabled ? "Enabled" : "Disabled",
-                    isSatisfied: settingsStore.accessibilityDiscoveryEnabled
-                )
-                SearchRequirementRow(
-                    title: "Accessibility Permission",
-                    status: permissionService?.status.displayName ?? AccessibilityPermissionStatus.notRequested.displayName,
-                    isSatisfied: permissionService?.status == .granted
+                    isSatisfied: settingsStore.proModeEnabled,
+                    systemImage: "star"
                 )
 
-                Button("Open Privacy Settings") {
-                    onOpenPrivacySettings?()
-                }
+                ClearGlassDivider()
+
+                SearchRequirementRow(
+                    title: "Accessibility Discovery",
+                    detail: "Allow the app to discover menu bar items locally.",
+                    status: settingsStore.accessibilityDiscoveryEnabled ? "Enabled" : "Disabled",
+                    isSatisfied: settingsStore.accessibilityDiscoveryEnabled,
+                    systemImage: "figure.circle"
+                )
+
+                ClearGlassDivider()
+
+                SearchRequirementRow(
+                    title: "Accessibility Permission",
+                    detail: "Grant permission before the app can read menu bar item labels and frames.",
+                    status: permissionService?.status.displayName ?? AccessibilityPermissionStatus.notRequested.displayName,
+                    isSatisfied: permissionService?.status == .granted,
+                    systemImage: "hand.raised",
+                    actionTitle: "Open Privacy Settings",
+                    action: onOpenPrivacySettings
+                )
             }
         }
-        .formStyle(.grouped)
-        .padding()
         .onSearchSettingsChanges(from: settingsStore, perform: onChange)
     }
 }
 
 struct SearchRequirementRow: View {
     let title: String
+    var detail: String? = nil
     let status: String
     let isSatisfied: Bool
+    var systemImage: String = "checkmark.circle"
+    var actionTitle: String? = nil
+    var action: (() -> Void)? = nil
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: isSatisfied ? "checkmark.circle" : "circle")
-                .frame(width: 18)
-                .foregroundStyle(isSatisfied ? .green : .secondary)
+        ClearGlassControlRow(
+            systemImage: systemImage,
+            title: title,
+            subtitle: detail,
+            iconTint: isSatisfied ? .green : .orange
+        ) {
+            HStack(spacing: 12) {
+                ClearGlassStatusValue(
+                    text: status,
+                    style: isSatisfied ? .success : .warning
+                )
 
-            Text(title)
-
-            Spacer()
-
-            Text(status)
-                .foregroundStyle(.secondary)
+                if let actionTitle, let action {
+                    Button(actionTitle) {
+                        action()
+                    }
+                }
+            }
         }
     }
 }

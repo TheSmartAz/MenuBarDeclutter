@@ -195,6 +195,7 @@ struct TriggerServiceTests {
         defaults.removePersistentDomain(forName: suiteName)
         let settingsStore = SettingsStore(defaults: defaults)
         settingsStore.smartTriggersEnabled = true
+        settingsStore.automationPaused = false
 
         let diagnosticsLogger = DiagnosticsLogger()
         let liveStatus = LiveDiagnosticsStatus()

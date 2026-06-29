@@ -46,7 +46,7 @@ extension OnboardingStep {
             id: "hotkeyAutoRehide",
             title: "Hotkey & Auto-Rehide",
             symbol: "rectangle.rightthird.inset.filled",
-            body: "Toggle the bar with a global hotkey (Option+Command+B by default), and let the bar collapse itself again after a few seconds with Auto-Rehide. The hotkey is off by default; Auto-Rehide is on by default and adjustable in Settings → Behavior."
+            body: "Toggle the bar with a global hotkey (Option+Command+B by default), and optionally let the bar collapse itself again after a few seconds with Auto-Rehide. The hotkey is off by default; Auto-Rehide is off by default and adjustable in Settings → Behavior."
         ),
         OnboardingStep(
             id: "privacy",

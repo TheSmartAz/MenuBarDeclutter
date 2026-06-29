@@ -7,6 +7,8 @@
 - Accessibility metadata can be incomplete, stale, or unavailable.
 - Profiles do not silently run mass icon moves; Pro moves are report-only during normal profile apply.
 - Smart triggers are local and conservative; Focus and Wi-Fi providers remain inactive until safe providers are added.
+- For v0.1, automation is paused by default and smart triggers remain disabled until dogfood evidence is stronger.
 - Launch at Login must be validated from an installed signed app, not only from Xcode.
+- Installed-app Launch at Login must be validated from `/Applications`; Xcode/DerivedData runs may report stale or misleading status.
 - External display, notch, and sleep/wake behavior require hands-on hardware QA.
 - No ScreenCaptureKit, Screen Recording permission, Apple Events, Input Monitoring, network access, telemetry, or cloud sync is included.

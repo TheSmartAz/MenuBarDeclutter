@@ -45,7 +45,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return AppEnvironment(
             settingsStore: settingsStore,
             appSupportPaths: AppSupportPaths(baseURL: baseURL),
-            reflectLaunchAtLoginOnStart: false
+            reflectLaunchAtLoginOnStart: false,
+            presentMigrationNoticeOnStart: false
         )
     }
 

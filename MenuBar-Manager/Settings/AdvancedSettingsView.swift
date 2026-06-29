@@ -30,30 +30,44 @@ struct AdvancedSettingsView: View {
     }
 
     var body: some View {
-        Form {
-            Section("Separator Geometry") {
-                LabeledSlider(
+        ClearGlassSettingsPage(
+            "Advanced",
+            subtitle: "Low-level layout, diagnostics, and experimental automation controls.",
+            badges: [.privacySafe, .diagnostics, .experimental]
+        ) {
+            ClearGlassSection("Separator Geometry", subtitle: "Fine-tune how separators are rendered in the menu bar.") {
+                ClearGlassSliderRow(
                     "Expanded separator length",
                     value: $settingsStore.expandedSeparatorLength,
                     in: 1...200,
                     step: 1,
-                    sliderWidth: 200,
-                    valueLabelWidth: 40,
+                    valueSuffix: "pt",
                     valueFractionLength: 0
                 )
 
-                Toggle("Use custom collapsed separator length", isOn: $showCollapsedOverride)
-                    .onChange(of: showCollapsedOverride) { _, newValue in
-                        if newValue {
-                            settingsStore.collapsedSeparatorLengthOverride = 2000
-                        } else {
-                            settingsStore.collapsedSeparatorLengthOverride = nil
+                ClearGlassDivider()
+
+                ClearGlassControlRow(
+                    systemImage: "ruler",
+                    title: "Use custom collapsed separator length",
+                    subtitle: "Override the automatic collapsed length computed from the widest screen."
+                ) {
+                    Toggle("Use custom collapsed separator length", isOn: $showCollapsedOverride)
+                        .labelsHidden()
+                        .onChange(of: showCollapsedOverride) { _, newValue in
+                            if newValue {
+                                settingsStore.collapsedSeparatorLengthOverride = 2000
+                            } else {
+                                settingsStore.collapsedSeparatorLengthOverride = nil
+                            }
+                            onChange?()
                         }
-                        onChange?()
-                    }
+                }
 
                 if showCollapsedOverride {
-                    LabeledSlider(
+                    ClearGlassDivider()
+
+                    ClearGlassSliderRow(
                         "Custom collapsed length",
                         value: Binding(
                             get: { settingsStore.collapsedSeparatorLengthOverride ?? 2000 },
@@ -61,84 +75,173 @@ struct AdvancedSettingsView: View {
                         ),
                         in: AppConstants.collapsedSeparatorMinimumLength...AppConstants.collapsedSeparatorMaximumLength,
                         step: 50,
-                        sliderWidth: 200,
-                        valueLabelWidth: 60,
-                        valueFractionLength: 0
+                        valueSuffix: "pt",
+                        valueFractionLength: 0,
+                        valueWidth: 78
                     )
                     .onChange(of: settingsStore.collapsedSeparatorLengthOverride) { _, _ in onChange?() }
                 }
 
-                Text("When disabled, the collapsed length recomputes from the widest screen.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+                ClearGlassDivider()
 
-            Section("Labs / Experimental") {
-                Label("Experimental Pro features", systemImage: "testtube.2")
-                    .font(.headline)
-
-                Text("Experimental: uses simulated Command-drag and may fail depending on macOS, display layout, and third-party menu bar apps.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Toggle("Pause all automation", isOn: $settingsStore.automationPaused)
-                    .onChange(of: settingsStore.automationPaused) { _, _ in onAutomationChanged?() }
-
-                Toggle("Enable icon moving", isOn: iconMovingEnabledBinding)
-
-                Toggle("Require confirmation before moving", isOn: $settingsStore.iconMovingRequireConfirmation)
-                    .disabled(!settingsStore.iconMovingEnabled)
-
-                Stepper(
-                    value: $settingsStore.iconMovingMaxRetries,
-                    in: AppConstants.minIconMovingMaxRetries...AppConstants.maxIconMovingMaxRetries
-                ) {
-                    Text("Max retries: \(settingsStore.iconMovingMaxRetries)")
-                }
-                .disabled(!settingsStore.iconMovingEnabled)
-
-                LabeledSlider(
-                    "Drag duration",
-                    value: $settingsStore.iconMovingDragDuration,
-                    in: AppConstants.minIconMovingDragDuration...AppConstants.maxIconMovingDragDuration,
-                    step: 0.05,
-                    valueLabelWidth: 46,
-                    valueFractionLength: 2
+                SeparatorGeometryPreview(
+                    expandedLength: settingsStore.expandedSeparatorLength,
+                    collapsedLength: settingsStore.collapsedSeparatorLengthOverride
                 )
-                .disabled(!settingsStore.iconMovingEnabled)
 
-                Toggle("Allow moving system items", isOn: $settingsStore.iconMovingAllowSystemItems)
-                    .disabled(!settingsStore.iconMovingEnabled)
-
-                Button("Reset moving warnings") {
-                    onResetMovingWarnings?()
-                }
-
-                Text("Icon moving is Pro-only and only runs after an explicit menu action. It simulates Command-drag and may fail for some apps or system items.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                ClearGlassInlineMessage(
+                    text: "When the override is disabled, the collapsed length recomputes from the widest screen.",
+                    systemImage: "info.circle",
+                    style: .secondary
+                )
             }
 
-            Section("Application Support") {
-                LabeledContent("Diagnostics Directory") {
+            ClearGlassSection("Application Support", subtitle: "File system locations used by the app.") {
+                ClearGlassValueRow("Diagnostics Directory") {
                     Text(appSupportPaths.diagnosticsDirectory.path)
                         .font(.system(.caption, design: .monospaced))
                         .lineLimit(2)
                         .truncationMode(.middle)
                         .textSelection(.enabled)
+                        .frame(maxWidth: 360, alignment: .trailing)
                 }
-                Button("Reveal Diagnostics Folder in Finder") {
+
+                ClearGlassDivider()
+
+                Button("Reveal Diagnostics Folder", systemImage: "folder") {
                     revealInFinder(appSupportPaths.diagnosticsDirectory)
                 }
             }
 
-            Section("Diagnostics") {
-                LabeledContent("Ring Buffer Capacity", value: "\(AppConstants.diagnosticsRingBufferLimit) events")
-                LabeledContent("Bundle Identifier", value: AppConstants.bundleIdentifier)
+            ClearGlassSection("Diagnostics", subtitle: "Low-level diagnostics and logging options.") {
+                ClearGlassValueRow("Ring Buffer Capacity", subtitle: "Maximum number of log events kept in memory.") {
+                    Text("\(AppConstants.diagnosticsRingBufferLimit) events")
+                        .font(.system(.body, design: .monospaced))
+                }
+
+                ClearGlassDivider()
+
+                ClearGlassValueRow("Bundle Identifier", subtitle: "Used in logs and diagnostics.") {
+                    Text(AppConstants.bundleIdentifier)
+                        .font(.system(.caption, design: .monospaced))
+                        .textSelection(.enabled)
+                }
+            }
+
+            ClearGlassSection("Labs / Experimental", subtitle: "Automation features that may fail depending on system state.") {
+                ClearGlassInlineMessage(
+                    text: "These features are experimental and may change or break in future updates. Use at your own risk.",
+                    systemImage: "testtube.2",
+                    style: .warning
+                )
+
+                ClearGlassControlRow(
+                    systemImage: "pause.circle",
+                    title: "Pause all automation",
+                    subtitle: "Temporarily stop all automation actions."
+                ) {
+                    Toggle("Pause all automation", isOn: $settingsStore.automationPaused)
+                        .labelsHidden()
+                        .onChange(of: settingsStore.automationPaused) { _, _ in onAutomationChanged?() }
+                }
+
+                ClearGlassDivider()
+
+                ClearGlassControlRow(
+                    systemImage: "arrow.up.left.and.arrow.down.right",
+                    title: "Enable icon moving",
+                    subtitle: "Allow explicit simulated Command-drag moves between menu bar locations.",
+                    iconTint: .orange
+                ) {
+                    Toggle("Enable icon moving", isOn: iconMovingEnabledBinding)
+                        .labelsHidden()
+                }
+
+                ClearGlassDivider()
+
+                ClearGlassControlRow(
+                    systemImage: "checkmark.shield",
+                    title: "Require confirmation before moving",
+                    subtitle: "Ask before completing a move."
+                ) {
+                    Toggle("Require confirmation before moving", isOn: $settingsStore.iconMovingRequireConfirmation)
+                        .labelsHidden()
+                        .disabled(!settingsStore.iconMovingEnabled)
+                }
+                .opacity(settingsStore.iconMovingEnabled ? 1 : 0.55)
+
+                ClearGlassDivider()
+
+                ClearGlassControlRow(
+                    systemImage: "arrow.clockwise",
+                    title: "Max retries",
+                    subtitle: "Attempts to complete a move before giving up."
+                ) {
+                    HStack(spacing: 10) {
+                        Text("\(settingsStore.iconMovingMaxRetries)")
+                            .font(.system(.body, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 28, alignment: .trailing)
+
+                        Stepper(
+                            "Max retries",
+                            value: $settingsStore.iconMovingMaxRetries,
+                            in: AppConstants.minIconMovingMaxRetries...AppConstants.maxIconMovingMaxRetries
+                        )
+                        .labelsHidden()
+                    }
+                    .disabled(!settingsStore.iconMovingEnabled)
+                }
+                .opacity(settingsStore.iconMovingEnabled ? 1 : 0.55)
+
+                ClearGlassDivider()
+
+                ClearGlassSliderRow(
+                    "Drag duration",
+                    subtitle: "Duration of the drag animation.",
+                    value: $settingsStore.iconMovingDragDuration,
+                    in: AppConstants.minIconMovingDragDuration...AppConstants.maxIconMovingDragDuration,
+                    step: 0.05,
+                    valueSuffix: "s",
+                    valueFractionLength: 2
+                )
+                .disabled(!settingsStore.iconMovingEnabled)
+                .opacity(settingsStore.iconMovingEnabled ? 1 : 0.55)
+
+                ClearGlassDivider()
+
+                ClearGlassControlRow(
+                    systemImage: "apple.logo",
+                    title: "Allow moving system items",
+                    subtitle: "Allow moving menu bar items provided by macOS."
+                ) {
+                    Toggle("Allow moving system items", isOn: $settingsStore.iconMovingAllowSystemItems)
+                        .labelsHidden()
+                        .disabled(!settingsStore.iconMovingEnabled)
+                }
+                .opacity(settingsStore.iconMovingEnabled ? 1 : 0.55)
+
+                ClearGlassDivider()
+
+                ClearGlassControlRow(
+                    systemImage: "arrow.counterclockwise",
+                    title: "Reset moving warnings",
+                    subtitle: "Clear all icon-moving warning suppressions."
+                ) {
+                    Button("Reset moving warnings") {
+                        onResetMovingWarnings?()
+                    }
+                }
+            }
+
+            ClearGlassSection("Developer Notes", subtitle: "Advanced settings are intended for advanced users and developers.") {
+                ClearGlassInlineMessage(
+                    text: "Icon moving is Pro-only and only runs after an explicit menu action. It simulates Command-drag and may fail for some apps or system items.",
+                    systemImage: "exclamationmark.triangle",
+                    style: .warning
+                )
             }
         }
-        .formStyle(.grouped)
-        .padding()
         .onIconMovingSettingsChanges(from: settingsStore, perform: onChange)
         .confirmationDialog(
             "Enable experimental icon moving?",
@@ -175,6 +278,50 @@ struct AdvancedSettingsView: View {
             NSWorkspace.shared.activateFileViewerSelecting([url])
         } catch {
             NSWorkspace.shared.open(url.deletingLastPathComponent())
+        }
+    }
+}
+
+private struct SeparatorGeometryPreview: View {
+    let expandedLength: Double
+    let collapsedLength: Double?
+
+    private let icons = ["wifi", "battery.100", "cloud", "magnifyingglass"]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Measured in menu bar points")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            geometryLine("Expanded", length: expandedLength, icons: icons)
+            geometryLine("Collapsed", length: collapsedLength ?? AppConstants.collapsedSeparatorMinimumLength, icons: Array(icons.prefix(3)))
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.thinMaterial, in: .rect(cornerRadius: 7))
+    }
+
+    private func geometryLine(_ title: String, length: Double, icons: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: 10) {
+                ForEach(icons, id: \.self) { icon in
+                    Image(systemName: icon)
+                        .foregroundStyle(.secondary)
+                }
+
+                Rectangle()
+                    .fill(.blue)
+                    .frame(width: 2, height: 22)
+
+                Text("\(length, format: .number.precision(.fractionLength(0)))pt")
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 }

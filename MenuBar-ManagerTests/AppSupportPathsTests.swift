@@ -12,6 +12,9 @@ struct AppSupportPathsTests {
         #expect(paths.diagnosticsDirectory.path.hasSuffix("/\(AppConstants.displayName)/diagnostics"))
         #expect(paths.profilesDirectory.path.hasSuffix("/\(AppConstants.displayName)/profiles"))
         #expect(paths.backupsDirectory.path.hasSuffix("/\(AppConstants.displayName)/backups"))
+        #expect(paths.dogfoodDirectory.path.hasSuffix("/\(AppConstants.displayName)/Dogfood"))
+        #expect(paths.dogfoodRunsDirectory.path.hasSuffix("/\(AppConstants.displayName)/Dogfood/runs"))
+        #expect(paths.dogfoodExportsDirectory.path.hasSuffix("/\(AppConstants.displayName)/Dogfood/exports"))
     }
 
     @Test func ensureDirectoriesExistCreatesAllKnownSubdirectories() throws {
@@ -24,7 +27,7 @@ struct AppSupportPathsTests {
 
         let created = try paths.ensureDirectoriesExist()
 
-        #expect(created.count == 4)
+        #expect(created.count == 7)
         for url in created {
             #expect(FileManager.default.fileExists(atPath: url.path))
         }
@@ -32,6 +35,9 @@ struct AppSupportPathsTests {
         #expect(FileManager.default.fileExists(atPath: paths.diagnosticsDirectory.path))
         #expect(FileManager.default.fileExists(atPath: paths.profilesDirectory.path))
         #expect(FileManager.default.fileExists(atPath: paths.backupsDirectory.path))
+        #expect(FileManager.default.fileExists(atPath: paths.dogfoodDirectory.path))
+        #expect(FileManager.default.fileExists(atPath: paths.dogfoodRunsDirectory.path))
+        #expect(FileManager.default.fileExists(atPath: paths.dogfoodExportsDirectory.path))
         #expect(FileManager.default.fileExists(atPath: paths.applicationSupportDirectory.path))
     }
 
@@ -46,7 +52,7 @@ struct AppSupportPathsTests {
         let first = try paths.ensureDirectoriesExist()
         let second = try paths.ensureDirectoriesExist()
 
-        #expect(first.count == 4)
+        #expect(first.count == 7)
         #expect(second.isEmpty)
     }
 

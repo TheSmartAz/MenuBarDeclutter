@@ -39,20 +39,36 @@ struct SearchRootView: View {
         VStack(spacing: 0) {
             searchHeader
             Divider()
+                .overlay(.primary.opacity(0.10))
 
             if let unavailableState {
                 SearchUnavailableView(
                     state: unavailableState
                 )
             } else {
-                resultList
+                VStack(alignment: .leading, spacing: 12) {
+                    searchInputBar
+
+                    Text("Results")
+                        .font(.headline)
+
+                    resultList
+                }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 14)
             }
 
             Divider()
+                .overlay(.primary.opacity(0.10))
             searchFooter
         }
-        .frame(width: 560, height: 420)
-        .background(.regularMaterial)
+        .frame(width: 640, height: 460)
+        .background(.regularMaterial, in: .rect(cornerRadius: 12))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(.primary.opacity(0.14), lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.16), radius: 18, y: 10)
         .onAppear {
             onRefresh()
             searchIndex = SearchIndex(snapshots: liveStatus.scannedMenuBarItems)
@@ -82,10 +98,47 @@ struct SearchRootView: View {
             onDismiss()
             return .handled
         }
+        .onDisappear {
+            searchDebounceTask?.cancel()
+        }
     }
 
     private var searchHeader: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 14) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 30, weight: .light))
+                .foregroundStyle(.primary)
+                .frame(width: 42)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Find Icon")
+                    .font(.title2)
+                    .bold()
+
+                Text("Search and reveal menu bar items instantly.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 12)
+
+            ClearGlassBadge(style: .privacySafe)
+
+            Button("Refresh", systemImage: "arrow.clockwise") {
+                onRefresh()
+            }
+            .labelStyle(.iconOnly)
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .help("Refresh Menu Bar Items")
+        }
+        .padding(.horizontal, 18)
+        .padding(.top, 18)
+        .padding(.bottom, 14)
+    }
+
+    private var searchInputBar: some View {
+        HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.secondary)
 
@@ -96,18 +149,23 @@ struct SearchRootView: View {
                 .onSubmit(activateSelectedResult)
 
             if !query.isEmpty {
-                Button("Clear", systemImage: "xmark.circle.fill") {
+                Button("Clear Search", systemImage: "xmark.circle.fill") {
                     query = ""
                     searchFieldFocused = true
                 }
                 .labelStyle(.iconOnly)
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
-                .help("Clear search")
+                .help("Clear Search")
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .background(.quaternary, in: .rect(cornerRadius: 8))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(.primary.opacity(0.10), lineWidth: 1)
+        }
     }
 
     private var resultList: some View {
@@ -118,10 +176,11 @@ struct SearchRootView: View {
                     systemImage: "magnifyingglass",
                     description: Text(emptyResultsDescription)
                 )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollViewReader { proxy in
                     ScrollView {
-                        LazyVStack(spacing: 4) {
+                        LazyVStack(spacing: 6) {
                             ForEach(results) { result in
                                 Button {
                                     selectedID = result.id
@@ -154,7 +213,7 @@ struct SearchRootView: View {
                                 }
                             }
                         }
-                        .padding(8)
+                        .padding(.vertical, 2)
                     }
                     .onChange(of: selectedID) { _, newValue in
                         guard let newValue else { return }
@@ -165,6 +224,7 @@ struct SearchRootView: View {
                 }
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var searchFooter: some View {
@@ -179,14 +239,19 @@ struct SearchRootView: View {
                     .lineLimit(1)
                     .foregroundStyle(.secondary)
             } else {
-                Text("Select an item to reveal and highlight it. No clicking is automated.")
-                    .lineLimit(1)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 4) {
+                    Text("Select an item to reveal and highlight it.")
+                        .lineLimit(1)
+                        .foregroundStyle(.secondary)
+                    Text("No clicking is automated.")
+                        .lineLimit(1)
+                        .foregroundStyle(.blue)
+                }
             }
         }
         .font(.caption)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 11)
     }
 
     private var emptyResultsDescription: String {
@@ -361,21 +426,25 @@ private struct SearchUnavailableView: View {
     let state: SearchUnavailableState
 
     var body: some View {
-        VStack(spacing: 14) {
-            Image(systemName: state.systemImage)
-                .font(.system(size: 34))
-                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .top, spacing: 14) {
+                Image(systemName: state.systemImage)
+                    .font(.system(size: 34, weight: .light))
+                    .foregroundStyle(.orange)
+                    .frame(width: 46)
 
-            Text(state.title)
-                .font(.title3)
-                .bold()
+                VStack(alignment: .leading, spacing: 7) {
+                    Text(state.title)
+                        .font(.title3)
+                        .bold()
 
-            Text(state.message)
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: 400)
+                    Text(state.message)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
 
-            HStack {
+            HStack(spacing: 10) {
                 Button(state.primaryButtonTitle, action: state.primaryAction)
                     .buttonStyle(.borderedProminent)
 
@@ -384,8 +453,20 @@ private struct SearchUnavailableView: View {
                     Button(secondaryButtonTitle, action: secondaryAction)
                 }
             }
+
+            ClearGlassInlineMessage(
+                text: "Basic Mode remains usable without Accessibility, Screen Recording, Apple Events, Input Monitoring, or network access.",
+                systemImage: "lock.shield",
+                style: .success
+            )
         }
-        .padding(32)
+        .padding(28)
+        .frame(maxWidth: 440, alignment: .leading)
+        .background(.quaternary.opacity(0.6), in: .rect(cornerRadius: 10))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(.primary.opacity(0.12), lineWidth: 1)
+        }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

@@ -4,6 +4,8 @@ Version:
 Build:
 Date:
 
+Note: if this is based on a dated validation run, record the exact commit and avoid reusing stale test counts or version numbers from older Alpha RC notes.
+
 ## Highlights
 
 - Privacy-first Basic Mode menu bar decluttering with no sensitive permissions.

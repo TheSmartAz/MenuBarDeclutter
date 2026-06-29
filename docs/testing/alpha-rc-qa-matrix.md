@@ -2,6 +2,8 @@
 
 Use this matrix for real macOS validation. Automated tests do not replace these checks.
 
+v0.1 note: defaults are frozen in `docs/release/v0.1-defaults.md`. Auto-rehide, hover reveal, hotkeys, Pro Mode, Find Icon, Second Bar, Icon Moving, Smart Triggers, and bulk automation are optional or disabled by default unless the tester explicitly enables them.
+
 ## Basic Mode
 
 | Scenario | Expected Result |
@@ -18,7 +20,7 @@ Use this matrix for real macOS validation. Automated tests do not replace these 
 | Global hotkey | Optional hotkey toggles visibility |
 | Reset separator length | Clears custom collapsed override and recomputes length |
 | Reset app layout | Restores separator layout without deleting profiles |
-| Reset all settings | Restores defaults; icon moving disabled; automation unpaused |
+| Reset all settings | Restores v0.1 defaults; icon moving disabled; automation paused |
 
 ## macOS 26 Visual States
 

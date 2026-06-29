@@ -327,7 +327,7 @@ final class StatusBarController {
 
         let popover = NSPopover()
         popover.behavior = .transient
-        popover.contentSize = NSSize(width: 320, height: 104)
+        popover.contentSize = NSSize(width: 356, height: 156)
         popover.contentViewController = NSHostingController(rootView: DragHintPopoverView())
         popover.show(
             relativeTo: anchorButton.bounds,

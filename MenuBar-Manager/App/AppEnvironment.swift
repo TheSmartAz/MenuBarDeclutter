@@ -2,14 +2,19 @@ import AppKit
 
 @MainActor
 final class AppEnvironment {
+    /// Shared instance for App Intents access.
+    static var shared: AppEnvironment?
+
     let settingsStore: SettingsStore
     let diagnosticsLogger: DiagnosticsLogger
     let appSupportPaths: AppSupportPaths
     let liveStatus: LiveDiagnosticsStatus
     let launchAtLoginService: LaunchAtLoginService
     let diagnosticsExporter: DiagnosticsExporter
+    let dogfoodStore: DogfoodStore
     let safeModeService: SafeModeService
     let safeModeLaunchState: SafeModeLaunchState
+    let settingsMigrationResult: SettingsMigrationResult
 
     let screenGeometry: ScreenGeometryService
     let hidingService: HidingService
@@ -18,6 +23,7 @@ final class AppEnvironment {
     let hoverRevealController: HoverRevealController
     private let shouldCollapseAfterStartupHealth: Bool
     private let reflectLaunchAtLoginOnStart: Bool
+    private let presentMigrationNoticeOnStart: Bool
 
     lazy var accessibilityPermissionService = AccessibilityPermissionService(
         settingsStore: settingsStore,
@@ -80,6 +86,7 @@ final class AppEnvironment {
         launchAtLoginService: launchAtLoginService,
         appSupportPaths: appSupportPaths,
         diagnosticsExporter: diagnosticsExporter,
+        dogfoodStore: dogfoodStore,
         accessibilityPermissionService: accessibilityPermissionService,
         menuBarScanCoordinator: menuBarScanCoordinator,
         profileStore: profileAutomationCoordinator.profileStore,
@@ -181,6 +188,7 @@ final class AppEnvironment {
             toggle: { [weak self] in self?.toggleHiddenItems() },
             revealAll: { [weak self] in self?.revealAllHiddenItems() },
             toggleRevealAll: { [weak self] in self?.toggleRevealAll() },
+            emergencyRevealAndResetSeparators: { [weak self] in self?.emergencyRevealAndResetSeparators() },
             findIcon: { [weak self] in self?.showSearch() },
             showSecondBar: { [weak self] in self?.showSecondBar() },
             hideSecondBar: { [weak self] in self?.hideSecondBar() },
@@ -202,7 +210,30 @@ final class AppEnvironment {
             openSettings: { [weak self] in self?.showSettings() },
             showDiagnostics: { [weak self] in self?.showDiagnostics() },
             showAbout: { [weak self] in self?.showAbout() },
-            quit: { [weak self] in self?.quit() }
+            quit: { [weak self] in self?.quit() },
+            enterFullMenuBarMode: { [weak self] in self?.enterFullMenuBarMode() },
+            exitFullMenuBarMode: { [weak self] in self?.exitFullMenuBarMode() },
+            fullMenuBarModeIsActive: { [weak self] in
+                self?.layoutCoordinator.fullMenuBarModeService.isActive == true
+            },
+            showLayoutSuggestions: { [weak self] in self?.showLayoutSuggestions() },
+            openLayoutSettings: { [weak self] in self?.showSettings(section: .layout) },
+            addSpacerDivider: { [weak self] in
+                self?.layoutCoordinator.spacerController.add(type: .divider)
+            },
+            addSpacer: { [weak self] in
+                self?.layoutCoordinator.spacerController.add(type: .thinSpacer)
+            },
+            toggleSpacerMarkers: { [weak self] in
+                guard let self else { return }
+                self.layoutCoordinator.spacerController.setMarkersVisible(!self.settingsStore.showSpacerMarkers)
+            },
+            revealInlineAnyway: { [weak self] in
+                _ = self?.layoutCoordinator.crowdedRevealRescueService.revealInlineAnyway()
+            },
+            crowdedRevealIntercepted: { [weak self] in
+                self?.layoutCoordinator.crowdedRevealRescueService.lastRevealIntercepted == true
+            }
         )
     )
 
@@ -328,20 +359,109 @@ final class AppEnvironment {
         }
     )
 
+    private lazy var layoutCoordinator = LayoutCoordinator(
+        settingsStore: settingsStore,
+        diagnosticsLogger: diagnosticsLogger,
+        appSupportPaths: appSupportPaths,
+        screenGeometry: screenGeometry,
+        hidingService: hidingService,
+        scanResultProvider: { [weak self] in
+            self?.menuBarScanCoordinator.lastResult
+        },
+        revealAll: { [weak self] in
+            self?.revealAllHiddenItems()
+        },
+        restoreVisibility: { [weak self] state in
+            self?.restoreVisibilityState(state)
+        },
+        suspendAutoRehide: { [weak self] in
+            self?.suspendAutoRehide()
+        },
+        resumeAutoRehide: { [weak self] in
+            self?.resumeAutoRehide()
+        },
+        showSpacerMarkers: { [weak self] visible in
+            self?.settingsStore.showSpacerMarkers = visible
+        },
+        openSecondBar: { [weak self] in
+            self?.showSecondBar()
+        },
+        enterFullMenuBarMode: { [weak self] in
+            self?.enterFullMenuBarMode()
+        }
+    )
+
+    private lazy var groupStore = IconGroupStore(
+        directory: appSupportPaths.applicationSupportDirectory.appendingPathComponent("Groups", isDirectory: true),
+        backupsDirectory: appSupportPaths.backupsDirectory,
+        diagnosticsLogger: diagnosticsLogger
+    )
+
+    private lazy var privateAccessCoordinator = PrivateAccessCoordinator(
+        settingsStore: settingsStore,
+        diagnosticsLogger: diagnosticsLogger,
+        authService: LocalAuthenticationService(
+            allowPasswordFallback: { [weak self] in
+                self?.settingsStore.privateAccessAllowDevicePasswordFallback ?? true
+            }
+        )
+    )
+
+    lazy var protectedActionGate = ProtectedActionGate(coordinator: privateAccessCoordinator)
+
+    private lazy var hotkeyBindingStore = HotkeyBindingStore(
+        directory: appSupportPaths.applicationSupportDirectory.appendingPathComponent("Hotkeys", isDirectory: true),
+        backupsDirectory: appSupportPaths.backupsDirectory,
+        diagnosticsLogger: diagnosticsLogger
+    )
+
+    lazy var intentExecutionService = AppIntentExecutionService(
+        settingsStore: settingsStore,
+        diagnosticsLogger: diagnosticsLogger,
+        safeModeActive: { [weak self] in
+            self?.safeModeLaunchState.isSafeModeActive == true
+        },
+        expand: { [weak self] in self?.expandHiddenItems() },
+        collapse: { [weak self] in self?.collapseHiddenItems() },
+        revealAll: { [weak self] in self?.revealAllHiddenItems() },
+        showSecondBar: { [weak self] in self?.showSecondBar() },
+        hideSecondBar: { [weak self] in self?.hideSecondBar() },
+        enterFullMenuBarMode: { [weak self] in self?.enterFullMenuBarMode() },
+        exitFullMenuBarMode: { [weak self] in self?.exitFullMenuBarMode() },
+        applyProfileNamed: { [weak self] name in
+            self?.applyProfileNamed(name) ?? false
+        },
+        pauseAutomation: { [weak self] in
+            self?.settingsStore.automationPaused = true
+            self?.refreshTriggerSettings()
+        },
+        resumeAutomation: { [weak self] in
+            self?.settingsStore.automationPaused = false
+            self?.refreshTriggerSettings()
+        }
+    )
+
     init(
         settingsStore: SettingsStore = SettingsStore(),
         diagnosticsLogger: DiagnosticsLogger = DiagnosticsLogger(),
         appSupportPaths: AppSupportPaths = AppSupportPaths(),
         screenGeometry: ScreenGeometryService = ScreenGeometryService(),
         launchAtLoginService: LaunchAtLoginService? = nil,
-        reflectLaunchAtLoginOnStart: Bool = true
+        reflectLaunchAtLoginOnStart: Bool = true,
+        presentMigrationNoticeOnStart: Bool = true
     ) {
         self.settingsStore = settingsStore
         self.diagnosticsLogger = diagnosticsLogger
         self.appSupportPaths = appSupportPaths
         self.screenGeometry = screenGeometry
         self.reflectLaunchAtLoginOnStart = reflectLaunchAtLoginOnStart
+        self.presentMigrationNoticeOnStart = presentMigrationNoticeOnStart
         self.liveStatus = LiveDiagnosticsStatus()
+        self.settingsMigrationResult = SettingsMigrationService(
+            settingsStore: settingsStore,
+            appSupportPaths: appSupportPaths,
+            diagnosticsLogger: diagnosticsLogger
+        ).migrateIfNeeded()
         let safeModeService = SafeModeService(appSupportPaths: appSupportPaths)
         let safeModeLaunchState = safeModeService.detectLaunchState()
         self.safeModeService = safeModeService
@@ -375,6 +495,7 @@ final class AppEnvironment {
         }
 
         self.diagnosticsExporter = DiagnosticsExporter()
+        self.dogfoodStore = DogfoodStore(appSupportPaths: appSupportPaths)
         liveStatus.safeModeActive = safeModeLaunchState.isSafeModeActive
         liveStatus.safeModeReasonSummary = safeModeLaunchState.displaySummary
 
@@ -418,7 +539,9 @@ final class AppEnvironment {
     }
 
     func start() {
+        AppEnvironment.shared = self
         prepareLaunchStorage()
+        dogfoodStore.loadRun(id: settingsStore.dogfoodRunID)
         logSafeModeStatusIfNeeded()
         startRuntimeServices()
 
@@ -427,6 +550,7 @@ final class AppEnvironment {
 
         reflectLaunchAtLoginPreferenceIfNeeded()
         presentFirstRunSurfacesIfNeeded()
+        presentMigrationNoticeIfNeeded()
 
         diagnosticsLogger.log("Application environment started in \(settingsStore.appMode.displayName) mode.")
     }
@@ -460,6 +584,7 @@ final class AppEnvironment {
         startMenuBarScanningIfAllowed()
         refreshTriggerSettings()
         systemRecoveryCoordinator.startObserving()
+        layoutCoordinator.start()
     }
 
     private func startMenuBarScanningIfAllowed() {
@@ -511,7 +636,26 @@ final class AppEnvironment {
         }
     }
 
+    private func presentMigrationNoticeIfNeeded() {
+        guard presentMigrationNoticeOnStart,
+              settingsStore.v01SafeDefaultsNoticePending else {
+            return
+        }
+        settingsStore.v01SafeDefaultsNoticePending = false
+
+        let alert = NSAlert()
+        alert.messageText = "Updated to v0.1 safe defaults"
+        alert.informativeText = """
+        Experimental automation, icon moving, Pro discovery, auto-rehide, hover reveal, hotkeys, and Launch at Login were reset to conservative defaults. Your profiles were left in place.
+        """
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+    }
+
     func stop() {
+        layoutCoordinator.stop()
+        AppEnvironment.shared = nil
         menuBarItemSurfaceCoordinator.hideSecondBar()
         profileAutomationCoordinator.stop()
         systemRecoveryCoordinator.stopObserving()
@@ -543,8 +687,56 @@ final class AppEnvironment {
         statusBarController.revealAll()
     }
 
+    func emergencyRevealAndResetSeparators() {
+        statusBarController.revealAll()
+        statusBarController.resetSeparatorLength()
+        statusBarController.refreshSeparatorVisuals()
+        diagnosticsLogger.log(
+            "Emergency recovery applied: reveal all and reset separators.",
+            level: .warning,
+            category: .recovery
+        )
+        updateLiveStatusFromServices()
+    }
+
     func toggleRevealAll() {
         statusBarController.toggleRevealAll()
+    }
+
+    // MARK: Phase 10 Layout actions
+
+    func enterFullMenuBarMode() {
+        layoutCoordinator.enterFullMenuBarMode()
+    }
+
+    func exitFullMenuBarMode() {
+        layoutCoordinator.exitFullMenuBarMode()
+    }
+
+    func showLayoutSuggestions() {
+        showSettings(section: .layout)
+    }
+
+    private func restoreVisibilityState(_ state: HidingVisibilityState) {
+        switch state {
+        case .collapsed:
+            collapseHiddenItems()
+        case .expanded:
+            expandHiddenItems()
+        case .revealAll:
+            revealAllHiddenItems()
+        }
+    }
+
+    private func suspendAutoRehide() {
+        rehideController.cancel(reason: .cancelled)
+        liveStatus.autoRehideScheduled = false
+    }
+
+    private func resumeAutoRehide() {
+        // Re-arm rehide if auto-rehide is enabled and currently expanded.
+        guard settingsStore.autoRehideEnabled else { return }
+        armRehide()
     }
 
     func resetSeparatorLength() {
@@ -719,6 +911,11 @@ final class AppEnvironment {
 
     private func applyProfile(_ profile: ProfileModel) -> ProfileApplicationDryRun {
         profileAutomationCoordinator.applyProfile(profile)
+    }
+
+    @discardableResult
+    func applyProfileNamed(_ name: String) -> Bool {
+        profileAutomationCoordinator.applyProfile(named: name)
     }
 
     // MARK: UI surfaces

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-APP_PATH="${APP_PATH:-}"
+APP_PATH="${APP_PATH:-${1:-}}"
 FAILED=0
 
 fail() {
@@ -80,6 +80,13 @@ if [[ -n "$APP_PATH" ]]; then
       else
         fail "Built app URL scheme is missing or different"
       fi
+      for key in NSScreenCaptureUsageDescription NSAppleEventsUsageDescription NSInputMonitoringUsageDescription; do
+        if /usr/libexec/PlistBuddy -c "Print :$key" "$INFO_PLIST" >/dev/null 2>&1; then
+          fail "Built app declares $key"
+        else
+          pass "Built app does not declare $key"
+        fi
+      done
     else
       fail "Built app Info.plist is missing"
     fi
@@ -92,6 +99,16 @@ if [[ -n "$APP_PATH" ]]; then
       fi
     else
       echo "WARN: Could not read built app entitlements; codesign may be ad-hoc or unavailable."
+    fi
+
+    EXECUTABLE_NAME="$(/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$INFO_PLIST" 2>/dev/null || true)"
+    EXECUTABLE="$APP_PATH/Contents/MacOS/$EXECUTABLE_NAME"
+    if [[ -f "$EXECUTABLE" ]]; then
+      if otool -L "$EXECUTABLE" | rg -q "ScreenCaptureKit"; then
+        fail "Built app executable links ScreenCaptureKit"
+      else
+        pass "Built app executable does not link ScreenCaptureKit"
+      fi
     fi
   fi
 else

@@ -53,7 +53,7 @@ struct HealthCheckSnapshot: Equatable, Sendable {
 struct HealthService {
     var now: () -> Date = { Date() }
 
-    func makeReport(snapshot: HealthCheckSnapshot) -> HealthReport {
+    func makeReport(snapshot: HealthCheckSnapshot, dogfoodRunID: String? = nil) -> HealthReport {
         var issues: [HealthIssue] = []
 
         if !snapshot.controlItemExists {
@@ -189,7 +189,7 @@ struct HealthService {
 
         appendProModeIssues(snapshot: snapshot, issues: &issues)
 
-        return HealthReport(generatedAt: now(), issues: issues)
+        return HealthReport(generatedAt: now(), issues: issues, dogfoodRunID: dogfoodRunID)
     }
 
     static func validateSettings(_ store: SettingsStore) -> [SettingsValidationIssue] {

@@ -34,8 +34,17 @@ struct OnboardingStepTests {
     }
 
     @Test func behaviorStepMatchesCurrentDefaults() throws {
+        let suiteName = "OnboardingStepTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let store = SettingsStore(defaults: defaults)
         let step = try #require(OnboardingStep.allSteps.first { $0.id == "hotkeyAutoRehide" })
+
+        #expect(store.globalHotkeyEnabled == false)
+        #expect(store.autoRehideEnabled == false)
         #expect(step.body.contains("hotkey is off by default"))
-        #expect(step.body.contains("Auto-Rehide is on by default"))
+        #expect(step.body.contains("Auto-Rehide is off by default"))
     }
 }

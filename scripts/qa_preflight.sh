@@ -28,7 +28,13 @@ xcodebuild -list
 echo
 
 echo "== Tests =="
-xcodebuild test -scheme "$SCHEME" -destination "platform=macOS"
+RESULT_BUNDLE_PATH="${RESULT_BUNDLE_PATH:-$ROOT_DIR/build/TestResults/qa-preflight.xcresult}"
+rm -rf "$RESULT_BUNDLE_PATH"
+xcodebuild test \
+  -scheme "$SCHEME" \
+  -destination "platform=macOS" \
+  -enableCodeCoverage NO \
+  -resultBundlePath "$RESULT_BUNDLE_PATH"
 echo
 
 echo "== Privacy Boundary =="

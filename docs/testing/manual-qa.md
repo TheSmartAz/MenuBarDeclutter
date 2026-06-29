@@ -724,3 +724,41 @@ This checklist verifies the Phase 1 hiding MVP. Later-phase features such as glo
 - Review `docs/testing/known-risk-areas.md`.
 - Complete `docs/release/alpha-rc-checklist.md`.
 - Include `docs/release/alpha-rc-known-limitations.md` in release notes.
+
+### Settings layout consistency across tabs
+
+- Open Settings and click through every tab (General, Behavior, Search, Second Bar, Profiles, Privacy, Diagnostics, Advanced).
+- Confirm the sidebar width does not shift between tabs and remains at the same column position.
+- Resize the Settings window down to its minimum size and click through every tab; confirm the sidebar stays at least 180 pt wide and content adapts (Diagnostics toolbar wraps to multiple rows, Profiles list/detail panes stay usable).
+- Resize the Settings window wider and confirm the Profiles tab still allows dragging the HSplitView divider to rebalance the profile list and detail panes.
+- Confirm Diagnostics toolbar controls are reachable when narrow (buttons wrap below pickers) and stay on one row when wide.
+
+## Clear Glass Control Redesign QA
+
+### Appearance and accessibility
+
+- Open Settings in Light and Dark appearances; confirm every Settings tab uses the same compact glass shell, sidebar spacing, page headers, badges, separators, and grouped rows.
+- Enable Increase Contrast; confirm badges, warning/error states, selected sidebar rows, Diagnostics severities, profile dirty states, and disabled controls remain distinguishable by text and icons, not color alone.
+- Enable Reduce Transparency; confirm Settings, Onboarding, Find Icon, Second Bar, and the drag hint popover remain readable and do not rely on translucent backgrounds for contrast.
+- Resize Settings to minimum and wide widths; confirm text does not overlap, buttons remain reachable, and Profiles/Diagnostics dense surfaces stay scannable.
+
+### Privacy and permission boundaries
+
+- Launch a fresh Basic Mode profile and open General, Behavior, Search, Second Bar, Profiles, Privacy, Diagnostics, and Advanced; confirm no Accessibility, Screen Recording, Apple Events, Input Monitoring, or network prompts appear.
+- In Privacy, confirm Basic Mode clearly shows Screen Recording, Apple Events, and Input Monitoring as Not Requested, Network Access as Not Used, and Pro Mode as optional.
+- Enable Pro Mode without granting Accessibility; confirm Search and Second Bar show permission-missing/unavailable states and route to Privacy without attempting automated clicks.
+- Revoke Accessibility while Pro Mode is enabled; confirm Basic Mode controls continue to work and Diagnostics reports the degraded Pro state.
+
+### Floating surfaces
+
+- Complete the six-step Onboarding flow; confirm the redesigned panels preserve step order, privacy copy, completion behavior, and window sizing.
+- Open Find Icon with Pro disabled, Pro enabled without Accessibility, and Pro enabled with a seeded scan; confirm focus, debounce, keyboard selection, empty/unavailable states, and move context menu actions are intact.
+- Open Second Bar with Pro disabled, Pro enabled without Accessibility, and Pro enabled with icons available; confirm sizing, positioning, outside-click dismissal, keyboard handling, icon cache loading, and unavailable copy.
+- Show the drag hint from the status menu; confirm it anchors to the separator/control item, uses the compact instructional popover, and closes transiently.
+
+### Native status menu
+
+- Open the status menu from the control item and separator right-click path.
+- Confirm command groups are visually separated: visibility, Pro/floating tools, separator help, settings/diagnostics, about/quit.
+- Confirm key equivalents still work for Toggle Hidden Items, Find Icon, Toggle Second Bar, Refresh Menu Bar Items, Settings, and Quit.
+- Pause and resume automation from the menu and confirm the dynamic title updates without changing Basic Mode behavior.

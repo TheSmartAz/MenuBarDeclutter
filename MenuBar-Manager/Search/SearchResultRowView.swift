@@ -29,43 +29,56 @@ struct SearchResultRowView: View {
         HStack(spacing: 12) {
             Image(nsImage: appIcon)
                 .resizable()
-                .frame(width: 28, height: 28)
-                .clipShape(.rect(cornerRadius: 6))
+                .frame(width: 34, height: 34)
+                .clipShape(.rect(cornerRadius: 8))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(isSelected ? .white.opacity(0.22) : .primary.opacity(0.10), lineWidth: 1)
+                }
 
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 8) {
                     Text(result.displayTitle)
                         .font(.body)
+                        .bold()
                         .lineLimit(1)
 
-                    Text(result.snapshot.zone.displayName)
-                        .font(.caption)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(zoneColor.opacity(0.14), in: .capsule)
-                        .foregroundStyle(zoneColor)
+                    SearchZoneBadge(
+                        title: result.snapshot.zone.displayName,
+                        color: zoneColor,
+                        isSelected: isSelected
+                    )
                 }
 
                 HStack(spacing: 8) {
-                    Text(result.displaySubtitle)
+                    Text(result.matchReason.displayName)
                         .lineLimit(1)
 
-                    Text(result.matchReason.displayName)
+                    Text(result.displaySubtitle)
                         .lineLimit(1)
 
                     Text(result.snapshot.scanTimestamp, format: Date.FormatStyle(date: .omitted, time: .standard))
                         .lineLimit(1)
                 }
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(isSelected ? .white.opacity(0.78) : .secondary)
             }
 
             Spacer(minLength: 8)
+
+            Image(systemName: "ellipsis")
+                .font(.body)
+                .foregroundStyle(isSelected ? .white.opacity(0.78) : .secondary)
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(rowBackground, in: .rect(cornerRadius: 8))
+        .background(rowBackground, in: .rect(cornerRadius: 9))
+        .overlay {
+            RoundedRectangle(cornerRadius: 9)
+                .stroke(rowStroke, lineWidth: 1)
+        }
+        .foregroundStyle(isSelected ? .white : .primary)
         .contentShape(.rect)
         .task(id: iconLookup) { @MainActor in
             let resolvedIcon = iconCache.icon(for: result.snapshot)
@@ -76,7 +89,11 @@ struct SearchResultRowView: View {
     }
 
     private var rowBackground: Color {
-        isSelected ? Color.accentColor.opacity(0.16) : Color.clear
+        isSelected ? Color.accentColor : Color.primary.opacity(0.035)
+    }
+
+    private var rowStroke: Color {
+        isSelected ? Color.accentColor.opacity(0.55) : Color.primary.opacity(0.08)
     }
 
     private var zoneColor: Color {
@@ -90,6 +107,38 @@ struct SearchResultRowView: View {
         case .unknown:
             .secondary
         }
+    }
+}
+
+private struct SearchZoneBadge: View {
+    let title: String
+    let color: Color
+    let isSelected: Bool
+
+    var body: some View {
+        Text(title)
+            .font(.caption)
+            .bold()
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(badgeFill, in: .capsule)
+            .overlay {
+                Capsule()
+                    .stroke(badgeStroke, lineWidth: 1)
+            }
+            .foregroundStyle(badgeForeground)
+    }
+
+    private var badgeFill: Color {
+        isSelected ? .white.opacity(0.18) : color.opacity(0.14)
+    }
+
+    private var badgeStroke: Color {
+        isSelected ? .white.opacity(0.26) : color.opacity(0.28)
+    }
+
+    private var badgeForeground: Color {
+        isSelected ? .white : color
     }
 }
 

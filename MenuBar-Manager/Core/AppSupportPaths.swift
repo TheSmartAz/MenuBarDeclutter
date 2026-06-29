@@ -9,6 +9,9 @@ import Foundation
 /// - `Application Support/MenuBarDeclutter/diagnostics/`
 /// - `Application Support/MenuBarDeclutter/profiles/`
 /// - `Application Support/MenuBarDeclutter/backups/`
+/// - `Application Support/MenuBarDeclutter/Dogfood/`
+/// - `Application Support/MenuBarDeclutter/Dogfood/runs/`
+/// - `Application Support/MenuBarDeclutter/Dogfood/exports/`
 ///
 /// No personal file paths, network data, or screen contents are written here.
 struct AppSupportPaths {
@@ -47,6 +50,19 @@ struct AppSupportPaths {
         applicationSupportDirectory.appendingPathComponent("backups", isDirectory: true)
     }
 
+    /// Local-only Phase 9.2 dogfood notes, run state, and export bundles.
+    var dogfoodDirectory: URL {
+        applicationSupportDirectory.appendingPathComponent("Dogfood", isDirectory: true)
+    }
+
+    var dogfoodRunsDirectory: URL {
+        dogfoodDirectory.appendingPathComponent("runs", isDirectory: true)
+    }
+
+    var dogfoodExportsDirectory: URL {
+        dogfoodDirectory.appendingPathComponent("exports", isDirectory: true)
+    }
+
     // MARK: Directory creation
 
     /// Creates `applicationSupportDirectory` and all known subdirectories if
@@ -58,7 +74,10 @@ struct AppSupportPaths {
             applicationSupportDirectory,
             diagnosticsDirectory,
             profilesDirectory,
-            backupsDirectory
+            backupsDirectory,
+            dogfoodDirectory,
+            dogfoodRunsDirectory,
+            dogfoodExportsDirectory
         ]
 
         var created: [URL] = []

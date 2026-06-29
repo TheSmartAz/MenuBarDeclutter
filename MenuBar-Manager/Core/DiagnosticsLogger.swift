@@ -31,9 +31,11 @@ enum DiagnosticCategory: String, CaseIterable, Identifiable, Sendable {
     case health
     case recovery
     case safeMode
+    case dogfood
     case launchAtLogin
     case urlAutomation
     case privacy
+    case layout
 
     var id: String { rawValue }
 
@@ -47,10 +49,14 @@ enum DiagnosticCategory: String, CaseIterable, Identifiable, Sendable {
             "Icon Move"
         case .safeMode:
             "Safe Mode"
+        case .dogfood:
+            "Dogfood"
         case .launchAtLogin:
             "Launch at Login"
         case .urlAutomation:
             "URL Automation"
+        case .layout:
+            "Layout"
         default:
             rawValue.prefix(1).uppercased() + String(rawValue.dropFirst())
         }
@@ -58,6 +64,7 @@ enum DiagnosticCategory: String, CaseIterable, Identifiable, Sendable {
 
     static func inferred(from message: String) -> DiagnosticCategory {
         if message.containsAnyCaseInsensitive(in: ["safe mode"]) { return .safeMode }
+        if message.containsAnyCaseInsensitive(in: ["dogfood"]) { return .dogfood }
         if message.containsAnyCaseInsensitive(in: ["launch at login", "smappservice"]) { return .launchAtLogin }
         if message.containsAnyCaseInsensitive(in: ["health"]) { return .health }
         if message.containsAnyCaseInsensitive(in: ["recover", "repair", "reset"]) { return .recovery }
@@ -82,6 +89,9 @@ enum DiagnosticCategory: String, CaseIterable, Identifiable, Sendable {
         }
         if message.containsAnyCaseInsensitive(in: ["privacy", "screen recording", "network"]) {
             return .privacy
+        }
+        if message.containsAnyCaseInsensitive(in: ["layout", "spacer", "capacity", "spacing", "full menu bar", "crowded"]) {
+            return .layout
         }
         return .startup
     }

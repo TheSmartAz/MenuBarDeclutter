@@ -36,6 +36,7 @@ struct SecondBarRootView: View {
         VStack(spacing: 0) {
             header
             Divider()
+                .overlay(.primary.opacity(0.10))
 
             if let unavailableState {
                 SecondBarUnavailableView(state: unavailableState)
@@ -55,10 +56,16 @@ struct SecondBarRootView: View {
             }
 
             Divider()
+                .overlay(.primary.opacity(0.10))
             footer
         }
-        .frame(width: 640, height: settingsStore.secondBarShowLabels ? 190 : 132)
-        .background(.regularMaterial)
+        .frame(width: 760, height: panelHeight)
+        .background(.regularMaterial, in: .rect(cornerRadius: 12))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(.primary.opacity(0.14), lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.16), radius: 18, y: 10)
         .onAppear {
             onRefresh()
             refreshItems()
@@ -94,17 +101,38 @@ struct SecondBarRootView: View {
         }
     }
 
-    private var header: some View {
-        HStack(spacing: 10) {
-            Label("Second Bar", systemImage: "menubar.rectangle")
-                .font(.headline)
+    private var panelHeight: CGFloat {
+        settingsStore.secondBarShowLabels ? 236 : 190
+    }
 
-            Text(items.count, format: .number)
-                .foregroundStyle(.secondary)
+    private var header: some View {
+        HStack(spacing: 14) {
+            Image(systemName: "menubar.rectangle")
+                .font(.system(size: 28, weight: .light))
+                .frame(width: 38)
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 8) {
+                    Text("Second Bar")
+                        .font(.title2)
+                        .bold()
+
+                    Text(items.count, format: .number)
+                        .font(.callout)
+                        .bold()
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(.quaternary, in: .capsule)
+                }
+
+                Text("Hidden menu bar items in a secondary bar.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
 
             Spacer()
 
-            HStack(spacing: 5) {
+            HStack(spacing: 7) {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(.secondary)
 
@@ -123,53 +151,69 @@ struct SecondBarRootView: View {
                     .help("Clear Search")
                 }
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 5)
-            .frame(width: 220)
-            .background(.quaternary, in: .rect(cornerRadius: 7))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .frame(width: 260)
+            .background(.quaternary, in: .rect(cornerRadius: 8))
+            .overlay {
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(.primary.opacity(0.10), lineWidth: 1)
+            }
 
             Button("Refresh", systemImage: "arrow.clockwise") {
                 onRefresh()
             }
-            .buttonStyle(.borderless)
+            .labelStyle(.iconOnly)
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .help("Refresh Menu Bar Items")
 
             Button("Close", systemImage: "xmark") {
                 onDismiss()
             }
             .labelStyle(.iconOnly)
-            .buttonStyle(.borderless)
+            .buttonStyle(.bordered)
+            .controlSize(.small)
             .help("Close Second Bar")
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 18)
+        .padding(.top, 18)
+        .padding(.bottom, 14)
     }
 
     private var content: some View {
-        ScrollViewReader { proxy in
-            ScrollView(.horizontal) {
-                LazyHStack(spacing: 6) {
-                    ForEach(hiddenItems) { snapshot in
-                        itemButton(snapshot)
-                    }
+        VStack(spacing: 7) {
+            SecondBarSectionHeader(
+                showsHidden: !hiddenItems.isEmpty,
+                showsAlwaysHidden: !alwaysHiddenItems.isEmpty
+            )
 
-                    if !hiddenItems.isEmpty, !alwaysHiddenItems.isEmpty {
-                        Divider()
-                            .frame(height: settingsStore.secondBarShowLabels ? 88 : 44)
-                            .padding(.horizontal, 2)
-                    }
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal) {
+                    LazyHStack(spacing: 8) {
+                        ForEach(hiddenItems) { snapshot in
+                            itemButton(snapshot)
+                        }
 
-                    ForEach(alwaysHiddenItems) { snapshot in
-                        itemButton(snapshot)
+                        if !hiddenItems.isEmpty, !alwaysHiddenItems.isEmpty {
+                            Divider()
+                                .frame(height: settingsStore.secondBarShowLabels ? 82 : 52)
+                                .padding(.horizontal, 4)
+                        }
+
+                        ForEach(alwaysHiddenItems) { snapshot in
+                            itemButton(snapshot)
+                        }
                     }
+                    .padding(.horizontal, 18)
+                    .padding(.bottom, 9)
                 }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
-            }
-            .scrollIndicators(.hidden)
-            .onChange(of: viewModel.selectedID) { _, newValue in
-                guard let newValue else { return }
-                withAnimation(.snappy(duration: 0.15)) {
-                    proxy.scrollTo(newValue, anchor: .center)
+                .scrollIndicators(.hidden)
+                .onChange(of: viewModel.selectedID) { _, newValue in
+                    guard let newValue else { return }
+                    withAnimation(.snappy(duration: 0.15)) {
+                        proxy.scrollTo(newValue, anchor: .center)
+                    }
                 }
             }
         }
@@ -177,6 +221,9 @@ struct SecondBarRootView: View {
 
     private var footer: some View {
         HStack(spacing: 10) {
+            Image(systemName: "return")
+                .foregroundStyle(.secondary)
+
             Text(liveStatus.iconMoveInProgress ? "Icon move in progress..." : "Return reveals and highlights. Click original icon manually.")
                 .foregroundStyle(.secondary)
 
@@ -186,11 +233,14 @@ struct SecondBarRootView: View {
                 Text(statusMessage)
                     .lineLimit(1)
                     .foregroundStyle(.secondary)
+            } else {
+                Label("Ready", systemImage: "checkmark.shield")
+                    .foregroundStyle(.green)
             }
         }
         .font(.caption)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 10)
     }
 
     private var unavailableState: SecondBarUnavailableState? {
@@ -364,25 +414,72 @@ private struct SecondBarUnavailableState {
     let secondaryAction: (() -> Void)?
 }
 
+private struct SecondBarSectionHeader: View {
+    let showsHidden: Bool
+    let showsAlwaysHidden: Bool
+
+    var body: some View {
+        HStack(spacing: 14) {
+            if showsHidden {
+                sectionTitle("Hidden")
+            }
+
+            if showsHidden, showsAlwaysHidden {
+                Divider()
+                    .frame(height: 18)
+            }
+
+            if showsAlwaysHidden {
+                sectionTitle("Always Hidden")
+            }
+        }
+        .font(.caption)
+        .bold()
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 18)
+        .padding(.top, 10)
+    }
+
+    private func sectionTitle(_ title: String) -> some View {
+        HStack(spacing: 10) {
+            Rectangle()
+                .fill(.primary.opacity(0.12))
+                .frame(height: 1)
+
+            Text(title)
+                .lineLimit(1)
+
+            Rectangle()
+                .fill(.primary.opacity(0.12))
+                .frame(height: 1)
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
 private struct SecondBarUnavailableView: View {
     let state: SecondBarUnavailableState
 
     var body: some View {
-        VStack(spacing: 14) {
-            Image(systemName: state.systemImage)
-                .font(.system(size: 34))
-                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top, spacing: 14) {
+                Image(systemName: state.systemImage)
+                    .font(.system(size: 32, weight: .light))
+                    .foregroundStyle(.orange)
+                    .frame(width: 44)
 
-            Text(state.title)
-                .font(.title3)
-                .bold()
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(state.title)
+                        .font(.title3)
+                        .bold()
 
-            Text(state.message)
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: 420)
+                    Text(state.message)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
 
-            HStack {
+            HStack(spacing: 10) {
                 Button(state.primaryButtonTitle, action: state.primaryAction)
                     .buttonStyle(.borderedProminent)
 
@@ -391,8 +488,20 @@ private struct SecondBarUnavailableView: View {
                     Button(secondaryButtonTitle, action: secondaryAction)
                 }
             }
+
+            ClearGlassInlineMessage(
+                text: "Second Bar is optional Pro UI. Basic Mode hiding stays available when this panel is disabled or permissions are missing.",
+                systemImage: "checkmark.shield",
+                style: .success
+            )
         }
-        .padding(32)
+        .padding(22)
+        .frame(maxWidth: 620, alignment: .leading)
+        .background(.quaternary.opacity(0.58), in: .rect(cornerRadius: 10))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(.primary.opacity(0.12), lineWidth: 1)
+        }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

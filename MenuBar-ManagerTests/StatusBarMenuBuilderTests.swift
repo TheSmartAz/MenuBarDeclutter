@@ -24,6 +24,7 @@ struct StatusBarMenuBuilderTests {
                 "Toggle Hidden Items",
                 "Reveal All Hidden Items",
                 "Toggle Reveal All",
+                "Emergency: Reveal All + Reset Separators",
                 "Find Icon...",
                 "Show Second Bar",
                 "Hide Second Bar",
@@ -41,7 +42,7 @@ struct StatusBarMenuBuilderTests {
         )
         #expect(
             commandItems.map { $0.keyEquivalent } == [
-                "", "", "h", "", "", "f", "", "", "s", "r", "", "", "", "", ",", "", "", "q"
+                "", "", "h", "", "", "", "f", "", "", "s", "r", "", "", "", "", ",", "", "", "q"
             ]
         )
         #expect(commandItems.map { $0.action }.allSatisfy { $0 == commandItems.first?.action })
@@ -83,6 +84,7 @@ struct StatusBarMenuBuilderTests {
             toggle: { recorder.record(.toggle) },
             revealAll: { recorder.record(.revealAll) },
             toggleRevealAll: { recorder.record(.toggleRevealAll) },
+            emergencyRevealAndResetSeparators: { recorder.record(.emergencyRevealAndResetSeparators) },
             findIcon: { recorder.record(.findIcon) },
             showSecondBar: { recorder.record(.showSecondBar) },
             hideSecondBar: { recorder.record(.hideSecondBar) },
@@ -111,6 +113,7 @@ private final class MenuActionRecorder {
         case toggle
         case revealAll
         case toggleRevealAll
+        case emergencyRevealAndResetSeparators
         case findIcon
         case showSecondBar
         case hideSecondBar

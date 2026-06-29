@@ -4,6 +4,7 @@ import Foundation
 enum AppConstants {
     static let displayName = "MenuBarDeclutter"
     static let defaultAppMode = "basic"
+    static let currentSettingsMigrationVersion = "0.1.0"
     static let diagnosticsRingBufferLimit = 200
 
     // MARK: Separator geometry
@@ -129,4 +130,30 @@ enum AppConstants {
             return "development"
         }
     }()
+
+    // MARK: Phase 10 Layout & Capacity defaults
+
+    static let defaultFullMenuBarModeAutoExitSeconds: Double = 30
+    static let minFullMenuBarModeAutoExitSeconds: Double = 5
+    static let maxFullMenuBarModeAutoExitSeconds: Double = 300
+
+    static let defaultCrowdedRevealThresholdRatio: Double = 0.85
+    static let minCrowdedRevealThresholdRatio: Double = 0.5
+    static let maxCrowdedRevealThresholdRatio: Double = 1.0
+
+    static let defaultMenuBarSpacingCustomItemSpacing: Int = 12
+    static let minMenuBarSpacingCustomItemSpacing: Int = 2
+    static let maxMenuBarSpacingCustomItemSpacing: Int = 32
+
+    static let defaultMenuBarSpacingCustomSelectionPadding: Int = 8
+    static let minMenuBarSpacingCustomSelectionPadding: Int = 2
+    static let maxMenuBarSpacingCustomSelectionPadding: Int = 32
+
+    // MARK: Phase 11 defaults
+
+    static let defaultPrivateAccessUnlockDurationSeconds: Double = 300
+    static let minPrivateAccessUnlockDurationSeconds: Double = 30
+    static let maxPrivateAccessUnlockDurationSeconds: Double = 3600
+
+    static let defaultMaxDynamicHotkeys: Int = 20
 }

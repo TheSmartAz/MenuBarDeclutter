@@ -9,6 +9,9 @@ final class AutomationURLHandler {
         case revealAll
         case secondBar
         case profile
+        case fullMenuBar
+        case exitFullMenuBar
+        case layoutSuggestions
 
         var logName: String {
             switch self {
@@ -22,6 +25,12 @@ final class AutomationURLHandler {
                 "second-bar"
             case .profile:
                 "profile"
+            case .fullMenuBar:
+                "full-menu-bar"
+            case .exitFullMenuBar:
+                "exit-full-menu-bar"
+            case .layoutSuggestions:
+                "layout-suggestions"
             }
         }
 
@@ -37,6 +46,12 @@ final class AutomationURLHandler {
                 self = .secondBar
             case "profile":
                 self = .profile
+            case "full-menu-bar":
+                self = .fullMenuBar
+            case "exit-full-menu-bar":
+                self = .exitFullMenuBar
+            case "layout-suggestions":
+                self = .layoutSuggestions
             default:
                 return nil
             }
@@ -53,6 +68,9 @@ final class AutomationURLHandler {
     private let showSecondBar: () -> Void
     private let applyProfileNamed: (String) -> Bool
     private let isAutomationEnabled: () -> Bool
+    private let enterFullMenuBarMode: () -> Void
+    private let exitFullMenuBarMode: () -> Void
+    private let showLayoutSuggestions: () -> Void
     private let now: () -> Date
     private let minimumCommandInterval: TimeInterval
 
@@ -67,6 +85,9 @@ final class AutomationURLHandler {
         showSecondBar: @escaping () -> Void,
         applyProfileNamed: @escaping (String) -> Bool,
         isAutomationEnabled: @escaping () -> Bool = { true },
+        enterFullMenuBarMode: @escaping () -> Void = {},
+        exitFullMenuBarMode: @escaping () -> Void = {},
+        showLayoutSuggestions: @escaping () -> Void = {},
         now: @escaping () -> Date = { Date() },
         minimumCommandInterval: TimeInterval = AutomationURLHandler.defaultMinimumCommandInterval
     ) {
@@ -77,6 +98,9 @@ final class AutomationURLHandler {
         self.showSecondBar = showSecondBar
         self.applyProfileNamed = applyProfileNamed
         self.isAutomationEnabled = isAutomationEnabled
+        self.enterFullMenuBarMode = enterFullMenuBarMode
+        self.exitFullMenuBarMode = exitFullMenuBarMode
+        self.showLayoutSuggestions = showLayoutSuggestions
         self.now = now
         self.minimumCommandInterval = max(0, minimumCommandInterval)
     }
@@ -213,6 +237,18 @@ final class AutomationURLHandler {
                 )
             }
             return didApply
+        case .fullMenuBar:
+            enterFullMenuBarMode()
+            logSuccess("enter full menu bar mode", command: command, metadata: eventMetadata)
+            return true
+        case .exitFullMenuBar:
+            exitFullMenuBarMode()
+            logSuccess("exit full menu bar mode", command: command, metadata: eventMetadata)
+            return true
+        case .layoutSuggestions:
+            showLayoutSuggestions()
+            logSuccess("show layout suggestions", command: command, metadata: eventMetadata)
+            return true
         }
     }
 

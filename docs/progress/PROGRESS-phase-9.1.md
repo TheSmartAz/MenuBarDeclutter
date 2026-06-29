@@ -2,6 +2,8 @@
 
 Status: implemented.
 
+Historical snapshot: this file records the end-of-phase state for Phase 9.1. Later progress files, `docs/project-summary.md`, and release docs supersede old scheme names, test counts, defaults, and deferred-scope notes.
+
 ## Tech Stack
 
 - Swift 6 with default `MainActor` isolation.
@@ -31,7 +33,7 @@ Status: implemented.
 
 ## Modified
 
-- `SettingsStore`: added `automationPaused`, defaulting to `false` and reset by `restoreDefaults()`.
+- `SettingsStore`: added `automationPaused`. The later v0.1 safe-default pass sets its current registered default to `true`.
 - `TriggerService` and `SettingsRuntimeCoordinator`: stop and skip smart trigger evaluation while automation is paused.
 - `StatusBarMenuBuilder` and `AppEnvironment`: added Pause Automation / Resume Automation status menu action.
 - `AdvancedSettingsView`: added Labs / Experimental section, global pause toggle, and an enablement warning for icon moving.
@@ -54,8 +56,8 @@ Status: implemented.
 
 - `xcodebuild -list`: both `MenuBarDeclutter` and `MenuBar-Manager` schemes listed.
 - `xcodebuild build -scheme MenuBarDeclutter -destination 'platform=macOS'`: `BUILD SUCCEEDED`.
-- `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS'`: `TEST SUCCEEDED` (131 Swift tests, 7 UI tests).
-- `xcodebuild test -scheme MenuBar-Manager -destination 'platform=macOS'`: `TEST SUCCEEDED` (131 Swift tests, 7 UI tests).
+- `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS'`: `TEST SUCCEEDED` in the original Phase 9.1 run (131 Swift tests, 7 UI tests at that time).
+- `xcodebuild test -scheme MenuBar-Manager -destination 'platform=macOS'`: `TEST SUCCEEDED` in the original Phase 9.1 run (131 Swift tests, 7 UI tests at that time).
 - `scripts/verify_privacy_boundary.sh`: passed.
 - `scripts/qa_preflight.sh`: passed.
 - `xcodebuild -scheme MenuBarDeclutter -destination 'platform=macOS' -configuration Release -derivedDataPath build/DerivedData build`: `BUILD SUCCEEDED`.

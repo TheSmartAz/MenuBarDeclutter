@@ -107,7 +107,10 @@ final class AppHealthCoordinator {
     @discardableResult
     func runHealthCheck(reason: String) -> HealthReport {
         externalActions.synchronizeLiveStatus()
-        let report = healthService.makeReport(snapshot: makeHealthSnapshot())
+        let dogfoodRunID = dependencies.settingsStore.dogfoodModeEnabled
+            ? dependencies.settingsStore.dogfoodRunID
+            : nil
+        let report = healthService.makeReport(snapshot: makeHealthSnapshot(), dogfoodRunID: dogfoodRunID)
         dependencies.liveStatus.healthReport = report
 
         dependencies.diagnosticsLogger.log(

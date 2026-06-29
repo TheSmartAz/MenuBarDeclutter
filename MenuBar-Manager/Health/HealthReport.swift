@@ -20,6 +20,17 @@ enum HealthStatus: String, CaseIterable, Codable, Sendable {
 struct HealthReport: Equatable, Codable, Sendable {
     let generatedAt: Date
     let issues: [HealthIssue]
+    let dogfoodRunID: String?
+
+    init(
+        generatedAt: Date,
+        issues: [HealthIssue],
+        dogfoodRunID: String? = nil
+    ) {
+        self.generatedAt = generatedAt
+        self.issues = issues
+        self.dogfoodRunID = dogfoodRunID
+    }
 
     var status: HealthStatus {
         if issues.contains(where: { $0.severity == .critical }) {
@@ -49,9 +60,14 @@ struct HealthReport: Equatable, Codable, Sendable {
         var lines: [String] = [
             "MenuBarDeclutter Health Report",
             "Generated: \(formatter.string(from: generatedAt))",
-            "Status: \(status.displayName)",
-            ""
+            "Status: \(status.displayName)"
         ]
+
+        if let dogfoodRunID {
+            lines.append("Dogfood Run ID: \(dogfoodRunID)")
+        }
+
+        lines.append("")
 
         if sortedIssues.isEmpty {
             lines.append("No health issues detected.")

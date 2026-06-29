@@ -10,6 +10,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private let launchAtLoginService: LaunchAtLoginService?
     private let appSupportPaths: AppSupportPaths
     private let diagnosticsExporter: DiagnosticsExporter
+    private let dogfoodStore: DogfoodStore
     private let accessibilityPermissionService: AccessibilityPermissionService?
     private let menuBarScanCoordinator: MenuBarScanCoordinator?
     private let profileStore: ProfileStore?
@@ -23,6 +24,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         launchAtLoginService: LaunchAtLoginService? = nil,
         appSupportPaths: AppSupportPaths = AppSupportPaths(),
         diagnosticsExporter: DiagnosticsExporter = DiagnosticsExporter(),
+        dogfoodStore: DogfoodStore? = nil,
         accessibilityPermissionService: AccessibilityPermissionService? = nil,
         menuBarScanCoordinator: MenuBarScanCoordinator? = nil,
         profileStore: ProfileStore? = nil,
@@ -35,6 +37,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         self.launchAtLoginService = launchAtLoginService
         self.appSupportPaths = appSupportPaths
         self.diagnosticsExporter = diagnosticsExporter
+        self.dogfoodStore = dogfoodStore ?? DogfoodStore(appSupportPaths: appSupportPaths)
         self.accessibilityPermissionService = accessibilityPermissionService
         self.menuBarScanCoordinator = menuBarScanCoordinator
         self.profileStore = profileStore
@@ -49,6 +52,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             launchAtLoginService: launchAtLoginService,
             appSupportPaths: appSupportPaths,
             diagnosticsExporter: diagnosticsExporter,
+            dogfoodStore: self.dogfoodStore,
             accessibilityPermissionService: accessibilityPermissionService,
             menuBarScanCoordinator: menuBarScanCoordinator,
             profileStore: profileStore,
@@ -57,16 +61,21 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         )
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 760, height: 520),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            contentRect: NSRect(x: 0, y: 0, width: 1020, height: 660),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
 
         window.title = "\(AppConstants.displayName) Settings"
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
+        window.toolbarStyle = .unifiedCompact
         window.contentViewController = NSHostingController(rootView: contentView)
+        window.backgroundColor = .clear
+        window.isOpaque = false
         window.isReleasedWhenClosed = false
-        window.minSize = NSSize(width: 680, height: 440)
+        window.minSize = NSSize(width: 920, height: 580)
 
         super.init(window: window)
 

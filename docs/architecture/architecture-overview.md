@@ -2,6 +2,8 @@
 
 MenuBarDeclutter uses Swift, AppKit, and SwiftUI for a native macOS 26.0+ app.
 
+The project also contains a separate local-only `MenuBarFixtureApp` target and scheme used for dogfood QA. The shipping `MenuBarDeclutter` app target has no runtime dependency on that fixture target.
+
 ## App Lifecycle
 
 - `MenuBarDeclutterApp` uses the SwiftUI app lifecycle.
@@ -19,7 +21,7 @@ MenuBarDeclutter uses Swift, AppKit, and SwiftUI for a native macOS 26.0+ app.
 - `SettingsRuntimeCoordinator` owns settings-driven side effects: behavior/search/Second Bar/privacy refreshes, initial behavior application, trigger start/stop decisions, Reset App Layout, Reset All Settings, Pro Mode toggling, and Find Icon hotkey registration.
 - `ProfileAutomationCoordinator` owns the local profile store, profile application service, trigger service, and `menubardeclutter://` URL handler lifecycle. It applies profiles through conservative Basic settings and invokes environment refresh callbacks after profile apply.
 - `MenuBarItemSurfaceCoordinator` owns Find Icon, Second Bar, menu bar item refresh, Second Bar activation, explicit icon move dispatch, move warning reset, and runtime suspension/resume during icon moves.
-- `AppEnvironmentLiveStatusSynchronizer` centralizes updates from runtime services into `LiveDiagnosticsStatus`, including visibility, separator lengths, hotkey state, hover/auto-rehide state, Accessibility status, search index count, and Second Bar item count.
+- `AppEnvironmentLiveStatusSynchronizer` centralizes the core runtime fields in `LiveDiagnosticsStatus`, including visibility, separator lengths, hotkey state, hover/auto-rehide state, Accessibility status, automation pause, search index count, and Second Bar item count. Domain services still own their domain-specific diagnostics fields, such as scan results, search selections, Second Bar selection state, icon-move outcomes, profiles, triggers, health, and dogfood exports.
 - `AppEnvironmentSystemRecoveryCoordinator` owns notification observer installation/removal for display, wake, and active-Space recovery events.
 
 The split keeps `AppEnvironment` as the dependency graph owner while avoiding a single massive app delegate-style object. Cross-domain calls remain explicit closures so Basic Mode can keep working when Pro features are disabled, permission is missing, or Safe Mode suppresses optional services.
@@ -30,7 +32,7 @@ The split keeps `AppEnvironment` as the dependency graph owner while avoiding a 
 - `SeparatorController` owns a single separator `NSStatusItem` (variable length) and translates `HidingState` into a concrete separator length. The same controller type powers both the primary and the always-hidden separators; the `StatusItemKind` parameter carries symbol/label variants.
 - `StatusItemFactory` builds `NSStatusItem` instances and applies SF Symbol images, accessibility labels, length updates, and an optional `showVisualMarker` mode used by the Phase 2 "show separators" toggle.
 - `StatusBarMenuBuilder` constructs the menu and bridges menu item selectors to closures. Phase 5 adds "Find Icon...", "Refresh Menu Bar Items", and a dynamic Enable/Disable Pro Mode command. Phase 6 adds Show/Hide/Toggle Second Bar.
-- Phase 9.1 adds a dynamic Pause Automation / Resume Automation command. It toggles `SettingsStore.automationPaused` and refreshes trigger runtime state without affecting Basic Mode commands.
+- Phase 9.1 adds a dynamic Pause Automation / Resume Automation command. It toggles `SettingsStore.automationPaused`, refreshes trigger runtime state, and gates URL automation without affecting manual Basic Mode commands.
 - `HidingService` owns the current `HidingVisibilityState` (`collapsed` / `expanded` / `revealAll`) and derives a binary `currentState` (per primary separator) for Phase 1 callers. Exposes `expand()`, `collapse()`, `toggle()`, `revealAll()`, `toggleRevealAll()`, `setVisibility()`, and `applyState()`; persists `isCollapsed` through `SettingsStore`; notifies observers via closures and two `NotificationCenter` notifications.
 - `HidingVisibilityState` describes the three-state menu bar surface introduced in Phase 2 and maps each case to its per-separator `HidingState` (`primarySeparatorState` and `alwaysHiddenSeparatorState`).
 - `ScreenGeometryService` computes widest screen width, the recommended collapsed separator length (`max(width * 2, 1200)` capped at `10000`), menu bar band rectangles, and a hit-test helper. Width provider is injectable for unit tests.
@@ -47,10 +49,10 @@ The split keeps `AppEnvironment` as the dependency graph owner while avoiding a 
 - `SecondBarWindowController` (Phase 6) owns a floating, non-activating AppKit `NSPanel` hosting `SecondBarRootView`. It closes on Escape, can close on outside click through `hidesOnDeactivate`, follows display changes, and updates live diagnostics. It does not require Screen Recording and does not click original menu bar items.
 - `IconMoveService` (Phase 7) coordinates optional explicit icon moves. It gates moves behind the icon-moving setting, Pro Mode, granted Accessibility permission, first-use confirmation, safety rules, and one-at-a-time locking. It reveals required zones, suspends runtime behaviors, asynchronously executes a drag plan, rescans, verifies, retries, and restores visibility on failure.
 - `DragPlanFactory`, `DragExecutor`, and `DragVerificationService` (Phase 7) split icon moving into testable planning, nonisolated async runtime `CGEvent` execution, and post-move verification. Unit tests exercise planning, verification, and move-service cleanup only; real drags are manual-QA territory.
-- `ProfileStore` (Phase 8) persists local JSON profiles under `Application Support/MenuBarDeclutter/Profiles/` and supports create, duplicate, update, delete, import, and export.
+- `ProfileStore` (Phase 8) persists local JSON profiles under `Application Support/MenuBarDeclutter/profiles/` and supports create, duplicate, update, delete, import, and export.
 - `ProfileApplicationService` (Phase 8) applies conservative profile settings and produces dry-run summaries. It applies Basic settings and visibility immediately, reports zone move requirements, and never silently runs bulk CGEvent moves.
 - `TriggerRuleEvaluator` and `TriggerService` (Phase 8) model and run smart triggers. The runtime observes local public signals for display changes, launched apps, frontmost app changes, minute-based evaluation, and public battery capacity when available. Trigger firing is debounced, avoids profile loops, and applies profiles through the conservative profile application service. Phase 9.1 adds global automation pause; paused automation stops observers/evaluation and records skipped evaluations without changing manual Basic commands.
-- `AutomationURLHandler` (Phase 8) installs a `kAEGetURL` handler for the registered `menubardeclutter://` scheme. It supports expand, collapse, reveal-all, show second bar, and apply-profile-by-name commands without adding Apple Events scripting dictionaries, network access, or background automation.
+- `AutomationURLHandler` (Phase 8) installs a `kAEGetURL` handler for the registered `menubardeclutter://` scheme. It supports expand, collapse, reveal-all, show second bar, and apply-profile-by-name commands without adding Apple Events scripting dictionaries, network access, or background automation. The global automation pause rejects URL commands while paused.
 - `HealthService` (Phase 9) turns a runtime `HealthCheckSnapshot` into a `HealthReport`. Checks cover missing control/separator items, invalid separator lengths, invalid screen geometry, corrupted settings, hotkey registration drift, stuck auto-rehide/hover timers, Pro permission mismatches, repeated AX failures, and stale Pro scans.
 - `RecoveryService` (Phase 9) maps health issues to focused repair actions: recreate missing status items, reset separator lengths, expand all, temporarily disable auto-rehide/hover reveal, reset corrupted scan interval / Second Bar position / Accessibility status cache, disable Pro Mode, reset settings as an explicit fallback, and request Safe Mode for the next launch.
 - `AppHealthCoordinator` adapts pure health/recovery services to the live AppKit runtime. It builds snapshots from status items, settings, permissions, timers, scans, and Safe Mode state, then runs targeted recovery without requesting new permissions.
@@ -58,23 +60,25 @@ The split keeps `AppEnvironment` as the dependency graph owner while avoiding a 
 - `SafeModeService` (Phase 9) owns launch-safe flags and crash markers. Holding Option at launch, a one-shot `safe-mode-next-launch.flag`, or a leftover `running.marker` enters Safe Mode; clean termination removes the marker. Safe Mode starts expanded and suppresses auto-rehide, hover reveal, Pro scans, icon moving, hotkeys, and smart triggers while keeping the control item and reset menu available.
 - `SettingsWindowController` owns the AppKit settings window and hosts SwiftUI content, including the Behavior section, Profiles, Advanced, and live diagnostics.
 - `SettingsRuntimeCoordinator` applies user setting changes to live runtime services and keeps settings refresh ordering consistent across Settings, status menu commands, profile application, and health recovery.
-- `SettingsStore` owns typed UserDefaults-backed preferences (Phase 0 through Phase 9.1 fields). It clamps user-entered delay/polling/scan/Second Bar/icon-moving values to documented bounds and exposes helper accessors/mutator methods for the global visibility hotkey, Find Icon hotkey, Second Bar placement, and global automation pause.
-- `LiveDiagnosticsStatus` is an `@Observable` snapshot of runtime state (visibility state, separator lengths, hotkey/hover/auto-rehide flags, last rehide reason, Accessibility permission status, latest Pro scan counts, AX failure count, scanned item snapshots, search state, Second Bar state, icon moving state, active profile, trigger logs, automation pause state, profile apply logs, Safe Mode state, and latest health report). It is instantiated by `AppEnvironment`, synchronized by `AppEnvironmentLiveStatusSynchronizer`, and surfaced in the Diagnostics view.
+- `SettingsStore` owns typed UserDefaults-backed preferences (Phase 0 through Phase 9.5 fields). It clamps user-entered delay/polling/scan/Second Bar/icon-moving values to documented bounds and exposes helper accessors/mutator methods for the global visibility hotkey, Find Icon hotkey, Second Bar placement, Dogfood Mode, and global automation pause.
+- `LiveDiagnosticsStatus` is an `@Observable` snapshot of runtime state (visibility state, separator lengths, hotkey/hover/auto-rehide flags, last rehide reason, Accessibility permission status, latest Pro scan counts, AX failure count, scanned item snapshots, search state, Second Bar state, icon moving state, active profile, trigger logs, automation pause state, profile apply logs, Safe Mode state, and latest health report). It is instantiated by `AppEnvironment`; core runtime fields and derived counts are refreshed by `AppEnvironmentLiveStatusSynchronizer`, while domain services update their own diagnostics fields directly. The snapshot is surfaced in the Diagnostics view.
 - `DiagnosticsLogger` owns an in-memory ring buffer of structured diagnostic events. Phase 9.1 events carry timestamp, category, severity, message, and optional privacy-safe metadata. Existing callers can keep using the simple `log(_:level:)` API while category inference provides useful QA filters.
-- `AppSupportPaths` centralizes the Application Support directory tree (`MenuBarDeclutter/`, `Diagnostics/`, `Profiles/`, `Backups/`) and ensures they exist lazily. Phase 3 writes diagnostics exports only on explicit user action; Phase 8 stores local profile and trigger JSON under `Profiles/`.
-- `LaunchAtLoginService` (Phase 3) wraps the public `SMAppService.mainApp` API. `register()` is only called when the user explicitly enables the Settings toggle; `unregister()` when disabled. Failure paths are surfaced through `.lastRegistrationResult` and logged to Diagnostics. Phase 9.1 also exposes live `SMAppService` status and an Open Login Items Settings recovery action. The service never auto-enables. Works inside the App Sandbox.
-- `DiagnosticsExporter` (Phase 3+) builds a privacy-safe diagnostics snapshot (app version, macOS version, machine architecture, screen frames only, current settings including Pro opt-in flags, Second Bar settings, icon moving settings, smart trigger enablement, automation pause, and recent structured log events) and serializes it to `.txt` or `.json`. The bundle explicitly excludes screenshots, screen contents, personal file paths, live query text, selected-item identities, and network data. Phase 9.1 supports filtered diagnostics export through the Diagnostics tab `NSSavePanel`.
+- `AppSupportPaths` centralizes the Application Support directory tree (`MenuBarDeclutter/`, `diagnostics/`, `profiles/`, `backups/`, `Dogfood/`, `Dogfood/runs/`, and `Dogfood/exports/`) and ensures they exist lazily. Phase 3 writes diagnostics exports only on explicit user action, Phase 8 stores local profile and trigger JSON under `profiles/`, Phase 9.2 stores local dogfood run/notes/export bundles under `Dogfood/`, and Phase 9.5 settings migration writes pre-migration backups under `backups/`.
+- `LaunchAtLoginService` (Phase 3) wraps the public `SMAppService.mainApp` API. `register()` is called only to honor explicit or persisted user opt-in, including startup reconciliation of the saved Launch at Login setting; `unregister()` runs when the user disables that preference. Failure paths are surfaced through `.lastRegistrationResult` and logged to Diagnostics. Phase 9.1 also exposes live `SMAppService` status and an Open Login Items Settings recovery action. The service never enables Launch at Login without a stored user opt-in. Works inside the App Sandbox.
+- `DiagnosticsExporter` (Phase 3+) builds a privacy-safe diagnostics snapshot (app version, macOS version, machine architecture, screen frames only, current settings including Pro opt-in flags, Second Bar settings, icon moving settings, smart trigger enablement, automation pause, Dogfood Mode flags, and recent structured log events) and serializes it to `.txt` or `.json`. The bundle explicitly excludes screenshots, screen contents, personal file paths by default, live query text, selected-item identities, and network data. Phase 9.1 supports filtered diagnostics export through the Diagnostics tab `NSSavePanel`; Phase 9.2 includes optional dogfood run metadata only when Dogfood Mode is enabled.
 - `AccessibilityPermissionService` (Phase 4) wraps `AXIsProcessTrustedWithOptions`. It checks permission without prompting by default, shows the system prompt only from the explicit "Request Permission" button, stores the last mapped status in `SettingsStore`, opens the Accessibility privacy pane when requested, and logs permission transitions.
 - `AXElementReader` (Phase 4) is the defensive Accessibility attribute adapter. It reads only safe public attributes (role, subrole, title, description, position, size, identifier, process id, children), returns optional/result-style values, logs failed reads, and maintains an AX failure count for diagnostics.
-- `AXMenuBarScanner` (Phase 4) creates a system-wide AX element and walks menu bar / menu extra roots where available. It never clicks, drags, activates, records the screen, or uses private APIs. It produces `MenuBarItemSnapshot` values with stable generated IDs, ownership metadata, frame, zone, system-item heuristic, and timestamp.
+- `AXMenuBarScanner` (Phase 4) creates a system-wide AX element and walks menu bar / menu extra roots where available. It never clicks, drags, activates, records the screen, or uses private APIs. It produces `MenuBarItemSnapshot` values with deterministic generated IDs for the same owner/title/frame inputs, ownership metadata, frame, zone, system-item heuristic, and timestamp. IDs can change after movement or display geometry changes, so move verification also matches by ownership and metadata.
 - `MenuBarScanCoordinator` (Phase 4) gates scanning behind `SettingsStore.proModeEnabled`, `SettingsStore.accessibilityDiscoveryEnabled`, and granted Accessibility permission. It scans on launch, display changes, visibility changes, and manual refresh, with `menuBarScanIntervalSeconds` throttling automatic scans. Manual refresh stays available whenever Pro discovery is configured so the coordinator can re-check a newly granted or revoked Accessibility permission before deciding whether to scan.
+- `DogfoodStore` (Phase 9.2) owns local-only dogfood run state, gate checklists, notes, and privacy-safe export bundle creation. It uses `AppSupportPaths` for run storage and does not upload, screenshot, or inspect screen contents.
+- `SettingsMigrationService` (Phase 9.5) migrates older alpha settings to v0.1 safe defaults. It stamps fresh installs, backs up older alpha settings under `backups/`, resets risky runtime flags, repairs unsafe separator values, clears stale Accessibility status cache, and leaves local profile JSON in place.
 
 ## UI
 
 - AppKit controls real menu bar integration through `NSStatusItem`.
-- SwiftUI owns Settings views (General, Behavior, Privacy, Diagnostics, Advanced), the Onboarding window, and the diagnostics display.
+- SwiftUI owns the Settings `NavigationSplitView` sections (General, Behavior, Search, Second Bar, Profiles, Privacy, Diagnostics, Advanced), the Onboarding window, and the diagnostics display.
 - The Phase 1/2 app has no default document/content window; the menu bar is the primary surface.
-- Phase 3 Settings adds an "Advanced" tab with separator geometry tweaks, App Support discovery (reveal in Finder), and read-only metadata (ring buffer capacity, bundle id).
+- Phase 3 Settings adds an Advanced section with separator geometry tweaks, App Support discovery (reveal in Finder), and read-only metadata (ring buffer capacity, bundle id).
 - Phase 3 Onboarding is a SwiftUI paged `TabView` hosted in an AppKit `OnboardingWindowController`. It runs once on first launch (gated by `SettingsStore.hasCompletedOnboarding`) and can be replayed from Settings → General → Show Onboarding Again.
 - Phase 4 Privacy settings add explicit Pro Mode enable/disable controls, an Accessibility Discovery toggle, a "Request Permission" button, an "Open Settings" button, and a scan throttle stepper.
 - Phase 4 Diagnostics adds Accessibility permission status, scan counts by zone, last scan time, AX failure count, manual scan refresh, and a table of scanned menu bar snapshots.
@@ -90,6 +94,8 @@ The split keeps `AppEnvironment` as the dependency graph owner while avoiding a 
 - Phase 9 Diagnostics adds Health status (OK / Warning / Critical), issue rows, Fix Automatically, Reset Basic Mode, Disable Pro Mode, Export Health Report, and Safe Mode Next Launch actions.
 - Phase 9.1 Diagnostics adds severity/category filters, Copy Selected, Export Filtered, experimental icon-moving state, smart-trigger state, automation pause state, and Launch at Login status.
 - Phase 9.1 Advanced settings adds a Labs / Experimental section. Icon moving remains disabled by default, displays an experimental warning before enablement, and automation can be paused globally. Profiles settings also expose Pause All Automation for smart triggers.
+- Phase 9.2 Diagnostics adds Dogfood run controls, gate checklist rows, local notes, and Dogfood bundle export. The controls are local-only and do not add telemetry.
+- Phase 9.4/9.5 General and Diagnostics surfaces show installed-app context such as the current bundle path and `/Applications` status so Launch at Login can be validated from the installed app rather than from Xcode or DerivedData.
 - All Phase 3 SwiftUI surfaces use semantic colors and `.formStyle(.grouped)`, support light/dark mode, increased contrast, and reduce transparency. No custom transparent effects that would conflict with macOS 26 Liquid Glass are introduced; settings controls remain readable over a transparent menu bar context.
 
 ## Hiding Mechanism (Phase 1)
@@ -121,7 +127,7 @@ The split keeps `AppEnvironment` as the dependency graph owner while avoiding a 
 
 ## Phase 5 Find Icon
 
-- Find Icon is a Pro surface layered on top of Phase 4 Accessibility Discovery. It is enabled in settings by default but remains unavailable until Pro Mode, Accessibility Discovery, and granted Accessibility permission are all present.
+- Find Icon is a Pro surface layered on top of Phase 4 Accessibility Discovery. It is disabled by default for v0.1 and remains unavailable until the user enables Find Icon plus Pro Mode, Accessibility Discovery, and granted Accessibility permission.
 - Opening Find Icon from the status menu or optional search hotkey requests a manual AX refresh, which re-checks permission and updates the latest snapshot list when allowed.
 - Search does not perform system automation. Selecting a visible item highlights its frame and tells the user to click manually. Selecting a hidden item expands the primary hidden zone; selecting an always-hidden item enters `revealAll`; both paths can show a short-lived overlay around the last known or clamped approximate frame.
 - Search settings allow the user to disable Find Icon, disable automatic reveal-on-selection, disable highlighting, and separately opt into the Find Icon hotkey (`Option+Command+F` by default).
@@ -173,6 +179,36 @@ The split keeps `AppEnvironment` as the dependency graph owner while avoiding a 
 - Diagnostics are structured and filterable by severity and category. Filtered exports remain privacy-safe and do not include live search text or selected item identity.
 - Launch at Login validation is hardened for real installs: Settings and Diagnostics show `SMAppService` status and the last registration action, and Settings can open Login Items in System Settings.
 
+## Phase 9.2 Dogfood Harness
+
+- `MenuBarFixtureApp` is a separate LSUIElement fixture app target under `Tools/MenuBarFixtureApp/`. It creates deterministic AppKit `NSStatusItem` cases for local QA and is intentionally not a dependency of the shipping app.
+- Dogfood Mode is stored in `SettingsStore` through `dogfoodModeEnabled`, `dogfoodRunID`, and `dogfoodNotesEnabled`. Defaults keep Dogfood Mode off.
+- `DogfoodRun`, `DogfoodChecklistItem`, and related models represent local gates A-E, checklist results, run IDs, notes, and bundle metadata.
+- `DogfoodStore` saves run and notes JSON under `Application Support/MenuBarDeclutter/Dogfood/runs/` and exports local bundles under `Dogfood/exports/`.
+- `DogfoodNotesView` is embedded in Diagnostics and exposes start/end run, checklist, notes, and export controls.
+- Dogfood export bundles include diagnostics, optional health report, run JSON, notes JSON, metadata, and a manifest. They exclude screenshots, screen contents, live search text, selected item identity, telemetry, and network data.
+
+## Phase 9.3 Installed Alpha Workflow
+
+- Release scripts create a clean archive/export/package/install workflow around `MenuBarDeclutter`.
+- The dry-run path supports local validation without notarization credentials: archive, export, verify, package, dry-run notarize, install to `/Applications`, verify installed bundle, and run an installed-app socket probe.
+- Real notarization/stapling/Gatekeeper release remains blocked until a Developer ID Application identity and notary credentials exist.
+- Installed-app docs distinguish Xcode/DerivedData behavior from `/Applications` behavior, especially for Launch at Login.
+
+## Phase 9.4 Stability Gates
+
+- Safe defaults are enforced for v0.1: Pro Mode, Find Icon, Second Bar, Icon Moving, Smart Triggers, Auto-rehide, Hover Reveal, Hotkey, Always-hidden, and Start Collapsed are off; automation is paused.
+- Launch at Login UI is clearer about current bundle path and installed-app validation.
+- Diagnostics surfaces installed-app context and an emergency recovery command is available from the status menu.
+- Trigger debounce and URL command throttling remain in place, and automation pause stops trigger evaluation plus URL automation without blocking manual Basic Mode commands.
+
+## Phase 9.5 v0.1 Basic Stable Freeze
+
+- v0.1 scope is frozen around permission-free Basic Mode plus optional, gated Pro surfaces.
+- `SettingsMigrationService` migrates older alpha state to safe defaults, backs up pre-migration settings, repairs invalid values, and shows a one-time safe-defaults notice only when needed.
+- Release docs now separate included v0.1 scope, accepted limitations, public-release blockers, privacy promises, installation/uninstall steps, troubleshooting, FAQ, and post-v0.1 roadmap items.
+- Automated validation covers canonical build/test, privacy verification, QA preflight, dogfood preflight, release archive/export/package, dry-run notarization, local install, installed-app verification, and installed-app socket probing. Remaining release blockers are external signing/notarization and hands-on system-state QA.
+
 ## Phase Status
 
 - Phase 0: implemented (project skeleton).
@@ -186,9 +222,13 @@ The split keeps `AppEnvironment` as the dependency graph owner while avoiding a 
 - Phase 8: implemented (local profiles, smart triggers, URL automation, settings/diagnostics/manual QA).
 - Phase 9: implemented (health checks, recovery actions, Safe Mode, crash marker, wake/display recovery, diagnostics repair UI, manual QA).
 - Phase 9.1: implemented (Alpha RC validation, release hardening, canonical shared scheme, privacy verification, experimental labels, automation pause, diagnostics filters, Launch at Login validation support, QA/release docs).
+- Phase 9.2: implemented (local dogfood harness, fixture app target/scheme, Dogfood Mode UI/store/export bundles, dogfood preflight).
+- Phase 9.3: implemented (installed alpha archive/export/package/install/dry-run notarization workflow; public notarization remains credential-blocked).
+- Phase 9.4: implemented (safe-default gating, migration groundwork, installed-app clarity, emergency recovery, automated stability gates).
+- Phase 9.5: implemented (v0.1 Basic Stable Freeze docs/defaults/migration/release validation; public release still blocked by signing/notarization and manual system QA).
 - Phase 10+: planned (visual capture remains postponed and requires a separate privacy review).
 
-## Basic Mode Architecture (Phase 9 boundary)
+## Basic Mode Architecture (Phase 9.5 boundary)
 
 Basic Mode is a deliberately permission-free utility:
 
@@ -198,11 +238,13 @@ Basic Mode is a deliberately permission-free utility:
 - Diagnostics is an in-memory ring buffer plus an on-demand privacy-safe export — no automatic telemetry, no network calls, no personal file paths in the export.
 - Health and Safe Mode are local-only recovery features. They use Application Support marker files and public AppKit notifications; they do not add sensitive permission requests.
 - Onboarding is fully local SwiftUI content with no telemetry.
+- Dogfood Mode is local-only, off by default, and stores run/checklist/notes/export bundles under Application Support without screenshots, screen-content capture, network calls, or telemetry.
+- v0.1 settings migration is local-only and writes backups under Application Support before resetting risky alpha flags to safe defaults.
 
 ## Why Basic Mode does not request permissions
 
-Basic Mode deliberately stays permission-free so the app is usable immediately and trustworthy by default. Phase 4 adds Pro Mode as a separate opt-in capability, not as a replacement for Basic Mode. Phase 5 Find Icon and Phase 6 Second Bar depend on that Pro discovery index and degrade to explanatory panels when Pro Mode or Accessibility permission is unavailable. Phase 7 icon moving is disabled by default and additionally requires explicit user actions. Phase 8 profiles/triggers apply conservative Basic settings unless the user separately initiates Pro moves. Phase 9 Safe Mode suppresses Pro scans, icon moving, hotkeys, and triggers while preserving the visible Basic control and reset menu. Phase 9.1 global automation pause stops smart trigger evaluation without affecting manual Basic Mode commands. If Pro Mode is disabled, Accessibility Discovery is disabled, or Accessibility permission is denied/revoked/unavailable, the scan coordinator clears Pro diagnostics and the Basic `NSStatusItem` hiding workflow continues unchanged.
+Basic Mode deliberately stays permission-free so the app is usable immediately and trustworthy by default. Phase 4 adds Pro Mode as a separate opt-in capability, not as a replacement for Basic Mode. Phase 5 Find Icon and Phase 6 Second Bar depend on that Pro discovery index and degrade to explanatory panels when Pro Mode or Accessibility permission is unavailable. Phase 7 icon moving is disabled by default and additionally requires explicit user actions. Phase 8 profiles/triggers apply conservative Basic settings unless the user separately initiates Pro moves. Phase 9 Safe Mode suppresses Pro scans, icon moving, hotkeys, and triggers while preserving the visible Basic control and reset menu. Phase 9.1 global automation pause stops smart trigger evaluation and URL automation without affecting manual Basic Mode commands. Phase 9.2 dogfood support is local-only QA instrumentation. Phase 9.5 migration resets risky alpha flags to safe defaults instead of enabling permission-dependent behavior. If Pro Mode is disabled, Accessibility Discovery is disabled, or Accessibility permission is denied/revoked/unavailable, the scan coordinator clears Pro diagnostics and the Basic `NSStatusItem` hiding workflow continues unchanged.
 
 ## Privacy Boundary
 
-Basic Mode does not request sensitive permissions and does not use network access. Phase 4-9.1 Pro Mode requests only Accessibility, only after explicit user action, and only for menu bar item frames/labels used by discovery, search, Second Bar display, and explicit icon moving. Health reports and crash markers are local files under Application Support and do not include screenshots or screen contents. The app does not request Screen Recording, Apple Events, Input Monitoring, or network access. Phase 2/5 hotkeys use Carbon's `RegisterEventHotKey`, which does not require Input Monitoring on macOS 26+. URL automation uses a local custom URL scheme and does not add a scripting permission prompt.
+Basic Mode does not request sensitive permissions and does not use network access. Phase 4-9.5 Pro Mode requests only Accessibility, only after explicit user action, and only for menu bar item frames/labels used by discovery, search, Second Bar display, and explicit icon moving. Health reports, crash markers, dogfood bundles, and migration backups are local files under Application Support and do not include screenshots or screen contents. The app does not request Screen Recording, Apple Events, Input Monitoring, or network access. Phase 2/5 hotkeys use Carbon's `RegisterEventHotKey`, which does not require Input Monitoring on macOS 26+. URL automation uses a local custom URL scheme and does not add a scripting permission prompt.

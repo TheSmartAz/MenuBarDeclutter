@@ -29,7 +29,7 @@ final class MenuBar_ManagerUITests: XCTestCase {
     func testPrivacyWorkflowKeepsBasicModePermissionFree() throws {
         let app = launchApp(opening: "--ui-testing-show-privacy")
 
-        assertStaticText("Basic Mode (default, fully usable)", in: app)
+        assertElement("privacy.basicMode.section", in: app)
         assertStaticText("Screen Recording", in: app)
         assertStaticText("Apple Events", in: app)
         assertStaticText("Input Monitoring", in: app)
@@ -42,9 +42,8 @@ final class MenuBar_ManagerUITests: XCTestCase {
     func testSearchUnavailableStateIsVisibleWithoutProMode() throws {
         let app = launchApp(opening: "--ui-testing-show-search")
 
-        assertStaticText("Pro Mode Required", in: app)
-        assertButton("Enable Pro Mode", in: app)
-        assertButton("Open Privacy Settings", in: app)
+        assertStaticText("Find Icon Disabled", in: app)
+        assertButton("Enable Find Icon", in: app)
     }
 
     @MainActor
@@ -100,6 +99,21 @@ final class MenuBar_ManagerUITests: XCTestCase {
         XCTAssertTrue(
             app.buttons[label].waitForExistence(timeout: 5),
             "Expected button '\(label)' to exist.",
+            file: file,
+            line: line
+        )
+    }
+
+    @MainActor
+    private func assertElement(
+        _ identifier: String,
+        in app: XCUIApplication,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        XCTAssertTrue(
+            app.descendants(matching: .any)[identifier].waitForExistence(timeout: 5),
+            "Expected element '\(identifier)' to exist.",
             file: file,
             line: line
         )
