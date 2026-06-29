@@ -10,10 +10,15 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private let launchAtLoginService: LaunchAtLoginService?
     private let appSupportPaths: AppSupportPaths
     private let diagnosticsExporter: DiagnosticsExporter
+    private let dogfoodStore: DogfoodStore
     private let accessibilityPermissionService: AccessibilityPermissionService?
     private let menuBarScanCoordinator: MenuBarScanCoordinator?
     private let profileStore: ProfileStore?
     private let triggerService: TriggerService?
+    private let layoutCoordinator: LayoutCoordinator?
+    private let groupStore: IconGroupStore?
+    private let hotkeyBindingStore: HotkeyBindingStore?
+    private let privateAccessCoordinator: PrivateAccessCoordinator?
     private let actions: SettingsActions
 
     init(
@@ -23,10 +28,15 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         launchAtLoginService: LaunchAtLoginService? = nil,
         appSupportPaths: AppSupportPaths = AppSupportPaths(),
         diagnosticsExporter: DiagnosticsExporter = DiagnosticsExporter(),
+        dogfoodStore: DogfoodStore? = nil,
         accessibilityPermissionService: AccessibilityPermissionService? = nil,
         menuBarScanCoordinator: MenuBarScanCoordinator? = nil,
         profileStore: ProfileStore? = nil,
         triggerService: TriggerService? = nil,
+        layoutCoordinator: LayoutCoordinator? = nil,
+        groupStore: IconGroupStore? = nil,
+        hotkeyBindingStore: HotkeyBindingStore? = nil,
+        privateAccessCoordinator: PrivateAccessCoordinator? = nil,
         actions: SettingsActions = .empty
     ) {
         self.settingsStore = settingsStore
@@ -35,10 +45,15 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         self.launchAtLoginService = launchAtLoginService
         self.appSupportPaths = appSupportPaths
         self.diagnosticsExporter = diagnosticsExporter
+        self.dogfoodStore = dogfoodStore ?? DogfoodStore(appSupportPaths: appSupportPaths)
         self.accessibilityPermissionService = accessibilityPermissionService
         self.menuBarScanCoordinator = menuBarScanCoordinator
         self.profileStore = profileStore
         self.triggerService = triggerService
+        self.layoutCoordinator = layoutCoordinator
+        self.groupStore = groupStore
+        self.hotkeyBindingStore = hotkeyBindingStore
+        self.privateAccessCoordinator = privateAccessCoordinator
         self.actions = actions
 
         let contentView = SettingsRootView(
@@ -49,24 +64,34 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             launchAtLoginService: launchAtLoginService,
             appSupportPaths: appSupportPaths,
             diagnosticsExporter: diagnosticsExporter,
+            dogfoodStore: self.dogfoodStore,
             accessibilityPermissionService: accessibilityPermissionService,
             menuBarScanCoordinator: menuBarScanCoordinator,
             profileStore: profileStore,
             triggerService: triggerService,
+            layoutCoordinator: layoutCoordinator,
+            groupStore: groupStore,
+            hotkeyBindingStore: hotkeyBindingStore,
+            privateAccessCoordinator: privateAccessCoordinator,
             actions: actions
         )
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 760, height: 520),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            contentRect: NSRect(x: 0, y: 0, width: 1020, height: 660),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
 
         window.title = "\(AppConstants.displayName) Settings"
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
+        window.toolbarStyle = .unifiedCompact
         window.contentViewController = NSHostingController(rootView: contentView)
+        window.backgroundColor = .clear
+        window.isOpaque = false
         window.isReleasedWhenClosed = false
-        window.minSize = NSSize(width: 680, height: 440)
+        window.minSize = NSSize(width: 920, height: 580)
 
         super.init(window: window)
 

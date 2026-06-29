@@ -2,6 +2,8 @@
 
 Status: implemented.
 
+Historical snapshot: this file records the end-of-phase state for Phase 7. Later progress files, `docs/project-summary.md`, and release docs supersede old scheme names, test counts, defaults, and deferred-scope notes.
+
 ## Tech Stack
 
 - Swift 6 with app declarations isolated to `MainActor`.

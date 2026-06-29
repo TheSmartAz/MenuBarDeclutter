@@ -74,6 +74,9 @@ struct DiagnosticsExportTests {
         #expect(excluded.contains("screenContents"))
         #expect(excluded.contains("liveSearchText"))
         #expect(excluded.contains("selectedItemIdentity"))
+        #expect(excluded.contains("protectedGroupNames"))
+        #expect(excluded.contains("protectedHotkeyTargets"))
+        #expect(excluded.contains("importExportFilePaths"))
         #expect(excluded.contains("networkData"))
     }
 
@@ -180,6 +183,28 @@ struct DiagnosticsExportTests {
         }
     }
 
+    @Test func dogfoodMetadataIsOnlyExportedWhenEnabledWithRunID() throws {
+        let exporter = makeExporter()
+        let store = makeStore()
+        let logger = DiagnosticsLogger()
+
+        var snapshot = exporter.makeSnapshot(settingsStore: store, logger: logger)
+        var data = try exporter.serialize(snapshot, format: .json)
+        var object = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        #expect(object["dogfood"] == nil)
+
+        store.dogfoodModeEnabled = true
+        store.dogfoodRunID = "dogfood-2026-06-28-120000"
+        snapshot = exporter.makeSnapshot(settingsStore: store, logger: logger)
+        data = try exporter.serialize(snapshot, format: .json)
+        object = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let dogfood = try #require(object["dogfood"] as? [String: Any])
+        #expect(try #require(dogfood["runID"] as? String) == "dogfood-2026-06-28-120000")
+
+        let text = String(data: try exporter.serialize(snapshot, format: .txt), encoding: .utf8) ?? ""
+        #expect(text.contains("Dogfood Run ID: dogfood-2026-06-28-120000"))
+    }
+
     @Test func snapshotReflectsCurrentSettings() {
         let exporter = makeExporter()
         let store = makeStore()
@@ -189,6 +214,22 @@ struct DiagnosticsExportTests {
         store.globalHotkeyEnabled = true
         store.globalHotkeyKeyCode = 11
         store.globalHotkeyModifiersRaw = 0x0900
+        store.layoutFeaturesEnabled = true
+        store.fullMenuBarModeEnabled = false
+        store.crowdedRevealThresholdRatio = 0.75
+        store.spacerItemsJSONVersion = 2
+        store.menuBarSpacingLabsEnabled = true
+        store.menuBarSpacingPreset = "comfortable"
+        store.menuBarSpacingLastApplyStatus = "dry-run"
+        store.menuBarSpacingLastApplyDate = Date(timeIntervalSince1970: 1_700_000_000)
+        store.groupsEnabled = true
+        store.groupStatusItemsEnabled = true
+        store.protectedGroupsRequireAuth = true
+        store.privateAccessEnabled = true
+        store.privateAccessLastAuthStatus = "success"
+        store.appIntentsEnabled = false
+        store.dynamicHotkeysEnabled = true
+        store.maxDynamicHotkeys = 12
 
         let logger = DiagnosticsLogger()
         let snapshot = exporter.makeSnapshot(settingsStore: store, logger: logger)
@@ -198,7 +239,23 @@ struct DiagnosticsExportTests {
         #expect(snapshot.settings.alwaysHiddenEnabled == true)
         #expect(snapshot.settings.globalHotkeyEnabled == true)
         #expect(snapshot.settings.globalHotkeyDisplayName == "⌥⌘B")
-        #expect(snapshot.settings.automationPaused == false)
+        #expect(snapshot.settings.automationPaused == true)
+        #expect(snapshot.settings.layoutFeaturesEnabled == true)
+        #expect(snapshot.settings.fullMenuBarModeEnabled == false)
+        #expect(snapshot.settings.crowdedRevealThresholdRatio == 0.75)
+        #expect(snapshot.settings.spacerItemsJSONVersion == 2)
+        #expect(snapshot.settings.menuBarSpacingLabsEnabled == true)
+        #expect(snapshot.settings.menuBarSpacingPreset == "comfortable")
+        #expect(snapshot.settings.menuBarSpacingLastApplyStatus == "dry-run")
+        #expect(snapshot.settings.menuBarSpacingLastApplyDate == "2023-11-14T22:13:20Z")
+        #expect(snapshot.settings.groupsEnabled == true)
+        #expect(snapshot.settings.groupStatusItemsEnabled == true)
+        #expect(snapshot.settings.protectedGroupsRequireAuth == true)
+        #expect(snapshot.settings.privateAccessEnabled == true)
+        #expect(snapshot.settings.privateAccessLastAuthStatus == "success")
+        #expect(snapshot.settings.appIntentsEnabled == false)
+        #expect(snapshot.settings.dynamicHotkeysEnabled == true)
+        #expect(snapshot.settings.maxDynamicHotkeys == 12)
     }
 
     @Test func excludesNetworkDataAndScreenshotsFromSettings() {
@@ -226,14 +283,33 @@ struct DiagnosticsExportTests {
     private static let expectedSettingsKeys = [
         "accessibilityDiscoveryEnabled",
         "alwaysHiddenEnabled",
+        "appIntentsCanAccessLabs",
+        "appIntentsCanApplyProfiles",
+        "appIntentsEnabled",
         "appMode",
         "autoRehideDelaySeconds",
         "autoRehideEnabled",
         "automationPaused",
         "collapsedSeparatorLengthOverride",
+        "crowdedRevealAutoOpenSecondBar",
+        "crowdedRevealRequireProEstimate",
+        "crowdedRevealRescueEnabled",
+        "crowdedRevealThresholdRatio",
+        "dogfoodModeEnabled",
+        "dogfoodNotesEnabled",
+        "dynamicHotkeysEnabled",
         "expandedSeparatorLength",
+        "fullMenuBarModeAutoExitEnabled",
+        "fullMenuBarModeAutoExitSeconds",
+        "fullMenuBarModeEnabled",
+        "fullMenuBarModeShowsSecondBar",
+        "fullMenuBarModeShowsSpacerMarkers",
+        "fullMenuBarModeSuspendsAutoRehide",
         "globalHotkeyDisplayName",
         "globalHotkeyEnabled",
+        "groupStatusItemsEnabled",
+        "groupsEnabled",
+        "groupsJSONVersion",
         "hasCompletedOnboarding",
         "hoverRevealEnabled",
         "hoverRevealPollingIntervalSeconds",
@@ -245,8 +321,28 @@ struct DiagnosticsExportTests {
         "isCollapsed",
         "lastAccessibilityPermissionStatus",
         "launchAtLoginEnabled",
+        "layoutFeaturesEnabled",
+        "layoutSuggestionsEnabled",
+        "maxDynamicHotkeys",
         "menuBarScanIntervalSeconds",
+        "menuBarSpacingCustomItemSpacing",
+        "menuBarSpacingCustomSelectionPadding",
+        "menuBarSpacingHasBackup",
+        "menuBarSpacingLabsEnabled",
+        "menuBarSpacingLastApplyDate",
+        "menuBarSpacingLastApplyStatus",
+        "menuBarSpacingPreset",
+        "privateAccessAllowDevicePasswordFallback",
+        "privateAccessEnabled",
+        "privateAccessLastAuthStatus",
+        "privateAccessProtectAlwaysHidden",
+        "privateAccessProtectFindIcon",
+        "privateAccessProtectIconMoving",
+        "privateAccessProtectSecondBar",
+        "privateAccessProtectSpacingLabs",
+        "privateAccessUnlockDurationSeconds",
         "proModeEnabled",
+        "protectedGroupsRequireAuth",
         "revealAllOnOptionClick",
         "searchEnabled",
         "searchHighlightOnSelection",
@@ -262,8 +358,12 @@ struct DiagnosticsExportTests {
         "secondBarShowAlwaysHiddenItems",
         "secondBarShowHiddenItems",
         "secondBarShowLabels",
+        "showCapacityWarnings",
         "showPrimarySeparator",
         "showSeparators",
-        "smartTriggersEnabled"
+        "showSpacerMarkers",
+        "smartTriggersEnabled",
+        "spacerItemsEnabled",
+        "spacerItemsJSONVersion"
     ]
 }

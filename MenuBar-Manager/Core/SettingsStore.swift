@@ -21,6 +21,8 @@ final class SettingsStore {
         case hasCompletedOnboarding
         case launchAtLoginEnabled
         case lastKnownAppVersion
+        case settingsMigrationVersion
+        case v01SafeDefaultsNoticePending
         case appMode
         case isCollapsed
         case startCollapsed
@@ -66,6 +68,11 @@ final class SettingsStore {
         case smartTriggersEnabled
         case automationPaused
 
+        // Phase 9.2 — private dogfood QA
+        case dogfoodModeEnabled
+        case dogfoodRunID
+        case dogfoodNotesEnabled
+
         // Phase 2 — Basic UX polish
         case autoRehideEnabled
         case autoRehideDelaySeconds
@@ -77,6 +84,51 @@ final class SettingsStore {
         case globalHotkeyKeyCode
         case globalHotkeyModifiersRaw
         case revealAllOnOptionClick
+
+        // Phase 10 — Layout & Capacity
+        case layoutFeaturesEnabled
+        case fullMenuBarModeEnabled
+        case crowdedRevealRescueEnabled
+        case layoutSuggestionsEnabled
+        case showCapacityWarnings
+        case fullMenuBarModeAutoExitEnabled
+        case fullMenuBarModeAutoExitSeconds
+        case fullMenuBarModeShowsSecondBar
+        case fullMenuBarModeSuspendsAutoRehide
+        case fullMenuBarModeShowsSpacerMarkers
+        case crowdedRevealAutoOpenSecondBar
+        case crowdedRevealThresholdRatio
+        case crowdedRevealRequireProEstimate
+        case spacerItemsEnabled
+        case showSpacerMarkers
+        case spacerItemsJSONVersion
+        case menuBarSpacingLabsEnabled
+        case menuBarSpacingPreset
+        case menuBarSpacingCustomItemSpacing
+        case menuBarSpacingCustomSelectionPadding
+        case menuBarSpacingHasBackup
+        case menuBarSpacingLastApplyStatus
+        case menuBarSpacingLastApplyDate
+
+        // Phase 11 — Groups, Private Access, Hotkeys, Shortcuts, Migration
+        case groupsEnabled
+        case groupStatusItemsEnabled
+        case protectedGroupsRequireAuth
+        case groupsJSONVersion
+        case privateAccessEnabled
+        case privateAccessProtectAlwaysHidden
+        case privateAccessProtectSecondBar
+        case privateAccessProtectFindIcon
+        case privateAccessProtectIconMoving
+        case privateAccessProtectSpacingLabs
+        case privateAccessUnlockDurationSeconds
+        case privateAccessLastAuthStatus
+        case privateAccessAllowDevicePasswordFallback
+        case appIntentsEnabled
+        case appIntentsCanApplyProfiles
+        case appIntentsCanAccessLabs
+        case dynamicHotkeysEnabled
+        case maxDynamicHotkeys
     }
 
     @ObservationIgnored private let defaults: UserDefaults
@@ -85,6 +137,8 @@ final class SettingsStore {
         .hasCompletedOnboarding: false,
         .launchAtLoginEnabled: false,
         .lastKnownAppVersion: "",
+        .settingsMigrationVersion: "",
+        .v01SafeDefaultsNoticePending: false,
         .appMode: AppConstants.defaultAppMode,
         .isCollapsed: false,
         .startCollapsed: false,
@@ -94,7 +148,7 @@ final class SettingsStore {
         .proModeEnabled: false,
         .accessibilityDiscoveryEnabled: false,
         .menuBarScanIntervalSeconds: AppConstants.defaultMenuBarScanIntervalSeconds,
-        .searchEnabled: true,
+        .searchEnabled: false,
         .searchHotkeyEnabled: false,
         .searchRevealOnSelection: true,
         .searchHighlightOnSelection: true,
@@ -114,15 +168,59 @@ final class SettingsStore {
         .iconMovingDragDuration: AppConstants.defaultIconMovingDragDuration,
         .iconMovingAllowSystemItems: false,
         .smartTriggersEnabled: false,
-        .automationPaused: false,
-        .autoRehideEnabled: true,
+        .automationPaused: true,
+        .dogfoodModeEnabled: false,
+        .dogfoodNotesEnabled: true,
+        .autoRehideEnabled: false,
         .autoRehideDelaySeconds: AppConstants.defaultAutoRehideDelaySeconds,
         .hoverRevealEnabled: false,
         .hoverRevealPollingIntervalSeconds: AppConstants.defaultHoverRevealPollingIntervalSeconds,
         .alwaysHiddenEnabled: false,
         .showSeparators: true,
         .globalHotkeyEnabled: false,
-        .revealAllOnOptionClick: true
+        .revealAllOnOptionClick: true,
+
+        // Phase 10 — Layout & Capacity defaults
+        .layoutFeaturesEnabled: true,
+        .fullMenuBarModeEnabled: true,
+        .crowdedRevealRescueEnabled: true,
+        .layoutSuggestionsEnabled: true,
+        .showCapacityWarnings: true,
+        .fullMenuBarModeAutoExitEnabled: true,
+        .fullMenuBarModeAutoExitSeconds: AppConstants.defaultFullMenuBarModeAutoExitSeconds,
+        .fullMenuBarModeShowsSecondBar: false,
+        .fullMenuBarModeSuspendsAutoRehide: true,
+        .fullMenuBarModeShowsSpacerMarkers: true,
+        .crowdedRevealAutoOpenSecondBar: true,
+        .crowdedRevealThresholdRatio: AppConstants.defaultCrowdedRevealThresholdRatio,
+        .crowdedRevealRequireProEstimate: false,
+        .spacerItemsEnabled: true,
+        .showSpacerMarkers: true,
+        .spacerItemsJSONVersion: 1,
+        .menuBarSpacingLabsEnabled: false,
+        .menuBarSpacingPreset: MenuBarSpacingPreset.system.rawValue,
+        .menuBarSpacingCustomItemSpacing: AppConstants.defaultMenuBarSpacingCustomItemSpacing,
+        .menuBarSpacingCustomSelectionPadding: AppConstants.defaultMenuBarSpacingCustomSelectionPadding,
+        .menuBarSpacingHasBackup: false,
+
+        // Phase 11 defaults
+        .groupsEnabled: true,
+        .groupStatusItemsEnabled: false,
+        .protectedGroupsRequireAuth: false,
+        .groupsJSONVersion: 1,
+        .privateAccessEnabled: false,
+        .privateAccessProtectAlwaysHidden: false,
+        .privateAccessProtectSecondBar: false,
+        .privateAccessProtectFindIcon: false,
+        .privateAccessProtectIconMoving: true,
+        .privateAccessProtectSpacingLabs: true,
+        .privateAccessUnlockDurationSeconds: AppConstants.defaultPrivateAccessUnlockDurationSeconds,
+        .privateAccessAllowDevicePasswordFallback: true,
+        .appIntentsEnabled: true,
+        .appIntentsCanApplyProfiles: false,
+        .appIntentsCanAccessLabs: false,
+        .dynamicHotkeysEnabled: false,
+        .maxDynamicHotkeys: AppConstants.defaultMaxDynamicHotkeys
     ]
 
     private static let registrationDefaults: [String: Any] = Dictionary(
@@ -146,6 +244,14 @@ final class SettingsStore {
 
     var lastKnownAppVersion: String {
         didSet { persist(lastKnownAppVersion, for: .lastKnownAppVersion) }
+    }
+
+    var settingsMigrationVersion: String {
+        didSet { persist(settingsMigrationVersion, for: .settingsMigrationVersion) }
+    }
+
+    var v01SafeDefaultsNoticePending: Bool {
+        didSet { persist(v01SafeDefaultsNoticePending, for: .v01SafeDefaultsNoticePending) }
     }
 
     var appMode: AppMode {
@@ -324,6 +430,20 @@ final class SettingsStore {
         didSet { persist(automationPaused, for: .automationPaused) }
     }
 
+    // MARK: Phase 9.2 dogfood settings
+
+    var dogfoodModeEnabled: Bool {
+        didSet { persist(dogfoodModeEnabled, for: .dogfoodModeEnabled) }
+    }
+
+    var dogfoodRunID: String? {
+        didSet { persistOptional(dogfoodRunID, for: .dogfoodRunID) }
+    }
+
+    var dogfoodNotesEnabled: Bool {
+        didSet { persist(dogfoodNotesEnabled, for: .dogfoodNotesEnabled) }
+    }
+
     // MARK: Phase 2 behavior settings
 
     var autoRehideEnabled: Bool {
@@ -382,6 +502,209 @@ final class SettingsStore {
 
     var revealAllOnOptionClick: Bool {
         didSet { persist(revealAllOnOptionClick, for: .revealAllOnOptionClick) }
+    }
+
+    // MARK: Phase 10 Layout & Capacity settings
+
+    var layoutFeaturesEnabled: Bool {
+        didSet { persist(layoutFeaturesEnabled, for: .layoutFeaturesEnabled) }
+    }
+
+    var fullMenuBarModeEnabled: Bool {
+        didSet { persist(fullMenuBarModeEnabled, for: .fullMenuBarModeEnabled) }
+    }
+
+    var crowdedRevealRescueEnabled: Bool {
+        didSet { persist(crowdedRevealRescueEnabled, for: .crowdedRevealRescueEnabled) }
+    }
+
+    var layoutSuggestionsEnabled: Bool {
+        didSet { persist(layoutSuggestionsEnabled, for: .layoutSuggestionsEnabled) }
+    }
+
+    var showCapacityWarnings: Bool {
+        didSet { persist(showCapacityWarnings, for: .showCapacityWarnings) }
+    }
+
+    var fullMenuBarModeAutoExitEnabled: Bool {
+        didSet { persist(fullMenuBarModeAutoExitEnabled, for: .fullMenuBarModeAutoExitEnabled) }
+    }
+
+    private var fullMenuBarModeAutoExitSecondsStorage: Double
+
+    var fullMenuBarModeAutoExitSeconds: Double {
+        get { fullMenuBarModeAutoExitSecondsStorage }
+        set {
+            let clamped = Self.clampFullMenuBarModeAutoExitSeconds(newValue)
+            fullMenuBarModeAutoExitSecondsStorage = clamped
+            persist(clamped, for: .fullMenuBarModeAutoExitSeconds)
+        }
+    }
+
+    var fullMenuBarModeShowsSecondBar: Bool {
+        didSet { persist(fullMenuBarModeShowsSecondBar, for: .fullMenuBarModeShowsSecondBar) }
+    }
+
+    var fullMenuBarModeSuspendsAutoRehide: Bool {
+        didSet { persist(fullMenuBarModeSuspendsAutoRehide, for: .fullMenuBarModeSuspendsAutoRehide) }
+    }
+
+    var fullMenuBarModeShowsSpacerMarkers: Bool {
+        didSet { persist(fullMenuBarModeShowsSpacerMarkers, for: .fullMenuBarModeShowsSpacerMarkers) }
+    }
+
+    var crowdedRevealAutoOpenSecondBar: Bool {
+        didSet { persist(crowdedRevealAutoOpenSecondBar, for: .crowdedRevealAutoOpenSecondBar) }
+    }
+
+    private var crowdedRevealThresholdRatioStorage: Double
+
+    var crowdedRevealThresholdRatio: Double {
+        get { crowdedRevealThresholdRatioStorage }
+        set {
+            let clamped = Self.clampCrowdedRevealThresholdRatio(newValue)
+            crowdedRevealThresholdRatioStorage = clamped
+            persist(clamped, for: .crowdedRevealThresholdRatio)
+        }
+    }
+
+    var crowdedRevealRequireProEstimate: Bool {
+        didSet { persist(crowdedRevealRequireProEstimate, for: .crowdedRevealRequireProEstimate) }
+    }
+
+    var spacerItemsEnabled: Bool {
+        didSet { persist(spacerItemsEnabled, for: .spacerItemsEnabled) }
+    }
+
+    var showSpacerMarkers: Bool {
+        didSet { persist(showSpacerMarkers, for: .showSpacerMarkers) }
+    }
+
+    var spacerItemsJSONVersion: Int {
+        didSet { persist(spacerItemsJSONVersion, for: .spacerItemsJSONVersion) }
+    }
+
+    var menuBarSpacingLabsEnabled: Bool {
+        didSet { persist(menuBarSpacingLabsEnabled, for: .menuBarSpacingLabsEnabled) }
+    }
+
+    var menuBarSpacingPreset: String {
+        didSet { persist(menuBarSpacingPreset, for: .menuBarSpacingPreset) }
+    }
+
+    private var menuBarSpacingCustomItemSpacingStorage: Int
+
+    var menuBarSpacingCustomItemSpacing: Int {
+        get { menuBarSpacingCustomItemSpacingStorage }
+        set {
+            let clamped = Self.clampMenuBarSpacingCustomItemSpacing(newValue)
+            menuBarSpacingCustomItemSpacingStorage = clamped
+            persist(clamped, for: .menuBarSpacingCustomItemSpacing)
+        }
+    }
+
+    private var menuBarSpacingCustomSelectionPaddingStorage: Int
+
+    var menuBarSpacingCustomSelectionPadding: Int {
+        get { menuBarSpacingCustomSelectionPaddingStorage }
+        set {
+            let clamped = Self.clampMenuBarSpacingCustomSelectionPadding(newValue)
+            menuBarSpacingCustomSelectionPaddingStorage = clamped
+            persist(clamped, for: .menuBarSpacingCustomSelectionPadding)
+        }
+    }
+
+    var menuBarSpacingHasBackup: Bool {
+        didSet { persist(menuBarSpacingHasBackup, for: .menuBarSpacingHasBackup) }
+    }
+
+    var menuBarSpacingLastApplyStatus: String? {
+        didSet { persistOptional(menuBarSpacingLastApplyStatus, for: .menuBarSpacingLastApplyStatus) }
+    }
+
+    var menuBarSpacingLastApplyDate: Date? {
+        didSet { persistOptional(menuBarSpacingLastApplyDate, for: .menuBarSpacingLastApplyDate) }
+    }
+
+    // MARK: Phase 11 — Groups, Private Access, Hotkeys, Shortcuts
+
+    var groupsEnabled: Bool {
+        didSet { persist(groupsEnabled, for: .groupsEnabled) }
+    }
+
+    var groupStatusItemsEnabled: Bool {
+        didSet { persist(groupStatusItemsEnabled, for: .groupStatusItemsEnabled) }
+    }
+
+    var protectedGroupsRequireAuth: Bool {
+        didSet { persist(protectedGroupsRequireAuth, for: .protectedGroupsRequireAuth) }
+    }
+
+    var groupsJSONVersion: Int {
+        didSet { persist(groupsJSONVersion, for: .groupsJSONVersion) }
+    }
+
+    var privateAccessEnabled: Bool {
+        didSet { persist(privateAccessEnabled, for: .privateAccessEnabled) }
+    }
+
+    var privateAccessProtectAlwaysHidden: Bool {
+        didSet { persist(privateAccessProtectAlwaysHidden, for: .privateAccessProtectAlwaysHidden) }
+    }
+
+    var privateAccessProtectSecondBar: Bool {
+        didSet { persist(privateAccessProtectSecondBar, for: .privateAccessProtectSecondBar) }
+    }
+
+    var privateAccessProtectFindIcon: Bool {
+        didSet { persist(privateAccessProtectFindIcon, for: .privateAccessProtectFindIcon) }
+    }
+
+    var privateAccessProtectIconMoving: Bool {
+        didSet { persist(privateAccessProtectIconMoving, for: .privateAccessProtectIconMoving) }
+    }
+
+    var privateAccessProtectSpacingLabs: Bool {
+        didSet { persist(privateAccessProtectSpacingLabs, for: .privateAccessProtectSpacingLabs) }
+    }
+
+    private var privateAccessUnlockDurationSecondsStorage: Double
+
+    var privateAccessUnlockDurationSeconds: Double {
+        get { privateAccessUnlockDurationSecondsStorage }
+        set {
+            let clamped = Self.clampPrivateAccessUnlockDuration(newValue)
+            privateAccessUnlockDurationSecondsStorage = clamped
+            persist(clamped, for: .privateAccessUnlockDurationSeconds)
+        }
+    }
+
+    var privateAccessLastAuthStatus: String? {
+        didSet { persistOptional(privateAccessLastAuthStatus, for: .privateAccessLastAuthStatus) }
+    }
+
+    var privateAccessAllowDevicePasswordFallback: Bool {
+        didSet { persist(privateAccessAllowDevicePasswordFallback, for: .privateAccessAllowDevicePasswordFallback) }
+    }
+
+    var appIntentsEnabled: Bool {
+        didSet { persist(appIntentsEnabled, for: .appIntentsEnabled) }
+    }
+
+    var appIntentsCanApplyProfiles: Bool {
+        didSet { persist(appIntentsCanApplyProfiles, for: .appIntentsCanApplyProfiles) }
+    }
+
+    var appIntentsCanAccessLabs: Bool {
+        didSet { persist(appIntentsCanAccessLabs, for: .appIntentsCanAccessLabs) }
+    }
+
+    var dynamicHotkeysEnabled: Bool {
+        didSet { persist(dynamicHotkeysEnabled, for: .dynamicHotkeysEnabled) }
+    }
+
+    var maxDynamicHotkeys: Int {
+        didSet { persist(maxDynamicHotkeys, for: .maxDynamicHotkeys) }
     }
 
     private func persist<Value>(_ value: Value, for key: Key) {
@@ -461,6 +784,16 @@ final class SettingsStore {
         self.lastKnownAppVersion = Self.string(
             for: .lastKnownAppVersion,
             default: Self.registeredDefault(.lastKnownAppVersion),
+            in: defaults
+        )
+        self.settingsMigrationVersion = Self.string(
+            for: .settingsMigrationVersion,
+            default: Self.registeredDefault(.settingsMigrationVersion),
+            in: defaults
+        )
+        self.v01SafeDefaultsNoticePending = Self.value(
+            for: .v01SafeDefaultsNoticePending,
+            default: Self.registeredDefault(.v01SafeDefaultsNoticePending),
             in: defaults
         )
 
@@ -588,6 +921,13 @@ final class SettingsStore {
         self.iconMovingAllowSystemItems = Self.bool(for: .iconMovingAllowSystemItems, in: defaults)
         self.smartTriggersEnabled = Self.bool(for: .smartTriggersEnabled, in: defaults)
         self.automationPaused = Self.bool(for: .automationPaused, in: defaults)
+        self.dogfoodModeEnabled = Self.bool(for: .dogfoodModeEnabled, in: defaults)
+        self.dogfoodRunID = Self.optionalString(for: .dogfoodRunID, in: defaults)
+        self.dogfoodNotesEnabled = Self.value(
+            for: .dogfoodNotesEnabled,
+            default: Self.registeredDefault(.dogfoodNotesEnabled),
+            in: defaults
+        )
 
         self.autoRehideEnabled = Self.value(
             for: .autoRehideEnabled,
@@ -626,12 +966,84 @@ final class SettingsStore {
             default: Self.registeredDefault(.revealAllOnOptionClick),
             in: defaults
         )
+
+        // Phase 10 — Layout & Capacity
+        self.layoutFeaturesEnabled = Self.value(for: .layoutFeaturesEnabled, default: Self.registeredDefault(.layoutFeaturesEnabled), in: defaults)
+        self.fullMenuBarModeEnabled = Self.value(for: .fullMenuBarModeEnabled, default: Self.registeredDefault(.fullMenuBarModeEnabled), in: defaults)
+        self.crowdedRevealRescueEnabled = Self.value(for: .crowdedRevealRescueEnabled, default: Self.registeredDefault(.crowdedRevealRescueEnabled), in: defaults)
+        self.layoutSuggestionsEnabled = Self.value(for: .layoutSuggestionsEnabled, default: Self.registeredDefault(.layoutSuggestionsEnabled), in: defaults)
+        self.showCapacityWarnings = Self.value(for: .showCapacityWarnings, default: Self.registeredDefault(.showCapacityWarnings), in: defaults)
+        self.fullMenuBarModeAutoExitEnabled = Self.value(for: .fullMenuBarModeAutoExitEnabled, default: Self.registeredDefault(.fullMenuBarModeAutoExitEnabled), in: defaults)
+        self.fullMenuBarModeAutoExitSecondsStorage = Self.clampedDouble(
+            for: .fullMenuBarModeAutoExitSeconds,
+            default: Self.registeredDefault(.fullMenuBarModeAutoExitSeconds),
+            clamp: Self.clampFullMenuBarModeAutoExitSeconds,
+            in: defaults
+        )
+        self.fullMenuBarModeShowsSecondBar = Self.value(for: .fullMenuBarModeShowsSecondBar, default: Self.registeredDefault(.fullMenuBarModeShowsSecondBar), in: defaults)
+        self.fullMenuBarModeSuspendsAutoRehide = Self.value(for: .fullMenuBarModeSuspendsAutoRehide, default: Self.registeredDefault(.fullMenuBarModeSuspendsAutoRehide), in: defaults)
+        self.fullMenuBarModeShowsSpacerMarkers = Self.value(for: .fullMenuBarModeShowsSpacerMarkers, default: Self.registeredDefault(.fullMenuBarModeShowsSpacerMarkers), in: defaults)
+        self.crowdedRevealAutoOpenSecondBar = Self.value(for: .crowdedRevealAutoOpenSecondBar, default: Self.registeredDefault(.crowdedRevealAutoOpenSecondBar), in: defaults)
+        self.crowdedRevealThresholdRatioStorage = Self.clampedDouble(
+            for: .crowdedRevealThresholdRatio,
+            default: Self.registeredDefault(.crowdedRevealThresholdRatio),
+            clamp: Self.clampCrowdedRevealThresholdRatio,
+            in: defaults
+        )
+        self.crowdedRevealRequireProEstimate = Self.value(for: .crowdedRevealRequireProEstimate, default: Self.registeredDefault(.crowdedRevealRequireProEstimate), in: defaults)
+        self.spacerItemsEnabled = Self.value(for: .spacerItemsEnabled, default: Self.registeredDefault(.spacerItemsEnabled), in: defaults)
+        self.showSpacerMarkers = Self.value(for: .showSpacerMarkers, default: Self.registeredDefault(.showSpacerMarkers), in: defaults)
+        self.spacerItemsJSONVersion = Self.value(for: .spacerItemsJSONVersion, default: Self.registeredDefault(.spacerItemsJSONVersion), in: defaults)
+        self.menuBarSpacingLabsEnabled = Self.value(for: .menuBarSpacingLabsEnabled, default: Self.registeredDefault(.menuBarSpacingLabsEnabled), in: defaults)
+        self.menuBarSpacingPreset = Self.string(for: .menuBarSpacingPreset, default: Self.registeredDefault(.menuBarSpacingPreset), in: defaults)
+        self.menuBarSpacingCustomItemSpacingStorage = Self.clampedInt(
+            for: .menuBarSpacingCustomItemSpacing,
+            default: Self.registeredDefault(.menuBarSpacingCustomItemSpacing),
+            clamp: Self.clampMenuBarSpacingCustomItemSpacing,
+            in: defaults
+        )
+        self.menuBarSpacingCustomSelectionPaddingStorage = Self.clampedInt(
+            for: .menuBarSpacingCustomSelectionPadding,
+            default: Self.registeredDefault(.menuBarSpacingCustomSelectionPadding),
+            clamp: Self.clampMenuBarSpacingCustomSelectionPadding,
+            in: defaults
+        )
+        self.menuBarSpacingHasBackup = Self.value(for: .menuBarSpacingHasBackup, default: Self.registeredDefault(.menuBarSpacingHasBackup), in: defaults)
+        self.menuBarSpacingLastApplyStatus = Self.optionalString(for: .menuBarSpacingLastApplyStatus, in: defaults)
+        self.menuBarSpacingLastApplyDate = Self.optionalValue(for: .menuBarSpacingLastApplyDate, in: defaults)
+
+        // Phase 11 — Groups, Private Access, Hotkeys, Shortcuts
+        self.groupsEnabled = Self.value(for: .groupsEnabled, default: Self.registeredDefault(.groupsEnabled), in: defaults)
+        self.groupStatusItemsEnabled = Self.value(for: .groupStatusItemsEnabled, default: Self.registeredDefault(.groupStatusItemsEnabled), in: defaults)
+        self.protectedGroupsRequireAuth = Self.value(for: .protectedGroupsRequireAuth, default: Self.registeredDefault(.protectedGroupsRequireAuth), in: defaults)
+        self.groupsJSONVersion = Self.value(for: .groupsJSONVersion, default: Self.registeredDefault(.groupsJSONVersion), in: defaults)
+        self.privateAccessEnabled = Self.value(for: .privateAccessEnabled, default: Self.registeredDefault(.privateAccessEnabled), in: defaults)
+        self.privateAccessProtectAlwaysHidden = Self.value(for: .privateAccessProtectAlwaysHidden, default: Self.registeredDefault(.privateAccessProtectAlwaysHidden), in: defaults)
+        self.privateAccessProtectSecondBar = Self.value(for: .privateAccessProtectSecondBar, default: Self.registeredDefault(.privateAccessProtectSecondBar), in: defaults)
+        self.privateAccessProtectFindIcon = Self.value(for: .privateAccessProtectFindIcon, default: Self.registeredDefault(.privateAccessProtectFindIcon), in: defaults)
+        self.privateAccessProtectIconMoving = Self.value(for: .privateAccessProtectIconMoving, default: Self.registeredDefault(.privateAccessProtectIconMoving), in: defaults)
+        self.privateAccessProtectSpacingLabs = Self.value(for: .privateAccessProtectSpacingLabs, default: Self.registeredDefault(.privateAccessProtectSpacingLabs), in: defaults)
+        self.privateAccessUnlockDurationSecondsStorage = Self.clampedDouble(
+            for: .privateAccessUnlockDurationSeconds,
+            default: Self.registeredDefault(.privateAccessUnlockDurationSeconds),
+            clamp: Self.clampPrivateAccessUnlockDuration,
+            in: defaults
+        )
+        self.privateAccessLastAuthStatus = Self.optionalString(for: .privateAccessLastAuthStatus, in: defaults)
+        self.privateAccessAllowDevicePasswordFallback = Self.value(for: .privateAccessAllowDevicePasswordFallback, default: Self.registeredDefault(.privateAccessAllowDevicePasswordFallback), in: defaults)
+        self.appIntentsEnabled = Self.value(for: .appIntentsEnabled, default: Self.registeredDefault(.appIntentsEnabled), in: defaults)
+        self.appIntentsCanApplyProfiles = Self.value(for: .appIntentsCanApplyProfiles, default: Self.registeredDefault(.appIntentsCanApplyProfiles), in: defaults)
+        self.appIntentsCanAccessLabs = Self.value(for: .appIntentsCanAccessLabs, default: Self.registeredDefault(.appIntentsCanAccessLabs), in: defaults)
+        self.dynamicHotkeysEnabled = Self.value(for: .dynamicHotkeysEnabled, default: Self.registeredDefault(.dynamicHotkeysEnabled), in: defaults)
+        self.maxDynamicHotkeys = Self.value(for: .maxDynamicHotkeys, default: Self.registeredDefault(.maxDynamicHotkeys), in: defaults)
     }
 
     func restoreDefaults() {
         hasCompletedOnboarding = Self.registeredDefault(.hasCompletedOnboarding)
         launchAtLoginEnabled = Self.registeredDefault(.launchAtLoginEnabled)
         lastKnownAppVersion = Self.registeredDefault(.lastKnownAppVersion)
+        settingsMigrationVersion = AppConstants.currentSettingsMigrationVersion
+        v01SafeDefaultsNoticePending = Self.registeredDefault(.v01SafeDefaultsNoticePending)
         appMode = AppMode(rawValue: Self.registeredDefault(.appMode, as: String.self)) ?? .basic
         isCollapsed = Self.registeredDefault(.isCollapsed)
         startCollapsed = Self.registeredDefault(.startCollapsed)
@@ -666,6 +1078,9 @@ final class SettingsStore {
         iconMovingAllowSystemItems = Self.registeredDefault(.iconMovingAllowSystemItems)
         smartTriggersEnabled = Self.registeredDefault(.smartTriggersEnabled)
         automationPaused = Self.registeredDefault(.automationPaused)
+        dogfoodModeEnabled = Self.registeredDefault(.dogfoodModeEnabled)
+        dogfoodRunID = nil
+        dogfoodNotesEnabled = Self.registeredDefault(.dogfoodNotesEnabled)
 
         autoRehideEnabled = Self.registeredDefault(.autoRehideEnabled)
         autoRehideDelaySeconds = Self.registeredDefault(.autoRehideDelaySeconds)
@@ -677,6 +1092,51 @@ final class SettingsStore {
         globalHotkeyKeyCode = nil
         globalHotkeyModifiersRaw = nil
         revealAllOnOptionClick = Self.registeredDefault(.revealAllOnOptionClick)
+
+        // Phase 10 — Layout & Capacity
+        layoutFeaturesEnabled = Self.registeredDefault(.layoutFeaturesEnabled)
+        fullMenuBarModeEnabled = Self.registeredDefault(.fullMenuBarModeEnabled)
+        crowdedRevealRescueEnabled = Self.registeredDefault(.crowdedRevealRescueEnabled)
+        layoutSuggestionsEnabled = Self.registeredDefault(.layoutSuggestionsEnabled)
+        showCapacityWarnings = Self.registeredDefault(.showCapacityWarnings)
+        fullMenuBarModeAutoExitEnabled = Self.registeredDefault(.fullMenuBarModeAutoExitEnabled)
+        fullMenuBarModeAutoExitSeconds = Self.registeredDefault(.fullMenuBarModeAutoExitSeconds)
+        fullMenuBarModeShowsSecondBar = Self.registeredDefault(.fullMenuBarModeShowsSecondBar)
+        fullMenuBarModeSuspendsAutoRehide = Self.registeredDefault(.fullMenuBarModeSuspendsAutoRehide)
+        fullMenuBarModeShowsSpacerMarkers = Self.registeredDefault(.fullMenuBarModeShowsSpacerMarkers)
+        crowdedRevealAutoOpenSecondBar = Self.registeredDefault(.crowdedRevealAutoOpenSecondBar)
+        crowdedRevealThresholdRatio = Self.registeredDefault(.crowdedRevealThresholdRatio)
+        crowdedRevealRequireProEstimate = Self.registeredDefault(.crowdedRevealRequireProEstimate)
+        spacerItemsEnabled = Self.registeredDefault(.spacerItemsEnabled)
+        showSpacerMarkers = Self.registeredDefault(.showSpacerMarkers)
+        spacerItemsJSONVersion = Self.registeredDefault(.spacerItemsJSONVersion)
+        menuBarSpacingLabsEnabled = Self.registeredDefault(.menuBarSpacingLabsEnabled)
+        menuBarSpacingPreset = Self.registeredDefault(.menuBarSpacingPreset)
+        menuBarSpacingCustomItemSpacing = Self.registeredDefault(.menuBarSpacingCustomItemSpacing)
+        menuBarSpacingCustomSelectionPadding = Self.registeredDefault(.menuBarSpacingCustomSelectionPadding)
+        menuBarSpacingHasBackup = Self.registeredDefault(.menuBarSpacingHasBackup)
+        menuBarSpacingLastApplyStatus = nil
+        menuBarSpacingLastApplyDate = nil
+
+        // Phase 11
+        groupsEnabled = Self.registeredDefault(.groupsEnabled)
+        groupStatusItemsEnabled = Self.registeredDefault(.groupStatusItemsEnabled)
+        protectedGroupsRequireAuth = Self.registeredDefault(.protectedGroupsRequireAuth)
+        groupsJSONVersion = Self.registeredDefault(.groupsJSONVersion)
+        privateAccessEnabled = Self.registeredDefault(.privateAccessEnabled)
+        privateAccessProtectAlwaysHidden = Self.registeredDefault(.privateAccessProtectAlwaysHidden)
+        privateAccessProtectSecondBar = Self.registeredDefault(.privateAccessProtectSecondBar)
+        privateAccessProtectFindIcon = Self.registeredDefault(.privateAccessProtectFindIcon)
+        privateAccessProtectIconMoving = Self.registeredDefault(.privateAccessProtectIconMoving)
+        privateAccessProtectSpacingLabs = Self.registeredDefault(.privateAccessProtectSpacingLabs)
+        privateAccessUnlockDurationSeconds = Self.registeredDefault(.privateAccessUnlockDurationSeconds)
+        privateAccessLastAuthStatus = nil
+        privateAccessAllowDevicePasswordFallback = Self.registeredDefault(.privateAccessAllowDevicePasswordFallback)
+        appIntentsEnabled = Self.registeredDefault(.appIntentsEnabled)
+        appIntentsCanApplyProfiles = Self.registeredDefault(.appIntentsCanApplyProfiles)
+        appIntentsCanAccessLabs = Self.registeredDefault(.appIntentsCanAccessLabs)
+        dynamicHotkeysEnabled = Self.registeredDefault(.dynamicHotkeysEnabled)
+        maxDynamicHotkeys = Self.registeredDefault(.maxDynamicHotkeys)
     }
 
     // MARK: Clamping helpers
@@ -746,6 +1206,42 @@ final class SettingsStore {
             value,
             to: AppConstants.minIconMovingDragDuration ... AppConstants.maxIconMovingDragDuration,
             nanFallback: AppConstants.defaultIconMovingDragDuration
+        )
+    }
+
+    // MARK: Phase 10 clamping helpers
+
+    static func clampFullMenuBarModeAutoExitSeconds(_ value: Double) -> Double {
+        clamp(
+            value,
+            to: AppConstants.minFullMenuBarModeAutoExitSeconds ... AppConstants.maxFullMenuBarModeAutoExitSeconds,
+            nanFallback: AppConstants.defaultFullMenuBarModeAutoExitSeconds
+        )
+    }
+
+    static func clampCrowdedRevealThresholdRatio(_ value: Double) -> Double {
+        clamp(
+            value,
+            to: AppConstants.minCrowdedRevealThresholdRatio ... AppConstants.maxCrowdedRevealThresholdRatio,
+            nanFallback: AppConstants.defaultCrowdedRevealThresholdRatio
+        )
+    }
+
+    static func clampMenuBarSpacingCustomItemSpacing(_ value: Int) -> Int {
+        min(max(value, AppConstants.minMenuBarSpacingCustomItemSpacing), AppConstants.maxMenuBarSpacingCustomItemSpacing)
+    }
+
+    static func clampMenuBarSpacingCustomSelectionPadding(_ value: Int) -> Int {
+        min(max(value, AppConstants.minMenuBarSpacingCustomSelectionPadding), AppConstants.maxMenuBarSpacingCustomSelectionPadding)
+    }
+
+    // MARK: Phase 11 clamping helpers
+
+    static func clampPrivateAccessUnlockDuration(_ value: Double) -> Double {
+        clamp(
+            value,
+            to: AppConstants.minPrivateAccessUnlockDurationSeconds ... AppConstants.maxPrivateAccessUnlockDurationSeconds,
+            nanFallback: AppConstants.defaultPrivateAccessUnlockDurationSeconds
         )
     }
 

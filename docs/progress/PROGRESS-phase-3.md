@@ -2,6 +2,8 @@
 
 Status: implemented.
 
+Historical snapshot: this file records the end-of-phase state for Phase 3. Later progress files, `docs/project-summary.md`, and release docs supersede old scheme names, test counts, defaults, and deferred-scope notes.
+
 ## Tech Stack
 
 - Swift 6 (`SWIFT_VERSION = 6.0`) with `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` on the app target and `SWIFT_APPROACHABLE_CONCURRENCY = YES` across all targets.

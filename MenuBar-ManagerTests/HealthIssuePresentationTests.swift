@@ -27,7 +27,12 @@ struct HealthIssuePresentationTests {
             .refreshAccessibilityPermissionStatus: "Refresh Accessibility permission status",
             .resetSettingsToDefaults: "Reset settings to defaults",
             .disableProMode: "Disable Pro Mode",
-            .enterSafeModeNextLaunch: "Enter Safe Mode next launch"
+            .enterSafeModeNextLaunch: "Enter Safe Mode next launch",
+            .exitFullMenuBarMode: "Exit Full Menu Bar Mode",
+            .hideOptionalSpacerItems: "Hide optional spacer items",
+            .disableDynamicHotkeys: "Disable dynamic hotkeys",
+            .disableGroupStatusItems: "Disable group status items",
+            .clearPrivateAccessUnlock: "Clear Private Access unlock"
         ]
 
         #expect(HealthRecoveryAction.allCases.count == expectedDisplayNames.count)

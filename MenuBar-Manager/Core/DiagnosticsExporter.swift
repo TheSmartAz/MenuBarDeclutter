@@ -28,7 +28,7 @@ struct DiagnosticsExporter {
         }
     }
 
-    struct ScreenSnapshot: Encodable, Equatable, Sendable {
+    struct ScreenSnapshot: Codable, Equatable, Sendable {
         let index: Int
         let x: Double
         let y: Double
@@ -97,6 +97,7 @@ struct DiagnosticsExporter {
         let screens: [ScreenSnapshot]
         let settings: SettingsSnapshot
         let events: [DiagnosticEvent]
+        let dogfood: DogfoodDiagnosticsMetadata?
     }
 
     /// A minimal, human-readable settings snapshot. Never embeds file paths or
@@ -131,6 +132,8 @@ struct DiagnosticsExporter {
         let iconMovingAllowSystemItems: Bool
         let smartTriggersEnabled: Bool
         let automationPaused: Bool
+        let dogfoodModeEnabled: Bool
+        let dogfoodNotesEnabled: Bool
         let showPrimarySeparator: Bool
         let showSeparators: Bool
         let autoRehideEnabled: Bool
@@ -143,6 +146,47 @@ struct DiagnosticsExporter {
         let revealAllOnOptionClick: Bool
         let expandedSeparatorLength: Double
         let collapsedSeparatorLengthOverride: Double?
+        let layoutFeaturesEnabled: Bool
+        let fullMenuBarModeEnabled: Bool
+        let crowdedRevealRescueEnabled: Bool
+        let layoutSuggestionsEnabled: Bool
+        let showCapacityWarnings: Bool
+        let fullMenuBarModeAutoExitEnabled: Bool
+        let fullMenuBarModeAutoExitSeconds: Double
+        let fullMenuBarModeShowsSecondBar: Bool
+        let fullMenuBarModeSuspendsAutoRehide: Bool
+        let fullMenuBarModeShowsSpacerMarkers: Bool
+        let crowdedRevealAutoOpenSecondBar: Bool
+        let crowdedRevealThresholdRatio: Double
+        let crowdedRevealRequireProEstimate: Bool
+        let spacerItemsEnabled: Bool
+        let showSpacerMarkers: Bool
+        let spacerItemsJSONVersion: Int
+        let menuBarSpacingLabsEnabled: Bool
+        let menuBarSpacingPreset: String
+        let menuBarSpacingCustomItemSpacing: Int
+        let menuBarSpacingCustomSelectionPadding: Int
+        let menuBarSpacingHasBackup: Bool
+        let menuBarSpacingLastApplyStatus: String?
+        let menuBarSpacingLastApplyDate: String?
+        let groupsEnabled: Bool
+        let groupStatusItemsEnabled: Bool
+        let protectedGroupsRequireAuth: Bool
+        let groupsJSONVersion: Int
+        let privateAccessEnabled: Bool
+        let privateAccessProtectAlwaysHidden: Bool
+        let privateAccessProtectSecondBar: Bool
+        let privateAccessProtectFindIcon: Bool
+        let privateAccessProtectIconMoving: Bool
+        let privateAccessProtectSpacingLabs: Bool
+        let privateAccessUnlockDurationSeconds: Double
+        let privateAccessLastAuthStatus: String?
+        let privateAccessAllowDevicePasswordFallback: Bool
+        let appIntentsEnabled: Bool
+        let appIntentsCanApplyProfiles: Bool
+        let appIntentsCanAccessLabs: Bool
+        let dynamicHotkeysEnabled: Bool
+        let maxDynamicHotkeys: Int
 
         func encode(to encoder: Encoder) throws {
             var container = encoder.container(keyedBy: DynamicCodingKey.self)
@@ -167,7 +211,8 @@ struct DiagnosticsExporter {
             architecture: architectureProvider(),
             screens: screensProvider(),
             settings: makeSettingsSnapshot(settingsStore),
-            events: events ?? logger.events
+            events: events ?? logger.events,
+            dogfood: makeDogfoodMetadata(settingsStore)
         )
     }
 
@@ -202,6 +247,8 @@ struct DiagnosticsExporter {
             iconMovingAllowSystemItems: store.iconMovingAllowSystemItems,
             smartTriggersEnabled: store.smartTriggersEnabled,
             automationPaused: store.automationPaused,
+            dogfoodModeEnabled: store.dogfoodModeEnabled,
+            dogfoodNotesEnabled: store.dogfoodNotesEnabled,
             showPrimarySeparator: store.showPrimarySeparator,
             showSeparators: store.showSeparators,
             autoRehideEnabled: store.autoRehideEnabled,
@@ -213,8 +260,58 @@ struct DiagnosticsExporter {
             globalHotkeyDisplayName: store.effectiveGlobalHotkey().displayName,
             revealAllOnOptionClick: store.revealAllOnOptionClick,
             expandedSeparatorLength: store.expandedSeparatorLength,
-            collapsedSeparatorLengthOverride: store.collapsedSeparatorLengthOverride
+            collapsedSeparatorLengthOverride: store.collapsedSeparatorLengthOverride,
+            layoutFeaturesEnabled: store.layoutFeaturesEnabled,
+            fullMenuBarModeEnabled: store.fullMenuBarModeEnabled,
+            crowdedRevealRescueEnabled: store.crowdedRevealRescueEnabled,
+            layoutSuggestionsEnabled: store.layoutSuggestionsEnabled,
+            showCapacityWarnings: store.showCapacityWarnings,
+            fullMenuBarModeAutoExitEnabled: store.fullMenuBarModeAutoExitEnabled,
+            fullMenuBarModeAutoExitSeconds: store.fullMenuBarModeAutoExitSeconds,
+            fullMenuBarModeShowsSecondBar: store.fullMenuBarModeShowsSecondBar,
+            fullMenuBarModeSuspendsAutoRehide: store.fullMenuBarModeSuspendsAutoRehide,
+            fullMenuBarModeShowsSpacerMarkers: store.fullMenuBarModeShowsSpacerMarkers,
+            crowdedRevealAutoOpenSecondBar: store.crowdedRevealAutoOpenSecondBar,
+            crowdedRevealThresholdRatio: store.crowdedRevealThresholdRatio,
+            crowdedRevealRequireProEstimate: store.crowdedRevealRequireProEstimate,
+            spacerItemsEnabled: store.spacerItemsEnabled,
+            showSpacerMarkers: store.showSpacerMarkers,
+            spacerItemsJSONVersion: store.spacerItemsJSONVersion,
+            menuBarSpacingLabsEnabled: store.menuBarSpacingLabsEnabled,
+            menuBarSpacingPreset: store.menuBarSpacingPreset,
+            menuBarSpacingCustomItemSpacing: store.menuBarSpacingCustomItemSpacing,
+            menuBarSpacingCustomSelectionPadding: store.menuBarSpacingCustomSelectionPadding,
+            menuBarSpacingHasBackup: store.menuBarSpacingHasBackup,
+            menuBarSpacingLastApplyStatus: store.menuBarSpacingLastApplyStatus,
+            menuBarSpacingLastApplyDate: store.menuBarSpacingLastApplyDate.map(Self.iso),
+            groupsEnabled: store.groupsEnabled,
+            groupStatusItemsEnabled: store.groupStatusItemsEnabled,
+            protectedGroupsRequireAuth: store.protectedGroupsRequireAuth,
+            groupsJSONVersion: store.groupsJSONVersion,
+            privateAccessEnabled: store.privateAccessEnabled,
+            privateAccessProtectAlwaysHidden: store.privateAccessProtectAlwaysHidden,
+            privateAccessProtectSecondBar: store.privateAccessProtectSecondBar,
+            privateAccessProtectFindIcon: store.privateAccessProtectFindIcon,
+            privateAccessProtectIconMoving: store.privateAccessProtectIconMoving,
+            privateAccessProtectSpacingLabs: store.privateAccessProtectSpacingLabs,
+            privateAccessUnlockDurationSeconds: store.privateAccessUnlockDurationSeconds,
+            privateAccessLastAuthStatus: store.privateAccessLastAuthStatus,
+            privateAccessAllowDevicePasswordFallback: store.privateAccessAllowDevicePasswordFallback,
+            appIntentsEnabled: store.appIntentsEnabled,
+            appIntentsCanApplyProfiles: store.appIntentsCanApplyProfiles,
+            appIntentsCanAccessLabs: store.appIntentsCanAccessLabs,
+            dynamicHotkeysEnabled: store.dynamicHotkeysEnabled,
+            maxDynamicHotkeys: store.maxDynamicHotkeys
         )
+    }
+
+    func makeDogfoodMetadata(_ store: SettingsStore) -> DogfoodDiagnosticsMetadata? {
+        guard store.dogfoodModeEnabled,
+              let runID = store.dogfoodRunID?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !runID.isEmpty else {
+            return nil
+        }
+        return DogfoodDiagnosticsMetadata(runID: runID)
     }
 
     // MARK: Serialization
@@ -250,6 +347,9 @@ struct DiagnosticsExporter {
         lines.append("Marketing Version: \(snapshot.marketingVersion.isEmpty ? "—" : snapshot.marketingVersion)")
         lines.append("Build Number: \(snapshot.buildNumber.isEmpty ? "—" : snapshot.buildNumber)")
         lines.append("App Version: \(snapshot.appVersion)")
+        if let dogfood = snapshot.dogfood {
+            lines.append("Dogfood Run ID: \(dogfood.runID)")
+        }
         lines.append("")
         lines.append("== System ==")
         lines.append("macOS Version: \(snapshot.macOSVersion)")
@@ -324,6 +424,7 @@ struct DiagnosticsExporter {
         let logs: [Log]
         let excludedByDesign: [String]
         let appSupport: AppSupport?
+        let dogfood: DogfoodDiagnosticsMetadata?
 
         init(snapshot: Snapshot, includeAppSupportPath: Bool, appSupportPath: URL?) {
             self.generatedAt = DiagnosticsExporter.iso(snapshot.generatedAt)
@@ -336,6 +437,7 @@ struct DiagnosticsExporter {
             self.appSupport = includeAppSupportPath
                 ? appSupportPath.map { AppSupport(diagnosticsDirectory: $0.path) }
                 : nil
+            self.dogfood = snapshot.dogfood
         }
 
         enum CodingKeys: String, CodingKey {
@@ -347,6 +449,7 @@ struct DiagnosticsExporter {
             case logs
             case excludedByDesign
             case appSupport
+            case dogfood
         }
 
         func encode(to encoder: Encoder) throws {
@@ -359,6 +462,7 @@ struct DiagnosticsExporter {
             try container.encode(logs, forKey: .logs)
             try container.encode(excludedByDesign, forKey: .excludedByDesign)
             try container.encodeIfPresent(appSupport, forKey: .appSupport)
+            try container.encodeIfPresent(dogfood, forKey: .dogfood)
         }
 
         struct Application: Encodable {
@@ -534,6 +638,8 @@ struct DiagnosticsExporter {
         },
         SettingsField(key: "smartTriggersEnabled", label: "Smart Triggers Enabled") { .bool($0.smartTriggersEnabled) },
         SettingsField(key: "automationPaused", label: "Automation Paused") { .bool($0.automationPaused) },
+        SettingsField(key: "dogfoodModeEnabled", label: "Dogfood Mode Enabled") { .bool($0.dogfoodModeEnabled) },
+        SettingsField(key: "dogfoodNotesEnabled", label: "Dogfood Notes Enabled") { .bool($0.dogfoodNotesEnabled) },
         SettingsField(key: "showPrimarySeparator", label: "Show Primary Separator") { .bool($0.showPrimarySeparator) },
         SettingsField(key: "showSeparators", label: "Show Separators") { .bool($0.showSeparators) },
         SettingsField(key: "autoRehideEnabled", label: "Auto-Rehide Enabled") { .bool($0.autoRehideEnabled) },
@@ -549,7 +655,96 @@ struct DiagnosticsExporter {
         SettingsField(key: "expandedSeparatorLength", label: "Expanded Separator Length") { .double($0.expandedSeparatorLength) },
         SettingsField(key: "collapsedSeparatorLengthOverride", label: "Collapsed Separator Override") {
             .optionalDouble($0.collapsedSeparatorLengthOverride, emptyText: "(none — auto)")
-        }
+        },
+        SettingsField(key: "layoutFeaturesEnabled", label: "Layout Features Enabled") { .bool($0.layoutFeaturesEnabled) },
+        SettingsField(key: "fullMenuBarModeEnabled", label: "Full Menu Bar Mode Enabled") { .bool($0.fullMenuBarModeEnabled) },
+        SettingsField(key: "crowdedRevealRescueEnabled", label: "Crowded Reveal Rescue Enabled") { .bool($0.crowdedRevealRescueEnabled) },
+        SettingsField(key: "layoutSuggestionsEnabled", label: "Layout Suggestions Enabled") { .bool($0.layoutSuggestionsEnabled) },
+        SettingsField(key: "showCapacityWarnings", label: "Show Capacity Warnings") { .bool($0.showCapacityWarnings) },
+        SettingsField(key: "fullMenuBarModeAutoExitEnabled", label: "Full Menu Bar Auto-exit Enabled") {
+            .bool($0.fullMenuBarModeAutoExitEnabled)
+        },
+        SettingsField(key: "fullMenuBarModeAutoExitSeconds", label: "Full Menu Bar Auto-exit (s)") {
+            .double($0.fullMenuBarModeAutoExitSeconds)
+        },
+        SettingsField(key: "fullMenuBarModeShowsSecondBar", label: "Full Menu Bar Shows Second Bar") {
+            .bool($0.fullMenuBarModeShowsSecondBar)
+        },
+        SettingsField(key: "fullMenuBarModeSuspendsAutoRehide", label: "Full Menu Bar Suspends Auto-Rehide") {
+            .bool($0.fullMenuBarModeSuspendsAutoRehide)
+        },
+        SettingsField(key: "fullMenuBarModeShowsSpacerMarkers", label: "Full Menu Bar Shows Spacer Markers") {
+            .bool($0.fullMenuBarModeShowsSpacerMarkers)
+        },
+        SettingsField(key: "crowdedRevealAutoOpenSecondBar", label: "Crowded Reveal Opens Second Bar") {
+            .bool($0.crowdedRevealAutoOpenSecondBar)
+        },
+        SettingsField(key: "crowdedRevealThresholdRatio", label: "Crowded Reveal Threshold Ratio") {
+            .double($0.crowdedRevealThresholdRatio)
+        },
+        SettingsField(key: "crowdedRevealRequireProEstimate", label: "Crowded Reveal Requires Pro Estimate") {
+            .bool($0.crowdedRevealRequireProEstimate)
+        },
+        SettingsField(key: "spacerItemsEnabled", label: "Spacer Items Enabled") { .bool($0.spacerItemsEnabled) },
+        SettingsField(key: "showSpacerMarkers", label: "Show Spacer Markers") { .bool($0.showSpacerMarkers) },
+        SettingsField(key: "spacerItemsJSONVersion", label: "Spacer Items JSON Version") { .int($0.spacerItemsJSONVersion) },
+        SettingsField(key: "menuBarSpacingLabsEnabled", label: "Menu Bar Spacing Labs Enabled") {
+            .bool($0.menuBarSpacingLabsEnabled)
+        },
+        SettingsField(key: "menuBarSpacingPreset", label: "Menu Bar Spacing Preset") { .string($0.menuBarSpacingPreset) },
+        SettingsField(key: "menuBarSpacingCustomItemSpacing", label: "Menu Bar Spacing Custom Item Spacing") {
+            .int($0.menuBarSpacingCustomItemSpacing)
+        },
+        SettingsField(key: "menuBarSpacingCustomSelectionPadding", label: "Menu Bar Spacing Custom Selection Padding") {
+            .int($0.menuBarSpacingCustomSelectionPadding)
+        },
+        SettingsField(key: "menuBarSpacingHasBackup", label: "Menu Bar Spacing Has Backup") { .bool($0.menuBarSpacingHasBackup) },
+        SettingsField(key: "menuBarSpacingLastApplyStatus", label: "Menu Bar Spacing Last Apply Status") {
+            .optionalString($0.menuBarSpacingLastApplyStatus, emptyText: "(none)")
+        },
+        SettingsField(key: "menuBarSpacingLastApplyDate", label: "Menu Bar Spacing Last Apply Date") {
+            .optionalString($0.menuBarSpacingLastApplyDate, emptyText: "(none)")
+        },
+        SettingsField(key: "groupsEnabled", label: "Groups Enabled") { .bool($0.groupsEnabled) },
+        SettingsField(key: "groupStatusItemsEnabled", label: "Group Status Items Enabled") { .bool($0.groupStatusItemsEnabled) },
+        SettingsField(key: "protectedGroupsRequireAuth", label: "Protected Groups Require Auth") {
+            .bool($0.protectedGroupsRequireAuth)
+        },
+        SettingsField(key: "groupsJSONVersion", label: "Groups JSON Version") { .int($0.groupsJSONVersion) },
+        SettingsField(key: "privateAccessEnabled", label: "Private Access Enabled") { .bool($0.privateAccessEnabled) },
+        SettingsField(key: "privateAccessProtectAlwaysHidden", label: "Private Access Protect Always-Hidden") {
+            .bool($0.privateAccessProtectAlwaysHidden)
+        },
+        SettingsField(key: "privateAccessProtectSecondBar", label: "Private Access Protect Second Bar") {
+            .bool($0.privateAccessProtectSecondBar)
+        },
+        SettingsField(key: "privateAccessProtectFindIcon", label: "Private Access Protect Find Icon") {
+            .bool($0.privateAccessProtectFindIcon)
+        },
+        SettingsField(key: "privateAccessProtectIconMoving", label: "Private Access Protect Icon Moving") {
+            .bool($0.privateAccessProtectIconMoving)
+        },
+        SettingsField(key: "privateAccessProtectSpacingLabs", label: "Private Access Protect Spacing Labs") {
+            .bool($0.privateAccessProtectSpacingLabs)
+        },
+        SettingsField(key: "privateAccessUnlockDurationSeconds", label: "Private Access Unlock Duration (s)") {
+            .double($0.privateAccessUnlockDurationSeconds)
+        },
+        SettingsField(key: "privateAccessLastAuthStatus", label: "Private Access Last Auth Status") {
+            .optionalString($0.privateAccessLastAuthStatus, emptyText: "(none)")
+        },
+        SettingsField(key: "privateAccessAllowDevicePasswordFallback", label: "Private Access Allows Device Password Fallback") {
+            .bool($0.privateAccessAllowDevicePasswordFallback)
+        },
+        SettingsField(key: "appIntentsEnabled", label: "App Intents Enabled") { .bool($0.appIntentsEnabled) },
+        SettingsField(key: "appIntentsCanApplyProfiles", label: "App Intents Can Apply Profiles") {
+            .bool($0.appIntentsCanApplyProfiles)
+        },
+        SettingsField(key: "appIntentsCanAccessLabs", label: "App Intents Can Access Labs") {
+            .bool($0.appIntentsCanAccessLabs)
+        },
+        SettingsField(key: "dynamicHotkeysEnabled", label: "Dynamic Hotkeys Enabled") { .bool($0.dynamicHotkeysEnabled) },
+        SettingsField(key: "maxDynamicHotkeys", label: "Max Dynamic Hotkeys") { .int($0.maxDynamicHotkeys) }
     ]
 
     private static let excludedByDesign = [
@@ -557,6 +752,9 @@ struct DiagnosticsExporter {
         "screenContents",
         "liveSearchText",
         "selectedItemIdentity",
+        "protectedGroupNames",
+        "protectedHotkeyTargets",
+        "importExportFilePaths",
         "personalFilePaths",
         "networkData"
     ]

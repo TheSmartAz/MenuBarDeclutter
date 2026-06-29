@@ -15,6 +15,9 @@ final class ProfileAutomationCoordinator {
     private let collapse: () -> Void
     private let revealAll: () -> Void
     private let showSecondBar: () -> Void
+    private let enterFullMenuBarMode: () -> Void
+    private let exitFullMenuBarMode: () -> Void
+    private let refreshGroups: () -> Void
 
     private lazy var automationURLHandler = AutomationURLHandler(
         diagnosticsLogger: diagnosticsLogger,
@@ -41,7 +44,10 @@ final class ProfileAutomationCoordinator {
         expand: @escaping () -> Void,
         collapse: @escaping () -> Void,
         revealAll: @escaping () -> Void,
-        showSecondBar: @escaping () -> Void
+        showSecondBar: @escaping () -> Void,
+        enterFullMenuBarMode: @escaping () -> Void = {},
+        exitFullMenuBarMode: @escaping () -> Void = {},
+        refreshGroups: @escaping () -> Void = {}
     ) {
         self.diagnosticsLogger = diagnosticsLogger
         self.liveStatus = liveStatus
@@ -52,13 +58,19 @@ final class ProfileAutomationCoordinator {
         self.collapse = collapse
         self.revealAll = revealAll
         self.showSecondBar = showSecondBar
+        self.enterFullMenuBarMode = enterFullMenuBarMode
+        self.exitFullMenuBarMode = exitFullMenuBarMode
+        self.refreshGroups = refreshGroups
 
         let profileStore = ProfileStore(appSupportPaths: appSupportPaths)
         let profileApplicationService = ProfileApplicationService(
             settingsStore: settingsStore,
             diagnosticsLogger: diagnosticsLogger,
             liveStatus: liveStatus,
-            setVisibility: setVisibility
+            setVisibility: setVisibility,
+            enterFullMenuBarMode: enterFullMenuBarMode,
+            exitFullMenuBarMode: exitFullMenuBarMode,
+            refreshGroups: refreshGroups
         )
 
         self.profileStore = profileStore

@@ -31,6 +31,8 @@
 		D5A000022FF9A00000C9EAC2 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		D5A000032FF9A00000C9EAC2 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		D5A000052FF9A00000C9EAC2 /* MenuBarDeclutter-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "MenuBarDeclutter-Info.plist"; sourceTree = "<group>"; };
+		D5F920012FF9200000C9EAC2 /* MenuBarFixtureApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MenuBarFixtureApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D5F920022FF9200000C9EAC2 /* MenuBarFixtureApp-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "MenuBarFixtureApp-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -47,6 +49,11 @@
 		D50216F92FF1001500C9EAC2 /* MenuBar-ManagerUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "MenuBar-ManagerUITests";
+			sourceTree = "<group>";
+		};
+		D5F920032FF9200000C9EAC2 /* Tools/MenuBarFixtureApp */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Tools/MenuBarFixtureApp;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -73,6 +80,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D5F920052FF9200000C9EAC2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -83,8 +97,20 @@
 				D50216DF2FF1001400C9EAC2 /* MenuBar-Manager */,
 				D50216EF2FF1001500C9EAC2 /* MenuBar-ManagerTests */,
 				D50216F92FF1001500C9EAC2 /* MenuBar-ManagerUITests */,
+				D5F920032FF9200000C9EAC2 /* Tools/MenuBarFixtureApp */,
 				D50216DE2FF1001400C9EAC2 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		D50216DE2FF1001400C9EAC2 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				D50216DD2FF1001400C9EAC2 /* MenuBarDeclutter.app */,
+				D50216EC2FF1001500C9EAC2 /* MenuBarDeclutterTests.xctest */,
+				D50216F62FF1001500C9EAC2 /* MenuBarDeclutterUITests.xctest */,
+				D5F920012FF9200000C9EAC2 /* MenuBarFixtureApp.app */,
+			);
+			name = Products;
 			sourceTree = "<group>";
 		};
 		D5A000042FF9A00000C9EAC2 /* Config */ = {
@@ -94,18 +120,9 @@
 				D5A000022FF9A00000C9EAC2 /* Debug.xcconfig */,
 				D5A000032FF9A00000C9EAC2 /* Release.xcconfig */,
 				D5A000052FF9A00000C9EAC2 /* MenuBarDeclutter-Info.plist */,
+				D5F920022FF9200000C9EAC2 /* MenuBarFixtureApp-Info.plist */,
 			);
 			path = Config;
-			sourceTree = "<group>";
-		};
-		D50216DE2FF1001400C9EAC2 /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				D50216DD2FF1001400C9EAC2 /* MenuBarDeclutter.app */,
-				D50216EC2FF1001500C9EAC2 /* MenuBarDeclutterTests.xctest */,
-				D50216F62FF1001500C9EAC2 /* MenuBarDeclutterUITests.xctest */,
-			);
-			name = Products;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -179,6 +196,28 @@
 			productReference = D50216F62FF1001500C9EAC2 /* MenuBarDeclutterUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		D5F920072FF9200000C9EAC2 /* MenuBarFixtureApp */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D5F9200A2FF9200000C9EAC2 /* Build configuration list for PBXNativeTarget "MenuBarFixtureApp" */;
+			buildPhases = (
+				D5F920042FF9200000C9EAC2 /* Sources */,
+				D5F920052FF9200000C9EAC2 /* Frameworks */,
+				D5F920062FF9200000C9EAC2 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				D5F920032FF9200000C9EAC2 /* Tools/MenuBarFixtureApp */,
+			);
+			name = MenuBarFixtureApp;
+			packageProductDependencies = (
+			);
+			productName = MenuBarFixtureApp;
+			productReference = D5F920012FF9200000C9EAC2 /* MenuBarFixtureApp.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -200,6 +239,9 @@
 						CreatedOnToolsVersion = 26.3;
 						TestTargetID = D50216DC2FF1001400C9EAC2;
 					};
+					D5F920072FF9200000C9EAC2 = {
+						CreatedOnToolsVersion = 26.3;
+					};
 				};
 			};
 			buildConfigurationList = D50216D82FF1001400C9EAC2 /* Build configuration list for PBXProject "MenuBar-Manager" */;
@@ -219,6 +261,7 @@
 				D50216DC2FF1001400C9EAC2 /* MenuBarDeclutter */,
 				D50216EB2FF1001500C9EAC2 /* MenuBarDeclutterTests */,
 				D50216F52FF1001500C9EAC2 /* MenuBarDeclutterUITests */,
+				D5F920072FF9200000C9EAC2 /* MenuBarFixtureApp */,
 			);
 		};
 /* End PBXProject section */
@@ -245,6 +288,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D5F920062FF9200000C9EAC2 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -263,6 +313,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		D50216F22FF1001500C9EAC2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D5F920042FF9200000C9EAC2 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -413,7 +470,7 @@
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
-					ENABLE_USER_SELECTED_FILES = readwrite;
+				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Config/MenuBarDeclutter-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -438,7 +495,7 @@
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
-					ENABLE_USER_SELECTED_FILES = readwrite;
+				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Config/MenuBarDeclutter-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -505,6 +562,50 @@
 			};
 			name = Release;
 		};
+		D5F920082FF9200000C9EAC2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = D5A000022FF9A00000C9EAC2 /* Debug.xcconfig */;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Config/MenuBarFixtureApp-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "Yongjun-Zhang.MenuBarFixtureApp";
+				PRODUCT_NAME = MenuBarFixtureApp;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+			};
+			name = Debug;
+		};
+		D5F920092FF9200000C9EAC2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = D5A000032FF9A00000C9EAC2 /* Release.xcconfig */;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Config/MenuBarFixtureApp-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "Yongjun-Zhang.MenuBarFixtureApp";
+				PRODUCT_NAME = MenuBarFixtureApp;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -540,6 +641,15 @@
 			buildConfigurations = (
 				D50217072FF1001500C9EAC2 /* Debug */,
 				D50217082FF1001500C9EAC2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D5F9200A2FF9200000C9EAC2 /* Build configuration list for PBXNativeTarget "MenuBarFixtureApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D5F920082FF9200000C9EAC2 /* Debug */,
+				D5F920092FF9200000C9EAC2 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

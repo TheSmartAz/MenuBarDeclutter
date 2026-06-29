@@ -12,9 +12,10 @@ import Synchronization
 /// callback forwards the pressed hotkey ID back to `MainActor`.
 @MainActor
 final class GlobalHotkeyManager {
-    enum RegistrationIdentifier: String, CaseIterable, Hashable, Sendable {
+    nonisolated enum RegistrationIdentifier: Hashable, Sendable {
         case visibilityToggle
         case findIcon
+        case dynamic(UUID)
 
         var displayName: String {
             switch self {
@@ -22,6 +23,8 @@ final class GlobalHotkeyManager {
                 "Visibility Toggle"
             case .findIcon:
                 "Find Icon"
+            case .dynamic(let id):
+                "Dynamic Hotkey \(id.uuidString.prefix(8))"
             }
         }
     }

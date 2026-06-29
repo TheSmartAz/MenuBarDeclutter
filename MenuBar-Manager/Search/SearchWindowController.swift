@@ -20,7 +20,7 @@ final class SearchWindowController: NSWindowController, NSWindowDelegate {
         self.diagnosticsLogger = diagnosticsLogger
 
         let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 560, height: 420),
+            contentRect: NSRect(x: 0, y: 0, width: 640, height: 460),
             styleMask: [.titled, .closable, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -32,6 +32,9 @@ final class SearchWindowController: NSWindowController, NSWindowDelegate {
         panel.hidesOnDeactivate = false
         panel.isReleasedWhenClosed = false
         panel.level = .floating
+        panel.backgroundColor = .clear
+        panel.isOpaque = false
+        panel.hasShadow = false
         panel.collectionBehavior = [.moveToActiveSpace, .transient]
         panel.standardWindowButton(.miniaturizeButton)?.isHidden = true
         panel.standardWindowButton(.zoomButton)?.isHidden = true

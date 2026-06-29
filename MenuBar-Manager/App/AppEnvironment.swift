@@ -2,14 +2,19 @@ import AppKit
 
 @MainActor
 final class AppEnvironment {
+    /// Shared instance for App Intents access.
+    static var shared: AppEnvironment?
+
     let settingsStore: SettingsStore
     let diagnosticsLogger: DiagnosticsLogger
     let appSupportPaths: AppSupportPaths
     let liveStatus: LiveDiagnosticsStatus
     let launchAtLoginService: LaunchAtLoginService
     let diagnosticsExporter: DiagnosticsExporter
+    let dogfoodStore: DogfoodStore
     let safeModeService: SafeModeService
     let safeModeLaunchState: SafeModeLaunchState
+    let settingsMigrationResult: SettingsMigrationResult
 
     let screenGeometry: ScreenGeometryService
     let hidingService: HidingService
@@ -18,6 +23,7 @@ final class AppEnvironment {
     let hoverRevealController: HoverRevealController
     private let shouldCollapseAfterStartupHealth: Bool
     private let reflectLaunchAtLoginOnStart: Bool
+    private let presentMigrationNoticeOnStart: Bool
 
     lazy var accessibilityPermissionService = AccessibilityPermissionService(
         settingsStore: settingsStore,
@@ -62,6 +68,15 @@ final class AppEnvironment {
         },
         showSecondBar: { [weak self] in
             self?.showSecondBar()
+        },
+        enterFullMenuBarMode: { [weak self] in
+            self?.enterFullMenuBarMode()
+        },
+        exitFullMenuBarMode: { [weak self] in
+            self?.exitFullMenuBarMode()
+        },
+        refreshGroups: { [weak self] in
+            self?.refreshGroupSettings()
         }
     )
 
@@ -80,10 +95,15 @@ final class AppEnvironment {
         launchAtLoginService: launchAtLoginService,
         appSupportPaths: appSupportPaths,
         diagnosticsExporter: diagnosticsExporter,
+        dogfoodStore: dogfoodStore,
         accessibilityPermissionService: accessibilityPermissionService,
         menuBarScanCoordinator: menuBarScanCoordinator,
         profileStore: profileAutomationCoordinator.profileStore,
         triggerService: profileAutomationCoordinator.triggerService,
+        layoutCoordinator: layoutCoordinator,
+        groupStore: groupStore,
+        hotkeyBindingStore: hotkeyBindingStore,
+        privateAccessCoordinator: privateAccessCoordinator,
         actions: SettingsActions(
             behaviorChanged: { [weak self] in
                 self?.refreshBehaviorSettings()
@@ -96,6 +116,15 @@ final class AppEnvironment {
             },
             privacyChanged: { [weak self] in
                 self?.refreshPrivacySettings()
+            },
+            groupsChanged: { [weak self] in
+                self?.refreshGroupSettings()
+            },
+            dynamicHotkeysChanged: { [weak self] in
+                self?.refreshDynamicHotkeys()
+            },
+            automationSettingsChanged: { [weak self] in
+                self?.refreshAutomationSettings()
             },
             profile: SettingsProfileActions(
                 dryRun: { [weak self] profile in
@@ -181,6 +210,7 @@ final class AppEnvironment {
             toggle: { [weak self] in self?.toggleHiddenItems() },
             revealAll: { [weak self] in self?.revealAllHiddenItems() },
             toggleRevealAll: { [weak self] in self?.toggleRevealAll() },
+            emergencyRevealAndResetSeparators: { [weak self] in self?.emergencyRevealAndResetSeparators() },
             findIcon: { [weak self] in self?.showSearch() },
             showSecondBar: { [weak self] in self?.showSecondBar() },
             hideSecondBar: { [weak self] in self?.hideSecondBar() },
@@ -202,7 +232,30 @@ final class AppEnvironment {
             openSettings: { [weak self] in self?.showSettings() },
             showDiagnostics: { [weak self] in self?.showDiagnostics() },
             showAbout: { [weak self] in self?.showAbout() },
-            quit: { [weak self] in self?.quit() }
+            quit: { [weak self] in self?.quit() },
+            enterFullMenuBarMode: { [weak self] in self?.enterFullMenuBarMode() },
+            exitFullMenuBarMode: { [weak self] in self?.exitFullMenuBarMode() },
+            fullMenuBarModeIsActive: { [weak self] in
+                self?.layoutCoordinator.fullMenuBarModeService.isActive == true
+            },
+            showLayoutSuggestions: { [weak self] in self?.showLayoutSuggestions() },
+            openLayoutSettings: { [weak self] in self?.showSettings(section: .layout) },
+            addSpacerDivider: { [weak self] in
+                self?.layoutCoordinator.spacerController.add(type: .divider)
+            },
+            addSpacer: { [weak self] in
+                self?.layoutCoordinator.spacerController.add(type: .thinSpacer)
+            },
+            toggleSpacerMarkers: { [weak self] in
+                guard let self else { return }
+                self.layoutCoordinator.spacerController.setMarkersVisible(!self.settingsStore.showSpacerMarkers)
+            },
+            revealInlineAnyway: { [weak self] in
+                _ = self?.layoutCoordinator.crowdedRevealRescueService.revealInlineAnyway()
+            },
+            crowdedRevealIntercepted: { [weak self] in
+                self?.layoutCoordinator.crowdedRevealRescueService.lastRevealIntercepted == true
+            }
         )
     )
 
@@ -286,7 +339,13 @@ final class AppEnvironment {
             hidingService: hidingService,
             accessibilityPermissionService: accessibilityPermissionService,
             menuBarScanCoordinator: menuBarScanCoordinator,
-            secondBarWindowController: menuBarItemSurfaceCoordinator.secondBarWindowController
+            secondBarWindowController: menuBarItemSurfaceCoordinator.secondBarWindowController,
+            layoutCoordinator: layoutCoordinator,
+            groupStore: groupStore,
+            groupStatusItemController: groupStatusItemController,
+            hotkeyBindingStore: hotkeyBindingStore,
+            dynamicHotkeyRegistrationService: dynamicHotkeyRegistrationService,
+            privateAccessCoordinator: privateAccessCoordinator
         ),
         actions: AppHealthCoordinatorActions(
             synchronizeLiveStatus: { [weak self] in
@@ -328,20 +387,155 @@ final class AppEnvironment {
         }
     )
 
+    private lazy var layoutCoordinator = LayoutCoordinator(
+        settingsStore: settingsStore,
+        diagnosticsLogger: diagnosticsLogger,
+        appSupportPaths: appSupportPaths,
+        screenGeometry: screenGeometry,
+        hidingService: hidingService,
+        scanResultProvider: { [weak self] in
+            self?.menuBarScanCoordinator.lastResult
+        },
+        revealAll: { [weak self] in
+            self?.revealAllHiddenItems()
+        },
+        restoreVisibility: { [weak self] state in
+            self?.restoreVisibilityState(state)
+        },
+        suspendAutoRehide: { [weak self] in
+            self?.suspendAutoRehide()
+        },
+        resumeAutoRehide: { [weak self] in
+            self?.resumeAutoRehide()
+        },
+        showSpacerMarkers: { [weak self] visible in
+            self?.settingsStore.showSpacerMarkers = visible
+        },
+        openSecondBar: { [weak self] in
+            self?.showSecondBar()
+        },
+        enterFullMenuBarMode: { [weak self] in
+            self?.enterFullMenuBarMode()
+        }
+    )
+
+    private lazy var groupStore = IconGroupStore(
+        directory: appSupportPaths.applicationSupportDirectory.appendingPathComponent("Groups", isDirectory: true),
+        backupsDirectory: appSupportPaths.backupsDirectory,
+        diagnosticsLogger: diagnosticsLogger
+    )
+
+    private lazy var privateAccessCoordinator = PrivateAccessCoordinator(
+        settingsStore: settingsStore,
+        diagnosticsLogger: diagnosticsLogger,
+        authService: LocalAuthenticationService(
+            allowPasswordFallback: { [weak self] in
+                self?.settingsStore.privateAccessAllowDevicePasswordFallback ?? true
+            }
+        )
+    )
+
+    lazy var protectedActionGate = ProtectedActionGate(coordinator: privateAccessCoordinator)
+
+    private lazy var hotkeyBindingStore = HotkeyBindingStore(
+        directory: appSupportPaths.applicationSupportDirectory.appendingPathComponent("Hotkeys", isDirectory: true),
+        backupsDirectory: appSupportPaths.backupsDirectory,
+        diagnosticsLogger: diagnosticsLogger
+    )
+
+    private lazy var groupHighlightOverlayWindow = HighlightOverlayWindow(
+        diagnosticsLogger: diagnosticsLogger
+    )
+
+    private lazy var groupMenuItemActivator = MenuItemActivator(
+        settingsStore: settingsStore,
+        hidingService: hidingService,
+        highlightOverlay: groupHighlightOverlayWindow,
+        diagnosticsLogger: diagnosticsLogger
+    )
+
+    private lazy var groupActivationService = IconGroupActivationService(
+        activator: groupMenuItemActivator,
+        diagnosticsLogger: diagnosticsLogger
+    )
+
+    private lazy var groupPanelWindowController = IconGroupPanelWindowController(
+        diagnosticsLogger: diagnosticsLogger,
+        activationService: groupActivationService,
+        protectedActionGate: protectedActionGate
+    )
+
+    private lazy var groupStatusItemController = IconGroupStatusItemController(
+        settingsStore: settingsStore,
+        groupStore: groupStore,
+        factory: IconGroupStatusItemFactory(diagnosticsLogger: diagnosticsLogger),
+        diagnosticsLogger: diagnosticsLogger,
+        openGroup: { [weak self] group in
+            self?.showGroupPanel(group)
+        },
+        editGroup: { [weak self] _ in
+            self?.showSettings(section: .groups)
+        }
+    )
+
+    private lazy var dynamicHotkeyRegistrationService = DynamicHotkeyRegistrationService(
+        settingsStore: settingsStore,
+        bindingStore: hotkeyBindingStore,
+        hotkeyManager: hotkeyManager,
+        protectedActionGate: protectedActionGate,
+        diagnosticsLogger: diagnosticsLogger,
+        performAction: { [weak self] action in
+            await self?.performDynamicHotkeyAction(action) == true
+        }
+    )
+
+    lazy var intentExecutionService = AppIntentExecutionService(
+        settingsStore: settingsStore,
+        diagnosticsLogger: diagnosticsLogger,
+        safeModeActive: { [weak self] in
+            self?.safeModeLaunchState.isSafeModeActive == true
+        },
+        expand: { [weak self] in self?.expandHiddenItems() },
+        collapse: { [weak self] in self?.collapseHiddenItems() },
+        revealAll: { [weak self] in self?.revealAllHiddenItems() },
+        showSecondBar: { [weak self] in self?.showSecondBar() },
+        hideSecondBar: { [weak self] in self?.hideSecondBar() },
+        enterFullMenuBarMode: { [weak self] in self?.enterFullMenuBarMode() },
+        exitFullMenuBarMode: { [weak self] in self?.exitFullMenuBarMode() },
+        applyProfileNamed: { [weak self] name in
+            self?.applyProfileNamed(name) ?? false
+        },
+        pauseAutomation: { [weak self] in
+            self?.settingsStore.automationPaused = true
+            self?.refreshTriggerSettings()
+        },
+        resumeAutomation: { [weak self] in
+            self?.settingsStore.automationPaused = false
+            self?.refreshTriggerSettings()
+        }
+    )
+
     init(
         settingsStore: SettingsStore = SettingsStore(),
         diagnosticsLogger: DiagnosticsLogger = DiagnosticsLogger(),
         appSupportPaths: AppSupportPaths = AppSupportPaths(),
         screenGeometry: ScreenGeometryService = ScreenGeometryService(),
         launchAtLoginService: LaunchAtLoginService? = nil,
-        reflectLaunchAtLoginOnStart: Bool = true
+        reflectLaunchAtLoginOnStart: Bool = true,
+        presentMigrationNoticeOnStart: Bool = true
     ) {
         self.settingsStore = settingsStore
         self.diagnosticsLogger = diagnosticsLogger
         self.appSupportPaths = appSupportPaths
         self.screenGeometry = screenGeometry
         self.reflectLaunchAtLoginOnStart = reflectLaunchAtLoginOnStart
+        self.presentMigrationNoticeOnStart = presentMigrationNoticeOnStart
         self.liveStatus = LiveDiagnosticsStatus()
+        self.settingsMigrationResult = SettingsMigrationService(
+            settingsStore: settingsStore,
+            appSupportPaths: appSupportPaths,
+            diagnosticsLogger: diagnosticsLogger
+        ).migrateIfNeeded()
         let safeModeService = SafeModeService(appSupportPaths: appSupportPaths)
         let safeModeLaunchState = safeModeService.detectLaunchState()
         self.safeModeService = safeModeService
@@ -375,6 +569,7 @@ final class AppEnvironment {
         }
 
         self.diagnosticsExporter = DiagnosticsExporter()
+        self.dogfoodStore = DogfoodStore(appSupportPaths: appSupportPaths)
         liveStatus.safeModeActive = safeModeLaunchState.isSafeModeActive
         liveStatus.safeModeReasonSummary = safeModeLaunchState.displaySummary
 
@@ -418,7 +613,9 @@ final class AppEnvironment {
     }
 
     func start() {
+        AppEnvironment.shared = self
         prepareLaunchStorage()
+        dogfoodStore.loadRun(id: settingsStore.dogfoodRunID)
         logSafeModeStatusIfNeeded()
         startRuntimeServices()
 
@@ -427,6 +624,7 @@ final class AppEnvironment {
 
         reflectLaunchAtLoginPreferenceIfNeeded()
         presentFirstRunSurfacesIfNeeded()
+        presentMigrationNoticeIfNeeded()
 
         diagnosticsLogger.log("Application environment started in \(settingsStore.appMode.displayName) mode.")
     }
@@ -460,6 +658,17 @@ final class AppEnvironment {
         startMenuBarScanningIfAllowed()
         refreshTriggerSettings()
         systemRecoveryCoordinator.startObserving()
+        layoutCoordinator.start()
+        groupStore.load()
+        hotkeyBindingStore.load()
+        if safeModeLaunchState.isSafeModeActive {
+            layoutCoordinator.enterSafeMode()
+            groupStatusItemController.enterSafeMode()
+            dynamicHotkeyRegistrationService.unregisterAll()
+        } else {
+            groupStatusItemController.refresh()
+            dynamicHotkeyRegistrationService.refreshRegistrations()
+        }
     }
 
     private func startMenuBarScanningIfAllowed() {
@@ -511,7 +720,28 @@ final class AppEnvironment {
         }
     }
 
+    private func presentMigrationNoticeIfNeeded() {
+        guard presentMigrationNoticeOnStart,
+              settingsStore.v01SafeDefaultsNoticePending else {
+            return
+        }
+        settingsStore.v01SafeDefaultsNoticePending = false
+
+        let alert = NSAlert()
+        alert.messageText = "Updated to v0.1 safe defaults"
+        alert.informativeText = """
+        Experimental automation, icon moving, Pro discovery, auto-rehide, hover reveal, hotkeys, and Launch at Login were reset to conservative defaults. Your profiles were left in place.
+        """
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+    }
+
     func stop() {
+        dynamicHotkeyRegistrationService.unregisterAll()
+        groupStatusItemController.removeAll()
+        layoutCoordinator.stop()
+        AppEnvironment.shared = nil
         menuBarItemSurfaceCoordinator.hideSecondBar()
         profileAutomationCoordinator.stop()
         systemRecoveryCoordinator.stopObserving()
@@ -543,8 +773,56 @@ final class AppEnvironment {
         statusBarController.revealAll()
     }
 
+    func emergencyRevealAndResetSeparators() {
+        statusBarController.revealAll()
+        statusBarController.resetSeparatorLength()
+        statusBarController.refreshSeparatorVisuals()
+        diagnosticsLogger.log(
+            "Emergency recovery applied: reveal all and reset separators.",
+            level: .warning,
+            category: .recovery
+        )
+        updateLiveStatusFromServices()
+    }
+
     func toggleRevealAll() {
         statusBarController.toggleRevealAll()
+    }
+
+    // MARK: Phase 10 Layout actions
+
+    func enterFullMenuBarMode() {
+        layoutCoordinator.enterFullMenuBarMode()
+    }
+
+    func exitFullMenuBarMode() {
+        layoutCoordinator.exitFullMenuBarMode()
+    }
+
+    func showLayoutSuggestions() {
+        showSettings(section: .layout)
+    }
+
+    private func restoreVisibilityState(_ state: HidingVisibilityState) {
+        switch state {
+        case .collapsed:
+            collapseHiddenItems()
+        case .expanded:
+            expandHiddenItems()
+        case .revealAll:
+            revealAllHiddenItems()
+        }
+    }
+
+    private func suspendAutoRehide() {
+        rehideController.cancel(reason: .cancelled)
+        liveStatus.autoRehideScheduled = false
+    }
+
+    private func resumeAutoRehide() {
+        // Re-arm rehide if auto-rehide is enabled and currently expanded.
+        guard settingsStore.autoRehideEnabled else { return }
+        armRehide()
     }
 
     func resetSeparatorLength() {
@@ -572,6 +850,30 @@ final class AppEnvironment {
 
     func refreshPrivacySettings() {
         settingsRuntimeCoordinator.refreshPrivacySettings()
+    }
+
+    func refreshGroupSettings() {
+        groupStore.load()
+        if safeModeLaunchState.isSafeModeActive {
+            groupStatusItemController.enterSafeMode()
+        } else {
+            groupStatusItemController.refresh()
+        }
+        updateLiveStatusFromServices()
+    }
+
+    func refreshDynamicHotkeys() {
+        hotkeyBindingStore.load()
+        if safeModeLaunchState.isSafeModeActive {
+            dynamicHotkeyRegistrationService.unregisterAll()
+        } else {
+            dynamicHotkeyRegistrationService.refreshRegistrations()
+        }
+        updateLiveStatusFromServices()
+    }
+
+    func refreshAutomationSettings() {
+        diagnosticsLogger.log("Automation settings refreshed.", level: .debug, category: .urlAutomation)
     }
 
     func refreshTriggerSettings() {
@@ -721,6 +1023,11 @@ final class AppEnvironment {
         profileAutomationCoordinator.applyProfile(profile)
     }
 
+    @discardableResult
+    func applyProfileNamed(_ name: String) -> Bool {
+        profileAutomationCoordinator.applyProfile(named: name)
+    }
+
     // MARK: UI surfaces
 
     func showSettings(section: SettingsSection = .general) {
@@ -737,6 +1044,26 @@ final class AppEnvironment {
 
     func showSecondBar() {
         menuBarItemSurfaceCoordinator.showSecondBar()
+    }
+
+    func showGroupPanel(_ group: IconGroup) {
+        let snapshots = liveStatus.scannedMenuBarItems
+        let openPanel = { [weak self] in
+            self?.groupPanelWindowController.show(group: group, snapshots: snapshots)
+        }
+
+        if group.isProtected {
+            Task { @MainActor in
+                await protectedActionGate.execute(
+                    resource: .protectedGroup(group.id),
+                    reason: "Unlock to open \(group.name)."
+                ) {
+                    openPanel()
+                }
+            }
+        } else {
+            openPanel()
+        }
     }
 
     func hideSecondBar() {
@@ -757,6 +1084,55 @@ final class AppEnvironment {
 
     func toggleProMode() {
         settingsRuntimeCoordinator.toggleProMode()
+    }
+
+    private func performDynamicHotkeyAction(_ action: HotkeyAction) async -> Bool {
+        switch action {
+        case .revealAndHighlightItem(let itemID):
+            refreshMenuBarItems()
+            guard let snapshot = liveStatus.scannedMenuBarItems.first(where: { $0.id == itemID }) else {
+                diagnosticsLogger.log("Dynamic hotkey item target unavailable.", level: .warning, category: .hotkey)
+                return false
+            }
+            _ = groupActivationService.activate(snapshot: snapshot)
+            return true
+        case .openGroup(let groupID), .openSecondBarFilteredToGroup(let groupID):
+            groupStore.load()
+            guard let group = groupStore.groups.first(where: { $0.id == groupID }) else {
+                diagnosticsLogger.log("Dynamic hotkey group target unavailable.", level: .warning, category: .hotkey)
+                return false
+            }
+            if case .openSecondBarFilteredToGroup = action {
+                showSecondBar()
+            }
+            showGroupPanel(group)
+            return true
+        case .openSecondBarFilteredToItem:
+            showSecondBar()
+            return true
+        case .applyProfile(let profileID):
+            profileAutomationCoordinator.profileStore.load()
+            guard let profile = profileAutomationCoordinator.profileStore.profiles.first(where: { $0.id == profileID }) else {
+                diagnosticsLogger.log("Dynamic hotkey profile target unavailable.", level: .warning, category: .hotkey)
+                return false
+            }
+            _ = applyProfile(profile)
+            return true
+        case .enterFullMenuBarMode:
+            enterFullMenuBarMode()
+            return true
+        case .exitFullMenuBarMode:
+            exitFullMenuBarMode()
+            return true
+        case .pauseAutomation:
+            settingsStore.automationPaused = true
+            refreshTriggerSettings()
+            return true
+        case .resumeAutomation:
+            settingsStore.automationPaused = false
+            refreshTriggerSettings()
+            return true
+        }
     }
 
     func showAbout() {

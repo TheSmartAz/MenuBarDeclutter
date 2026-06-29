@@ -1,9 +1,11 @@
 # MenuBarDeclutter Alpha RC Release Notes
 
-Version: 1.0
+Version: 0.1.0
 Build: 1
 Date: 2026-06-28
 Validated code commit: `a30414e`
+
+Historical note: this file records the 2026-06-28 Alpha RC validation snapshot. Later Phase 9.2-9.5 work added the dogfood harness, installed-app workflow, v0.1 safe defaults, and v0.1 release-freeze docs.
 
 ## Highlights
 
@@ -42,8 +44,8 @@ Key Alpha RC limitations:
 
 - `xcodebuild -list`: PASS; canonical `MenuBarDeclutter` and deprecated fallback `MenuBar-Manager` schemes are present.
 - `xcodebuild build -scheme MenuBarDeclutter -destination 'platform=macOS'`: PASS.
-- `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS'`: PASS; 203 unit tests + 7 UI executions. Result bundle: `/tmp/MenuBarDeclutter-AlphaRCFull.xcresult`.
-- `xcodebuild test -scheme MenuBar-Manager -destination 'platform=macOS'`: PASS; 203 unit tests + 7 UI executions. Result bundle: `/tmp/MenuBarDeclutter-CompatFull.xcresult`.
+- `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS'`: PASS in this dated Alpha RC run; 203 unit tests + 7 UI executions. Result bundle: `/tmp/MenuBarDeclutter-AlphaRCFull.xcresult`.
+- `xcodebuild test -scheme MenuBar-Manager -destination 'platform=macOS'`: PASS in this dated Alpha RC run; 203 unit tests + 7 UI executions. Result bundle: `/tmp/MenuBarDeclutter-CompatFull.xcresult`.
 - `scripts/verify_privacy_boundary.sh`: PASS.
 - `scripts/qa_preflight.sh`: PASS.
 - Release build: PASS at `build/DerivedData/Build/Products/Release/MenuBarDeclutter.app`.

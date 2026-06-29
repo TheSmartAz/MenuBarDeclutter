@@ -39,6 +39,16 @@ struct HealthReportTests {
         #expect(report.isHealthy == false)
     }
 
+    @Test func plainTextIncludesDogfoodRunIDWhenPresent() {
+        let report = HealthReport(
+            generatedAt: Date(timeIntervalSince1970: 0),
+            issues: [],
+            dogfoodRunID: "dogfood-2026-06-28-120000"
+        )
+
+        #expect(report.plainText().contains("Dogfood Run ID: dogfood-2026-06-28-120000"))
+    }
+
     @Test func criticalIssuesTakePrecedenceOverWarnings() {
         let report = HealthReport(
             generatedAt: Date(timeIntervalSince1970: 1),

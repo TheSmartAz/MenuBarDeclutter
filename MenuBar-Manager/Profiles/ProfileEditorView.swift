@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct ProfileEditorView: View {
@@ -23,40 +24,18 @@ struct ProfileEditorView: View {
     }
 
     var body: some View {
-        Form {
-            Section("Profile") {
-                TextField("Name", text: $profile.name)
+        VStack(alignment: .leading, spacing: 12) {
+            nameRow
+            Divider()
 
-                Picker("Preferred visibility", selection: $profile.preferredVisibilityState) {
-                    ForEach(HidingVisibilityState.allCases, id: \.self) { state in
-                        Text(state.rawValue)
-                            .tag(state)
-                    }
-                }
-                .pickerStyle(.segmented)
-
-                Toggle("Show Second Bar", isOn: $profile.showSecondBar)
-                Toggle("Auto-rehide enabled", isOn: $profile.autoRehideEnabled)
-                Toggle("Hover reveal enabled", isOn: $profile.hoverRevealEnabled)
+            VStack(alignment: .leading, spacing: 12) {
+                visibilityAndZones
+                behaviorToggles
             }
 
-            Section("Target Zones") {
-                TextEditor(text: targetZoneTextBinding)
-                    .font(.system(.body, design: .monospaced))
-                    .frame(minHeight: 96)
-                    .focused($isTargetZoneEditorFocused)
-
-                Text("One mapping per line, for example: com.example.app=hidden. Supported zones: visible, hidden, alwaysHidden.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Section("Notes") {
-                TextEditor(text: $profile.notes)
-                    .frame(minHeight: 72)
-            }
+            Divider()
+            notesSection
         }
-        .formStyle(.grouped)
         .onChange(of: isTargetZoneEditorFocused) { _, isFocused in
             if !isFocused {
                 commitTargetZoneTextIfNeeded()
@@ -70,6 +49,111 @@ struct ProfileEditorView: View {
         }
         .onDisappear {
             commitTargetZoneTextIfNeeded()
+        }
+    }
+
+    private var nameRow: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text("Profile name")
+                .foregroundStyle(.secondary)
+                .frame(width: 118, alignment: .leading)
+
+            TextField("Name", text: $profile.name)
+                .textFieldStyle(.roundedBorder)
+        }
+    }
+
+    private var visibilityAndZones: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Text("Preferred visibility")
+                    .foregroundStyle(.secondary)
+                    .frame(width: 118, alignment: .leading)
+
+                Picker("Preferred visibility", selection: $profile.preferredVisibilityState) {
+                    ForEach(HidingVisibilityState.allCases, id: \.self) { state in
+                        Text(state.profileDisplayName)
+                            .tag(state)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.segmented)
+                .frame(maxWidth: 360)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 6) {
+                    Text("Target Zones")
+                        .font(.subheadline)
+                        .bold()
+
+                    Image(systemName: "info.circle")
+                        .foregroundStyle(.secondary)
+                        .help("One mapping per line. Supported zones: visible, hidden, alwaysHidden.")
+                }
+
+                TextEditor(text: targetZoneTextBinding)
+                    .font(.system(.body, design: .monospaced))
+                    .scrollContentBackground(.hidden)
+                    .frame(minHeight: 112)
+                    .padding(6)
+                    .background(Color(nsColor: .textBackgroundColor).opacity(0.65), in: .rect(cornerRadius: 7))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 7, style: .continuous)
+                            .strokeBorder(Color(nsColor: .separatorColor).opacity(0.35))
+                    }
+                    .focused($isTargetZoneEditorFocused)
+
+                Text("Example: com.example.app=hidden. Supported zones: visible, hidden, alwaysHidden.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var behaviorToggles: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ProfileEditorToggleRow(
+                title: "Show Second Bar",
+                systemImage: "rectangle.bottomthird.inset.filled",
+                isOn: $profile.showSecondBar
+            )
+            Divider()
+            ProfileEditorToggleRow(
+                title: "Auto-rehide enabled",
+                systemImage: "timer",
+                isOn: $profile.autoRehideEnabled
+            )
+            Divider()
+            ProfileEditorToggleRow(
+                title: "Hover reveal enabled",
+                systemImage: "cursorarrow.motionlines",
+                isOn: $profile.hoverRevealEnabled
+            )
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .controlBackgroundColor).opacity(0.45), in: .rect(cornerRadius: 7))
+        .overlay {
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.3))
+        }
+    }
+
+    private var notesSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Notes")
+                .font(.subheadline)
+                .bold()
+
+            TextEditor(text: $profile.notes)
+                .scrollContentBackground(.hidden)
+                .frame(minHeight: 72)
+                .padding(6)
+                .background(Color(nsColor: .textBackgroundColor).opacity(0.65), in: .rect(cornerRadius: 7))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .strokeBorder(Color(nsColor: .separatorColor).opacity(0.35))
+                }
         }
     }
 
@@ -117,5 +201,34 @@ struct ProfileEditorView: View {
             zones[parts[0]] = zone
         }
         return zones
+    }
+}
+
+private struct ProfileEditorToggleRow: View {
+    let title: String
+    let systemImage: String
+    @Binding var isOn: Bool
+
+    var body: some View {
+        Toggle(isOn: $isOn) {
+            Label(title, systemImage: systemImage)
+                .lineLimit(1)
+        }
+        .toggleStyle(.switch)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 9)
+    }
+}
+
+private extension HidingVisibilityState {
+    var profileDisplayName: String {
+        switch self {
+        case .collapsed:
+            "Collapsed"
+        case .expanded:
+            "Expanded"
+        case .revealAll:
+            "Reveal All"
+        }
     }
 }

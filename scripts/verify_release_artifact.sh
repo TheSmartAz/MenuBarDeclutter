@@ -2,6 +2,7 @@
 set -euo pipefail
 
 APP_PATH="${APP_PATH:-${1:-build/MenuBarDeclutter.app}}"
+EXPECTED_MARKETING_VERSION="${EXPECTED_MARKETING_VERSION:-0.1.0}"
 FAILED=0
 
 fail() {
@@ -39,6 +40,21 @@ if [[ -f "$INFO_PLIST" ]]; then
   else
     fail "URL scheme is missing or different"
   fi
+
+  MARKETING_VERSION="$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$INFO_PLIST" 2>/dev/null || true)"
+  if [[ "$MARKETING_VERSION" == "$EXPECTED_MARKETING_VERSION" ]]; then
+    pass "Marketing version is $EXPECTED_MARKETING_VERSION"
+  else
+    fail "Marketing version is $MARKETING_VERSION; expected $EXPECTED_MARKETING_VERSION"
+  fi
+
+  for key in NSScreenCaptureUsageDescription NSAppleEventsUsageDescription NSInputMonitoringUsageDescription; do
+    if /usr/libexec/PlistBuddy -c "Print :$key" "$INFO_PLIST" >/dev/null 2>&1; then
+      fail "$key is present"
+    else
+      pass "$key is absent"
+    fi
+  done
 else
   fail "Info.plist is missing"
 fi

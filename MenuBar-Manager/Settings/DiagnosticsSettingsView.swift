@@ -7,6 +7,7 @@ struct DiagnosticsSettingsView: View {
     var liveStatus: LiveDiagnosticsStatus?
     let appSupportPaths: AppSupportPaths
     let exporter: DiagnosticsExporter
+    @Bindable var dogfoodStore: DogfoodStore
     @Bindable var settingsStore: SettingsStore
     var launchAtLoginService: LaunchAtLoginService? = nil
     var scanCoordinator: MenuBarScanCoordinator?
@@ -47,49 +48,65 @@ struct DiagnosticsSettingsView: View {
                 onExport: exportCurrent
             )
 
-            if let exportError {
-                ExportErrorBanner(message: exportError)
-                Divider()
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 12) {
+                    if let exportError {
+                        ExportErrorBanner(message: exportError)
+                    }
+
+                    if let lastExportedURL {
+                        ExportSuccessBanner(url: lastExportedURL)
+                    }
+
+                    if let liveStatus {
+                        DiagnosticsSummaryStrip(liveStatus: liveStatus, settingsStore: settingsStore)
+                    }
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        if let liveStatus {
+                            HealthStatusSection(
+                                liveStatus: liveStatus,
+                                onRefresh: onRunHealthCheck,
+                                onFixAutomatically: onFixHealthIssues,
+                                onResetBasicMode: onResetBasicMode,
+                                onDisableProMode: onDisableProMode,
+                                onExportHealthReport: exportHealthReport,
+                                onEnterSafeModeNextLaunch: onEnterSafeModeNextLaunch
+                            )
+                        }
+
+                        ScreenStatusSection(screensProvider: exporter.screensProvider)
+                    }
+
+                    DiagnosticsPanel("Dogfood", systemImage: "checklist") {
+                        DogfoodNotesView(
+                            settingsStore: settingsStore,
+                            dogfoodStore: dogfoodStore,
+                            onExportBundle: exportDogfoodBundle
+                        )
+                    }
+
+                    if let liveStatus {
+                        LiveStatusSection(
+                            liveStatus: liveStatus,
+                            settingsStore: settingsStore,
+                            launchAtLoginService: launchAtLoginService,
+                            scanCoordinator: scanCoordinator
+                        )
+                    }
+
+                    DiagnosticEventList(
+                        diagnosticsLogger: diagnosticsLogger,
+                        severityFilter: severityFilter,
+                        selectedCategory: selectedCategory,
+                        selectedEventID: $selectedEventID
+                    )
+                }
+                .padding(14)
             }
-
-            if let lastExportedURL {
-                ExportSuccessBanner(url: lastExportedURL)
-                Divider()
-            }
-
-            if let liveStatus {
-                HealthStatusSection(
-                    liveStatus: liveStatus,
-                    onRefresh: onRunHealthCheck,
-                    onFixAutomatically: onFixHealthIssues,
-                    onResetBasicMode: onResetBasicMode,
-                    onDisableProMode: onDisableProMode,
-                    onExportHealthReport: exportHealthReport,
-                    onEnterSafeModeNextLaunch: onEnterSafeModeNextLaunch
-                )
-                Divider()
-            }
-
-            ScreenStatusSection(screensProvider: exporter.screensProvider)
-            Divider()
-
-            if let liveStatus {
-                LiveStatusSection(
-                    liveStatus: liveStatus,
-                    settingsStore: settingsStore,
-                    launchAtLoginService: launchAtLoginService,
-                    scanCoordinator: scanCoordinator
-                )
-                Divider()
-            }
-
-            DiagnosticEventList(
-                diagnosticsLogger: diagnosticsLogger,
-                severityFilter: severityFilter,
-                selectedCategory: selectedCategory,
-                selectedEventID: $selectedEventID
-            )
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(nsColor: .controlBackgroundColor))
     }
 
     private func exportCurrent() {
@@ -184,6 +201,39 @@ struct DiagnosticsSettingsView: View {
         }
     }
 
+    private func exportDogfoodBundle() {
+        do {
+            try appSupportPaths.ensureDirectoriesExist()
+            let snapshot = exporter.makeSnapshot(
+                settingsStore: settingsStore,
+                logger: diagnosticsLogger
+            )
+            let diagnosticsData = try exporter.serialize(snapshot, format: .txt)
+            let metadata = DogfoodBundleMetadata(
+                generatedAt: exporter.dateProvider(),
+                appVersion: exporter.appVersionProvider(),
+                marketingVersion: exporter.marketingVersionProvider(),
+                buildNumber: exporter.buildNumberProvider(),
+                bundleIdentifier: exporter.bundleIdentifierProvider(),
+                macOSVersion: exporter.macOSVersionProvider(),
+                architecture: exporter.architectureProvider(),
+                screens: exporter.screensProvider()
+            )
+            let url = try dogfoodStore.exportBundle(
+                diagnosticsData: diagnosticsData,
+                healthReport: liveStatus?.healthReport,
+                metadata: metadata
+            )
+            lastExportedURL = url
+            exportError = nil
+            diagnosticsLogger.log("Dogfood bundle exported to \(url.lastPathComponent).", level: .info)
+        } catch {
+            exportError = error.localizedDescription
+            lastExportedURL = nil
+            diagnosticsLogger.log("Dogfood bundle export failed: \(error.localizedDescription)", level: .error)
+        }
+    }
+
     private static func filenameTimestamp() -> String {
         filenameTimestampFormatter.string(from: Date())
     }
@@ -241,6 +291,166 @@ private extension Array where Element == DiagnosticEvent {
     }
 }
 
+private struct DiagnosticsPanel<Accessory: View, Content: View>: View {
+    let title: String
+    let systemImage: String?
+    let accessory: Accessory
+    let content: Content
+
+    init(
+        _ title: String,
+        systemImage: String? = nil,
+        @ViewBuilder content: () -> Content
+    ) where Accessory == EmptyView {
+        self.title = title
+        self.systemImage = systemImage
+        self.accessory = EmptyView()
+        self.content = content()
+    }
+
+    init(
+        _ title: String,
+        systemImage: String? = nil,
+        @ViewBuilder accessory: () -> Accessory,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.title = title
+        self.systemImage = systemImage
+        self.accessory = accessory()
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                if let systemImage {
+                    Image(systemName: systemImage)
+                        .foregroundStyle(.secondary)
+                }
+
+                Text(title)
+                    .font(.headline)
+
+                Spacer()
+
+                accessory
+            }
+
+            content
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.thinMaterial, in: .rect(cornerRadius: 8))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.45))
+        }
+    }
+}
+
+private struct DiagnosticsStatusBadge: View {
+    let title: String
+    let systemImage: String
+    var style: Color = .secondary
+
+    var body: some View {
+        Label(title, systemImage: systemImage)
+            .font(.caption)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .foregroundStyle(style)
+            .background(style.opacity(0.12), in: .capsule)
+            .overlay {
+                Capsule()
+                    .strokeBorder(style.opacity(0.25))
+            }
+    }
+}
+
+private struct DiagnosticsSummaryStrip: View {
+    let liveStatus: LiveDiagnosticsStatus
+    let settingsStore: SettingsStore
+
+    var body: some View {
+        LazyVStack(alignment: .leading, spacing: 8) {
+            summaryTiles
+        }
+    }
+
+    @ViewBuilder
+    private var summaryTiles: some View {
+        DiagnosticsMetricTile(
+            title: "Visibility",
+            value: liveStatus.visibilityState.rawValue,
+            systemImage: "eye"
+        )
+        DiagnosticsMetricTile(
+            title: "Accessibility",
+            value: liveStatus.accessibilityPermissionStatus.displayName,
+            systemImage: "accessibility",
+            valueStyle: liveStatus.accessibilityPermissionStatus == .granted ? .green : .orange
+        )
+        DiagnosticsMetricTile(
+            title: "Scanned",
+            value: liveStatus.scannedMenuBarItems.count.formatted(.number),
+            systemImage: "menubar.rectangle"
+        )
+        DiagnosticsMetricTile(
+            title: "Search Index",
+            value: liveStatus.searchIndexItemCount.formatted(.number),
+            systemImage: "magnifyingglass"
+        )
+        DiagnosticsMetricTile(
+            title: "Second Bar",
+            value: liveStatus.secondBarVisible ? "Visible" : "Hidden",
+            systemImage: "rectangle.bottomthird.inset.filled"
+        )
+        DiagnosticsMetricTile(
+            title: "Automation",
+            value: (settingsStore.automationPaused || liveStatus.automationPaused) ? "Paused" : "Ready",
+            systemImage: "pause.circle",
+            valueStyle: (settingsStore.automationPaused || liveStatus.automationPaused) ? .orange : .secondary
+        )
+    }
+}
+
+private struct DiagnosticsMetricTile: View {
+    let title: String
+    let value: String
+    let systemImage: String
+    var valueStyle: Color = .primary
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.title3)
+                .foregroundStyle(.secondary)
+                .frame(width: 24)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(value)
+                    .font(.callout)
+                    .foregroundStyle(valueStyle)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 9)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .controlBackgroundColor).opacity(0.55), in: .rect(cornerRadius: 7))
+        .overlay {
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.3))
+        }
+    }
+}
+
 private struct DiagnosticsToolbar: View {
     @Bindable var diagnosticsLogger: DiagnosticsLogger
     let clear: () -> Void
@@ -268,46 +478,37 @@ private struct DiagnosticsToolbar: View {
     }
 
     var body: some View {
-        HStack {
-            Text("Events")
-                .font(.title3)
-                .bold()
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Label("Diagnostics", systemImage: "waveform.path.ecg")
+                    .font(.title2)
+                    .bold()
 
-            Text("\(filteredEventCount) / \(eventCount)")
-                .foregroundStyle(.secondary)
+                Spacer()
 
+                DiagnosticsStatusBadge(title: "Privacy Safe", systemImage: "checkmark.shield", style: .green)
+                DiagnosticsStatusBadge(title: "Accessibility Aware", systemImage: "accessibility", style: .blue)
+            }
+
+            wrappedToolbar
+        }
+        .padding(14)
+        .background(.regularMaterial, in: .rect(cornerRadius: 8))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.5))
+        }
+        .padding([.horizontal, .top], 14)
+        .padding(.bottom, 4)
+    }
+
+    private var wideToolbar: some View {
+        HStack(spacing: 10) {
+            eventCounter
             Spacer()
-
-            Picker("Severity", selection: $severityFilter) {
-                ForEach(DiagnosticSeverityFilter.allCases) { filter in
-                    Text(filter.displayName)
-                        .tag(filter)
-                }
-            }
-            .labelsHidden()
-            .pickerStyle(.segmented)
-            .frame(width: 180)
-
-            Picker("Category", selection: $selectedCategory) {
-                Text("All Categories")
-                    .tag(Optional<DiagnosticCategory>.none)
-                ForEach(DiagnosticCategory.allCases) { category in
-                    Text(category.displayName)
-                        .tag(Optional(category))
-                }
-            }
-            .labelsHidden()
-            .frame(width: 170)
-
-            Picker("Export format", selection: $exportFormat) {
-                ForEach(DiagnosticsExporter.Format.allCases) { format in
-                    Text(format.fileExtension.uppercased())
-                        .tag(format)
-                }
-            }
-            .labelsHidden()
-            .pickerStyle(.segmented)
-            .frame(width: 90)
+            severityPicker
+            categoryPicker
+            exportFormatPicker
 
             Button("Copy Selected", systemImage: "doc.on.doc", action: onCopySelected)
                 .disabled(!canCopySelected)
@@ -318,7 +519,84 @@ private struct DiagnosticsToolbar: View {
             Button("Clear", systemImage: "trash", action: clear)
                 .disabled(eventCount == 0)
         }
-        .padding()
+    }
+
+    private var wrappedToolbar: some View {
+        VStack(spacing: 8) {
+            HStack {
+                eventCounter
+                Spacer()
+            }
+
+            HStack {
+                severityPicker
+                categoryPicker
+                Spacer()
+            }
+
+            HStack {
+                exportFormatPicker
+                Spacer()
+                Button("Copy Selected", systemImage: "doc.on.doc", action: onCopySelected)
+                    .disabled(!canCopySelected)
+                Button("Export Filtered…", systemImage: "square.and.arrow.up", action: onExport)
+                    .disabled(filteredEventCount == 0)
+                Button("Clear", systemImage: "trash", action: clear)
+                    .disabled(eventCount == 0)
+            }
+        }
+    }
+
+    private var eventCounter: some View {
+        HStack(spacing: 8) {
+            Text("Events")
+                .font(.callout)
+                .bold()
+
+            Text("\(filteredEventCount) / \(eventCount)")
+                .font(.callout.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(.quaternary, in: .capsule)
+        }
+    }
+
+    private var severityPicker: some View {
+        Picker("Severity", selection: $severityFilter) {
+            ForEach(DiagnosticSeverityFilter.allCases) { filter in
+                Text(filter.displayName)
+                    .tag(filter)
+            }
+        }
+        .labelsHidden()
+        .pickerStyle(.segmented)
+        .frame(minWidth: 120, idealWidth: 180, maxWidth: 200)
+    }
+
+    private var categoryPicker: some View {
+        Picker("Category", selection: $selectedCategory) {
+            Text("All Categories")
+                .tag(Optional<DiagnosticCategory>.none)
+            ForEach(DiagnosticCategory.allCases) { category in
+                Text(category.displayName)
+                    .tag(Optional(category))
+            }
+        }
+        .labelsHidden()
+        .frame(minWidth: 120, idealWidth: 170, maxWidth: 220)
+    }
+
+    private var exportFormatPicker: some View {
+        Picker("Export format", selection: $exportFormat) {
+            ForEach(DiagnosticsExporter.Format.allCases) { format in
+                Text(format.fileExtension.uppercased())
+                    .tag(format)
+            }
+        }
+        .labelsHidden()
+        .pickerStyle(.segmented)
+        .frame(minWidth: 70, idealWidth: 90, maxWidth: 100)
     }
 }
 
@@ -336,17 +614,33 @@ private struct DiagnosticEventList: View {
     }
 
     var body: some View {
-        if diagnosticsLogger.events.isEmpty {
-            ContentUnavailableView("No Events", systemImage: "list.bullet.rectangle")
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if filteredEvents.isEmpty {
-            ContentUnavailableView("No Matching Events", systemImage: "line.3.horizontal.decrease.circle")
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else {
-            List(selection: $selectedEventID) {
-                ForEach(filteredEvents.reversed()) { event in
-                    DiagnosticEventRow(event: event)
-                        .tag(event.id)
+        DiagnosticsPanel("Diagnostic Events", systemImage: "list.bullet.rectangle") {
+            if diagnosticsLogger.events.isEmpty {
+                ContentUnavailableView("No Events", systemImage: "list.bullet.rectangle")
+                    .frame(maxWidth: .infinity, minHeight: 160)
+            } else if filteredEvents.isEmpty {
+                ContentUnavailableView("No Matching Events", systemImage: "line.3.horizontal.decrease.circle")
+                    .frame(maxWidth: .infinity, minHeight: 160)
+            } else {
+                VStack(spacing: 0) {
+                    DiagnosticEventTableHeader()
+
+                    ForEach(Array(filteredEvents.reversed())) { event in
+                        Button {
+                            selectedEventID = event.id
+                        } label: {
+                            DiagnosticEventRow(
+                                event: event,
+                                isSelected: selectedEventID == event.id
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .clipShape(.rect(cornerRadius: 7))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .strokeBorder(Color(nsColor: .separatorColor).opacity(0.35))
                 }
             }
         }
@@ -358,9 +652,12 @@ private struct ExportErrorBanner: View {
 
     var body: some View {
         Label(message, systemImage: "exclamationmark.triangle")
-            .padding(.horizontal)
+            .font(.callout)
+            .padding(.horizontal, 10)
             .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .foregroundStyle(.red)
+            .background(.red.opacity(0.08), in: .rect(cornerRadius: 8))
     }
 }
 
@@ -369,9 +666,12 @@ private struct ExportSuccessBanner: View {
 
     var body: some View {
         Label("Exported to \(url.lastPathComponent)", systemImage: "checkmark.circle")
-            .padding(.horizontal)
+            .font(.callout)
+            .padding(.horizontal, 10)
             .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .foregroundStyle(.green)
+            .background(.green.opacity(0.08), in: .rect(cornerRadius: 8))
     }
 }
 
@@ -385,64 +685,51 @@ private struct HealthStatusSection: View {
     let onEnterSafeModeNextLaunch: (() -> Void)?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-                Label(statusTitle, systemImage: statusSymbol)
-                    .font(.headline)
-                    .foregroundStyle(statusStyle)
+        DiagnosticsPanel("Health", systemImage: "stethoscope") {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 8) {
+                    Label(statusTitle, systemImage: statusSymbol)
+                        .font(.title3)
+                        .bold()
+                        .foregroundStyle(statusStyle)
 
-                if liveStatus.safeModeActive {
-                    Label(liveStatus.safeModeReasonSummary, systemImage: "lifepreserver")
-                        .font(.caption)
-                        .foregroundStyle(.orange)
-                }
+                    if liveStatus.safeModeActive {
+                        DiagnosticsStatusBadge(
+                            title: liveStatus.safeModeReasonSummary,
+                            systemImage: "lifepreserver",
+                            style: .orange
+                        )
+                    }
 
-                Spacer()
+                    Spacer()
 
-                Button("Refresh", systemImage: "arrow.clockwise") {
-                    onRefresh?()
-                }
-                .buttonStyle(.borderless)
-            }
-            .padding(.top, 4)
-
-            if let report = liveStatus.healthReport {
-                if report.sortedIssues.isEmpty {
-                    Label("No health issues detected.", systemImage: "checkmark.circle")
-                        .foregroundStyle(.secondary)
-                } else {
-                    VStack(alignment: .leading, spacing: 6) {
-                        ForEach(report.sortedIssues) { issue in
-                            HealthIssueRow(issue: issue)
-                        }
+                    Button("Refresh", systemImage: "arrow.clockwise") {
+                        onRefresh?()
                     }
                 }
-            } else {
-                Label("Health has not run yet.", systemImage: "stethoscope")
-                    .foregroundStyle(.secondary)
-            }
 
-            ViewThatFits(in: .horizontal) {
-                HStack {
-                    healthButtons
+                if let report = liveStatus.healthReport {
+                    if report.sortedIssues.isEmpty {
+                        Label("No health issues detected.", systemImage: "checkmark.circle")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        VStack(alignment: .leading, spacing: 6) {
+                            ForEach(report.sortedIssues) { issue in
+                                HealthIssueRow(issue: issue)
+                            }
+                        }
+                    }
+                } else {
+                    Label("Health has not run yet.", systemImage: "stethoscope")
+                        .foregroundStyle(.secondary)
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        fixButton
-                        resetButton
-                        disableProButton
-                    }
-                    HStack {
-                        exportButton
-                        safeModeButton
-                    }
+                    healthButtons
                 }
+                .buttonStyle(.bordered)
             }
-            .buttonStyle(.bordered)
         }
-        .padding(.horizontal)
-        .padding(.bottom, 8)
     }
 
     private var statusTitle: String {
@@ -555,42 +842,56 @@ private struct ScreenStatusSection: View {
     @State private var screens: [DiagnosticsExporter.ScreenSnapshot] = []
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text("Screens")
-                    .font(.headline)
-
-                Text(screens.count, format: .number)
-                    .foregroundStyle(.secondary)
-
-                Spacer()
-
+        DiagnosticsPanel(
+            "Screens",
+            systemImage: "display",
+            accessory: {
                 Button("Refresh", systemImage: "arrow.clockwise", action: refreshScreens)
-                    .buttonStyle(.borderless)
-            }
-            .padding(.top, 4)
-
+            },
+            content: {
             if screens.isEmpty {
-                Text("No screens reported.")
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal)
-                    .padding(.bottom, 8)
+                ContentUnavailableView("No Screens Reported", systemImage: "display")
+                    .frame(maxWidth: .infinity, minHeight: 120)
             } else {
-                Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 4) {
+                VStack(spacing: 0) {
+                    ScreenTableHeader()
+
                     ForEach(screens, id: \.index) { screen in
-                        GridRow {
-                            Text(screen.displayName)
-                            Text(screen.frameSummary)
+                        HStack(spacing: 10) {
+                            Text(screen.index, format: .number)
+                                .font(.caption.monospacedDigit())
                                 .foregroundStyle(.secondary)
-                            Spacer()
+                                .frame(width: 28, alignment: .leading)
+
+                            Text(screen.displayName)
+                                .lineLimit(1)
+                                .frame(minWidth: 120, maxWidth: .infinity, alignment: .leading)
+
+                            Text(screen.frameSummary)
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .frame(minWidth: 120, maxWidth: .infinity, alignment: .leading)
+
+                            DiagnosticsStatusBadge(
+                                title: screen.isMain ? "Main" : "Active",
+                                systemImage: screen.isMain ? "checkmark.circle" : "circle",
+                                style: screen.isMain ? .green : .secondary
+                            )
                         }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(Color(nsColor: .controlBackgroundColor).opacity(0.28))
+                        Divider()
                     }
                 }
-                .padding(.horizontal)
-                .padding(.bottom, 8)
+                .clipShape(.rect(cornerRadius: 7))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .strokeBorder(Color(nsColor: .separatorColor).opacity(0.35))
+                }
             }
-        }
-        .padding(.horizontal)
+        })
         .onAppear(perform: refreshScreens)
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)) { _ in
             refreshScreens()
@@ -612,9 +913,16 @@ private struct LiveStatusSection: View {
     var scanCoordinator: MenuBarScanCoordinator?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            LiveStatusHeader(scanCoordinator: scanCoordinator)
-
+        DiagnosticsPanel(
+            "Live Status",
+            systemImage: "waveform.path.ecg",
+            accessory: {
+                Button("Refresh AX Scan", systemImage: "arrow.clockwise") {
+                    scanCoordinator?.requestManualRefresh()
+                }
+                .disabled(scanCoordinator?.isManualRefreshAvailable != true)
+            },
+            content: {
             VStack(alignment: .leading, spacing: 4) {
                 LiveStatusCoreGrid(liveStatus: liveStatus)
                 LiveStatusAccessibilityGrid(liveStatus: liveStatus)
@@ -629,26 +937,7 @@ private struct LiveStatusSection: View {
             }
 
             LiveMenuBarSnapshotSection(liveStatus: liveStatus)
-        }
-    }
-}
-
-private struct LiveStatusHeader: View {
-    var scanCoordinator: MenuBarScanCoordinator?
-
-    var body: some View {
-        HStack {
-            Text("Live Status")
-                .font(.headline)
-
-            Spacer()
-
-            Button("Refresh AX Scan", systemImage: "arrow.clockwise") {
-                scanCoordinator?.requestManualRefresh()
-            }
-            .disabled(scanCoordinator?.isManualRefreshAvailable != true)
-        }
-        .padding(.top, 4)
+        })
     }
 }
 
@@ -671,12 +960,11 @@ private struct LiveStatusGrid: View {
     let rows: [LiveStatusRowData]
 
     var body: some View {
-        Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 4) {
+        LazyVStack(alignment: .leading, spacing: 8) {
             ForEach(rows) { row in
                 LiveStatusRow(row: row)
             }
         }
-        .padding(.horizontal)
     }
 }
 
@@ -684,10 +972,26 @@ private struct LiveStatusRow: View {
     let row: LiveStatusRowData
 
     var body: some View {
-        GridRow {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(row.label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
             valueText
-            Spacer()
+                .font(.caption)
+                .lineLimit(1)
+                .truncationMode(.middle)
+        }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 7)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .controlBackgroundColor).opacity(0.45), in: .rect(cornerRadius: 7))
+        .overlay {
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.25))
         }
     }
 
@@ -863,6 +1167,8 @@ private struct LiveStatusAutomationGrid: View {
 
     private var rows: [LiveStatusRowData] {
         [
+            LiveStatusRowData(label: "Bundle Path", value: Bundle.main.bundleURL.path),
+            LiveStatusRowData(label: "Running From /Applications", value: Bundle.main.bundleURL.path.hasPrefix("/Applications/").yesNoText),
             LiveStatusRowData(
                 label: "Smart Triggers",
                 value: settingsStore.smartTriggersEnabled ? "Enabled" : "Disabled"
@@ -896,19 +1202,29 @@ private struct LiveMenuBarSnapshotSection: View {
     let liveStatus: LiveDiagnosticsStatus
 
     var body: some View {
-        Group {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Scanned Items")
+                    .font(.subheadline)
+                    .bold()
+
+                Text(liveStatus.scannedMenuBarItems.count, format: .number)
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+            }
+
             if liveStatus.scannedMenuBarItems.isEmpty {
                 Text("No Accessibility snapshots yet.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .padding(.horizontal)
             } else {
                 MenuBarSnapshotTable(snapshots: liveStatus.scannedMenuBarItems)
                     .frame(minHeight: 180, maxHeight: 240)
-                    .padding(.horizontal)
             }
         }
-        .padding(.bottom, 8)
+        .padding(.top, 8)
     }
 }
 
@@ -958,39 +1274,96 @@ private extension DiagnosticsExporter.ScreenSnapshot {
     }
 }
 
+private struct ScreenTableHeader: View {
+    var body: some View {
+        HStack(spacing: 10) {
+            Text("#")
+                .frame(width: 28, alignment: .leading)
+            Text("Display")
+                .frame(minWidth: 120, maxWidth: .infinity, alignment: .leading)
+            Text("Frame")
+                .frame(minWidth: 120, maxWidth: .infinity, alignment: .leading)
+            Text("Active")
+                .frame(width: 80, alignment: .leading)
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(.quaternary)
+    }
+}
+
+private struct DiagnosticEventTableHeader: View {
+    var body: some View {
+        HStack(spacing: 10) {
+            Text("Time")
+                .frame(width: 96, alignment: .leading)
+            Text("Level")
+                .frame(width: 82, alignment: .leading)
+            Text("Category")
+                .frame(width: 110, alignment: .leading)
+            Text("Message")
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(.quaternary)
+    }
+}
+
 private struct DiagnosticEventRow: View {
     let event: DiagnosticEvent
+    var isSelected = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text(event.timestamp, format: Date.FormatStyle(date: .omitted, time: .standard))
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .frame(width: 96, alignment: .leading)
+
                 Text(event.level.rawValue.uppercased())
                     .font(.caption)
                     .bold()
                     .foregroundStyle(levelStyle)
+                    .frame(width: 82, alignment: .leading)
 
                 Text(event.category.displayName)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .frame(width: 110, alignment: .leading)
 
-                Spacer()
-
-                Text(event.timestamp, format: Date.FormatStyle(date: .omitted, time: .standard))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Text(event.message)
+                    .foregroundStyle(.primary)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-
-            Text(event.message)
-                .textSelection(.enabled)
 
             if !event.metadata.isEmpty {
-                Text(event.metadata.description)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .textSelection(.enabled)
+                HStack(spacing: 10) {
+                    Text("")
+                        .frame(width: 96)
+                    Text("")
+                        .frame(width: 82)
+                    Text("")
+                        .frame(width: 110)
+                    Text(event.metadata.description)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
         }
-        .padding(.vertical, 4)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(isSelected ? Color.accentColor.opacity(0.14) : Color(nsColor: .controlBackgroundColor).opacity(0.22))
+        Divider()
     }
 
     private var levelStyle: Color {
@@ -1008,6 +1381,12 @@ private struct DiagnosticEventRow: View {
 }
 
 #Preview {
+    DiagnosticsSettingsPreviewFactory.make()
+}
+
+private enum DiagnosticsSettingsPreviewFactory {
+    @MainActor
+    static func make() -> DiagnosticsSettingsView {
     let logger = DiagnosticsLogger()
     logger.log("Preview event created.", level: .info)
     let live = LiveDiagnosticsStatus()
@@ -1020,7 +1399,9 @@ private struct DiagnosticEventRow: View {
         liveStatus: live,
         appSupportPaths: AppSupportPaths(),
         exporter: DiagnosticsExporter(),
+        dogfoodStore: DogfoodStore(appSupportPaths: AppSupportPaths()),
         settingsStore: SettingsStore(),
         scanCoordinator: nil
     )
+    }
 }

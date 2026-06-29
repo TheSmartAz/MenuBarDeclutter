@@ -5,6 +5,9 @@ struct SettingsActions {
     var searchChanged: (() -> Void)?
     var secondBarChanged: (() -> Void)?
     var privacyChanged: (() -> Void)?
+    var groupsChanged: (() -> Void)?
+    var dynamicHotkeysChanged: (() -> Void)?
+    var automationSettingsChanged: (() -> Void)?
     var profile: SettingsProfileActions
     var triggersChanged: (() -> Void)?
     var resetLayout: (() -> Void)?
@@ -22,6 +25,9 @@ struct SettingsActions {
         searchChanged: (() -> Void)? = nil,
         secondBarChanged: (() -> Void)? = nil,
         privacyChanged: (() -> Void)? = nil,
+        groupsChanged: (() -> Void)? = nil,
+        dynamicHotkeysChanged: (() -> Void)? = nil,
+        automationSettingsChanged: (() -> Void)? = nil,
         profile: SettingsProfileActions = .empty,
         triggersChanged: (() -> Void)? = nil,
         resetLayout: (() -> Void)? = nil,
@@ -38,6 +44,9 @@ struct SettingsActions {
         self.searchChanged = searchChanged
         self.secondBarChanged = secondBarChanged
         self.privacyChanged = privacyChanged
+        self.groupsChanged = groupsChanged
+        self.dynamicHotkeysChanged = dynamicHotkeysChanged
+        self.automationSettingsChanged = automationSettingsChanged
         self.profile = profile
         self.triggersChanged = triggersChanged
         self.resetLayout = resetLayout

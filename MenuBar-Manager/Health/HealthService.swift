@@ -48,12 +48,30 @@ struct HealthCheckSnapshot: Equatable, Sendable {
     var lastMenuBarScanTime: Date?
     var menuBarScanFailuresCount: Int
     var axScanStaleThreshold: TimeInterval
+    var layoutFeaturesEnabled: Bool = true
+    var fullMenuBarModeActive: Bool = false
+    var spacerItemsEnabled: Bool = true
+    var spacerItemCount: Int = 0
+    var visibleSpacerItemCount: Int = 0
+    var groupsEnabled: Bool = true
+    var groupCount: Int = 0
+    var protectedGroupCount: Int = 0
+    var duplicateGroupNames: Bool = false
+    var groupStatusItemsEnabled: Bool = false
+    var groupStatusItemCount: Int = 0
+    var dynamicHotkeysEnabled: Bool = false
+    var dynamicHotkeyBindingCount: Int = 0
+    var dynamicHotkeyRegisteredCount: Int = 0
+    var dynamicHotkeyConflictCount: Int = 0
+    var privateAccessEnabled: Bool = false
+    var privateAccessUnlockActive: Bool = false
+    var appIntentsEnabled: Bool = true
 }
 
 struct HealthService {
     var now: () -> Date = { Date() }
 
-    func makeReport(snapshot: HealthCheckSnapshot) -> HealthReport {
+    func makeReport(snapshot: HealthCheckSnapshot, dogfoodRunID: String? = nil) -> HealthReport {
         var issues: [HealthIssue] = []
 
         if !snapshot.controlItemExists {
@@ -188,8 +206,10 @@ struct HealthService {
         }
 
         appendProModeIssues(snapshot: snapshot, issues: &issues)
+        appendLayoutIssues(snapshot: snapshot, issues: &issues)
+        appendPhase11Issues(snapshot: snapshot, issues: &issues)
 
-        return HealthReport(generatedAt: now(), issues: issues)
+        return HealthReport(generatedAt: now(), issues: issues, dogfoodRunID: dogfoodRunID)
     }
 
     static func validateSettings(_ store: SettingsStore) -> [SettingsValidationIssue] {
@@ -343,6 +363,95 @@ struct HealthService {
                     title: "Accessibility scan is stale",
                     detail: "The latest Accessibility scan is older than \(Int(snapshot.axScanStaleThreshold)) seconds.",
                     recoveryAction: nil
+                )
+            )
+        }
+    }
+
+    private func appendLayoutIssues(snapshot: HealthCheckSnapshot, issues: inout [HealthIssue]) {
+        if !snapshot.layoutFeaturesEnabled && snapshot.fullMenuBarModeActive {
+            issues.append(
+                HealthIssue(
+                    code: "layout.full-menu-bar.active-while-disabled",
+                    severity: .warning,
+                    title: "Full Menu Bar Mode is active while Layout is disabled",
+                    detail: "Layout features are disabled, but Full Menu Bar Mode is still active.",
+                    recoveryAction: .exitFullMenuBarMode
+                )
+            )
+        }
+
+        if !snapshot.spacerItemsEnabled && snapshot.visibleSpacerItemCount > 0 {
+            issues.append(
+                HealthIssue(
+                    code: "layout.spacers.visible-while-disabled",
+                    severity: .warning,
+                    title: "Spacer items are visible while disabled",
+                    detail: "Optional spacer status items should be hidden when spacer items are disabled.",
+                    recoveryAction: .hideOptionalSpacerItems
+                )
+            )
+        }
+    }
+
+    private func appendPhase11Issues(snapshot: HealthCheckSnapshot, issues: inout [HealthIssue]) {
+        if snapshot.duplicateGroupNames {
+            issues.append(
+                HealthIssue(
+                    code: "groups.duplicate-names",
+                    severity: .warning,
+                    title: "Duplicate group names",
+                    detail: "Two or more groups have the same name. Rename one group to keep matching and import/export predictable.",
+                    recoveryAction: nil
+                )
+            )
+        }
+
+        if !snapshot.groupsEnabled && snapshot.groupStatusItemCount > 0 {
+            issues.append(
+                HealthIssue(
+                    code: "groups.status-items-visible-while-disabled",
+                    severity: .warning,
+                    title: "Group status items are visible while Groups are disabled",
+                    detail: "Optional group status items should be hidden when Groups are disabled.",
+                    recoveryAction: .disableGroupStatusItems
+                )
+            )
+        }
+
+        if snapshot.dynamicHotkeysEnabled,
+           snapshot.dynamicHotkeyConflictCount > 0 {
+            issues.append(
+                HealthIssue(
+                    code: "hotkey.dynamic.conflicts",
+                    severity: .warning,
+                    title: "Dynamic hotkey conflicts",
+                    detail: "\(snapshot.dynamicHotkeyConflictCount) dynamic hotkey target(s) share the same key combination.",
+                    recoveryAction: .disableDynamicHotkeys
+                )
+            )
+        }
+
+        if !snapshot.dynamicHotkeysEnabled && snapshot.dynamicHotkeyRegisteredCount > 0 {
+            issues.append(
+                HealthIssue(
+                    code: "hotkey.dynamic.registered-while-disabled",
+                    severity: .warning,
+                    title: "Dynamic hotkeys registered while disabled",
+                    detail: "Dynamic hotkey registrations should be cleared when the feature is disabled.",
+                    recoveryAction: .disableDynamicHotkeys
+                )
+            )
+        }
+
+        if !snapshot.privateAccessEnabled && snapshot.privateAccessUnlockActive {
+            issues.append(
+                HealthIssue(
+                    code: "privacy.private-access.unlock-active-while-disabled",
+                    severity: .warning,
+                    title: "Private Access unlock active while disabled",
+                    detail: "The cached unlock session should be cleared when Private Access is disabled.",
+                    recoveryAction: .clearPrivateAccessUnlock
                 )
             )
         }

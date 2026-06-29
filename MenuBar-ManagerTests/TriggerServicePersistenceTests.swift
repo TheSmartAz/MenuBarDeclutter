@@ -95,6 +95,7 @@ struct TriggerServicePersistenceTests {
             harness.cleanup()
         }
         harness.settingsStore.smartTriggersEnabled = true
+        harness.settingsStore.automationPaused = false
 
         harness.triggerService.start()
 
