@@ -10,9 +10,16 @@ struct SecondBarSettingsView: View {
         ClearGlassSettingsPage(
             "Second Bar",
             subtitle: "Configure the optional secondary bar for hidden menu bar items.",
-            badges: [.proMode, .accessibilityRequired]
+            badges: [.stable, .proMode, .accessibilityRequired]
         ) {
             ClearGlassSection("Second Bar", subtitle: "Feature controls for the secondary item surface.") {
+                FeatureGateNotice(
+                    .stable,
+                    text: "Second Bar metadata and icon browsing are supported in v0.1.1 when Pro discovery requirements are satisfied."
+                )
+
+                ClearGlassDivider()
+
                 ClearGlassControlRow(
                     systemImage: "menubar.rectangle",
                     title: "Enable Second Bar",

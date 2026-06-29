@@ -183,6 +183,155 @@ struct StatusBadge: View {
     }
 }
 
+enum FeatureStatus: String, CaseIterable, Hashable, Sendable {
+    case stable
+    case preview
+    case labs
+    case experimental
+    case disabled
+    case unavailable
+    case deferred
+
+    var title: String {
+        switch self {
+        case .stable:
+            "Stable"
+        case .preview:
+            "Preview"
+        case .labs:
+            "Labs"
+        case .experimental:
+            "Experimental"
+        case .disabled:
+            "Disabled"
+        case .unavailable:
+            "Unavailable"
+        case .deferred:
+            "Deferred"
+        }
+    }
+
+    var summary: String {
+        switch self {
+        case .stable:
+            "Part of the v0.1.1 supported core."
+        case .preview:
+            "Available for local testing, with conservative gates and fail-closed behavior."
+        case .labs:
+            "Requires explicit opt-in and may affect system-level behavior."
+        case .experimental:
+            "Requires explicit confirmation and may fail depending on macOS state."
+        case .disabled:
+            "Currently turned off by app settings."
+        case .unavailable:
+            "Unavailable until requirements are satisfied."
+        case .deferred:
+            "Documented for later work and not part of this release."
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .stable:
+            "checkmark.seal"
+        case .preview:
+            "sparkles"
+        case .labs:
+            "testtube.2"
+        case .experimental:
+            "exclamationmark.triangle"
+        case .disabled:
+            "slash.circle"
+        case .unavailable:
+            "lock.circle"
+        case .deferred:
+            "clock"
+        }
+    }
+
+    var tone: DesignTokens.SemanticTone {
+        switch self {
+        case .stable:
+            .privacySafe
+        case .preview:
+            .diagnostics
+        case .labs, .experimental:
+            .experimental
+        case .disabled, .unavailable, .deferred:
+            .disabled
+        }
+    }
+
+    var tint: Color {
+        tone.foregroundStyle
+    }
+
+    var isReleaseCore: Bool {
+        self == .stable
+    }
+
+    var requiresExplicitOptIn: Bool {
+        switch self {
+        case .labs, .experimental:
+            true
+        default:
+            false
+        }
+    }
+}
+
+struct FeatureStatusBadge: View {
+    let status: FeatureStatus
+
+    init(_ status: FeatureStatus) {
+        self.status = status
+    }
+
+    var body: some View {
+        Label(status.title, systemImage: status.systemImage)
+            .font(DesignTokens.Typography.callout.weight(.medium))
+            .labelStyle(.titleAndIcon)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .foregroundStyle(status.tone.foregroundStyle)
+            .background(status.tone.backgroundStyle, in: .capsule)
+            .overlay {
+                Capsule()
+                    .strokeBorder(status.tone.borderStyle, lineWidth: DesignTokens.Stroke.standard)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(status.title). \(status.summary)")
+    }
+}
+
+struct FeatureGateNotice: View {
+    let status: FeatureStatus
+    let text: String
+
+    init(_ status: FeatureStatus, text: String? = nil) {
+        self.status = status
+        self.text = text ?? status.summary
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
+            FeatureStatusBadge(status)
+
+            Text(text)
+                .font(DesignTokens.Typography.callout)
+                .foregroundStyle(.secondary)
+                .lineLimit(3)
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .layoutPriority(1)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+    }
+}
+
 struct MenuBarZoneBadge: View {
     struct Descriptor: Equatable, Sendable {
         let shortTitle: String

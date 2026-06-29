@@ -184,6 +184,8 @@ private struct OnboardingStepDetail: View {
         switch step.id {
         case "intro":
             OnboardingMenuStrip()
+        case "nativeCleanup":
+            OnboardingNativeCleanupSummary()
         case "commandDrag":
             OnboardingCommandDragStrip()
         case "hiddenVsAlwaysHidden":
@@ -217,6 +219,30 @@ private struct OnboardingMenuStrip: View {
                 .stroke(.primary.opacity(0.10), lineWidth: 1)
         }
         .accessibilityHidden(true)
+    }
+}
+
+private struct OnboardingNativeCleanupSummary: View {
+    var body: some View {
+        HStack(spacing: 14) {
+            Label("Control Center", systemImage: "switch.2")
+                .font(.callout)
+
+            Spacer(minLength: 12)
+
+            Button("Open Menu Bar Settings", systemImage: "arrow.up.forward.app") {
+                _ = OnboardingSystemSettingsOpener.openMenuBarSettings()
+            }
+            .buttonStyle(.bordered)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .frame(maxWidth: 430)
+        .background(.quaternary.opacity(0.7), in: .rect(cornerRadius: 8))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(.primary.opacity(0.10), lineWidth: 1)
+        }
     }
 }
 

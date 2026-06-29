@@ -359,7 +359,6 @@ struct DiagnosticsExportTests {
         "secondBarShowHiddenItems",
         "secondBarShowLabels",
         "showCapacityWarnings",
-        "showPrimarySeparator",
         "showSeparators",
         "showSpacerMarkers",
         "smartTriggersEnabled",

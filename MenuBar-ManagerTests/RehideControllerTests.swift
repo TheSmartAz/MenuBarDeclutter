@@ -37,6 +37,28 @@ struct RehideControllerTests {
         #expect(controller.lastReason == .timerExpired)
     }
 
+    @Test func runtimeTaskFiresWithoutManualTick() async throws {
+        let logger = DiagnosticsLogger()
+        let controller = RehideController(diagnosticsLogger: logger)
+
+        var fired = 0
+        controller.onRehide = {
+            fired += 1
+            controller.markRehideFired()
+        }
+
+        controller.startCountdown(delay: 0.05)
+        let timeout = Date().addingTimeInterval(3)
+        while fired == 0 && Date() < timeout {
+            try await Task.sleep(for: .milliseconds(50))
+            await Task.yield()
+        }
+
+        #expect(fired == 1)
+        #expect(controller.isScheduled == false)
+        #expect(controller.lastReason == .timerExpired)
+    }
+
     @Test func postponesWhenConditionsChange() {
         let logger = DiagnosticsLogger()
         let controller = RehideController(diagnosticsLogger: logger)

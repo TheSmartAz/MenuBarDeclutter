@@ -6,15 +6,18 @@ final class SettingsExportService {
     private let settingsStore: SettingsStore
     private let diagnosticsLogger: DiagnosticsLogger
     private let appVersionProvider: () -> String
+    private let now: () -> Date
 
     init(
         settingsStore: SettingsStore,
         diagnosticsLogger: DiagnosticsLogger,
-        appVersionProvider: @escaping () -> String = { AppConstants.appVersion }
+        appVersionProvider: @escaping () -> String = { AppConstants.appVersion },
+        now: @escaping () -> Date = { Date() }
     ) {
         self.settingsStore = settingsStore
         self.diagnosticsLogger = diagnosticsLogger
         self.appVersionProvider = appVersionProvider
+        self.now = now
     }
 
     /// Create an export package from current settings.
@@ -40,7 +43,11 @@ final class SettingsExportService {
 
         return SettingsExportPackage(
             appVersion: appVersionProvider(),
+            exportKind: .fullSettings,
+            createdAt: now(),
+            redactionMode: .privacySafe,
             settings: settings,
+            omittedSettings: Self.intentionallyOmittedSettings.map(\.rawValue).sorted(),
             groups: groups,
             hotkeyBindings: hotkeyBindings,
             spacerItems: spacerItems,
@@ -59,9 +66,209 @@ final class SettingsExportService {
 
     private func exportSettingsDict() -> [String: String] {
         Dictionary(
-            uniqueKeysWithValues: SettingsStore.Key.allCases.map { key in
-                (key.rawValue, "exported")
+            uniqueKeysWithValues: SettingsStore.Key.allCases.compactMap { key in
+                guard let value = exportedValue(for: key) else { return nil }
+                return (key.rawValue, value)
             }
         )
+    }
+
+    private static let intentionallyOmittedSettings: Set<SettingsStore.Key> = [
+        .lastKnownAppVersion,
+        .settingsMigrationVersion,
+        .v01SafeDefaultsNoticePending,
+        .showPrimarySeparator,
+        .lastAccessibilityPermissionStatus,
+        .iconMovingConfirmationSuppressed,
+        .dogfoodModeEnabled,
+        .dogfoodRunID,
+        .dogfoodNotesEnabled,
+        .menuBarSpacingHasBackup,
+        .menuBarSpacingLastApplyStatus,
+        .menuBarSpacingLastApplyDate,
+        .privateAccessLastAuthStatus
+    ]
+
+    private func exportedValue(for key: SettingsStore.Key) -> String? {
+        if Self.intentionallyOmittedSettings.contains(key) {
+            return nil
+        }
+
+        switch key {
+        case .hasCompletedOnboarding:
+            return settingsStore.hasCompletedOnboarding.description
+        case .launchAtLoginEnabled:
+            return settingsStore.launchAtLoginEnabled.description
+        case .lastKnownAppVersion, .settingsMigrationVersion, .v01SafeDefaultsNoticePending:
+            return nil
+        case .appMode:
+            return settingsStore.appMode.rawValue
+        case .isCollapsed:
+            return settingsStore.isCollapsed.description
+        case .startCollapsed:
+            return settingsStore.startCollapsed.description
+        case .expandedSeparatorLength:
+            return settingsStore.expandedSeparatorLength.description
+        case .collapsedSeparatorLengthOverride:
+            return settingsStore.collapsedSeparatorLengthOverride?.description ?? "null"
+        case .hasSeenDragHint:
+            return settingsStore.hasSeenDragHint.description
+        case .showPrimarySeparator:
+            return nil
+        case .proModeEnabled:
+            return settingsStore.proModeEnabled.description
+        case .accessibilityDiscoveryEnabled:
+            return settingsStore.accessibilityDiscoveryEnabled.description
+        case .lastAccessibilityPermissionStatus:
+            return nil
+        case .menuBarScanIntervalSeconds:
+            return settingsStore.menuBarScanIntervalSeconds.description
+        case .searchEnabled:
+            return settingsStore.searchEnabled.description
+        case .searchHotkeyEnabled:
+            return settingsStore.searchHotkeyEnabled.description
+        case .searchHotkeyKeyCode:
+            return settingsStore.searchHotkeyKeyCode?.description ?? "null"
+        case .searchHotkeyModifiersRaw:
+            return settingsStore.searchHotkeyModifiersRaw?.description ?? "null"
+        case .searchRevealOnSelection:
+            return settingsStore.searchRevealOnSelection.description
+        case .searchHighlightOnSelection:
+            return settingsStore.searchHighlightOnSelection.description
+        case .secondBarEnabled:
+            return settingsStore.secondBarEnabled.description
+        case .secondBarShowHiddenItems:
+            return settingsStore.secondBarShowHiddenItems.description
+        case .secondBarShowAlwaysHiddenItems:
+            return settingsStore.secondBarShowAlwaysHiddenItems.description
+        case .secondBarAutoCloseAfterSelection:
+            return settingsStore.secondBarAutoCloseAfterSelection.description
+        case .secondBarPositionModeRaw:
+            return settingsStore.secondBarPositionModeRaw
+        case .secondBarIconSize:
+            return settingsStore.secondBarIconSize.description
+        case .secondBarShowLabels:
+            return settingsStore.secondBarShowLabels.description
+        case .secondBarCloseOnOutsideClick:
+            return settingsStore.secondBarCloseOnOutsideClick.description
+        case .secondBarActivateOwningAppOnSelection:
+            return settingsStore.secondBarActivateOwningAppOnSelection.description
+        case .iconMovingEnabled:
+            return settingsStore.iconMovingEnabled.description
+        case .iconMovingRequireConfirmation:
+            return settingsStore.iconMovingRequireConfirmation.description
+        case .iconMovingConfirmationSuppressed:
+            return nil
+        case .iconMovingMaxRetries:
+            return settingsStore.iconMovingMaxRetries.description
+        case .iconMovingDragDuration:
+            return settingsStore.iconMovingDragDuration.description
+        case .iconMovingAllowSystemItems:
+            return settingsStore.iconMovingAllowSystemItems.description
+        case .smartTriggersEnabled:
+            return settingsStore.smartTriggersEnabled.description
+        case .automationPaused:
+            return settingsStore.automationPaused.description
+        case .dogfoodModeEnabled, .dogfoodRunID, .dogfoodNotesEnabled:
+            return nil
+        case .autoRehideEnabled:
+            return settingsStore.autoRehideEnabled.description
+        case .autoRehideDelaySeconds:
+            return settingsStore.autoRehideDelaySeconds.description
+        case .hoverRevealEnabled:
+            return settingsStore.hoverRevealEnabled.description
+        case .hoverRevealPollingIntervalSeconds:
+            return settingsStore.hoverRevealPollingIntervalSeconds.description
+        case .alwaysHiddenEnabled:
+            return settingsStore.alwaysHiddenEnabled.description
+        case .showSeparators:
+            return settingsStore.showSeparators.description
+        case .globalHotkeyEnabled:
+            return settingsStore.globalHotkeyEnabled.description
+        case .globalHotkeyKeyCode:
+            return settingsStore.globalHotkeyKeyCode?.description ?? "null"
+        case .globalHotkeyModifiersRaw:
+            return settingsStore.globalHotkeyModifiersRaw?.description ?? "null"
+        case .revealAllOnOptionClick:
+            return settingsStore.revealAllOnOptionClick.description
+        case .layoutFeaturesEnabled:
+            return settingsStore.layoutFeaturesEnabled.description
+        case .fullMenuBarModeEnabled:
+            return settingsStore.fullMenuBarModeEnabled.description
+        case .crowdedRevealRescueEnabled:
+            return settingsStore.crowdedRevealRescueEnabled.description
+        case .layoutSuggestionsEnabled:
+            return settingsStore.layoutSuggestionsEnabled.description
+        case .showCapacityWarnings:
+            return settingsStore.showCapacityWarnings.description
+        case .fullMenuBarModeAutoExitEnabled:
+            return settingsStore.fullMenuBarModeAutoExitEnabled.description
+        case .fullMenuBarModeAutoExitSeconds:
+            return settingsStore.fullMenuBarModeAutoExitSeconds.description
+        case .fullMenuBarModeShowsSecondBar:
+            return settingsStore.fullMenuBarModeShowsSecondBar.description
+        case .fullMenuBarModeSuspendsAutoRehide:
+            return settingsStore.fullMenuBarModeSuspendsAutoRehide.description
+        case .fullMenuBarModeShowsSpacerMarkers:
+            return settingsStore.fullMenuBarModeShowsSpacerMarkers.description
+        case .crowdedRevealAutoOpenSecondBar:
+            return settingsStore.crowdedRevealAutoOpenSecondBar.description
+        case .crowdedRevealThresholdRatio:
+            return settingsStore.crowdedRevealThresholdRatio.description
+        case .crowdedRevealRequireProEstimate:
+            return settingsStore.crowdedRevealRequireProEstimate.description
+        case .spacerItemsEnabled:
+            return settingsStore.spacerItemsEnabled.description
+        case .showSpacerMarkers:
+            return settingsStore.showSpacerMarkers.description
+        case .spacerItemsJSONVersion:
+            return settingsStore.spacerItemsJSONVersion.description
+        case .menuBarSpacingLabsEnabled:
+            return settingsStore.menuBarSpacingLabsEnabled.description
+        case .menuBarSpacingPreset:
+            return settingsStore.menuBarSpacingPreset
+        case .menuBarSpacingCustomItemSpacing:
+            return settingsStore.menuBarSpacingCustomItemSpacing.description
+        case .menuBarSpacingCustomSelectionPadding:
+            return settingsStore.menuBarSpacingCustomSelectionPadding.description
+        case .menuBarSpacingHasBackup, .menuBarSpacingLastApplyStatus, .menuBarSpacingLastApplyDate:
+            return nil
+        case .groupsEnabled:
+            return settingsStore.groupsEnabled.description
+        case .groupStatusItemsEnabled:
+            return settingsStore.groupStatusItemsEnabled.description
+        case .protectedGroupsRequireAuth:
+            return settingsStore.protectedGroupsRequireAuth.description
+        case .groupsJSONVersion:
+            return settingsStore.groupsJSONVersion.description
+        case .privateAccessEnabled:
+            return settingsStore.privateAccessEnabled.description
+        case .privateAccessProtectAlwaysHidden:
+            return settingsStore.privateAccessProtectAlwaysHidden.description
+        case .privateAccessProtectSecondBar:
+            return settingsStore.privateAccessProtectSecondBar.description
+        case .privateAccessProtectFindIcon:
+            return settingsStore.privateAccessProtectFindIcon.description
+        case .privateAccessProtectIconMoving:
+            return settingsStore.privateAccessProtectIconMoving.description
+        case .privateAccessProtectSpacingLabs:
+            return settingsStore.privateAccessProtectSpacingLabs.description
+        case .privateAccessUnlockDurationSeconds:
+            return settingsStore.privateAccessUnlockDurationSeconds.description
+        case .privateAccessLastAuthStatus:
+            return nil
+        case .privateAccessAllowDevicePasswordFallback:
+            return settingsStore.privateAccessAllowDevicePasswordFallback.description
+        case .appIntentsEnabled:
+            return settingsStore.appIntentsEnabled.description
+        case .appIntentsCanApplyProfiles:
+            return settingsStore.appIntentsCanApplyProfiles.description
+        case .appIntentsCanAccessLabs:
+            return settingsStore.appIntentsCanAccessLabs.description
+        case .dynamicHotkeysEnabled:
+            return settingsStore.dynamicHotkeysEnabled.description
+        case .maxDynamicHotkeys:
+            return settingsStore.maxDynamicHotkeys.description
+        }
     }
 }

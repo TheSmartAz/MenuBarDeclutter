@@ -11,6 +11,11 @@ WAIT_FLAG="--wait"
 DRY_RUN=0
 LOG_DIR="${LOG_DIR:-$ROOT_DIR/build/Logs}"
 LOG_FILE="${LOG_FILE:-$LOG_DIR/notarization-submit.log}"
+VERSION="${VERSION:-}"
+
+version_from_config() {
+  awk '/^MARKETING_VERSION[[:space:]]*=/{ print $3; exit }' "$ROOT_DIR/Config/Shared.xcconfig"
+}
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -67,7 +72,8 @@ EOF
   esac
 done
 
-ZIP_PATH="${ZIP_PATH:-$ROOT_DIR/build/Dist/MenuBarDeclutter-alpha.zip}"
+VERSION="${VERSION:-$(version_from_config)}"
+ZIP_PATH="${ZIP_PATH:-$ROOT_DIR/build/Dist/MenuBarDeclutter-v$VERSION.zip}"
 mkdir -p "$LOG_DIR"
 
 cd "$ROOT_DIR"
@@ -98,7 +104,7 @@ elif [[ -n "$APPLE_ID" && -n "$TEAM_ID" && -n "$APP_PASSWORD" ]]; then
   xcrun notarytool submit "$ZIP_PATH" --apple-id "$APPLE_ID" --team-id "$TEAM_ID" --password "$APP_PASSWORD" ${WAIT_FLAG:+$WAIT_FLAG} 2>&1 | tee "$LOG_FILE"
 else
   {
-    echo "DRY-RUN: notarization credentials are missing."
+    echo "FAIL: notarization credentials are missing."
     echo "Missing one of:"
     echo "- NOTARYTOOL_KEYCHAIN_PROFILE / --keychain-profile"
     echo "- NOTARYTOOL_APPLE_ID or APPLE_ID"
@@ -106,7 +112,7 @@ else
     echo "- NOTARYTOOL_PASSWORD or APP_SPECIFIC_PASSWORD"
     echo "Would submit: $ZIP_PATH"
   } | tee "$LOG_FILE"
-  exit 0
+  exit 1
 fi
 
 echo "PASS: notarytool submit completed. Review $LOG_FILE for final status."

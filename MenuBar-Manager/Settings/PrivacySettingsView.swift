@@ -10,7 +10,7 @@ struct PrivacySettingsView: View {
         ClearGlassSettingsPage(
             "Privacy",
             subtitle: "Basic Mode is fully usable without sensitive permissions. Pro Mode is optional.",
-            badges: [.privacySafe, .accessibilityRequired, .diagnostics, .experimental]
+            badges: [.stable, .privacySafe, .accessibilityRequired, .diagnostics]
         ) {
             ClearGlassSection("Basic Mode", subtitle: "Fully usable without permissions.") {
                 PrivacyCapabilityRow(

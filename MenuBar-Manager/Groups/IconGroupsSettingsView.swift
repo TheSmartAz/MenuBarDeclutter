@@ -28,9 +28,16 @@ struct IconGroupsSettingsView: View {
         ClearGlassSettingsPage(
             "Groups",
             subtitle: "Organize related menu bar items without adding permissions.",
-            badges: [.basicMode, .privacySafe]
+            badges: [.preview, .basicMode, .privacySafe]
         ) {
             ClearGlassSection("Groups") {
+                FeatureGateNotice(
+                    .preview,
+                    text: "Preview in v0.1.1. Manual groups are local; group status items stay off unless enabled."
+                )
+
+                ClearGlassDivider()
+
                 ClearGlassControlRow(
                     systemImage: "person.2",
                     title: "Enable Groups",

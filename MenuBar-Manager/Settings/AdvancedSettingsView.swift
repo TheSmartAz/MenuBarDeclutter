@@ -33,7 +33,7 @@ struct AdvancedSettingsView: View {
         ClearGlassSettingsPage(
             "Advanced",
             subtitle: "Low-level layout, diagnostics, and experimental automation controls.",
-            badges: [.privacySafe, .diagnostics, .experimental]
+            badges: [.privacySafe, .diagnostics, .labs, .experimental]
         ) {
             ClearGlassSection("Separator Geometry", subtitle: "Fine-tune how separators are rendered in the menu bar.") {
                 ClearGlassSliderRow(
@@ -129,6 +129,13 @@ struct AdvancedSettingsView: View {
             }
 
             ClearGlassSection("Labs / Experimental", subtitle: "Automation features that may fail depending on system state.") {
+                FeatureGateNotice(
+                    .experimental,
+                    text: "Icon Moving is Experimental in v0.1.1. It is disabled by default and only runs from explicit user action after confirmation."
+                )
+
+                ClearGlassDivider()
+
                 ClearGlassInlineMessage(
                     text: "These features are experimental and may change or break in future updates. Use at your own risk.",
                     systemImage: "testtube.2",

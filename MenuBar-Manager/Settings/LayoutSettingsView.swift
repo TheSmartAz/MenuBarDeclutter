@@ -15,7 +15,7 @@ struct LayoutSettingsView: View {
         ClearGlassSettingsPage(
             "Layout",
             subtitle: "Manage menu bar capacity, layout suggestions, spacers, and experimental spacing.",
-            badges: [.basicMode, .privacySafe]
+            badges: [.stable, .basicMode, .privacySafe]
         ) {
             CapacitySection(
                 settingsStore: settingsStore,
@@ -222,6 +222,13 @@ private struct CrowdedRevealSection: View {
 
     var body: some View {
         ClearGlassSection("Crowded Reveal Rescue", subtitle: "Open Second Bar instead of a bad inline reveal.") {
+            FeatureGateNotice(
+                .preview,
+                text: "Preview in v0.1.1. Fails closed when capacity or Pro estimates are unavailable."
+            )
+
+            ClearGlassDivider()
+
             ClearGlassControlRow(
                 systemImage: "shield.lefthalf.filled",
                 title: "Enable Crowded Reveal Rescue",
@@ -364,8 +371,15 @@ private struct MenuBarSpacingLabsSection: View {
     var body: some View {
         ClearGlassSection(
             "Menu Bar Spacing Labs",
-            subtitle: "Experimental: adjust global menu bar item spacing."
+            subtitle: "Labs: adjust global menu bar item spacing only after explicit opt-in."
         ) {
+            FeatureGateNotice(
+                .labs,
+                text: "Labs in v0.1.1. Off by default and never restarts system processes automatically."
+            )
+
+            ClearGlassDivider()
+
             ClearGlassControlRow(
                 systemImage: "testtube.2",
                 title: "Enable Spacing Labs",

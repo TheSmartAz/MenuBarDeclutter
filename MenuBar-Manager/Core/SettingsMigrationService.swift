@@ -201,7 +201,9 @@ struct SettingsMigrationService {
 
     private func settingsSnapshot() -> [String: String] {
         Dictionary(
-            uniqueKeysWithValues: SettingsStore.Key.allCases.map { key in
+            uniqueKeysWithValues: SettingsStore.Key.allCases.filter { key in
+                key != .showPrimarySeparator
+            }.map { key in
                 (key.rawValue, snapshotValue(for: key))
             }
         )

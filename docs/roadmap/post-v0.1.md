@@ -1,5 +1,7 @@
 # Post-v0.1 Roadmap
 
+Current hardening target: `v0.1.1`. This release line is not `v0.2`.
+
 Moved out of v0.1 scope:
 
 - Phase 10 visual icon capture.

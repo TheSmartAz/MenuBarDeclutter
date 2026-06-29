@@ -39,6 +39,7 @@ check_absent "No ScreenCaptureKit imports are present in app code" "import[[:spa
 check_absent "No Screen Recording usage string is registered" "NSScreenCaptureUsageDescription|Screen Recording" Config MenuBar-Manager.xcodeproj
 check_absent "No Apple Events usage string is registered" "NSAppleEventsUsageDescription" Config MenuBar-Manager.xcodeproj
 check_absent "No Input Monitoring usage string is registered" "NSInputMonitoringUsageDescription|Input Monitoring" Config MenuBar-Manager.xcodeproj
+check_absent "No direct network client APIs or analytics SDK names are present in app code" "URLSession|NWConnection|import[[:space:]]+Network|Sentry|Firebase|TelemetryDeck|Mixpanel|Amplitude" MenuBar-Manager
 
 if rg -n "AXIsProcessTrusted|AXUIElement|AccessibilityPermissionService|AXMenuBarScanner" MenuBar-Manager >/tmp/menubardeclutter-ax-match.txt 2>/dev/null; then
   pass "Accessibility references are present for opt-in Pro discovery"

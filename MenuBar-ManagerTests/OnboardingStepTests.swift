@@ -7,17 +7,26 @@ import Testing
 struct OnboardingStepTests {
     @Test func allStepsAreUniqueAndOrdered() {
         let steps = OnboardingStep.allSteps
-        #expect(steps.count == 6)
+        #expect(steps.count == 7)
 
         let ids = steps.map(\.id)
         #expect(Set(ids).count == ids.count)
 
         #expect(steps[0].id == "intro")
-        #expect(steps[1].id == "commandDrag")
-        #expect(steps[2].id == "hiddenVsAlwaysHidden")
-        #expect(steps[3].id == "hotkeyAutoRehide")
-        #expect(steps[4].id == "privacy")
-        #expect(steps[5].id == "macOS26Note")
+        #expect(steps[1].id == "nativeCleanup")
+        #expect(steps[2].id == "commandDrag")
+        #expect(steps[3].id == "hiddenVsAlwaysHidden")
+        #expect(steps[4].id == "hotkeyAutoRehide")
+        #expect(steps[5].id == "privacy")
+        #expect(steps[6].id == "macOS26Note")
+    }
+
+    @Test func nativeCleanupStepExplainsAppleSettingsBoundary() throws {
+        let step = try #require(OnboardingStep.allSteps.first { $0.id == "nativeCleanup" })
+        #expect(step.title == "Start with Apple's Menu Bar settings")
+        #expect(step.body.contains("Control Center"))
+        #expect(step.body.contains("third-party"))
+        #expect(step.body.contains("complements Apple's settings"))
     }
 
     @Test func macos26StepCarriesCallout() throws {
@@ -46,5 +55,32 @@ struct OnboardingStepTests {
         #expect(store.autoRehideEnabled == false)
         #expect(step.body.contains("hotkey is off by default"))
         #expect(step.body.contains("Auto-Rehide is off by default"))
+    }
+
+    @Test func nativeCleanupSettingsOpenerFallsBackToSystemSettings() {
+        var openedURLs: [URL] = []
+
+        let opened = OnboardingSystemSettingsOpener.openMenuBarSettings { url in
+            openedURLs.append(url)
+            return url == OnboardingSystemSettingsOpener.systemSettingsApplicationURL
+        }
+
+        #expect(opened)
+        #expect(openedURLs == [
+            OnboardingSystemSettingsOpener.menuBarSettingsURL,
+            OnboardingSystemSettingsOpener.systemSettingsApplicationURL
+        ])
+    }
+
+    @Test func nativeCleanupSettingsOpenerStopsAfterDeepLinkSuccess() {
+        var openedURLs: [URL] = []
+
+        let opened = OnboardingSystemSettingsOpener.openMenuBarSettings { url in
+            openedURLs.append(url)
+            return true
+        }
+
+        #expect(opened)
+        #expect(openedURLs == [OnboardingSystemSettingsOpener.menuBarSettingsURL])
     }
 }

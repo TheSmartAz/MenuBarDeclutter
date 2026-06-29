@@ -13,7 +13,7 @@ The current checkout is far beyond the original Phase 0 skeleton. Phases 0 throu
 - Local QA fixture scheme: `MenuBarFixtureApp`.
 - Main targets: `MenuBarDeclutter`, `MenuBarDeclutterTests`, `MenuBarDeclutterUITests`, and `MenuBarFixtureApp`.
 - App bundle ID: `Yongjun-Zhang.MenuBarDeclutter`.
-- Version/build in config: `0.1.0 (1)`.
+- Version/build in config: `0.1.1 (2)`.
 - Deployment target: macOS `26.0`.
 - Swift version: `6.0`.
 - Runtime style: `LSUIElement` accessory app with no default document window.

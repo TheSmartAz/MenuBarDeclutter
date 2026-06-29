@@ -12,7 +12,7 @@ struct BehaviorSettingsView: View {
         ClearGlassSettingsPage(
             "Behavior",
             subtitle: "Tune the Basic Mode interactions that hide and reveal menu bar items.",
-            badges: [.privacySafe]
+            badges: [.stable, .privacySafe]
         ) {
             ClearGlassSection("Auto-Rehide", subtitle: "Automatically rehide shown items after a delay.") {
                 ClearGlassControlRow(

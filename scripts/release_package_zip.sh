@@ -3,8 +3,22 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_PATH="${APP_PATH:-${1:-$ROOT_DIR/build/Export/MenuBarDeclutter.app}}"
-ZIP_PATH="${ZIP_PATH:-$ROOT_DIR/build/Dist/MenuBarDeclutter-alpha.zip}"
-VERSION="${VERSION:-0.1.0}"
+version_from_config() {
+  awk '/^MARKETING_VERSION[[:space:]]*=/{ print $3; exit }' "$ROOT_DIR/Config/Shared.xcconfig"
+}
+
+VERSION="${VERSION:-$(version_from_config)}"
+if [[ -z "$VERSION" ]]; then
+  echo "FAIL: could not derive MARKETING_VERSION from Config/Shared.xcconfig" >&2
+  exit 1
+fi
+
+if [[ "$VERSION" == "0.2" || "$VERSION" == "0.2.0" || "$VERSION" == v0.2* ]]; then
+  echo "FAIL: Phase 12 release tooling must not package a v0.2 artifact." >&2
+  exit 1
+fi
+
+ZIP_PATH="${ZIP_PATH:-$ROOT_DIR/build/Dist/MenuBarDeclutter-v$VERSION-alpha.zip}"
 VERSIONED_ZIP_PATH="${VERSIONED_ZIP_PATH:-$ROOT_DIR/build/Dist/MenuBarDeclutter-v$VERSION.zip}"
 LOG_DIR="${LOG_DIR:-$ROOT_DIR/build/Logs}"
 LOG_FILE="${LOG_FILE:-$LOG_DIR/release-package.log}"

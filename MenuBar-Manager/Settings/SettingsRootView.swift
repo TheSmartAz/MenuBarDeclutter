@@ -402,13 +402,18 @@ struct ClearGlassControlRow<Accessory: View>: View {
                     Text(subtitle)
                         .font(.callout)
                         .foregroundStyle(.secondary)
+                        .lineLimit(3)
+                        .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             Spacer(minLength: 16)
 
             accessory
+                .fixedSize()
+                .layoutPriority(1)
         }
         .padding(.vertical, 7)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -557,7 +562,11 @@ struct ClearGlassInlineMessage: View {
             Text(text)
                 .font(.callout)
                 .foregroundStyle(.secondary)
+                .lineLimit(4)
+                .multilineTextAlignment(.leading)
                 .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .layoutPriority(1)
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -648,8 +657,30 @@ enum ClearGlassBadgeStyle: Hashable {
     case proMode
     case accessibilityRequired
     case diagnostics
+    case stable
+    case preview
+    case labs
     case experimental
+    case unavailable
+    case deferred
     case actionNeeded
+
+    init(featureStatus: FeatureStatus) {
+        switch featureStatus {
+        case .stable:
+            self = .stable
+        case .preview:
+            self = .preview
+        case .labs:
+            self = .labs
+        case .experimental:
+            self = .experimental
+        case .disabled, .unavailable:
+            self = .unavailable
+        case .deferred:
+            self = .deferred
+        }
+    }
 
     var title: String {
         switch self {
@@ -663,8 +694,18 @@ enum ClearGlassBadgeStyle: Hashable {
             "Accessibility Required"
         case .diagnostics:
             "Diagnostics"
+        case .stable:
+            FeatureStatus.stable.title
+        case .preview:
+            FeatureStatus.preview.title
+        case .labs:
+            FeatureStatus.labs.title
         case .experimental:
-            "Experimental"
+            FeatureStatus.experimental.title
+        case .unavailable:
+            FeatureStatus.unavailable.title
+        case .deferred:
+            FeatureStatus.deferred.title
         case .actionNeeded:
             "Action Needed"
         }
@@ -682,8 +723,18 @@ enum ClearGlassBadgeStyle: Hashable {
             "figure.circle"
         case .diagnostics:
             "waveform.path.ecg"
+        case .stable:
+            FeatureStatus.stable.systemImage
+        case .preview:
+            FeatureStatus.preview.systemImage
+        case .labs:
+            FeatureStatus.labs.systemImage
         case .experimental:
-            "testtube.2"
+            FeatureStatus.experimental.systemImage
+        case .unavailable:
+            FeatureStatus.unavailable.systemImage
+        case .deferred:
+            FeatureStatus.deferred.systemImage
         case .actionNeeded:
             "exclamationmark.circle"
         }
@@ -697,8 +748,18 @@ enum ClearGlassBadgeStyle: Hashable {
             .primary
         case .accessibilityRequired, .diagnostics:
             .blue
+        case .stable:
+            FeatureStatus.stable.tint
+        case .preview:
+            FeatureStatus.preview.tint
+        case .labs:
+            FeatureStatus.labs.tint
         case .experimental:
-            .orange
+            FeatureStatus.experimental.tint
+        case .unavailable:
+            FeatureStatus.unavailable.tint
+        case .deferred:
+            FeatureStatus.deferred.tint
         case .actionNeeded:
             .red
         }

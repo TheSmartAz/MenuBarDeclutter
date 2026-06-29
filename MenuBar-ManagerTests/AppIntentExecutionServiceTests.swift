@@ -109,4 +109,53 @@ struct AppIntentExecutionServiceTests {
         let result = service.resumeAutomation()
         #expect(result == .success)
     }
+
+    @Test func shortcutActionStatusesReflectSettingsGates() throws {
+        let basicAction = try #require(AutomationShortcutAction.allActions.first { $0.title == "Expand Menu Bar Items" })
+        let profileAction = try #require(AutomationShortcutAction.allActions.first { $0.title == "Apply Profile" })
+        let labsAction = try #require(AutomationShortcutAction.allActions.first { $0.title == "Set Layout Spacing Preset" })
+
+        #expect(basicAction.status(
+            appIntentsEnabled: true,
+            canApplyProfiles: false,
+            canAccessLabs: false,
+            spacingLabsEnabled: false
+        ) == .ready)
+        #expect(profileAction.status(
+            appIntentsEnabled: true,
+            canApplyProfiles: false,
+            canAccessLabs: false,
+            spacingLabsEnabled: false
+        ) == .profileGated)
+        #expect(profileAction.status(
+            appIntentsEnabled: true,
+            canApplyProfiles: true,
+            canAccessLabs: false,
+            spacingLabsEnabled: false
+        ) == .ready)
+        #expect(labsAction.status(
+            appIntentsEnabled: true,
+            canApplyProfiles: false,
+            canAccessLabs: false,
+            spacingLabsEnabled: false
+        ) == .labsGated)
+        #expect(labsAction.status(
+            appIntentsEnabled: true,
+            canApplyProfiles: false,
+            canAccessLabs: true,
+            spacingLabsEnabled: false
+        ) == .requiresLabs)
+        #expect(labsAction.status(
+            appIntentsEnabled: true,
+            canApplyProfiles: false,
+            canAccessLabs: true,
+            spacingLabsEnabled: true
+        ) == .ready)
+        #expect(basicAction.status(
+            appIntentsEnabled: false,
+            canApplyProfiles: true,
+            canAccessLabs: true,
+            spacingLabsEnabled: true
+        ) == .disabled)
+    }
 }
