@@ -35,6 +35,11 @@ enum HealthRecoveryAction: String, CaseIterable, Codable, Hashable, Sendable {
     case resetSettingsToDefaults
     case disableProMode
     case enterSafeModeNextLaunch
+    case exitFullMenuBarMode
+    case hideOptionalSpacerItems
+    case disableDynamicHotkeys
+    case disableGroupStatusItems
+    case clearPrivateAccessUnlock
 
     var displayName: String {
         switch self {
@@ -60,6 +65,16 @@ enum HealthRecoveryAction: String, CaseIterable, Codable, Hashable, Sendable {
             "Disable Pro Mode"
         case .enterSafeModeNextLaunch:
             "Enter Safe Mode next launch"
+        case .exitFullMenuBarMode:
+            "Exit Full Menu Bar Mode"
+        case .hideOptionalSpacerItems:
+            "Hide optional spacer items"
+        case .disableDynamicHotkeys:
+            "Disable dynamic hotkeys"
+        case .disableGroupStatusItems:
+            "Disable group status items"
+        case .clearPrivateAccessUnlock:
+            "Clear Private Access unlock"
         }
     }
 }

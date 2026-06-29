@@ -15,6 +15,10 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private let menuBarScanCoordinator: MenuBarScanCoordinator?
     private let profileStore: ProfileStore?
     private let triggerService: TriggerService?
+    private let layoutCoordinator: LayoutCoordinator?
+    private let groupStore: IconGroupStore?
+    private let hotkeyBindingStore: HotkeyBindingStore?
+    private let privateAccessCoordinator: PrivateAccessCoordinator?
     private let actions: SettingsActions
 
     init(
@@ -29,6 +33,10 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         menuBarScanCoordinator: MenuBarScanCoordinator? = nil,
         profileStore: ProfileStore? = nil,
         triggerService: TriggerService? = nil,
+        layoutCoordinator: LayoutCoordinator? = nil,
+        groupStore: IconGroupStore? = nil,
+        hotkeyBindingStore: HotkeyBindingStore? = nil,
+        privateAccessCoordinator: PrivateAccessCoordinator? = nil,
         actions: SettingsActions = .empty
     ) {
         self.settingsStore = settingsStore
@@ -42,6 +50,10 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         self.menuBarScanCoordinator = menuBarScanCoordinator
         self.profileStore = profileStore
         self.triggerService = triggerService
+        self.layoutCoordinator = layoutCoordinator
+        self.groupStore = groupStore
+        self.hotkeyBindingStore = hotkeyBindingStore
+        self.privateAccessCoordinator = privateAccessCoordinator
         self.actions = actions
 
         let contentView = SettingsRootView(
@@ -57,6 +69,10 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             menuBarScanCoordinator: menuBarScanCoordinator,
             profileStore: profileStore,
             triggerService: triggerService,
+            layoutCoordinator: layoutCoordinator,
+            groupStore: groupStore,
+            hotkeyBindingStore: hotkeyBindingStore,
+            privateAccessCoordinator: privateAccessCoordinator,
             actions: actions
         )
 

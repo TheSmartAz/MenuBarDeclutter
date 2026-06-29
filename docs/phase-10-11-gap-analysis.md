@@ -5,18 +5,19 @@ Date: 2026-06-29
 ## Summary
 
 Phases 10 and 11 have been implemented with core domain models, services,
-persistence, and unit tests. Build succeeds, privacy verification passes,
-and 79 new tests pass. However, several UI surfaces, health integrations,
-and secondary features remain to be implemented.
+persistence, Settings UI, runtime wiring, health/Safe Mode integration,
+diagnostics coverage, focused docs, and unit tests. The follow-up pass on
+2026-06-29 closed the previously listed remaining work.
 
 ## Build & Test Status
 
-- `xcodebuild build -scheme MenuBarDeclutter`: **BUILD SUCCEEDED**
-- `xcodebuild build-for-testing`: **TEST BUILD SUCCEEDED**
+- `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS'`: **TEST SUCCEEDED**
 - `scripts/verify_privacy_boundary.sh`: **PASSED**
+- `scripts/qa_preflight.sh`: **PASSED**
+- Unit/Swift Testing: 310 tests in 60 suites passed
+- UI tests: 7 tests passed
 - Phase 10 tests: 36 — all passing
-- Phase 11 tests: 43 — all passing
-- Existing tests: still passing (verified SettingsStore + DiagnosticsLogger suites)
+- Phase 11 direct tests plus integration coverage — all passing
 
 ---
 
@@ -67,78 +68,30 @@ and secondary features remain to be implemented.
 
 ---
 
-## Phase 10 — What's Missing
+## Phase 10 — Follow-up Work Resolved
 
-### 1. Health and Safe Mode Integration (Task 11)
-**Status: Not implemented**
+### Health and Safe Mode Integration
+**Status: Resolved on 2026-06-29**
 
-The plan called for extending `HealthService` and `RecoveryService` with:
-- Corrupted spacer store detection
-- Invalid spacer lengths
-- Missing app-owned spacer status items
-- Invalid full menu bar mode state
-- Stuck full menu bar mode auto-exit
-- Spacing backup missing while custom spacing says applied
-- Spacing apply failure
-- Layout capacity stale if Pro scan stale
-- Crowded rescue repeated too often
+- `HealthService` now models Phase 10 layout state in `HealthCheckSnapshot`.
+- `RecoveryService` can exit Full Menu Bar Mode and hide optional spacer items.
+- `AppHealthCoordinator` wires layout recovery through `LayoutCoordinator`.
+- Safe Mode exits Full Menu Bar Mode and hides optional spacers.
 
-Recovery actions needed:
-- Reset spacer store after backup
-- Hide optional spacer items
-- Exit Full Menu Bar Mode
-- Reset crowded rescue state
-- Reset menu bar spacing settings to safe app defaults (without mutating global defaults)
+### Spacer Management UI
+**Status: Resolved on 2026-06-29**
 
-Safe Mode behavior needed:
-- Disable auto-enter full menu mode
-- Disable crowded rescue automation
-- Hide optional spacer status items
-- Disable spacing apply UI
-- Keep Reset Layout and Diagnostics visible
+- `SpacerItemListView` lists app-owned spacer/divider items.
+- `SpacerItemEditorView` edits spacer type, title, width, marker, and visibility.
+- `LayoutSettingsView` now surfaces live capacity, suggestions, spacer
+  management, and Spacing Labs controls.
 
-**Files to create/modify:**
-- `Health/HealthService.swift` — add Phase 10 checks to `HealthCheckSnapshot` and `makeReport`
-- `Health/RecoveryService.swift` — add Phase 10 recovery actions
-- `Layout/LayoutCoordinator.swift` — add `enterSafeMode()` (stub exists but needs HealthService wiring)
+### Diagnostics and Tests
+**Status: Resolved on 2026-06-29**
 
-### 2. Spacer Management UI (Task 7, Task 9)
-**Status: Basic toggles only, no list/editor**
-
-The plan called for:
-- `SpacerItemEditorView` — edit individual spacer properties
-- `SpacerItemListView` — list, reorder, add/remove spacers
-- Add Divider / Add Thin Spacer / Add Wide Spacer / Add Label / Add Icon buttons
-- Hide All Spacer Markers button
-- Reset Spacers button
-
-The current `LayoutSettingsView` has basic enable/markers toggles but no
-list or editor UI.
-
-**Files to create:**
-- `Layout/SpacerItemListView.swift`
-- `Layout/SpacerItemEditorView.swift`
-
-### 3. Detailed Layout Views (Task 9)
-**Status: Consolidated into sections, no separate views**
-
-The plan called for separate views:
-- `LayoutCapacityView` — show capacity ratio, slots, known items, warnings, recommended action
-- `LayoutSuggestionsView` — list suggestions with actions
-- `FullMenuBarModeSettingsView`
-- `CrowdedRevealSettingsView`
-- `SpacerItemsSettingsView`
-- `MenuBarSpacingLabsView`
-
-These were consolidated into sections within `LayoutSettingsView`. The
-capacity view does not show live estimate data, and the suggestions view
-does not list actual suggestions.
-
-### 4. Missing Tests (Task 12)
-**Status: Not written**
-
-- `LayoutHealthTests` — health detects corrupted Phase 10 state
-- `LayoutURLAutomationTests` — URL automation throttling for new commands
+- Diagnostics export includes Phase 10 layout, spacer, and spacing settings.
+- `Phase10Phase11HealthTests` covers layout recovery conditions.
+- `DiagnosticsExportTests` locks the expanded diagnostics schema.
 
 ---
 
@@ -209,196 +162,70 @@ does not list actual suggestions.
 
 ---
 
-## Phase 11 — What's Missing
+## Phase 11 — Follow-up Work Resolved
 
-### 5. Groups Settings UI (Task 2)
-**Status: Not implemented**
+### Settings UI
+**Status: Resolved on 2026-06-29**
 
-No Settings tab for Groups exists. Users cannot create, edit, or manage
-groups through the UI.
+- `IconGroupsSettingsView` plus group editor, picker, row, and preview views.
+- `PrivateAccessSettingsView` for policy toggles, unlock duration, test auth,
+  and clearing active sessions.
+- `DynamicHotkeysSettingsView` for enabling, adding, disabling, and deleting
+  dynamic bindings with conflict warnings.
+- `AutomationSettingsView` for App Intents, profile apply, Labs access, and
+  Shortcuts app launch.
+- `MigrationAssistantRootView` and `MigrationAssistantWindowController` for
+  export, import dry-run, and backups.
+- `SettingsRootView` and `SettingsWindowController` expose the new sections.
 
-**Files to create:**
-- `Groups/IconGroupsSettingsView.swift` — main Settings tab
-- `Groups/IconGroupEditorView.swift` — create/edit group (name, symbol, color, notes)
-- `Groups/IconGroupItemPickerView.swift` — pick items from AX snapshots
-- `Groups/IconGroupRowView.swift` — row in the groups list
-- `Groups/IconGroupPreviewView.swift` — preview matched items
+### Group Panel and Status Items
+**Status: Resolved on 2026-06-29**
 
-**SettingsStore section to add:**
-- `SettingsSection.groups` — sidebar item with "person.2" icon
+- `IconGroupPanelWindowController` hosts the panel.
+- `IconGroupPanelRootView` provides search and keyboard navigation.
+- `IconGroupActivationService` performs conservative reveal/highlight actions.
+- `IconGroupStatusItemFactory` and `IconGroupStatusItemController` manage
+  optional app-owned group status items.
 
-### 6. Group Panel (Task 3)
-**Status: Not implemented**
+### Dynamic Hotkey Registration
+**Status: Resolved on 2026-06-29**
 
-No group panel window exists. Users cannot browse group items in a panel.
+- `DynamicHotkeyRegistrationService` registers enabled, non-conflicting dynamic
+  bindings with `GlobalHotkeyManager`.
+- Registration respects max limits, disabled settings, Safe Mode, Pro-only
+  actions, and protected action gating.
+- `GlobalHotkeyManager.RegistrationIdentifier` supports dynamic UUID-backed
+  registrations.
 
-**Files to create:**
-- `Groups/IconGroupPanelWindowController.swift` — NSPanel + SwiftUI hosting
-- `Groups/IconGroupPanelRootView.swift` — SwiftUI root with search, keyboard nav
-- `Groups/IconGroupPanelItemRowView.swift` — item row in panel
-- `Groups/IconGroupActivationService.swift` — visible/hidden/always-hidden activation logic
-- `Groups/IconGroupStatusItemController.swift` — optional app-owned group status items
-- `Groups/IconGroupStatusItemFactory.swift` — NSStatusItem creation for groups
+### Profile Integration
+**Status: Resolved on 2026-06-29**
 
-### 7. Dynamic Hotkey Registration (Task 5)
-**Status: Store and conflict detection only, no actual registration**
+- `ProfileModel` schema v2 includes group visibility, protected group IDs,
+  dynamic hotkey preferences, layout mode, full menu bar preference, and
+  spacing preset preference.
+- `ProfileApplicationService` dry-run and apply flows report group, layout,
+  protected, and Labs changes.
+- Profile application can refresh groups, toggle group status items, enter or
+  exit Full Menu Bar Mode, and apply Labs-gated spacing only when allowed.
 
-`HotkeyBindingStore` can save/load bindings, and `HotkeyConflictDetector`
-can detect conflicts, but no service actually registers hotkeys with the
-system via `GlobalHotkeyManager`.
+### Diagnostics, Health, and Safe Mode
+**Status: Resolved on 2026-06-29**
 
-**Files to create:**
-- `Hotkeys/DynamicHotkeyRegistrationService.swift` — registers/unregisters
-  dynamic hotkeys via `GlobalHotkeyManager`, respects max limit, handles
-  protected action gating
+- Diagnostics export includes Phase 11 settings and explicitly excludes
+  protected group names, protected hotkey targets, and import/export paths.
+- `HealthService` detects duplicate groups, group status items visible while
+  disabled, dynamic hotkey conflicts, dynamic hotkeys registered while disabled,
+  and active Private Access unlock sessions while Private Access is disabled.
+- `RecoveryService` can disable dynamic hotkeys, hide group status items, and
+  clear Private Access unlock sessions.
+- `AppHealthCoordinator` wires Phase 11 snapshots and recovery hooks.
 
-### 8. Private Access Settings UI (Task 4)
-**Status: Not implemented**
+### Tests and Docs
+**Status: Resolved on 2026-06-29**
 
-No Settings tab for Private Access exists. Users cannot enable/configure
-Private Access through the UI.
-
-**Files to create:**
-- `PrivateAccess/PrivateAccessSettingsView.swift` — toggle Private Access,
-  configure protected surfaces, unlock duration, test auth, clear session
-
-**SettingsStore section to add:**
-- `SettingsSection.privateAccess` — sidebar item with "lock.fill" icon
-
-### 9. Hotkeys Settings UI (Task 5)
-**Status: Not implemented**
-
-No Settings tab for dynamic hotkeys exists.
-
-**Files to create:**
-- `Hotkeys/DynamicHotkeysSettingsView.swift` — list bindings, add/edit/delete,
-  conflict warnings, disable all
-
-**SettingsStore section to add:**
-- `SettingsSection.hotkeys` — sidebar item with "keyboard" icon
-
-### 10. Automation/Shortcuts Settings UI (Task 6)
-**Status: Not implemented**
-
-No Settings tab for App Intents/Shortcuts exists.
-
-**Files to create:**
-- `Shortcuts/AutomationSettingsView.swift` — show available intents, toggle
-  profile apply, toggle Labs access, link to Shortcuts app
-
-**SettingsStore section to add:**
-- `SettingsSection.automation` — sidebar item with "link" icon
-
-### 11. Import/Export Settings UI (Task 7)
-**Status: Not implemented**
-
-No Settings tab for Import/Export exists.
-
-**Files to create:**
-- `Migration/MigrationAssistantWindowController.swift` — NSWindowController
-- `Migration/MigrationAssistantRootView.swift` — SwiftUI root with
-  export/import/dry-run/backup list/restore
-
-**SettingsStore section to add:**
-- `SettingsSection.importExport` — sidebar item with "arrow.up.arrow.down" icon
-
-### 12. Profile Integration (Task 8)
-**Status: Not implemented**
-
-`ProfileModel` was not extended with Phase 11 features.
-
-**Changes needed in `Profiles/ProfileModel.swift`:**
-- Add `groupVisibilityPreferences: [UUID: Bool]`
-- Add `protectedGroupIDs: Set<UUID>`
-- Add `dynamicHotkeyPreferences: [UUID]?`
-- Add `layoutModePreference: LayoutMode?`
-- Add `fullMenuBarModePreference: Bool?`
-- Add `spacingPresetPreference: String?` (Labs-gated)
-
-**Changes needed in `Profiles/ProfileApplicationService.swift`:**
-- Profile apply can show/hide group status items
-- Profile apply can show Second Bar filtered to a group
-- Profile apply can enable/disable spacer visibility
-- Profile apply can enter/exit Full Menu Bar Mode
-- Profile dry-run must show group/Labs/protected changes
-
-### 13. Diagnostics, Health, and Safe Mode (Task 10)
-**Status: Not implemented**
-
-HealthService and SafeMode were not extended for Phase 11.
-
-**Health checks needed:**
-- Corrupted group store
-- Duplicate group names
-- Invalid group item refs
-- Missing group status item
-- Protected access misconfiguration
-- Stale unlock session
-- Dynamic hotkey conflicts
-- Corrupted hotkey binding store
-- Corrupted import backup
-- App Intent disabled/misconfigured state
-- Profile references missing group
-
-**Safe Mode behavior needed:**
-- Disable dynamic hotkeys
-- Disable group status items
-- Disable protected action prompts (except Settings/Diagnostics)
-- Disable App Intents (except safe commands)
-- Disable imports
-- Preserve Settings/Diagnostics/Reset access
-
-**Diagnostics export privacy:**
-- Protected group names redacted by default
-- Hotkey target identity redacted if protected
-- Import/export file paths app-support-relative or redacted
-
-### 14. Missing Tests (Task 11)
-**Status: Not written**
-
-- `IconGroupPanelActivationTests`
-- `IconGroupImportExportTests`
-- `DynamicHotkeyRegistrationServiceTests`
-- `HotkeyProtectedActionTests`
-- `AppIntentResultMapperTests`
-- `AppIntentSafeModeTests`
-- `AppIntentPrivateAccessTests`
-- `AppIntentAutomationPauseTests`
-- `ImportBackupServiceTests`
-- `ExperimentalFlagImportSafetyTests`
-- `ProfileGroupIntegrationTests`
-- `ProfilePrivateAccessGateTests`
-- `ProfileLayoutPreferenceTests`
-- `Phase11HealthTests`
-- `SafeModePhase11Tests`
-
-### 15. Missing Docs (Task 13)
-**Status: Partially created**
-
-Created:
-- `docs/phase-11/README.md`
-- `docs/phase-11/privacy-boundary.md`
-- `docs/phase-11/known-limitations.md`
-
-Not created:
-- `docs/phase-11/private-access-plan.md`
-- `docs/phase-11/power-user-plan.md`
-- `docs/phase-11/app-intents-plan.md`
-- `docs/phase-11/import-export-format.md`
-- `docs/phase-11/group-schema.md`
-- `docs/phase-11/hotkey-schema.md`
-- `docs/phase-11/risk-register.md`
-- `docs/phase-11/manual-qa.md`
-- `docs/release/phase-11-release-notes.md`
-- `docs/testing/phase-11-*.md` (5 QA docs)
-
----
-
-## Priority Recommendation
-
-1. **High: Settings UI** (items 5, 8, 9, 10, 11) — makes features usable
-2. **High: Group Panel** (item 6) — core Groups functionality
-3. **Medium: Dynamic hotkey registration** (item 7) — makes hotkeys functional
-4. **Medium: Profile integration** (item 12) — connects profiles to groups/layout
-5. **Medium: Health/Safe Mode** (items 1, 13) — reliability
-6. **Low: Remaining tests and docs** (items 4, 14, 15) — completeness
+- Added `DynamicHotkeyRegistrationServiceTests`.
+- Added `ProfilePhase11IntegrationTests`.
+- Added `Phase10Phase11HealthTests`.
+- Expanded `DiagnosticsExportTests`.
+- Added Phase 10 and Phase 11 release notes, QA docs, schemas, risk register,
+  and plans.

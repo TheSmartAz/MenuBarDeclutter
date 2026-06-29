@@ -34,6 +34,12 @@ struct StatusBarMenuBuilderTests {
                 "Resume Automation",
                 "Reset Separator Length",
                 "Show Drag Hint",
+                "Enter Full Menu Bar Mode",
+                "Layout Suggestions…",
+                "Add Divider",
+                "Add Spacer",
+                "Toggle Spacer Markers",
+                "Open Layout Settings",
                 "Settings...",
                 "Show Diagnostics",
                 "About \(AppConstants.displayName)",
@@ -42,7 +48,7 @@ struct StatusBarMenuBuilderTests {
         )
         #expect(
             commandItems.map { $0.keyEquivalent } == [
-                "", "", "h", "", "", "", "f", "", "", "s", "r", "", "", "", "", ",", "", "", "q"
+                "", "", "h", "", "", "", "f", "", "", "s", "r", "", "", "", "", "", "", "", "", "", "", ",", "", "", "q"
             ]
         )
         #expect(commandItems.map { $0.action }.allSatisfy { $0 == commandItems.first?.action })
@@ -100,7 +106,17 @@ struct StatusBarMenuBuilderTests {
             openSettings: { recorder.record(.openSettings) },
             showDiagnostics: { recorder.record(.showDiagnostics) },
             showAbout: { recorder.record(.showAbout) },
-            quit: { recorder.record(.quit) }
+            quit: { recorder.record(.quit) },
+            enterFullMenuBarMode: { recorder.record(.enterFullMenuBarMode) },
+            exitFullMenuBarMode: { recorder.record(.exitFullMenuBarMode) },
+            fullMenuBarModeIsActive: { false },
+            showLayoutSuggestions: { recorder.record(.showLayoutSuggestions) },
+            openLayoutSettings: { recorder.record(.openLayoutSettings) },
+            addSpacerDivider: { recorder.record(.addSpacerDivider) },
+            addSpacer: { recorder.record(.addSpacer) },
+            toggleSpacerMarkers: { recorder.record(.toggleSpacerMarkers) },
+            revealInlineAnyway: { recorder.record(.revealInlineAnyway) },
+            crowdedRevealIntercepted: { false }
         )
     }
 }
@@ -123,10 +139,18 @@ private final class MenuActionRecorder {
         case toggleAutomationPaused
         case resetSeparatorLength
         case showDragHint
+        case enterFullMenuBarMode
+        case showLayoutSuggestions
+        case addSpacerDivider
+        case addSpacer
+        case toggleSpacerMarkers
+        case openLayoutSettings
         case openSettings
         case showDiagnostics
         case showAbout
         case quit
+        case exitFullMenuBarMode
+        case revealInlineAnyway
     }
 
     var commands: [Command] = []

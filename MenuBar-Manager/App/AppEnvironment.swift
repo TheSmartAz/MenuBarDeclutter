@@ -68,6 +68,15 @@ final class AppEnvironment {
         },
         showSecondBar: { [weak self] in
             self?.showSecondBar()
+        },
+        enterFullMenuBarMode: { [weak self] in
+            self?.enterFullMenuBarMode()
+        },
+        exitFullMenuBarMode: { [weak self] in
+            self?.exitFullMenuBarMode()
+        },
+        refreshGroups: { [weak self] in
+            self?.refreshGroupSettings()
         }
     )
 
@@ -91,6 +100,10 @@ final class AppEnvironment {
         menuBarScanCoordinator: menuBarScanCoordinator,
         profileStore: profileAutomationCoordinator.profileStore,
         triggerService: profileAutomationCoordinator.triggerService,
+        layoutCoordinator: layoutCoordinator,
+        groupStore: groupStore,
+        hotkeyBindingStore: hotkeyBindingStore,
+        privateAccessCoordinator: privateAccessCoordinator,
         actions: SettingsActions(
             behaviorChanged: { [weak self] in
                 self?.refreshBehaviorSettings()
@@ -103,6 +116,15 @@ final class AppEnvironment {
             },
             privacyChanged: { [weak self] in
                 self?.refreshPrivacySettings()
+            },
+            groupsChanged: { [weak self] in
+                self?.refreshGroupSettings()
+            },
+            dynamicHotkeysChanged: { [weak self] in
+                self?.refreshDynamicHotkeys()
+            },
+            automationSettingsChanged: { [weak self] in
+                self?.refreshAutomationSettings()
             },
             profile: SettingsProfileActions(
                 dryRun: { [weak self] profile in
@@ -317,7 +339,13 @@ final class AppEnvironment {
             hidingService: hidingService,
             accessibilityPermissionService: accessibilityPermissionService,
             menuBarScanCoordinator: menuBarScanCoordinator,
-            secondBarWindowController: menuBarItemSurfaceCoordinator.secondBarWindowController
+            secondBarWindowController: menuBarItemSurfaceCoordinator.secondBarWindowController,
+            layoutCoordinator: layoutCoordinator,
+            groupStore: groupStore,
+            groupStatusItemController: groupStatusItemController,
+            hotkeyBindingStore: hotkeyBindingStore,
+            dynamicHotkeyRegistrationService: dynamicHotkeyRegistrationService,
+            privateAccessCoordinator: privateAccessCoordinator
         ),
         actions: AppHealthCoordinatorActions(
             synchronizeLiveStatus: { [weak self] in
@@ -413,6 +441,52 @@ final class AppEnvironment {
         directory: appSupportPaths.applicationSupportDirectory.appendingPathComponent("Hotkeys", isDirectory: true),
         backupsDirectory: appSupportPaths.backupsDirectory,
         diagnosticsLogger: diagnosticsLogger
+    )
+
+    private lazy var groupHighlightOverlayWindow = HighlightOverlayWindow(
+        diagnosticsLogger: diagnosticsLogger
+    )
+
+    private lazy var groupMenuItemActivator = MenuItemActivator(
+        settingsStore: settingsStore,
+        hidingService: hidingService,
+        highlightOverlay: groupHighlightOverlayWindow,
+        diagnosticsLogger: diagnosticsLogger
+    )
+
+    private lazy var groupActivationService = IconGroupActivationService(
+        activator: groupMenuItemActivator,
+        diagnosticsLogger: diagnosticsLogger
+    )
+
+    private lazy var groupPanelWindowController = IconGroupPanelWindowController(
+        diagnosticsLogger: diagnosticsLogger,
+        activationService: groupActivationService,
+        protectedActionGate: protectedActionGate
+    )
+
+    private lazy var groupStatusItemController = IconGroupStatusItemController(
+        settingsStore: settingsStore,
+        groupStore: groupStore,
+        factory: IconGroupStatusItemFactory(diagnosticsLogger: diagnosticsLogger),
+        diagnosticsLogger: diagnosticsLogger,
+        openGroup: { [weak self] group in
+            self?.showGroupPanel(group)
+        },
+        editGroup: { [weak self] _ in
+            self?.showSettings(section: .groups)
+        }
+    )
+
+    private lazy var dynamicHotkeyRegistrationService = DynamicHotkeyRegistrationService(
+        settingsStore: settingsStore,
+        bindingStore: hotkeyBindingStore,
+        hotkeyManager: hotkeyManager,
+        protectedActionGate: protectedActionGate,
+        diagnosticsLogger: diagnosticsLogger,
+        performAction: { [weak self] action in
+            await self?.performDynamicHotkeyAction(action) == true
+        }
     )
 
     lazy var intentExecutionService = AppIntentExecutionService(
@@ -585,6 +659,16 @@ final class AppEnvironment {
         refreshTriggerSettings()
         systemRecoveryCoordinator.startObserving()
         layoutCoordinator.start()
+        groupStore.load()
+        hotkeyBindingStore.load()
+        if safeModeLaunchState.isSafeModeActive {
+            layoutCoordinator.enterSafeMode()
+            groupStatusItemController.enterSafeMode()
+            dynamicHotkeyRegistrationService.unregisterAll()
+        } else {
+            groupStatusItemController.refresh()
+            dynamicHotkeyRegistrationService.refreshRegistrations()
+        }
     }
 
     private func startMenuBarScanningIfAllowed() {
@@ -654,6 +738,8 @@ final class AppEnvironment {
     }
 
     func stop() {
+        dynamicHotkeyRegistrationService.unregisterAll()
+        groupStatusItemController.removeAll()
         layoutCoordinator.stop()
         AppEnvironment.shared = nil
         menuBarItemSurfaceCoordinator.hideSecondBar()
@@ -764,6 +850,30 @@ final class AppEnvironment {
 
     func refreshPrivacySettings() {
         settingsRuntimeCoordinator.refreshPrivacySettings()
+    }
+
+    func refreshGroupSettings() {
+        groupStore.load()
+        if safeModeLaunchState.isSafeModeActive {
+            groupStatusItemController.enterSafeMode()
+        } else {
+            groupStatusItemController.refresh()
+        }
+        updateLiveStatusFromServices()
+    }
+
+    func refreshDynamicHotkeys() {
+        hotkeyBindingStore.load()
+        if safeModeLaunchState.isSafeModeActive {
+            dynamicHotkeyRegistrationService.unregisterAll()
+        } else {
+            dynamicHotkeyRegistrationService.refreshRegistrations()
+        }
+        updateLiveStatusFromServices()
+    }
+
+    func refreshAutomationSettings() {
+        diagnosticsLogger.log("Automation settings refreshed.", level: .debug, category: .urlAutomation)
     }
 
     func refreshTriggerSettings() {
@@ -936,6 +1046,26 @@ final class AppEnvironment {
         menuBarItemSurfaceCoordinator.showSecondBar()
     }
 
+    func showGroupPanel(_ group: IconGroup) {
+        let snapshots = liveStatus.scannedMenuBarItems
+        let openPanel = { [weak self] in
+            self?.groupPanelWindowController.show(group: group, snapshots: snapshots)
+        }
+
+        if group.isProtected {
+            Task { @MainActor in
+                await protectedActionGate.execute(
+                    resource: .protectedGroup(group.id),
+                    reason: "Unlock to open \(group.name)."
+                ) {
+                    openPanel()
+                }
+            }
+        } else {
+            openPanel()
+        }
+    }
+
     func hideSecondBar() {
         menuBarItemSurfaceCoordinator.hideSecondBar()
     }
@@ -954,6 +1084,55 @@ final class AppEnvironment {
 
     func toggleProMode() {
         settingsRuntimeCoordinator.toggleProMode()
+    }
+
+    private func performDynamicHotkeyAction(_ action: HotkeyAction) async -> Bool {
+        switch action {
+        case .revealAndHighlightItem(let itemID):
+            refreshMenuBarItems()
+            guard let snapshot = liveStatus.scannedMenuBarItems.first(where: { $0.id == itemID }) else {
+                diagnosticsLogger.log("Dynamic hotkey item target unavailable.", level: .warning, category: .hotkey)
+                return false
+            }
+            _ = groupActivationService.activate(snapshot: snapshot)
+            return true
+        case .openGroup(let groupID), .openSecondBarFilteredToGroup(let groupID):
+            groupStore.load()
+            guard let group = groupStore.groups.first(where: { $0.id == groupID }) else {
+                diagnosticsLogger.log("Dynamic hotkey group target unavailable.", level: .warning, category: .hotkey)
+                return false
+            }
+            if case .openSecondBarFilteredToGroup = action {
+                showSecondBar()
+            }
+            showGroupPanel(group)
+            return true
+        case .openSecondBarFilteredToItem:
+            showSecondBar()
+            return true
+        case .applyProfile(let profileID):
+            profileAutomationCoordinator.profileStore.load()
+            guard let profile = profileAutomationCoordinator.profileStore.profiles.first(where: { $0.id == profileID }) else {
+                diagnosticsLogger.log("Dynamic hotkey profile target unavailable.", level: .warning, category: .hotkey)
+                return false
+            }
+            _ = applyProfile(profile)
+            return true
+        case .enterFullMenuBarMode:
+            enterFullMenuBarMode()
+            return true
+        case .exitFullMenuBarMode:
+            exitFullMenuBarMode()
+            return true
+        case .pauseAutomation:
+            settingsStore.automationPaused = true
+            refreshTriggerSettings()
+            return true
+        case .resumeAutomation:
+            settingsStore.automationPaused = false
+            refreshTriggerSettings()
+            return true
+        }
     }
 
     func showAbout() {

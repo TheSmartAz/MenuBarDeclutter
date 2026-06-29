@@ -12,9 +12,20 @@ struct ProfileApplicationDryRun: Equatable, Sendable {
     var itemsToMove: [ProfileMovePreview]
     var unavailableItems: [String]
     var permissionRequirements: [String]
+    var groupChanges: [String] = []
+    var layoutChanges: [String] = []
+    var protectedActions: [String] = []
+    var labsChanges: [String] = []
 
     var isEmpty: Bool {
-        itemsToReveal.isEmpty && itemsToMove.isEmpty && unavailableItems.isEmpty && permissionRequirements.isEmpty
+        itemsToReveal.isEmpty
+            && itemsToMove.isEmpty
+            && unavailableItems.isEmpty
+            && permissionRequirements.isEmpty
+            && groupChanges.isEmpty
+            && layoutChanges.isEmpty
+            && protectedActions.isEmpty
+            && labsChanges.isEmpty
     }
 
     var summary: String {
@@ -22,7 +33,7 @@ struct ProfileApplicationDryRun: Equatable, Sendable {
             return "Profile can be applied without additional actions."
         }
 
-        return "\(itemsToReveal.count) reveal actions, \(itemsToMove.count) move previews, \(unavailableItems.count) unavailable items, \(permissionRequirements.count) requirements."
+        return "\(itemsToReveal.count) reveal actions, \(itemsToMove.count) move previews, \(groupChanges.count) group changes, \(layoutChanges.count) layout changes, \(labsChanges.count) Labs changes, \(unavailableItems.count) unavailable items, \(permissionRequirements.count) requirements."
     }
 }
 
@@ -32,17 +43,26 @@ final class ProfileApplicationService {
     private let diagnosticsLogger: DiagnosticsLogger
     private let liveStatus: LiveDiagnosticsStatus
     private let setVisibility: (HidingVisibilityState) -> Void
+    private let enterFullMenuBarMode: () -> Void
+    private let exitFullMenuBarMode: () -> Void
+    private let refreshGroups: () -> Void
 
     init(
         settingsStore: SettingsStore,
         diagnosticsLogger: DiagnosticsLogger,
         liveStatus: LiveDiagnosticsStatus,
-        setVisibility: @escaping (HidingVisibilityState) -> Void
+        setVisibility: @escaping (HidingVisibilityState) -> Void,
+        enterFullMenuBarMode: @escaping () -> Void = {},
+        exitFullMenuBarMode: @escaping () -> Void = {},
+        refreshGroups: @escaping () -> Void = {}
     ) {
         self.settingsStore = settingsStore
         self.diagnosticsLogger = diagnosticsLogger
         self.liveStatus = liveStatus
         self.setVisibility = setVisibility
+        self.enterFullMenuBarMode = enterFullMenuBarMode
+        self.exitFullMenuBarMode = exitFullMenuBarMode
+        self.refreshGroups = refreshGroups
     }
 
     func dryRun(
@@ -89,11 +109,44 @@ final class ProfileApplicationService {
             }
         }
 
+        var groupChanges: [String] = []
+        for (_, isVisible) in profile.groupVisibilityPreferences.sorted(by: { $0.key.uuidString < $1.key.uuidString }) {
+            groupChanges.append(isVisible ? "Show group status item" : "Hide group status item")
+        }
+
+        var layoutChanges: [String] = []
+        if let layoutModePreference = profile.layoutModePreference {
+            layoutChanges.append("Layout mode preference: \(layoutModePreference.displayName)")
+        }
+        if let fullMenuBarModePreference = profile.fullMenuBarModePreference {
+            layoutChanges.append(fullMenuBarModePreference ? "Enter Full Menu Bar Mode" : "Exit Full Menu Bar Mode")
+        }
+
+        var protectedActions: [String] = []
+        if !profile.protectedGroupIDs.isEmpty {
+            protectedActions.append("\(profile.protectedGroupIDs.count) protected group preference(s)")
+            if settingsStore.privateAccessEnabled && settingsStore.protectedGroupsRequireAuth {
+                requirements.append("Private Access may be required for protected group changes.")
+            }
+        }
+
+        var labsChanges: [String] = []
+        if let spacingPresetPreference = profile.spacingPresetPreference {
+            labsChanges.append("Spacing preset: \(spacingPresetPreference)")
+            if !settingsStore.menuBarSpacingLabsEnabled {
+                requirements.append("Spacing preset preference is blocked until Menu Bar Spacing Labs is enabled.")
+            }
+        }
+
         return ProfileApplicationDryRun(
             itemsToReveal: revealActions,
             itemsToMove: movePreviews,
             unavailableItems: unavailable,
-            permissionRequirements: requirements
+            permissionRequirements: requirements,
+            groupChanges: groupChanges,
+            layoutChanges: layoutChanges,
+            protectedActions: protectedActions,
+            labsChanges: labsChanges
         )
     }
 
@@ -115,6 +168,24 @@ final class ProfileApplicationService {
         settingsStore.autoRehideEnabled = profile.autoRehideEnabled
         settingsStore.hoverRevealEnabled = profile.hoverRevealEnabled
         setVisibility(profile.preferredVisibilityState)
+
+        if let fullMenuBarModePreference = profile.fullMenuBarModePreference {
+            if fullMenuBarModePreference {
+                enterFullMenuBarMode()
+            } else {
+                exitFullMenuBarMode()
+            }
+        }
+
+        if !profile.groupVisibilityPreferences.isEmpty {
+            settingsStore.groupStatusItemsEnabled = profile.groupVisibilityPreferences.values.contains(true)
+            refreshGroups()
+        }
+
+        if let spacingPresetPreference = profile.spacingPresetPreference,
+           settingsStore.menuBarSpacingLabsEnabled {
+            settingsStore.menuBarSpacingPreset = spacingPresetPreference
+        }
 
         liveStatus.activeProfileID = profile.id.uuidString
         liveStatus.activeProfileName = profile.name

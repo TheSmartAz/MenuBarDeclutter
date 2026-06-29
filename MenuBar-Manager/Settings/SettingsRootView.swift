@@ -8,7 +8,12 @@ enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
     case layout
     case search
     case secondBar
+    case privateAccess
+    case groups
+    case hotkeys
     case profiles
+    case automation
+    case importExport
     case privacy
     case diagnostics
     case advanced
@@ -27,8 +32,18 @@ enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
             "Search"
         case .secondBar:
             "Second Bar"
+        case .privateAccess:
+            "Private Access"
+        case .groups:
+            "Groups"
+        case .hotkeys:
+            "Hotkeys"
         case .profiles:
             "Profiles"
+        case .automation:
+            "Automation"
+        case .importExport:
+            "Import / Export"
         case .privacy:
             "Privacy"
         case .diagnostics:
@@ -50,8 +65,18 @@ enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
             "magnifyingglass"
         case .secondBar:
             "menubar.rectangle"
+        case .privateAccess:
+            "lock.fill"
+        case .groups:
+            "person.2"
+        case .hotkeys:
+            "keyboard"
         case .profiles:
             "person.crop.rectangle.stack"
+        case .automation:
+            "link"
+        case .importExport:
+            "arrow.up.arrow.down"
         case .privacy:
             "shield.lefthalf.filled"
         case .diagnostics:
@@ -81,6 +106,10 @@ struct SettingsRootView: View {
     var menuBarScanCoordinator: MenuBarScanCoordinator?
     var profileStore: ProfileStore?
     var triggerService: TriggerService?
+    var layoutCoordinator: LayoutCoordinator?
+    var groupStore: IconGroupStore?
+    var hotkeyBindingStore: HotkeyBindingStore?
+    var privateAccessCoordinator: PrivateAccessCoordinator?
     var actions: SettingsActions = .empty
 
     var body: some View {
@@ -112,11 +141,20 @@ struct SettingsRootView: View {
         case .behavior:
             BehaviorSettingsView(settingsStore: settingsStore, onChange: actions.behaviorChanged)
         case .layout:
-            LayoutSettingsView(
-                settingsStore: settingsStore,
-                diagnosticsLogger: diagnosticsLogger,
-                liveStatus: liveStatus
-            )
+            if let layoutCoordinator {
+                LayoutSettingsView(
+                    settingsStore: settingsStore,
+                    diagnosticsLogger: diagnosticsLogger,
+                    liveStatus: liveStatus,
+                    layoutCoordinator: layoutCoordinator
+                )
+            } else {
+                LayoutSettingsView(
+                    settingsStore: settingsStore,
+                    diagnosticsLogger: diagnosticsLogger,
+                    liveStatus: liveStatus
+                )
+            }
         case .search:
             SearchSettingsView(
                 settingsStore: settingsStore,
@@ -135,6 +173,49 @@ struct SettingsRootView: View {
                     navigationModel.selectedSection = .privacy
                 }
             )
+        case .privateAccess:
+            PrivateAccessSettingsView(
+                settingsStore: settingsStore,
+                coordinator: privateAccessCoordinator,
+                onChange: actions.privacyChanged
+            )
+        case .groups:
+            if let groupStore {
+                IconGroupsSettingsView(
+                    settingsStore: settingsStore,
+                    groupStore: groupStore,
+                    snapshots: liveStatus?.scannedMenuBarItems ?? [],
+                    proModeAvailable: settingsStore.proModeEnabled && settingsStore.accessibilityDiscoveryEnabled,
+                    onOpenPrivacySettings: {
+                        navigationModel.selectedSection = .privacy
+                    },
+                    onGroupsChanged: actions.groupsChanged
+                )
+            } else {
+                ClearGlassSettingsPage("Groups", subtitle: "Group controls are available once group services are attached.") {
+                    ClearGlassSection("Groups Unavailable") {
+                        ContentUnavailableView("Groups Unavailable", systemImage: "person.2")
+                            .frame(maxWidth: .infinity, minHeight: 220)
+                    }
+                }
+            }
+        case .hotkeys:
+            if let hotkeyBindingStore {
+                DynamicHotkeysSettingsView(
+                    settingsStore: settingsStore,
+                    bindingStore: hotkeyBindingStore,
+                    groups: groupStore?.groups ?? [],
+                    profiles: profileStore?.profiles ?? [],
+                    onHotkeysChanged: actions.dynamicHotkeysChanged
+                )
+            } else {
+                ClearGlassSettingsPage("Hotkeys", subtitle: "Dynamic hotkeys are available once the hotkey store is attached.") {
+                    ClearGlassSection("Hotkeys Unavailable") {
+                        ContentUnavailableView("Hotkeys Unavailable", systemImage: "keyboard")
+                            .frame(maxWidth: .infinity, minHeight: 220)
+                    }
+                }
+            }
         case .profiles:
             if let profileStore,
                let triggerService,
@@ -167,6 +248,20 @@ struct SettingsRootView: View {
                 permissionService: accessibilityPermissionService,
                 scanCoordinator: menuBarScanCoordinator,
                 onChange: actions.privacyChanged
+            )
+        case .automation:
+            AutomationSettingsView(
+                settingsStore: settingsStore,
+                onChange: actions.automationSettingsChanged
+            )
+        case .importExport:
+            MigrationAssistantRootView(
+                settingsStore: settingsStore,
+                appSupportPaths: appSupportPaths,
+                diagnosticsLogger: diagnosticsLogger,
+                groups: groupStore?.groups ?? [],
+                hotkeyBindings: hotkeyBindingStore?.bindings ?? [],
+                spacerItems: layoutCoordinator?.spacerStore.items ?? []
             )
         case .diagnostics:
             DiagnosticsSettingsView(
@@ -618,9 +713,13 @@ private struct ClearGlassSettingsSidebar: View {
             appIdentity
 
             VStack(alignment: .leading, spacing: 6) {
-                sectionRows([.general, .behavior, .layout, .search, .secondBar, .profiles])
+                sectionRows([.general, .behavior, .layout, .search, .secondBar])
                 ClearGlassSidebarDivider()
-                sectionRows([.privacy, .diagnostics])
+                sectionRows([.privacy, .privateAccess])
+                ClearGlassSidebarDivider()
+                sectionRows([.groups, .hotkeys, .profiles, .automation, .importExport])
+                ClearGlassSidebarDivider()
+                sectionRows([.diagnostics])
                 ClearGlassSidebarDivider()
                 sectionRows([.advanced])
             }

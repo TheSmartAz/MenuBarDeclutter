@@ -13,6 +13,11 @@ struct RecoveryActions {
     var resetSettingsToDefaults: () -> Void = {}
     var disableProMode: () -> Void = {}
     var enterSafeModeNextLaunch: () -> Void = {}
+    var exitFullMenuBarMode: () -> Void = {}
+    var hideOptionalSpacerItems: () -> Void = {}
+    var disableDynamicHotkeys: () -> Void = {}
+    var disableGroupStatusItems: () -> Void = {}
+    var clearPrivateAccessUnlock: () -> Void = {}
 }
 
 @MainActor
@@ -68,6 +73,16 @@ final class RecoveryService {
             actions.disableProMode()
         case .enterSafeModeNextLaunch:
             actions.enterSafeModeNextLaunch()
+        case .exitFullMenuBarMode:
+            actions.exitFullMenuBarMode()
+        case .hideOptionalSpacerItems:
+            actions.hideOptionalSpacerItems()
+        case .disableDynamicHotkeys:
+            actions.disableDynamicHotkeys()
+        case .disableGroupStatusItems:
+            actions.disableGroupStatusItems()
+        case .clearPrivateAccessUnlock:
+            actions.clearPrivateAccessUnlock()
         }
 
         log("Health recovery action: \(action.displayName).")
@@ -82,6 +97,11 @@ final class RecoveryService {
             .resetMenuBarScanInterval,
             .resetSecondBarPosition,
             .refreshAccessibilityPermissionStatus,
+            .exitFullMenuBarMode,
+            .hideOptionalSpacerItems,
+            .disableDynamicHotkeys,
+            .disableGroupStatusItems,
+            .clearPrivateAccessUnlock,
             .disableProMode,
             .resetSettingsToDefaults,
             .enterSafeModeNextLaunch

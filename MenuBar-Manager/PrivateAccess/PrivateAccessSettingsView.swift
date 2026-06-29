@@ -1,0 +1,151 @@
+import SwiftUI
+
+struct PrivateAccessSettingsView: View {
+    @Bindable var settingsStore: SettingsStore
+    let coordinator: PrivateAccessCoordinator?
+    var onChange: (() -> Void)?
+
+    @State private var testStatus: String?
+
+    var body: some View {
+        ClearGlassSettingsPage(
+            "Private Access",
+            subtitle: "Use LocalAuthentication to gate sensitive app actions. No biometric data is stored.",
+            badges: [.privacySafe]
+        ) {
+            ClearGlassSection("Lock") {
+                ClearGlassControlRow(
+                    systemImage: "lock.fill",
+                    title: "Enable Private Access",
+                    subtitle: "Require Touch ID or device password for protected surfaces."
+                ) {
+                    Toggle("Enable Private Access", isOn: $settingsStore.privateAccessEnabled)
+                        .labelsHidden()
+                        .onChange(of: settingsStore.privateAccessEnabled) { _, _ in onChange?() }
+                }
+
+                ClearGlassDivider()
+
+                ClearGlassControlRow(
+                    systemImage: "key.fill",
+                    title: "Allow Device Password Fallback",
+                    subtitle: "Use device-owner authentication when Touch ID is unavailable."
+                ) {
+                    Toggle("Allow Password Fallback", isOn: $settingsStore.privateAccessAllowDevicePasswordFallback)
+                        .labelsHidden()
+                        .onChange(of: settingsStore.privateAccessAllowDevicePasswordFallback) { _, _ in onChange?() }
+                }
+
+                ClearGlassDivider()
+
+                ClearGlassSliderRow(
+                    "Unlock Duration",
+                    subtitle: "How long a successful unlock remains active.",
+                    value: $settingsStore.privateAccessUnlockDurationSeconds,
+                    in: AppConstants.minPrivateAccessUnlockDurationSeconds...AppConstants.maxPrivateAccessUnlockDurationSeconds,
+                    step: 30,
+                    valueSuffix: "s"
+                )
+
+                HStack(spacing: 10) {
+                    Button("Test Authentication", systemImage: "touchid") {
+                        Task { @MainActor in
+                            guard let coordinator else {
+                                testStatus = "Authentication service unavailable."
+                                return
+                            }
+                            let result = await coordinator.testAuthentication()
+                            testStatus = "Authentication \(result.statusString)."
+                        }
+                    }
+                    .disabled(!settingsStore.privateAccessEnabled)
+
+                    Button("Clear Unlock Session", systemImage: "lock") {
+                        coordinator?.clearUnlock()
+                        testStatus = "Unlock session cleared."
+                    }
+                    .disabled(coordinator == nil)
+
+                    if let coordinator {
+                        ClearGlassStatusValue(
+                            text: coordinator.isUnlocked ? "Unlocked" : "Locked",
+                            style: coordinator.isUnlocked ? .success : .secondary
+                        )
+                    }
+                }
+
+                if let testStatus {
+                    ClearGlassInlineMessage(text: testStatus, systemImage: "info.circle")
+                }
+            }
+
+            ClearGlassSection("Protected Surfaces", subtitle: "Choose which app surfaces require authentication.") {
+                protectedToggle(
+                    title: "Always Hidden Reveal",
+                    subtitle: "Require auth before revealing the always-hidden zone.",
+                    systemImage: "eye.slash",
+                    isOn: $settingsStore.privateAccessProtectAlwaysHidden
+                )
+
+                ClearGlassDivider()
+
+                protectedToggle(
+                    title: "Second Bar",
+                    subtitle: "Require auth before opening Second Bar.",
+                    systemImage: "menubar.rectangle",
+                    isOn: $settingsStore.privateAccessProtectSecondBar
+                )
+
+                ClearGlassDivider()
+
+                protectedToggle(
+                    title: "Find Icon",
+                    subtitle: "Require auth before opening Find Icon.",
+                    systemImage: "magnifyingglass",
+                    isOn: $settingsStore.privateAccessProtectFindIcon
+                )
+
+                ClearGlassDivider()
+
+                protectedToggle(
+                    title: "Icon Moving",
+                    subtitle: "Icon moving is protected by default because it changes menu bar organization.",
+                    systemImage: "arrow.up.left.and.arrow.down.right",
+                    isOn: $settingsStore.privateAccessProtectIconMoving
+                )
+
+                ClearGlassDivider()
+
+                protectedToggle(
+                    title: "Spacing Labs",
+                    subtitle: "Protect apply, restore, and reset operations for global menu bar spacing.",
+                    systemImage: "testtube.2",
+                    isOn: $settingsStore.privateAccessProtectSpacingLabs
+                )
+            }
+
+            ClearGlassSection("Privacy Boundary") {
+                ClearGlassInlineMessage(
+                    text: "Private Access gates MenuBarDeclutter actions. It is not encryption and does not hide third-party menu bar items that are already visible outside the app.",
+                    systemImage: "lock.shield",
+                    style: .info
+                )
+            }
+        }
+    }
+
+    private func protectedToggle(
+        title: String,
+        subtitle: String,
+        systemImage: String,
+        isOn: Binding<Bool>
+    ) -> some View {
+        ClearGlassControlRow(systemImage: systemImage, title: title, subtitle: subtitle) {
+            Toggle(title, isOn: isOn)
+                .labelsHidden()
+                .disabled(!settingsStore.privateAccessEnabled)
+                .onChange(of: isOn.wrappedValue) { _, _ in onChange?() }
+        }
+        .opacity(settingsStore.privateAccessEnabled ? 1 : 0.55)
+    }
+}

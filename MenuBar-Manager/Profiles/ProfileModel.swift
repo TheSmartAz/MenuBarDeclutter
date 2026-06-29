@@ -1,7 +1,7 @@
 import Foundation
 
 struct ProfileModel: Identifiable, Codable, Equatable, Sendable {
-    static let currentSchemaVersion = 1
+    static let currentSchemaVersion = 2
     private static let firstSchemaVersion = 1
 
     let schemaVersion: Int
@@ -15,6 +15,12 @@ struct ProfileModel: Identifiable, Codable, Equatable, Sendable {
     var hoverRevealEnabled: Bool
     var targetZonesByBundleID: [String: MenuBarZone]
     var notes: String
+    var groupVisibilityPreferences: [UUID: Bool]
+    var protectedGroupIDs: Set<UUID>
+    var dynamicHotkeyPreferences: [UUID]?
+    var layoutModePreference: LayoutMode?
+    var fullMenuBarModePreference: Bool?
+    var spacingPresetPreference: String?
 
     init(
         id: UUID = UUID(),
@@ -26,7 +32,13 @@ struct ProfileModel: Identifiable, Codable, Equatable, Sendable {
         autoRehideEnabled: Bool = true,
         hoverRevealEnabled: Bool = false,
         targetZonesByBundleID: [String: MenuBarZone] = [:],
-        notes: String = ""
+        notes: String = "",
+        groupVisibilityPreferences: [UUID: Bool] = [:],
+        protectedGroupIDs: Set<UUID> = [],
+        dynamicHotkeyPreferences: [UUID]? = nil,
+        layoutModePreference: LayoutMode? = nil,
+        fullMenuBarModePreference: Bool? = nil,
+        spacingPresetPreference: String? = nil
     ) {
         self.schemaVersion = Self.currentSchemaVersion
         self.id = id
@@ -39,6 +51,12 @@ struct ProfileModel: Identifiable, Codable, Equatable, Sendable {
         self.hoverRevealEnabled = hoverRevealEnabled
         self.targetZonesByBundleID = targetZonesByBundleID
         self.notes = notes
+        self.groupVisibilityPreferences = groupVisibilityPreferences
+        self.protectedGroupIDs = protectedGroupIDs
+        self.dynamicHotkeyPreferences = dynamicHotkeyPreferences
+        self.layoutModePreference = layoutModePreference
+        self.fullMenuBarModePreference = fullMenuBarModePreference
+        self.spacingPresetPreference = spacingPresetPreference
     }
 
     static func makeDefault(name: String = "New Profile", now: Date = Date()) -> ProfileModel {
@@ -61,6 +79,12 @@ struct ProfileModel: Identifiable, Codable, Equatable, Sendable {
         case hoverRevealEnabled
         case targetZonesByBundleID
         case notes
+        case groupVisibilityPreferences
+        case protectedGroupIDs
+        case dynamicHotkeyPreferences
+        case layoutModePreference
+        case fullMenuBarModePreference
+        case spacingPresetPreference
     }
 
     init(from decoder: Decoder) throws {
@@ -75,7 +99,7 @@ struct ProfileModel: Identifiable, Codable, Equatable, Sendable {
             )
         }
 
-        schemaVersion = decodedSchemaVersion
+        schemaVersion = Self.currentSchemaVersion
         id = try container.decode(UUID.self, forKey: .id)
         name = try container.decode(String.self, forKey: .name)
         createdAt = try container.decode(Date.self, forKey: .createdAt)
@@ -86,6 +110,12 @@ struct ProfileModel: Identifiable, Codable, Equatable, Sendable {
         hoverRevealEnabled = try container.decode(Bool.self, forKey: .hoverRevealEnabled)
         targetZonesByBundleID = try container.decode([String: MenuBarZone].self, forKey: .targetZonesByBundleID)
         notes = try container.decode(String.self, forKey: .notes)
+        groupVisibilityPreferences = try container.decodeIfPresent([UUID: Bool].self, forKey: .groupVisibilityPreferences) ?? [:]
+        protectedGroupIDs = try container.decodeIfPresent(Set<UUID>.self, forKey: .protectedGroupIDs) ?? []
+        dynamicHotkeyPreferences = try container.decodeIfPresent([UUID].self, forKey: .dynamicHotkeyPreferences)
+        layoutModePreference = try container.decodeIfPresent(LayoutMode.self, forKey: .layoutModePreference)
+        fullMenuBarModePreference = try container.decodeIfPresent(Bool.self, forKey: .fullMenuBarModePreference)
+        spacingPresetPreference = try container.decodeIfPresent(String.self, forKey: .spacingPresetPreference)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -101,5 +131,11 @@ struct ProfileModel: Identifiable, Codable, Equatable, Sendable {
         try container.encode(hoverRevealEnabled, forKey: .hoverRevealEnabled)
         try container.encode(targetZonesByBundleID, forKey: .targetZonesByBundleID)
         try container.encode(notes, forKey: .notes)
+        try container.encode(groupVisibilityPreferences, forKey: .groupVisibilityPreferences)
+        try container.encode(protectedGroupIDs, forKey: .protectedGroupIDs)
+        try container.encodeIfPresent(dynamicHotkeyPreferences, forKey: .dynamicHotkeyPreferences)
+        try container.encodeIfPresent(layoutModePreference, forKey: .layoutModePreference)
+        try container.encodeIfPresent(fullMenuBarModePreference, forKey: .fullMenuBarModePreference)
+        try container.encodeIfPresent(spacingPresetPreference, forKey: .spacingPresetPreference)
     }
 }

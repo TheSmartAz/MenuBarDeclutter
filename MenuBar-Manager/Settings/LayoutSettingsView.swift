@@ -9,6 +9,7 @@ struct LayoutSettingsView: View {
     @Bindable var settingsStore: SettingsStore
     let diagnosticsLogger: DiagnosticsLogger
     var liveStatus: LiveDiagnosticsStatus?
+    var layoutCoordinator: LayoutCoordinator?
 
     var body: some View {
         ClearGlassSettingsPage(
@@ -16,13 +17,23 @@ struct LayoutSettingsView: View {
             subtitle: "Manage menu bar capacity, layout suggestions, spacers, and experimental spacing.",
             badges: [.basicMode, .privacySafe]
         ) {
-            CapacitySection(settingsStore: settingsStore, liveStatus: liveStatus)
+            CapacitySection(
+                settingsStore: settingsStore,
+                liveStatus: liveStatus,
+                estimate: layoutCoordinator?.currentCapacityEstimate()
+            )
+
+            SuggestionsSection(suggestions: layoutCoordinator?.currentSuggestions() ?? [])
 
             FullMenuBarModeSection(settingsStore: settingsStore)
 
             CrowdedRevealSection(settingsStore: settingsStore)
 
-            SpacerItemsSection(settingsStore: settingsStore)
+            SpacerItemsSection(
+                settingsStore: settingsStore,
+                spacerStore: layoutCoordinator?.spacerStore,
+                spacerController: layoutCoordinator?.spacerController
+            )
 
             MenuBarSpacingLabsSection(settingsStore: settingsStore)
         }
@@ -34,6 +45,7 @@ struct LayoutSettingsView: View {
 private struct CapacitySection: View {
     @Bindable var settingsStore: SettingsStore
     var liveStatus: LiveDiagnosticsStatus?
+    var estimate: LayoutCapacityEstimate?
 
     var body: some View {
         ClearGlassSection("Capacity", subtitle: "Estimate how crowded your menu bar is.") {
@@ -63,10 +75,71 @@ private struct CapacitySection: View {
                 }
             }
 
+            if let estimate {
+                ClearGlassDivider()
+
+                ClearGlassValueRow("Capacity Ratio", subtitle: estimate.source.displayName) {
+                    Text(estimate.usedCapacityRatio, format: .number.precision(.fractionLength(2)))
+                        .font(.system(.body, design: .monospaced))
+                }
+
+                ClearGlassValueRow("Estimated Slots") {
+                    Text("\(estimate.estimatedUsedSlots) / \(estimate.estimatedItemSlots)")
+                        .font(.system(.body, design: .monospaced))
+                }
+
+                ClearGlassValueRow("Known Items") {
+                    Text("\(estimate.knownVisibleItemCount) visible, \(estimate.knownHiddenItemCount) hidden")
+                        .foregroundStyle(.secondary)
+                }
+
+                ForEach(estimate.warnings, id: \.rawValue) { warning in
+                    ClearGlassInlineMessage(
+                        text: warning.displayMessage,
+                        systemImage: "exclamationmark.triangle",
+                        style: .warning
+                    )
+                }
+            }
+
             ClearGlassInlineMessage(
                 text: "Capacity estimates are more accurate with Pro Mode and Accessibility. Basic Mode uses approximate geometry.",
                 systemImage: "info.circle"
             )
+        }
+    }
+}
+
+private struct SuggestionsSection: View {
+    let suggestions: [LayoutSuggestion]
+
+    var body: some View {
+        ClearGlassSection("Suggestions", subtitle: "Non-invasive recommendations based on current layout state.") {
+            if suggestions.isEmpty {
+                ClearGlassInlineMessage(
+                    text: "No layout suggestions right now.",
+                    systemImage: "checkmark.circle",
+                    style: .success
+                )
+            } else {
+                ForEach(suggestions) { suggestion in
+                    ClearGlassControlRow(
+                        systemImage: suggestion.severity.systemImage,
+                        title: suggestion.title,
+                        subtitle: suggestion.message,
+                        iconTint: suggestion.severity.tint
+                    ) {
+                        HStack(spacing: 6) {
+                            if suggestion.requiresProMode {
+                                ClearGlassBadge(style: .proMode)
+                            }
+                            if suggestion.isExperimental {
+                                ClearGlassBadge(style: .experimental)
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -196,6 +269,8 @@ private struct CrowdedRevealSection: View {
 
 private struct SpacerItemsSection: View {
     @Bindable var settingsStore: SettingsStore
+    var spacerStore: SpacerItemStore?
+    var spacerController: SpacerStatusItemController?
 
     var body: some View {
         ClearGlassSection("Spacer & Divider Items", subtitle: "Add app-owned spacer and divider items to organize your menu bar.") {
@@ -223,6 +298,60 @@ private struct SpacerItemsSection: View {
                 text: "Spacer items are app-owned NSStatusItem instances. You can Command-drag them like other menu bar items.",
                 systemImage: "info.circle"
             )
+
+            if let spacerStore {
+                ClearGlassDivider()
+
+                SpacerItemListView(
+                    store: spacerStore,
+                    controller: spacerController
+                )
+                .disabled(!settingsStore.spacerItemsEnabled)
+                .opacity(settingsStore.spacerItemsEnabled ? 1 : 0.55)
+            }
+        }
+    }
+}
+
+private extension LayoutCapacitySource {
+    var displayName: String {
+        switch self {
+        case .basicGeometryOnly:
+            "Basic geometry estimate"
+        case .proAXSnapshot:
+            "Pro AX snapshot"
+        case .mixed:
+            "Mixed estimate"
+        }
+    }
+}
+
+private extension LayoutCapacityWarning {
+    var displayMessage: String {
+        message
+    }
+}
+
+private extension LayoutSuggestionSeverity {
+    var systemImage: String {
+        switch self {
+        case .info:
+            "info.circle"
+        case .warning:
+            "exclamationmark.triangle"
+        case .critical:
+            "exclamationmark.octagon"
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .info:
+            .blue
+        case .warning:
+            .orange
+        case .critical:
+            .red
         }
     }
 }

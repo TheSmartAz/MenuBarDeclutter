@@ -16,6 +16,12 @@ struct AppHealthCoordinatorDependencies {
     let accessibilityPermissionService: AccessibilityPermissionService
     let menuBarScanCoordinator: MenuBarScanCoordinator
     let secondBarWindowController: SecondBarWindowController
+    let layoutCoordinator: LayoutCoordinator
+    let groupStore: IconGroupStore
+    let groupStatusItemController: IconGroupStatusItemController
+    let hotkeyBindingStore: HotkeyBindingStore
+    let dynamicHotkeyRegistrationService: DynamicHotkeyRegistrationService
+    let privateAccessCoordinator: PrivateAccessCoordinator
 }
 
 @MainActor
@@ -81,6 +87,25 @@ final class AppHealthCoordinator {
             },
             enterSafeModeNextLaunch: { [weak self] in
                 self?.requestSafeModeNextLaunch()
+            },
+            exitFullMenuBarMode: { [weak self] in
+                self?.dependencies.layoutCoordinator.exitFullMenuBarMode()
+            },
+            hideOptionalSpacerItems: { [weak self] in
+                self?.dependencies.layoutCoordinator.spacerController.hideAllOptional()
+            },
+            disableDynamicHotkeys: { [weak self] in
+                guard let self else { return }
+                self.dependencies.settingsStore.dynamicHotkeysEnabled = false
+                self.dependencies.dynamicHotkeyRegistrationService.unregisterAll()
+            },
+            disableGroupStatusItems: { [weak self] in
+                guard let self else { return }
+                self.dependencies.settingsStore.groupStatusItemsEnabled = false
+                self.dependencies.groupStatusItemController.removeAll()
+            },
+            clearPrivateAccessUnlock: { [weak self] in
+                self?.dependencies.privateAccessCoordinator.clearUnlock()
             }
         ),
         log: { [weak self] message in
@@ -182,7 +207,25 @@ final class AppHealthCoordinator {
             accessibilityPermissionStatus: dependencies.accessibilityPermissionService.refreshStatus(),
             lastMenuBarScanTime: dependencies.liveStatus.lastMenuBarScanTime,
             menuBarScanFailuresCount: dependencies.liveStatus.menuBarScanFailuresCount,
-            axScanStaleThreshold: max(60, dependencies.settingsStore.menuBarScanIntervalSeconds * 10)
+            axScanStaleThreshold: max(60, dependencies.settingsStore.menuBarScanIntervalSeconds * 10),
+            layoutFeaturesEnabled: dependencies.settingsStore.layoutFeaturesEnabled,
+            fullMenuBarModeActive: dependencies.layoutCoordinator.fullMenuBarModeService.isActive,
+            spacerItemsEnabled: dependencies.settingsStore.spacerItemsEnabled,
+            spacerItemCount: dependencies.layoutCoordinator.spacerStore.itemCount,
+            visibleSpacerItemCount: dependencies.layoutCoordinator.spacerController.visibleItemCount,
+            groupsEnabled: dependencies.settingsStore.groupsEnabled,
+            groupCount: dependencies.groupStore.groupCount,
+            protectedGroupCount: dependencies.groupStore.protectedGroupCount,
+            duplicateGroupNames: IconGroupValidation.validate(dependencies.groupStore.groups).contains(.duplicateName),
+            groupStatusItemsEnabled: dependencies.settingsStore.groupStatusItemsEnabled,
+            groupStatusItemCount: dependencies.groupStatusItemController.visibleCount,
+            dynamicHotkeysEnabled: dependencies.settingsStore.dynamicHotkeysEnabled,
+            dynamicHotkeyBindingCount: dependencies.hotkeyBindingStore.count,
+            dynamicHotkeyRegisteredCount: dependencies.dynamicHotkeyRegistrationService.lastSnapshot.registeredCount,
+            dynamicHotkeyConflictCount: HotkeyConflictDetector.conflictCount(in: dependencies.hotkeyBindingStore.bindings),
+            privateAccessEnabled: dependencies.settingsStore.privateAccessEnabled,
+            privateAccessUnlockActive: dependencies.privateAccessCoordinator.isUnlocked,
+            appIntentsEnabled: dependencies.settingsStore.appIntentsEnabled
         )
     }
 

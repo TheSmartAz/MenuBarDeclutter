@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Describes the current layout surface state used by the
 /// ``LayoutCoordinator`` and Settings UI.
-nonisolated enum LayoutMode: String, CaseIterable, Identifiable, Sendable {
+nonisolated enum LayoutMode: String, CaseIterable, Identifiable, Codable, Sendable {
     case normal
     case fullMenuBar
     case crowdedRescue

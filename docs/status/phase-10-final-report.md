@@ -7,10 +7,11 @@
 - **Crowded Reveal Rescue** (`CrowdedRevealRescueService`) — Second Bar fallback.
 - **Spacer/Divider Items** (`SpacerItemStore`, `SpacerStatusItemController`, `SpacerStatusItemFactory`).
 - **Menu Bar Spacing Labs** (`MenuBarSpacingService`) — Experimental, reversible.
-- **Layout Settings UI** (`LayoutSettingsView`) — Full Settings tab.
+- **Layout Settings UI** (`LayoutSettingsView`, `SpacerItemListView`, `SpacerItemEditorView`) — Live capacity, suggestions, spacers, and Labs.
 - **Status Menu Updates** — Full Menu Bar Mode, Layout Suggestions, spacers.
 - **URL Automation** — `full-menu-bar`, `exit-full-menu-bar`, `layout-suggestions`.
-- **Diagnostics** — `.layout` category added.
+- **Diagnostics** — `.layout` category plus Phase 10 settings fields in diagnostics export.
+- **Health/Safe Mode** — Full Menu Bar Mode exits and optional spacers hide when recovery requires it.
 
 ## Features Intentionally Not Implemented
 - ScreenCaptureKit visual icon capture (deferred).
@@ -27,7 +28,16 @@
 - `SpacerItemModelTests`: 2 tests — passed.
 - `MenuBarSpacingServiceTests`: 6 tests — passed.
 - `LayoutSettingsDefaultsTests`: 5 tests — passed.
+- `Phase10Phase11HealthTests`: layout recovery coverage — passed.
+- `DiagnosticsExportTests`: Phase 10 settings schema coverage — passed.
 - Total new Phase 10 tests: 36 — all passed.
+
+## Final Verification
+- `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS'`: **TEST SUCCEEDED**.
+- Swift/unit tests: 310 tests in 60 suites passed.
+- UI tests: 7 tests passed.
+- `scripts/verify_privacy_boundary.sh`: **PASSED**.
+- `scripts/qa_preflight.sh`: **PASSED**.
 
 ## Privacy Verification
 - No Screen Recording, ScreenCaptureKit, Apple Events, Input Monitoring, network, or telemetry added.
@@ -41,9 +51,4 @@
 - Never restarts system processes automatically.
 
 ## Recommendation for Phase 11
-Phase 10 is complete. Phase 11 can proceed to add:
-- Icon Groups and Group Panel.
-- Private Access with LocalAuthentication.
-- Per-icon/group hotkeys.
-- App Intents / Shortcuts.
-- Import/Export and Profile Packs.
+Phase 10 is complete and integrated with the Phase 11 power-user surfaces.

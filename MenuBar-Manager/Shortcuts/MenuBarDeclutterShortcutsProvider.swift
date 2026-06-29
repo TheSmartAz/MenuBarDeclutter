@@ -77,7 +77,7 @@ struct ExpandMenuBarItemsIntent: AppIntent {
         guard let service = AppEnvironment.shared?.intentExecutionService else {
             return .result()
         }
-        let result = service.expandMenuBarItems()
+        _ = service.expandMenuBarItems()
         return .result()
     }
 }
@@ -91,7 +91,7 @@ struct CollapseMenuBarItemsIntent: AppIntent {
         guard let service = AppEnvironment.shared?.intentExecutionService else {
             return .result()
         }
-        let result = service.collapseMenuBarItems()
+        _ = service.collapseMenuBarItems()
         return .result()
     }
 }
@@ -105,7 +105,7 @@ struct RevealAllMenuBarItemsIntent: AppIntent {
         guard let service = AppEnvironment.shared?.intentExecutionService else {
             return .result()
         }
-        let result = service.revealAllMenuBarItems()
+        _ = service.revealAllMenuBarItems()
         return .result()
     }
 }
@@ -119,7 +119,7 @@ struct ShowSecondBarIntent: AppIntent {
         guard let service = AppEnvironment.shared?.intentExecutionService else {
             return .result()
         }
-        let result = service.showSecondBar()
+        _ = service.showSecondBar()
         return .result()
     }
 }
@@ -133,7 +133,7 @@ struct HideSecondBarIntent: AppIntent {
         guard let service = AppEnvironment.shared?.intentExecutionService else {
             return .result()
         }
-        let result = service.hideSecondBar()
+        _ = service.hideSecondBar()
         return .result()
     }
 }
@@ -147,7 +147,7 @@ struct EnterFullMenuBarModeIntent: AppIntent {
         guard let service = AppEnvironment.shared?.intentExecutionService else {
             return .result()
         }
-        let result = service.enterFullMenuBarMode()
+        _ = service.enterFullMenuBarMode()
         return .result()
     }
 }
@@ -161,7 +161,7 @@ struct ExitFullMenuBarModeIntent: AppIntent {
         guard let service = AppEnvironment.shared?.intentExecutionService else {
             return .result()
         }
-        let result = service.exitFullMenuBarMode()
+        _ = service.exitFullMenuBarMode()
         return .result()
     }
 }
@@ -178,7 +178,7 @@ struct ApplyProfileIntent: AppIntent {
         guard let service = AppEnvironment.shared?.intentExecutionService else {
             return .result()
         }
-        let result = service.applyProfile(name: profileName)
+        _ = service.applyProfile(name: profileName)
         return .result()
     }
 }
@@ -192,7 +192,7 @@ struct PauseAutomationIntent: AppIntent {
         guard let service = AppEnvironment.shared?.intentExecutionService else {
             return .result()
         }
-        let result = service.pauseAutomation()
+        _ = service.pauseAutomation()
         return .result()
     }
 }
@@ -206,7 +206,7 @@ struct ResumeAutomationIntent: AppIntent {
         guard let service = AppEnvironment.shared?.intentExecutionService else {
             return .result()
         }
-        let result = service.resumeAutomation()
+        _ = service.resumeAutomation()
         return .result()
     }
 }
@@ -223,7 +223,7 @@ struct SetLayoutSpacingPresetIntent: AppIntent {
         guard let service = AppEnvironment.shared?.intentExecutionService else {
             return .result()
         }
-        let result = service.setLayoutSpacingPreset(preset)
+        _ = service.setLayoutSpacingPreset(preset)
         return .result()
     }
 }
