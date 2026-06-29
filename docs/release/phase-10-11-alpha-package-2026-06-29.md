@@ -37,6 +37,9 @@ Both zip files were `2.7M` on disk at creation time.
 | `APP_PATH=build/Export/MenuBarDeclutter.app scripts/verify_privacy_boundary.sh` | PASS. Source/project and built-app privacy boundary checks passed. |
 | `scripts/release_package_zip.sh build/Export/MenuBarDeclutter.app` | PASS. Created `MenuBarDeclutter-alpha.zip` and `MenuBarDeclutter-v0.1.0.zip`. |
 | `scripts/release_notarize.sh --dry-run build/Dist/MenuBarDeclutter-alpha.zip` | PASS. Notarization submission intentionally skipped by dry-run. |
+| `scripts/release_notarize.sh build/Dist/MenuBarDeclutter-alpha.zip` | BLOCKED. The script fell back to dry-run output because notarization credentials are missing. |
+| `security find-identity -v -p codesigning` | BLOCKED. Only `Apple Development: emailyongjunzhang@gmail.com (834922P6J6)` is installed; no `Developer ID Application` identity is available. |
+| `xcrun notarytool history --keychain-profile MenuBarDeclutterNotary` | BLOCKED. No keychain password item exists for the documented `MenuBarDeclutterNotary` profile. |
 | `scripts/release_validate_gatekeeper.sh build/Export/MenuBarDeclutter.app` | EXPECTED PARTIAL. Strict codesign verification passed; `spctl` rejected the app and stapler validation reported no ticket because the artifact was not notarized. |
 | `ditto -x -k build/Dist/MenuBarDeclutter-alpha.zip build/Dist/verify-extract` followed by `scripts/verify_release_artifact.sh build/Dist/verify-extract/MenuBarDeclutter.app` | PASS. The zipped app extracted cleanly and passed release artifact verification. |
 | `scripts/release_install_local.sh build/Export/MenuBarDeclutter.app` | PASS. Installed the exported alpha candidate to `/Applications/MenuBarDeclutter.app` and launched it. |
@@ -52,6 +55,9 @@ Both zip files were `2.7M` on disk at creation time.
   before broad public distribution.
 - The artifact is signed with the available Apple Development identity and has
   hardened runtime metadata, but it is not notarized.
+- Real notarization is blocked until a Developer ID Application certificate is
+  installed and a notarytool credential profile or environment credentials are
+  configured. See `docs/release/notarization-setup.md`.
 - `/Applications/MenuBarDeclutter.app` now contains the exported alpha
   candidate from `build/Export/MenuBarDeclutter.app`.
 - Public distribution remains blocked on Developer ID notarization credentials,
