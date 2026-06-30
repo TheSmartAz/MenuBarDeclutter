@@ -760,6 +760,7 @@ This checklist verifies the Phase 1 hiding MVP. Later-phase features such as glo
 ### Native status menu
 
 - Open the status menu from the control item and separator right-click path.
-- Confirm command groups are visually separated: visibility, Pro/floating tools, separator help, settings/diagnostics, about/quit.
+- Confirm command groups are visually separated: Visibility, Find & Bars, Pro Features, Layout, Recovery, and app-level commands.
 - Confirm key equivalents still work for Toggle Hidden Items, Find Icon, Toggle Second Bar, Refresh Menu Bar Items, Settings, and Quit.
 - Pause and resume automation from the menu and confirm the dynamic title updates without changing Basic Mode behavior.
+- In a fresh Basic Mode profile, complete onboarding, use the status menu to expand/collapse hidden items, open Settings, open Diagnostics, show the drag hint, and quit/relaunch without any sensitive permission prompts.

@@ -22,20 +22,20 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
         self.onComplete = onComplete
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 720, height: 620),
+            contentRect: NSRect(x: 0, y: 0, width: 740, height: 620),
             styleMask: [.titled, .closable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
 
-        window.title = "\(AppConstants.displayName) Onboarding"
-        window.titleVisibility = .hidden
-        window.titlebarAppearsTransparent = true
-        window.backgroundColor = .clear
-        window.isOpaque = false
+        window.title = "\(AppConstants.displayName) Setup"
+        window.titleVisibility = .visible
+        window.titlebarAppearsTransparent = false
+        window.backgroundColor = .windowBackgroundColor
+        window.isOpaque = true
         window.isReleasedWhenClosed = false
         window.center()
-        window.minSize = NSSize(width: 660, height: 540)
+        window.minSize = NSSize(width: 700, height: 560)
 
         super.init(window: window)
 

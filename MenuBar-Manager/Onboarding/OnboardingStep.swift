@@ -26,46 +26,46 @@ extension OnboardingStep {
     static let allSteps: [OnboardingStep] = [
         OnboardingStep(
             id: "intro",
-            title: "Welcome to \(AppConstants.displayName)",
-            symbol: "sparkles",
-            body: "\(AppConstants.displayName) cleans up your menu bar by hiding icons you don't need right now. It works using only public macOS behavior — no Accessibility, Screen Recording, or other sensitive permissions."
+            title: "Set up a quieter menu bar",
+            symbol: "menubar.rectangle",
+            body: "\(AppConstants.displayName) gives you a small native menu bar control for expanding and collapsing hidden icons. Basic Mode uses app-owned status items and public macOS behavior, without sensitive permissions."
         ),
         OnboardingStep(
             id: "nativeCleanup",
-            title: "Start with Apple's Menu Bar settings",
+            title: "Use Control Center first",
             symbol: "switch.2",
-            body: "Move rarely-used system controls into Control Center first. Then use \(AppConstants.displayName) for third-party icons and crowded menu bar workflows; it complements Apple's settings rather than replacing them."
+            body: "Move rarely used system controls into Control Center first. Then use \(AppConstants.displayName) for third-party icons, separators, and crowded menu bar workflows. It complements Apple's settings rather than replacing them."
         ),
         OnboardingStep(
             id: "commandDrag",
             title: "Command-drag the separator",
             symbol: "hand.point.up.left",
-            body: "Hold Command (⌘) and drag the chevron separator to choose which icons are hidden. Items to the right of the separator disappear when the bar is collapsed."
+            body: "Hold Command (⌘) and drag the separator in the menu bar to choose which icons are hidden. Items past the separator disappear when the bar is collapsed."
         ),
         OnboardingStep(
             id: "hiddenVsAlwaysHidden",
             title: "Hidden vs Always-Hidden",
             symbol: "rectangle.split.2x1",
-            body: "Normally hidden icons return when you expand the bar. Enable Always-Hidden in Settings to add a second separator; icons past it stay hidden even when the primary zone is expanded."
+            body: "Hidden icons come back when you expand the bar. Always-Hidden is optional: it adds a second separator for items that should stay tucked away even during a normal reveal."
         ),
         OnboardingStep(
             id: "hotkeyAutoRehide",
             title: "Hotkey & Auto-Rehide",
             symbol: "rectangle.rightthird.inset.filled",
-            body: "Toggle the bar with a global hotkey (Option+Command+B by default), and optionally let the bar collapse itself again after a few seconds with Auto-Rehide. The hotkey is off by default; Auto-Rehide is off by default and adjustable in Settings → Behavior."
+            body: "You can enable a global hotkey, Option+Command+B by default, and optionally let the bar collapse itself again with Auto-Rehide. The hotkey is off by default; Auto-Rehide is off by default and adjustable in Settings → Behavior."
         ),
         OnboardingStep(
             id: "privacy",
             title: "Privacy",
             symbol: "hand.raised",
-            body: "Basic Mode never requests Accessibility, Screen Recording, Apple Events, Input Monitoring, or network access. Pro-only capabilities, when they ship, will require explicit opt-in."
+            body: "Basic Mode does not request Accessibility, Screen Recording, Apple Events, Input Monitoring, or network access. Pro features are opt-in and keep Basic Mode usable when permissions are missing."
         ),
         OnboardingStep(
             id: "macOS26Note",
             title: "macOS 26 note",
             symbol: "rectangle.dashed",
-            body: "On macOS 26 the transparent menu bar can make separators harder to see. You can toggle the separator visuals or adjust their appearance in Settings → Behavior.",
-            callout: "Transparent menu bar visible."
+            body: "The transparent menu bar in macOS 26 can make separators harder to see on some wallpapers. Separator visuals stay adjustable without changing the Basic Mode permission boundary.",
+            callout: "Use Settings → Behavior if a separator is too subtle on your wallpaper."
         )
     ]
 }

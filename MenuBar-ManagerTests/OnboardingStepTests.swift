@@ -23,7 +23,7 @@ struct OnboardingStepTests {
 
     @Test func nativeCleanupStepExplainsAppleSettingsBoundary() throws {
         let step = try #require(OnboardingStep.allSteps.first { $0.id == "nativeCleanup" })
-        #expect(step.title == "Start with Apple's Menu Bar settings")
+        #expect(step.title == "Use Control Center first")
         #expect(step.body.contains("Control Center"))
         #expect(step.body.contains("third-party"))
         #expect(step.body.contains("complements Apple's settings"))
@@ -40,6 +40,7 @@ struct OnboardingStepTests {
         #expect(step.body.contains("Accessibility"))
         #expect(step.body.contains("Screen Recording"))
         #expect(step.body.contains("network"))
+        #expect(step.body.contains("Basic Mode usable"))
     }
 
     @Test func behaviorStepMatchesCurrentDefaults() throws {

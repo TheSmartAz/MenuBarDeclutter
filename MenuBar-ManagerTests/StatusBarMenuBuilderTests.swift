@@ -15,42 +15,51 @@ struct StatusBarMenuBuilderTests {
         )
 
         let menu = builder.makeMenu()
-        let commandItems = menu.items.filter { !$0.isSeparatorItem }
+        let headers = menu.items.filter { !$0.isSeparatorItem && $0.action == nil }
+        let commandItems = menu.items.filter { !$0.isSeparatorItem && $0.action != nil }
+
+        #expect(headers.map { $0.title } == [
+            "Visibility",
+            "Find & Bars",
+            "Pro Features",
+            "Layout",
+            "Recovery",
+            AppConstants.displayName
+        ])
 
         #expect(
             commandItems.map { $0.title } == [
                 "Expand Hidden Items",
                 "Collapse Hidden Items",
                 "Toggle Hidden Items",
-                "Reveal All Hidden Items",
+                "Reveal All Items",
                 "Toggle Reveal All",
-                "Emergency: Reveal All + Reset Separators",
-                "Find Icon...",
+                "Find Icon…",
                 "Show Second Bar",
-                "Hide Second Bar",
-                "Toggle Second Bar",
                 "Refresh Menu Bar Items",
                 "Disable Pro Mode",
                 "Resume Automation",
-                "Reset Separator Length",
-                "Show Drag Hint",
                 "Enter Full Menu Bar Mode",
                 "Layout Suggestions…",
                 "Add Divider",
                 "Add Spacer",
                 "Toggle Spacer Markers",
-                "Open Layout Settings",
-                "Settings...",
-                "Show Diagnostics",
+                "Layout Settings…",
+                "Show Drag Hint",
+                "Reset Separator Length",
+                "Reveal All and Reset Separators",
+                "Settings…",
+                "Diagnostics…",
                 "About \(AppConstants.displayName)",
                 "Quit"
             ]
         )
         #expect(
             commandItems.map { $0.keyEquivalent } == [
-                "", "", "h", "", "", "", "f", "", "", "s", "r", "", "", "", "", "", "", "", "", "", "", ",", "", "", "q"
+                "", "", "h", "", "", "f", "s", "r", "", "", "", "", "", "", "", "", "", "", "", ",", "", "", "q"
             ]
         )
+        #expect(commandItems.allSatisfy { $0.image != nil })
         #expect(commandItems.map { $0.action }.allSatisfy { $0 == commandItems.first?.action })
         #expect(commandItems.first { $0.title == "Refresh Menu Bar Items" }?.isEnabled == false)
     }
@@ -66,7 +75,7 @@ struct StatusBarMenuBuilderTests {
 
         let commandItems = builder.makeMenu().items.filter { !$0.isSeparatorItem }
 
-        for (item, expectedCommand) in zip(commandItems, MenuActionRecorder.Command.allCases) {
+        for (item, expectedCommand) in zip(commandItems.filter({ $0.action != nil }), MenuActionRecorder.menuCommands) {
             let action = try #require(item.action)
             let target = item.target
 
@@ -88,27 +97,13 @@ struct StatusBarMenuBuilderTests {
         )
         let menu = builder.makeMenu()
 
-        try perform("Find Icon...", in: menu)
+        try perform("Find Icon…", in: menu)
         #expect(recorder.routedCommands.last == MenuBarCommand(
             action: .showFindIcon,
             source: .statusMenu
         ))
 
         try perform("Show Second Bar", in: menu)
-        #expect(recorder.routedCommands.last == MenuBarCommand(
-            action: .showSecondBar,
-            target: .secondBar,
-            source: .statusMenu
-        ))
-
-        try perform("Hide Second Bar", in: menu)
-        #expect(recorder.routedCommands.last == MenuBarCommand(
-            action: .hideSecondBar,
-            target: .secondBar,
-            source: .statusMenu
-        ))
-
-        try perform("Toggle Second Bar", in: menu)
         #expect(recorder.routedCommands.last == MenuBarCommand(
             action: .showSecondBar,
             target: .secondBar,
@@ -151,7 +146,7 @@ struct StatusBarMenuBuilderTests {
         )
         let menu = builder.makeMenu()
 
-        try perform("Toggle Second Bar", in: menu)
+        try perform("Hide Second Bar", in: menu)
         #expect(recorder.routedCommands.last == MenuBarCommand(
             action: .hideSecondBar,
             target: .secondBar,
@@ -232,7 +227,7 @@ struct StatusBarMenuBuilderTests {
 
 @MainActor
 private final class MenuActionRecorder {
-    enum Command: CaseIterable, Equatable {
+    enum Command: Equatable {
         case expand
         case collapse
         case toggle
@@ -261,6 +256,32 @@ private final class MenuActionRecorder {
         case exitFullMenuBarMode
         case revealInlineAnyway
     }
+
+    static let menuCommands: [Command] = [
+        .expand,
+        .collapse,
+        .toggle,
+        .revealAll,
+        .toggleRevealAll,
+        .findIcon,
+        .toggleSecondBar,
+        .refreshMenuBarItems,
+        .toggleProMode,
+        .toggleAutomationPaused,
+        .enterFullMenuBarMode,
+        .showLayoutSuggestions,
+        .addSpacerDivider,
+        .addSpacer,
+        .toggleSpacerMarkers,
+        .openLayoutSettings,
+        .showDragHint,
+        .resetSeparatorLength,
+        .emergencyRevealAndResetSeparators,
+        .openSettings,
+        .showDiagnostics,
+        .showAbout,
+        .quit
+    ]
 
     var commands: [Command] = []
     var routedCommands: [MenuBarCommand] = []
