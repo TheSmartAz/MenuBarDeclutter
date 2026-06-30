@@ -29,8 +29,48 @@ struct MenuBarItemsSettingsView: View {
     }
 
     private var selectedSnapshot: MenuBarItemSnapshot? {
-        guard let selectedSnapshotID else { return nil }
-        return snapshots.first { $0.id == selectedSnapshotID }
+        guard let selectedSnapshotID else { return filteredSnapshots.first }
+        return filteredSnapshots.first { $0.id == selectedSnapshotID }
+    }
+
+    private var permissionStatus: AccessibilityPermissionStatus {
+        liveStatus?.accessibilityPermissionStatus ?? .notRequested
+    }
+
+    private var discoveryPresentation: MenuBarItemsDiscoveryPresentation {
+        if !settingsStore.proModeEnabled {
+            return MenuBarItemsDiscoveryPresentation(
+                title: "Basic Mode",
+                subtitle: "Discovery is off because Pro Mode is disabled. Basic Mode remains fully usable.",
+                systemImage: "hand.raised.slash",
+                style: .secondary
+            )
+        }
+
+        if !settingsStore.accessibilityDiscoveryEnabled {
+            return MenuBarItemsDiscoveryPresentation(
+                title: "Discovery Off",
+                subtitle: "Enable Accessibility Discovery in Privacy settings to build a local item snapshot.",
+                systemImage: "eye.slash",
+                style: .warning
+            )
+        }
+
+        if permissionStatus != .granted {
+            return MenuBarItemsDiscoveryPresentation(
+                title: permissionStatus.displayName,
+                subtitle: "Accessibility permission is required before Pro item discovery can inspect the menu bar.",
+                systemImage: "lock",
+                style: .warning
+            )
+        }
+
+        return MenuBarItemsDiscoveryPresentation(
+            title: "Ready",
+            subtitle: "Pro discovery can refresh the current local menu bar snapshot.",
+            systemImage: "checkmark.circle",
+            style: .success
+        )
     }
 
     private var scanStatusText: String {
@@ -44,11 +84,23 @@ struct MenuBarItemsSettingsView: View {
     var body: some View {
         ClearGlassSettingsPage(
             "Menu Bar Items",
-            subtitle: "Inspect the current local menu bar discovery snapshot.",
+            subtitle: "Inspect the current local Accessibility discovery snapshot.",
             badges: [.stable, .proMode, .accessibilityRequired]
         ) {
+            MenuBarItemsSummaryStrip(liveStatus: liveStatus, snapshots: snapshots)
+
             ClearGlassSection("Snapshot", subtitle: scanStatusText) {
-                MenuBarItemsSummaryStrip(liveStatus: liveStatus, snapshots: snapshots)
+                ClearGlassControlRow(
+                    systemImage: discoveryPresentation.systemImage,
+                    title: "Discovery State",
+                    subtitle: discoveryPresentation.subtitle,
+                    iconTint: discoveryPresentation.style.tint
+                ) {
+                    ClearGlassStatusValue(
+                        text: discoveryPresentation.title,
+                        style: discoveryPresentation.style
+                    )
+                }
 
                 ClearGlassDivider()
 
@@ -68,31 +120,29 @@ struct MenuBarItemsSettingsView: View {
                         }
                     }
                 }
+
+                snapshotStateMessage
             }
 
-            ClearGlassSection("Items", subtitle: "Use the table to compare ownership and zone, then inspect details on the right.") {
-                MenuBarItemsToolbar(
-                    searchText: $searchText,
-                    selectedFilter: $selectedFilter
-                )
-
-                ClearGlassDivider()
-
-                if filteredSnapshots.isEmpty {
+            ClearGlassSection("Items", subtitle: "Select a source item to inspect owner, zone, and geometry.") {
+                if snapshots.isEmpty {
                     MenuBarItemsUnavailableView(
-                        hasSnapshots: snapshots.isEmpty == false,
+                        hasSnapshots: false,
                         proModeEnabled: settingsStore.proModeEnabled,
                         discoveryEnabled: settingsStore.accessibilityDiscoveryEnabled,
-                        permissionStatus: liveStatus?.accessibilityPermissionStatus ?? .notRequested,
+                        permissionStatus: permissionStatus,
                         onOpenPrivacySettings: onOpenPrivacySettings
                     )
                 } else {
                     HStack(spacing: 0) {
-                        MenuBarItemsTable(
+                        MenuBarItemsSourcePane(
                             snapshots: filteredSnapshots,
+                            totalCount: snapshots.count,
+                            searchText: $searchText,
+                            selectedFilter: $selectedFilter,
                             selectedSnapshotID: $selectedSnapshotID
                         )
-                        .frame(minHeight: 360)
+                        .frame(width: 330)
 
                         Divider()
 
@@ -102,9 +152,9 @@ struct MenuBarItemsSettingsView: View {
                                 scanCoordinator?.requestManualRefresh()
                             }
                         )
-                        .frame(width: 300)
+                        .frame(minWidth: 360, maxWidth: .infinity)
                     }
-                    .frame(minHeight: 360)
+                    .frame(minHeight: 430)
                     .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 8))
                     .overlay {
                         RoundedRectangle(cornerRadius: 8)
@@ -119,8 +169,37 @@ struct MenuBarItemsSettingsView: View {
         }
     }
 
+    @ViewBuilder
+    private var snapshotStateMessage: some View {
+        if !settingsStore.proModeEnabled {
+            ClearGlassInlineMessage(
+                text: "Menu bar item discovery is opt-in Pro functionality. Basic Mode does not request Accessibility permission.",
+                systemImage: "hand.raised.slash",
+                style: .secondary
+            )
+        } else if !settingsStore.accessibilityDiscoveryEnabled {
+            ClearGlassInlineMessage(
+                text: "Accessibility Discovery is off. Turn it on from Privacy settings when you want local item inspection.",
+                systemImage: "eye.slash",
+                style: .warning
+            )
+        } else if permissionStatus != .granted {
+            ClearGlassInlineMessage(
+                text: "Accessibility permission is \(permissionStatus.displayName.lowercased()). Grant it from Privacy settings to refresh item snapshots.",
+                systemImage: "lock",
+                style: .warning
+            )
+        } else if snapshots.isEmpty, let lastSkipReason = scanCoordinator?.lastSkipReason {
+            ClearGlassInlineMessage(
+                text: lastSkipReason,
+                systemImage: "info.circle",
+                style: .info
+            )
+        }
+    }
+
     private func reconcileSelection() {
-        guard filteredSnapshots.isEmpty == false else {
+        guard !filteredSnapshots.isEmpty else {
             selectedSnapshotID = nil
             return
         }
@@ -147,7 +226,7 @@ private enum MenuBarItemsFilter: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .all:
-            "All"
+            "All Items"
         case .visible:
             "Visible"
         case .hidden:
@@ -179,16 +258,23 @@ private enum MenuBarItemsFilter: String, CaseIterable, Identifiable {
     }
 }
 
+private struct MenuBarItemsDiscoveryPresentation {
+    let title: String
+    let subtitle: String
+    let systemImage: String
+    let style: ClearGlassStatusStyle
+}
+
 private struct MenuBarItemsSummaryStrip: View {
     var liveStatus: LiveDiagnosticsStatus?
     let snapshots: [MenuBarItemSnapshot]
 
     private let columns = [
-        GridItem(.adaptive(minimum: 128), spacing: 14)
+        GridItem(.adaptive(minimum: 150), spacing: 10)
     ]
 
     var body: some View {
-        LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
+        LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
             MenuBarItemsMetric(
                 title: "Total",
                 value: snapshots.count,
@@ -198,28 +284,27 @@ private struct MenuBarItemsSummaryStrip: View {
                 title: "Visible",
                 value: liveStatus?.menuBarScanVisibleCount ?? zoneCount(.visible),
                 systemImage: "eye",
-                tone: .privacySafe
+                style: .success
             )
             MenuBarItemsMetric(
                 title: "Hidden",
                 value: liveStatus?.menuBarScanHiddenCount ?? zoneCount(.hidden),
                 systemImage: "eye.slash",
-                tone: .experimental
+                style: .warning
             )
             MenuBarItemsMetric(
                 title: "Always Hidden",
                 value: liveStatus?.menuBarScanAlwaysHiddenCount ?? zoneCount(.alwaysHidden),
                 systemImage: "lock",
-                tone: .destructive
+                style: .danger
             )
             MenuBarItemsMetric(
                 title: "Unknown",
                 value: liveStatus?.menuBarScanUnknownCount ?? zoneCount(.unknown),
                 systemImage: "questionmark.circle",
-                tone: .disabled
+                style: .secondary
             )
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func zoneCount(_ zone: MenuBarZone) -> Int {
@@ -231,116 +316,185 @@ private struct MenuBarItemsMetric: View {
     let title: String
     let value: Int
     let systemImage: String
-    var tone: DesignTokens.SemanticTone = .neutral
+    var style: ClearGlassStatusStyle = .secondary
 
     var body: some View {
-        HStack(spacing: 9) {
+        HStack(spacing: 10) {
             Image(systemName: systemImage)
-                .foregroundStyle(tone.foregroundStyle)
-                .frame(width: 18)
+                .font(.system(size: 16, weight: .regular))
+                .foregroundStyle(style.tint)
+                .frame(width: 20)
 
-            VStack(alignment: .leading, spacing: 1) {
-                Text(value, format: .number)
-                    .font(.title3.monospacedDigit())
-
+            VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+
+                Text(value, format: .number)
+                    .font(.callout.monospacedDigit())
+                    .foregroundStyle(.primary)
                     .lineLimit(1)
             }
         }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
+        }
         .accessibilityElement(children: .combine)
     }
 }
 
-private struct MenuBarItemsToolbar: View {
+private struct MenuBarItemsSourcePane: View {
+    let snapshots: [MenuBarItemSnapshot]
+    let totalCount: Int
     @Binding var searchText: String
     @Binding var selectedFilter: MenuBarItemsFilter
-
-    var body: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 12) {
-                filterPicker
-
-                Spacer(minLength: 16)
-
-                searchField
-            }
-
-            VStack(alignment: .leading, spacing: 8) {
-                filterPicker
-                searchField
-            }
-        }
-        .padding(.vertical, 8)
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var filterPicker: some View {
-        Picker("Filter", selection: $selectedFilter) {
-            ForEach(MenuBarItemsFilter.allCases) { filter in
-                Text(filter.title)
-                    .tag(filter)
-            }
-        }
-        .pickerStyle(.segmented)
-        .frame(minWidth: 360, idealWidth: 500, maxWidth: 500)
-    }
-
-    private var searchField: some View {
-        SearchField("Search Items", text: $searchText, width: 240)
-    }
-}
-
-private struct MenuBarItemsTable: View {
-    let snapshots: [MenuBarItemSnapshot]
     @Binding var selectedSnapshotID: MenuBarItemSnapshot.ID?
 
     var body: some View {
-        Table(snapshots, selection: $selectedSnapshotID) {
-            TableColumn("Item") { snapshot in
-                MenuBarItemTitleCell(snapshot: snapshot)
-            }
-            .width(min: 190, ideal: 220)
+        VStack(alignment: .leading, spacing: 0) {
+            MenuBarItemsSourceToolbar(
+                searchText: $searchText,
+                selectedFilter: $selectedFilter,
+                visibleCount: snapshots.count,
+                totalCount: totalCount
+            )
 
-            TableColumn("App") { snapshot in
-                Text(snapshot.owningApplicationName ?? "-")
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-            }
-            .width(min: 120, ideal: 150)
+            Divider()
 
-            TableColumn("Zone") { snapshot in
-                Text(snapshot.zone.displayName)
-                    .foregroundStyle(snapshot.zone.statusStyle.foreground)
-                    .lineLimit(1)
+            ScrollView {
+                if snapshots.isEmpty {
+                    ContentUnavailableView(
+                        "No Matching Items",
+                        systemImage: "line.3.horizontal.decrease.circle",
+                        description: Text("Try a different filter or search term.")
+                    )
+                    .frame(maxWidth: .infinity, minHeight: 260)
+                } else {
+                    LazyVStack(spacing: 6) {
+                        ForEach(snapshots) { snapshot in
+                            MenuBarItemSourceRow(
+                                snapshot: snapshot,
+                                isSelected: snapshot.id == selectedSnapshotID
+                            ) {
+                                selectedSnapshotID = snapshot.id
+                            }
+                        }
+                    }
+                    .padding(6)
+                }
             }
-            .width(min: 95, ideal: 120)
-
         }
     }
 }
 
-private struct MenuBarItemTitleCell: View {
-    let snapshot: MenuBarItemSnapshot
+private struct MenuBarItemsSourceToolbar: View {
+    @Binding var searchText: String
+    @Binding var selectedFilter: MenuBarItemsFilter
+    let visibleCount: Int
+    let totalCount: Int
 
     var body: some View {
-        HStack(spacing: 8) {
-            AppIconView(snapshot: snapshot, size: 20, cornerRadius: 5)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                Label("Source List", systemImage: "sidebar.left")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
 
-            VStack(alignment: .leading, spacing: 1) {
-                Text(snapshot.displayTitle)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
+                Spacer(minLength: 8)
 
-                Text(snapshot.bundleIdentifier ?? snapshot.role ?? "Unknown owner")
+                Text("\(visibleCount) of \(totalCount)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                    .monospacedDigit()
+            }
+
+            SearchField("Search Items", text: $searchText)
+
+            Picker("Filter", selection: $selectedFilter) {
+                ForEach(MenuBarItemsFilter.allCases) { filter in
+                    Text(filter.title).tag(filter)
+                }
+            }
+            .pickerStyle(.menu)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(10)
+    }
+}
+
+private struct MenuBarItemSourceRow: View {
+    let snapshot: MenuBarItemSnapshot
+    let isSelected: Bool
+    let onSelect: () -> Void
+
+    var body: some View {
+        Button(action: onSelect) {
+            HStack(spacing: 10) {
+                AppIconView(snapshot: snapshot, size: 28, cornerRadius: 7)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
+                        Text(snapshot.displayTitle)
+                            .font(.body)
+                            .lineLimit(1)
+
+                        Image(systemName: snapshot.isLikelySystemItem ? "apple.logo" : "app")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Text(snapshot.sourceSubtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                MenuBarZoneTextBadge(zone: snapshot.zone)
+            }
+            .padding(.horizontal, 9)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(.rect)
+            .background(rowBackground, in: .rect(cornerRadius: 8))
+            .overlay {
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(rowStroke, lineWidth: 0.5)
             }
         }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    private var rowBackground: Color {
+        isSelected ? Color.accentColor.opacity(0.15) : Color(nsColor: .controlBackgroundColor).opacity(0.35)
+    }
+
+    private var rowStroke: Color {
+        isSelected ? Color.accentColor.opacity(0.42) : Color(nsColor: .separatorColor).opacity(0.24)
+    }
+}
+
+private struct MenuBarZoneTextBadge: View {
+    let zone: MenuBarZone
+
+    var body: some View {
+        Text(zone.displayName)
+            .font(.caption2)
+            .foregroundStyle(zone.statusStyle.foreground)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(zone.statusStyle.background, in: .capsule)
+            .overlay {
+                Capsule()
+                    .stroke(zone.statusStyle.border, lineWidth: 0.5)
+            }
     }
 }
 
@@ -353,19 +507,20 @@ private struct MenuBarItemInspector: View {
             if let snapshot {
                 inspectorHeader(snapshot)
 
-                Divider()
+                MenuBarInspectorGroup("Identity") {
+                    MenuBarInspectorRow("Zone", value: snapshot.zone.displayName, style: snapshot.zone.statusStyle)
+                    MenuBarInspectorRow("Kind", value: snapshot.isLikelySystemItem ? "System Item" : "App Item")
+                    MenuBarInspectorRow("App", value: snapshot.owningApplicationName ?? "Unknown")
+                    MenuBarInspectorRow("Bundle", value: snapshot.bundleIdentifier ?? "-", monospaced: true)
+                    MenuBarInspectorRow("Role", value: snapshot.role ?? "-")
+                    MenuBarInspectorRow("Subrole", value: snapshot.subrole ?? "-")
+                }
 
-                inspectorValue("Zone", value: snapshot.zone.displayName, style: snapshot.zone.statusStyle)
-                inspectorValue("Kind", value: snapshot.isLikelySystemItem ? "System Item" : "App Item")
-                inspectorValue("App", value: snapshot.owningApplicationName ?? "Unknown")
-                inspectorValue("Bundle", value: snapshot.bundleIdentifier ?? "-", monospaced: true)
-                inspectorValue("Role", value: snapshot.role ?? "-")
-                inspectorValue("Subrole", value: snapshot.subrole ?? "-")
-                inspectorValue("Frame", value: snapshot.frameDescription, monospaced: true)
-                inspectorValue("Process ID", value: snapshot.processDescription, monospaced: true)
-                inspectorValue("Last Seen", value: snapshot.scanTimestamp.formatted(date: .omitted, time: .standard))
-
-                Divider()
+                MenuBarInspectorGroup("Geometry") {
+                    MenuBarInspectorRow("Frame", value: snapshot.frameDescription, monospaced: true)
+                    MenuBarInspectorRow("Process ID", value: snapshot.processDescription, monospaced: true)
+                    MenuBarInspectorRow("Last Seen", value: snapshot.scanTimestamp.formatted(date: .omitted, time: .standard))
+                }
 
                 Button("Refresh Snapshot", systemImage: "arrow.clockwise", action: onRefresh)
                     .controlSize(.small)
@@ -373,7 +528,7 @@ private struct MenuBarItemInspector: View {
                 ContentUnavailableView(
                     "No Item Selected",
                     systemImage: "sidebar.right",
-                    description: Text("Select an item in the table to inspect its owner, zone, and geometry.")
+                    description: Text("Select an item in the source list to inspect its owner, zone, and geometry.")
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -383,10 +538,10 @@ private struct MenuBarItemInspector: View {
     }
 
     private func inspectorHeader(_ snapshot: MenuBarItemSnapshot) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            AppIconView(snapshot: snapshot, size: 32, cornerRadius: 8)
+        HStack(alignment: .top, spacing: 12) {
+            AppIconView(snapshot: snapshot, size: 40, cornerRadius: 9)
 
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(snapshot.displayTitle)
                     .font(.headline)
                     .lineLimit(2)
@@ -397,22 +552,71 @@ private struct MenuBarItemInspector: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            ClearGlassStatusValue(text: snapshot.zone.displayName, style: snapshot.zone.statusStyle)
         }
     }
+}
 
-    private func inspectorValue(
+private struct MenuBarInspectorGroup<Content: View>: View {
+    let title: String
+    @ViewBuilder let content: Content
+
+    init(_ title: String, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 2)
+
+            VStack(spacing: 0) {
+                content
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
+            .overlay {
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color(nsColor: .separatorColor).opacity(0.42), lineWidth: 0.5)
+            }
+        }
+    }
+}
+
+private struct MenuBarInspectorRow: View {
+    let title: String
+    let value: String
+    var style: ClearGlassStatusStyle?
+    var monospaced = false
+
+    init(
         _ title: String,
         value: String,
         style: ClearGlassStatusStyle? = nil,
         monospaced: Bool = false
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
+    ) {
+        self.title = title
+        self.value = value
+        self.style = style
+        self.monospaced = monospaced
+    }
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
             Text(title)
-                .font(.caption)
+                .font(.callout)
                 .foregroundStyle(.secondary)
+                .frame(width: 78, alignment: .leading)
 
             if let style {
                 ClearGlassStatusValue(text: value, style: style)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
             } else {
                 Text(value)
                     .font(monospaced ? .system(.caption, design: .monospaced) : .callout)
@@ -420,9 +624,10 @@ private struct MenuBarItemInspector: View {
                     .lineLimit(2)
                     .truncationMode(.middle)
                     .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 6)
     }
 }
 
@@ -492,6 +697,16 @@ private extension MenuBarItemSnapshot {
         }
 
         return "Untitled Item"
+    }
+
+    var sourceSubtitle: String {
+        for value in [owningApplicationName, bundleIdentifier, role] {
+            if let value, !value.isEmpty {
+                return value
+            }
+        }
+
+        return "Unknown owner"
     }
 
     var searchText: String {
