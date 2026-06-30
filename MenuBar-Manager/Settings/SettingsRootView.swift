@@ -191,7 +191,8 @@ struct SettingsRootView: View {
             .searchable(text: $settingsSearchText, prompt: "Search Settings")
             .navigationSplitViewColumnWidth(min: 220, ideal: 246, max: 290)
         } detail: {
-            detailView(for: navigationModel.selectedSection ?? .general)
+            detailView(for: selectedSection)
+                .accessibilityIdentifier(selectedSection.pageAccessibilityIdentifier)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(minWidth: 980, minHeight: 620)
@@ -199,6 +200,10 @@ struct SettingsRootView: View {
         .onAppear {
             navigationModel.selectedSection = navigationModel.selectedSection ?? .general
         }
+    }
+
+    private var selectedSection: SettingsSection {
+        navigationModel.selectedSection ?? .general
     }
 
     private var filteredSidebarGroups: [SettingsSidebarGroup] {
@@ -533,6 +538,12 @@ struct SettingsRootView: View {
         actions.dynamicHotkeysChanged?()
         actions.automationSettingsChanged?()
         actions.triggersChanged?()
+    }
+}
+
+private extension SettingsSection {
+    var pageAccessibilityIdentifier: String {
+        "settings.page.\(rawValue)"
     }
 }
 

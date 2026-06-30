@@ -66,6 +66,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             environment.showSettings(section: .behavior)
         } else if launchArguments.contains("--ui-testing-show-layout") {
             environment.showSettings(section: .layout)
+        } else if launchArguments.contains("--ui-testing-show-search-settings") {
+            environment.showSettings(section: .search)
         } else if launchArguments.contains("--ui-testing-show-privacy") {
             environment.showSettings(section: .privacy)
         } else if launchArguments.contains("--ui-testing-show-private-access") {
