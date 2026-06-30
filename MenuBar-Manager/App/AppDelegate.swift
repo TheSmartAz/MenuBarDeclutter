@@ -57,11 +57,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let shouldSeedMenuBarItems = launchArguments.contains("--ui-testing-seed-menu-bar-items")
-        let shouldSeedGroups = launchArguments.contains("--ui-testing-seed-groups")
-
-        if shouldSeedGroups {
-            seedIconGroupsUITestingStore(environment)
-        }
 
         if launchArguments.contains("--ui-testing-show-diagnostics") {
             environment.showDiagnostics()
@@ -118,6 +113,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if launchArguments.contains("--ui-testing-seed-profiles") {
             seedProfilesUITestingStore(environment)
+        }
+
+        if launchArguments.contains("--ui-testing-seed-groups") {
+            seedIconGroupsUITestingStore(environment)
         }
     }
 
