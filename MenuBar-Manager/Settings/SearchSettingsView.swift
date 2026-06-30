@@ -87,15 +87,7 @@ struct SearchSettingsView: View {
 
                     ClearGlassValueRow("Current Hotkey") {
                         HStack(spacing: 10) {
-                            Text(settingsStore.effectiveSearchHotkey().displayName)
-                                .font(.system(.body, design: .monospaced))
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 6)
-                                .background(.thinMaterial, in: .rect(cornerRadius: 7))
-                                .overlay {
-                                    RoundedRectangle(cornerRadius: 7)
-                                        .stroke(.primary.opacity(0.12), lineWidth: 1)
-                                }
+                            KeyboardShortcutToken(text: settingsStore.effectiveSearchHotkey().displayName)
 
                             Button("Reset to Default") {
                                 settingsStore.resetSearchHotkeyToDefault()

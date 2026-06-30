@@ -848,6 +848,23 @@ struct ClearGlassStatusValue: View {
     }
 }
 
+struct KeyboardShortcutToken: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.system(.body, design: .monospaced))
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 5)
+            .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 6))
+            .overlay {
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(Color(nsColor: .separatorColor).opacity(0.75), lineWidth: 1)
+            }
+    }
+}
+
 struct CommandAvailabilityRow: View {
     let summary: MenuBarCommandAvailabilitySummary
 

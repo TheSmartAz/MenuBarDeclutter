@@ -12,6 +12,12 @@ struct PrivacySettingsView: View {
             subtitle: "Basic Mode is fully usable without sensitive permissions. Pro Mode is optional.",
             badges: [.stable, .privacySafe, .accessibilityRequired, .diagnostics]
         ) {
+            PrivacyOverviewStrip(
+                proModeEnabled: settingsStore.proModeEnabled,
+                accessibilityStatusText: accessibilityStatusText,
+                accessibilityStatusStyle: accessibilityStatusStyle
+            )
+
             ClearGlassSection("Basic Mode", subtitle: "Fully usable without permissions.") {
                 PrivacyCapabilityRow(
                     title: "Accessibility",
@@ -239,6 +245,84 @@ struct PrivacySettingsView: View {
             onChange()
         } else {
             scanCoordinator?.refreshAfterSettingsChanged()
+        }
+    }
+}
+
+private struct PrivacyOverviewStrip: View {
+    let proModeEnabled: Bool
+    let accessibilityStatusText: String
+    let accessibilityStatusStyle: ClearGlassStatusStyle
+
+    private let columns = [
+        GridItem(.adaptive(minimum: 150), spacing: 10)
+    ]
+
+    var body: some View {
+        LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
+            PrivacyOverviewPill(
+                title: "Basic Mode",
+                value: "Ready",
+                systemImage: "checkmark.shield",
+                style: .success
+            )
+
+            PrivacyOverviewPill(
+                title: "Pro Mode",
+                value: proModeEnabled ? "On" : "Off",
+                systemImage: "star",
+                style: proModeEnabled ? .info : .secondary
+            )
+
+            PrivacyOverviewPill(
+                title: "Accessibility",
+                value: accessibilityStatusText,
+                systemImage: "hand.raised",
+                style: accessibilityStatusStyle
+            )
+
+            PrivacyOverviewPill(
+                title: "Network",
+                value: "Not Used",
+                systemImage: "network.slash",
+                style: .success
+            )
+        }
+    }
+}
+
+private struct PrivacyOverviewPill: View {
+    let title: String
+    let value: String
+    let systemImage: String
+    let style: ClearGlassStatusStyle
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.system(size: 16, weight: .regular))
+                .foregroundStyle(style.tint)
+                .frame(width: 20)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Text(value)
+                    .font(.callout)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 1)
         }
     }
 }
