@@ -1,0 +1,143 @@
+[
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00006040-0004618E0A28801C",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "86BA4530-5720-4C3A-B01E-FDF6EDE9B398.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "Settings - Advanced_0_96ACB139-9AA7-426A-94B3-B0AF5F90D95C.png",
+        "timestamp" : 1782837732.521
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00006040-0004618E0A28801C",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "83A82896-2104-4D4C-871D-A17E8A366142.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "Settings - Diagnostics_0_FAC68963-C246-4196-BA66-950D71632B7A.png",
+        "timestamp" : 1782837727.305
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00006040-0004618E0A28801C",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "72E5E288-15A2-49FD-B998-F50D54BFEC9A.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "Settings - Import Export_0_2560DE06-7146-479F-B68E-0773895D7863.png",
+        "timestamp" : 1782837721.416
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00006040-0004618E0A28801C",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "C671A8A2-3635-4D69-B8A5-9A6AD453D9DB.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "Settings - Private Access_0_C637DE60-36BC-4EFB-89F0-1E16AD230736.png",
+        "timestamp" : 1782837716.415
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00006040-0004618E0A28801C",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "7710869F-2E7A-4785-8B6A-5D662390A8E7.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "Settings - Privacy_0_5196F777-7456-4F43-BAB9-397C2FE0E9B5.png",
+        "timestamp" : 1782837711.287
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00006040-0004618E0A28801C",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "F27AE12C-5A76-4CBC-B736-312BF12D9841.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "Settings - Automation_0_A11B020E-2C0E-4382-B68D-08B19BC80A20.png",
+        "timestamp" : 1782837706.235
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00006040-0004618E0A28801C",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "4AFB9A1F-6245-4343-A172-25B4F7B13F8E.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "Settings - Profiles_0_335DC96E-1718-463F-AF92-6179432C4C0E.png",
+        "timestamp" : 1782837701.147
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00006040-0004618E0A28801C",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "C35992CF-B839-4153-B466-19AA40AB4B70.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "Settings - Hotkeys_0_778091D6-9562-4B57-8473-1363F2BAE29C.png",
+        "timestamp" : 1782837695.394
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00006040-0004618E0A28801C",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "5140F27B-2475-428C-A2CC-085299F0B039.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "Settings - Groups_0_593CAF0C-029B-482A-928C-77132357A362.png",
+        "timestamp" : 1782837690.107
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00006040-0004618E0A28801C",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "6843B290-0F73-43D1-B2E8-AB6F1CC406C5.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "Settings - Second Bar_0_E31F2B15-8F00-4E74-8C70-6DD16DBBF035.png",
+        "timestamp" : 1782837684.705
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00006040-0004618E0A28801C",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "707DEEFB-3FAD-4A0E-8970-812FA1A3DC0B.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "Settings - Search_0_F5D6CE8F-91F8-4F98-B9D2-FB83E65CD3C2.png",
+        "timestamp" : 1782837679.128
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00006040-0004618E0A28801C",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "B45DDC2D-1032-4301-8B70-36FB44FE7C23.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "Settings - Menu Bar Items_0_69481A7F-1FCD-4C1D-9B0D-6FE171CDE466.png",
+        "timestamp" : 1782837674.104
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00006040-0004618E0A28801C",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "822765B4-79B2-436C-8FEF-60D014692571.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "Settings - Layout_0_072D7540-E0FA-4E80-AF51-B511B02A080B.png",
+        "timestamp" : 1782837669.062
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00006040-0004618E0A28801C",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "E46358F3-AF45-493C-AC61-B8C3D2A8B8C7.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "Settings - Behavior_0_B3935D38-DD17-4A60-A658-ED8495D6A820.png",
+        "timestamp" : 1782837663.781
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "00006040-0004618E0A28801C",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "AB29377C-7FD1-4E46-B78F-594F7CC78B29.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "Settings - General_0_59D7975F-78C5-43D5-8926-0D4B9EFC0ED5.png",
+        "timestamp" : 1782837658.605
+      }
+    ],
+    "testIdentifier" : "MenuBar_ManagerUITests/testRedesignedSettingsPagesVisualSmoke()",
+    "testIdentifierURL" : "test://com.apple.xcode/MenuBar-Manager/MenuBarDeclutterUITests/MenuBar_ManagerUITests/testRedesignedSettingsPagesVisualSmoke"
+  }
+]

@@ -41,17 +41,28 @@ struct ProfileListView: View {
                 automationPaused: settingsStore.automationPaused
             )
 
-            ClearGlassSection("Library", subtitle: "Create, import, search, duplicate, and delete profiles.") {
-                profileActions
+            ClearGlassSection("Profiles", subtitle: "Create, edit, preview, apply, import, and export local layouts.") {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(alignment: .top, spacing: 14) {
+                        profileLibrary
+                            .frame(width: 300)
 
-                ClearGlassDivider()
+                        profileDetail
+                            .frame(minWidth: 360, maxWidth: .infinity)
+                    }
 
-                profileList
-                    .frame(maxHeight: 300)
-            }
+                    if let message {
+                        ClearGlassInlineMessage(text: message, systemImage: "info.circle", style: .info)
+                    }
 
-            ClearGlassSection("Editor", subtitle: "Edit profile metadata, preview changes, and apply explicitly.") {
-                detail
+                    if let lastError = profileStore.lastError {
+                        ClearGlassInlineMessage(
+                            text: lastError,
+                            systemImage: "exclamationmark.triangle",
+                            style: .warning
+                        )
+                    }
+                }
             }
 
             ClearGlassSection("Smart Triggers", subtitle: "Optional local automation that can apply profiles when rules match.") {
@@ -68,152 +79,145 @@ struct ProfileListView: View {
         }
     }
 
-    private var profileActions: some View {
-        HStack(spacing: 10) {
-            Button("Create", systemImage: "plus") {
-                let profile = profileStore.createProfile()
-                selectedProfileID = profile.id
-                draftProfile = profile
+    private var profileLibrary: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Label("Profiles", systemImage: "sidebar.left")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                Button("Create Profile", systemImage: "plus") {
+                    createProfile()
+                }
+                .labelStyle(.iconOnly)
+                .help("Create Profile")
+
+                Button("Import Profile", systemImage: "square.and.arrow.down") {
+                    importProfile()
+                }
+                .labelStyle(.iconOnly)
+                .help("Import Profile")
             }
 
-            Button("Import", systemImage: "square.and.arrow.down") {
-                importProfile()
-            }
+            SearchField("Search Profiles", text: $searchText)
 
-            Divider()
-                .frame(height: 20)
-
-            Button("Duplicate", systemImage: "plus.square.on.square") {
-                duplicateSelected()
-            }
-            .disabled(selectedProfile == nil)
-
-            Button("Delete", systemImage: "trash", role: .destructive) {
-                deleteSelected()
-            }
-            .disabled(selectedProfile == nil)
-
-            Spacer()
-        }
-    }
-
-    private var profileList: some View {
-        VStack(spacing: 10) {
-            ProfileSearchField(text: $searchText)
-
-            if filteredProfiles.isEmpty {
-                ContentUnavailableView(
-                    searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "No Profiles" : "No Matching Profiles",
-                    systemImage: "person.crop.rectangle.stack"
-                )
-                .frame(maxWidth: .infinity, minHeight: 180)
-            } else {
-                ScrollView {
+            ScrollView {
+                if filteredProfiles.isEmpty {
+                    ContentUnavailableView(
+                        searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "No Profiles" : "No Matching Profiles",
+                        systemImage: "person.crop.rectangle.stack",
+                        description: Text("Create a profile to save a local menu bar layout.")
+                    )
+                    .frame(maxWidth: .infinity, minHeight: 220)
+                } else {
                     LazyVStack(spacing: 6) {
                         ForEach(filteredProfiles) { profile in
                             ProfileListRow(
                                 profile: profile,
                                 isSelected: selectedProfileID == profile.id,
-                                isActive: liveStatus.activeProfileID == profile.id.uuidString
+                                isActive: liveStatus.activeProfileID == profile.id.uuidString,
+                                triggerCount: triggerCount(for: profile)
                             ) {
                                 selectedProfileID = profile.id
                             }
                         }
                     }
-                    .padding(2)
+                    .padding(6)
                 }
-                .scrollIndicators(.hidden)
+            }
+            .frame(minHeight: 300, maxHeight: 460)
+            .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 8))
+            .overlay {
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color(nsColor: .separatorColor).opacity(0.45), lineWidth: 0.5)
             }
         }
     }
 
-    private var detail: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            if let binding = draftBinding {
+    private var profileDetail: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if let binding = draftBinding,
+               let draftProfile {
+                ProfileDetailHeader(
+                    profile: draftProfile,
+                    isActive: liveStatus.activeProfileID == draftProfile.id.uuidString,
+                    triggerCount: triggerCount(for: draftProfile),
+                    dryRunSummary: dryRunSummary
+                )
+
                 ProfileEditorView(profile: binding)
 
-                ClearGlassDivider()
-
-                if let draftProfile,
-                   let commandAvailability = commandAvailability?(draftProfile) {
-                    CommandAvailabilityRow(summary: commandAvailability)
-
-                    ClearGlassDivider()
+                if let commandAvailability = commandAvailability?(draftProfile) {
+                    VStack(spacing: 0) {
+                        CommandAvailabilityRow(summary: commandAvailability)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 3)
+                    .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 8))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color(nsColor: .separatorColor).opacity(0.42), lineWidth: 0.5)
+                    }
                 }
 
-                VStack(alignment: .leading, spacing: 8) {
-                    profileActionButtons
-                }
-                .buttonStyle(.bordered)
+                profileActionPanel
 
                 if let dryRunSummary {
                     DryRunSummaryView(summary: dryRunSummary)
                 }
             } else {
-                ContentUnavailableView("No Profile Selected", systemImage: "person.crop.rectangle.stack")
-                    .frame(maxWidth: .infinity, minHeight: 260)
+                ContentUnavailableView(
+                    "No Profile Selected",
+                    systemImage: "person.crop.rectangle.stack",
+                    description: Text("Create or select a profile to edit its local layout settings.")
+                )
+                .frame(maxWidth: .infinity, minHeight: 300)
+            }
+        }
+    }
+
+    private var profileActionPanel: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) {
+                profileActionButtons
             }
 
-            if let message {
-                ClearGlassInlineMessage(text: message, systemImage: "info.circle", style: .info)
+            VStack(alignment: .leading, spacing: 8) {
+                profileActionButtons
             }
+        }
+        .controlSize(.small)
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 8))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color(nsColor: .separatorColor).opacity(0.42), lineWidth: 0.5)
         }
     }
 
     @ViewBuilder
     private var profileActionButtons: some View {
-        saveButton
-        dryRunButton
-        applyButton
-        exportButton
-    }
+        Button("Save", systemImage: "checkmark", action: saveDraft)
+            .buttonStyle(.borderedProminent)
 
-    private var saveButton: some View {
-        Button("Save", systemImage: "checkmark") {
-            saveDraft()
-        }
-        .buttonStyle(.borderedProminent)
-    }
-
-    private var dryRunButton: some View {
-        Button("Dry Run", systemImage: "doc.text.magnifyingglass") {
-            if let draftProfile {
-                dryRunSummary = onDryRun(draftProfile)
-            }
-        }
-    }
-
-    private var applyButton: some View {
-        Button("Apply", systemImage: "play") {
-            if let draftProfile {
-                saveDraft()
-                dryRunSummary = onApply(draftProfile)
-            }
-        }
-    }
-
-    private var exportButton: some View {
-        Button("Export", systemImage: "square.and.arrow.up") {
-            if let draftProfile {
-                export(profile: draftProfile)
-            }
-        }
+        Button("Dry Run", systemImage: "doc.text.magnifyingglass", action: runDryRun)
+        Button("Apply", systemImage: "play", action: applyDraft)
+        Button("Export", systemImage: "square.and.arrow.up", action: exportDraft)
+        Button("Duplicate", systemImage: "plus.square.on.square", action: duplicateSelected)
+        Button("Delete", systemImage: "trash", role: .destructive, action: deleteSelected)
     }
 
     private var triggerSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             FeatureGateNotice(
                 .preview,
                 text: "Preview in v0.1.1. Triggers stay paused when automation is paused."
             )
 
-            VStack(alignment: .leading, spacing: 8) {
-                triggerToggles
-            }
-
-            TriggerDraftForm(isProfileSelected: selectedProfile != nil) { rule, name in
-                addTrigger(rule: rule, name: name)
-            }
+            triggerControlPanel
 
             if settingsStore.automationPaused {
                 ClearGlassInlineMessage(
@@ -223,56 +227,120 @@ struct ProfileListView: View {
                 )
             }
 
+            if let lastError = triggerService.lastError {
+                ClearGlassInlineMessage(
+                    text: lastError,
+                    systemImage: "exclamationmark.triangle",
+                    style: .warning
+                )
+            }
+
+            TriggerDraftForm(
+                isProfileSelected: selectedProfile != nil,
+                selectedProfileName: selectedProfile?.name ?? "No Profile"
+            ) { rule, name in
+                addTrigger(rule: rule, name: name)
+            }
+
+            triggerList
+        }
+    }
+
+    private var triggerControlPanel: some View {
+        VStack(spacing: 0) {
+            ClearGlassControlRow(
+                systemImage: "bolt",
+                title: "Enable Smart Triggers",
+                subtitle: "Evaluate local rules and apply profiles when the app is running."
+            ) {
+                Toggle("Enable Smart Triggers", isOn: $settingsStore.smartTriggersEnabled)
+                    .labelsHidden()
+                    .onChange(of: settingsStore.smartTriggersEnabled) { _, _ in onTriggersChanged() }
+            }
+
+            ClearGlassDivider()
+
+            ClearGlassControlRow(
+                systemImage: "pause.circle",
+                title: "Pause All Automation",
+                subtitle: "Keep trigger rules saved but stop them from applying profiles."
+            ) {
+                Toggle("Pause All Automation", isOn: $settingsStore.automationPaused)
+                    .labelsHidden()
+                    .onChange(of: settingsStore.automationPaused) { _, _ in onTriggersChanged() }
+            }
+        }
+    }
+
+    private var triggerList: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Label("Rules", systemImage: "list.bullet.rectangle")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                ClearGlassStatusValue(
+                    text: triggerStatusText,
+                    style: triggerStatusStyle
+                )
+            }
+
             if triggerService.triggers.isEmpty {
-                ContentUnavailableView("No Triggers", systemImage: "bolt.badge.xmark")
-                    .frame(maxWidth: .infinity, minHeight: 92)
+                ContentUnavailableView(
+                    "No Triggers",
+                    systemImage: "bolt.badge.xmark",
+                    description: Text("Add a rule to apply the selected profile automatically.")
+                )
+                .frame(maxWidth: .infinity, minHeight: 150)
+                .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 8))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color(nsColor: .separatorColor).opacity(0.42), lineWidth: 0.5)
+                }
             } else {
                 ScrollView {
-                    LazyVStack(spacing: 0) {
-                        TriggerTableHeader()
-
+                    LazyVStack(spacing: 6) {
                         ForEach(triggerService.triggers) { trigger in
-                            TriggerTableRow(
+                            TriggerRuleRow(
                                 trigger: trigger,
                                 profileName: profileName(for: trigger.profileID),
+                                smartTriggersEnabled: settingsStore.smartTriggersEnabled,
+                                automationPaused: settingsStore.automationPaused,
                                 onEnabledChanged: { isEnabled in
-                                    var updated = trigger
-                                    updated.isEnabled = isEnabled
-                                    triggerService.update(updated)
-                                    onTriggersChanged()
+                                    updateTrigger(trigger, isEnabled: isEnabled)
                                 },
                                 onDelete: {
-                                    triggerService.delete(trigger)
-                                    onTriggersChanged()
+                                    deleteTrigger(trigger)
                                 }
                             )
                         }
                     }
-                    .clipShape(.rect(cornerRadius: 7))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 7, style: .continuous)
-                            .strokeBorder(Color(nsColor: .separatorColor).opacity(0.35))
-                    }
+                    .padding(6)
+                }
+                .frame(minHeight: 180, maxHeight: 360)
+                .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 8))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color(nsColor: .separatorColor).opacity(0.42), lineWidth: 0.5)
                 }
             }
         }
     }
 
-    @ViewBuilder
-    private var triggerToggles: some View {
-        Toggle("Enable smart triggers", isOn: $settingsStore.smartTriggersEnabled)
-            .onChange(of: settingsStore.smartTriggersEnabled) { _, _ in
-                onTriggersChanged()
-            }
-
-        Toggle("Pause all automation", isOn: $settingsStore.automationPaused)
-            .onChange(of: settingsStore.automationPaused) { _, _ in
-                onTriggersChanged()
-            }
+    private var triggerStatusText: String {
+        if !settingsStore.smartTriggersEnabled {
+            return "Off"
+        }
+        return settingsStore.automationPaused ? "Paused" : "Ready"
     }
 
-    private func profileName(for id: ProfileModel.ID) -> String {
-        profileStore.profiles.first { $0.id == id }?.name ?? "Missing Profile"
+    private var triggerStatusStyle: ClearGlassStatusStyle {
+        if !settingsStore.smartTriggersEnabled {
+            return .secondary
+        }
+        return settingsStore.automationPaused ? .warning : .success
     }
 
     private var selectedProfile: ProfileModel? {
@@ -289,10 +357,14 @@ struct ProfileListView: View {
     }
 
     private func selectFirstProfileIfNeeded() {
-        if selectedProfileID == nil {
-            selectedProfileID = profileStore.profiles.first?.id
+        if let selectedProfileID,
+           profileStore.profiles.contains(where: { $0.id == selectedProfileID }) {
             loadDraft()
+            return
         }
+
+        selectedProfileID = profileStore.profiles.first?.id
+        loadDraft()
     }
 
     private func loadDraft() {
@@ -300,11 +372,36 @@ struct ProfileListView: View {
         dryRunSummary = nil
     }
 
+    private func createProfile() {
+        let profile = profileStore.createProfile()
+        selectedProfileID = profile.id
+        draftProfile = profile
+        dryRunSummary = nil
+        message = "Created \(profile.name)."
+    }
+
     private func saveDraft() {
         guard let draftProfile else { return }
         profileStore.update(draftProfile)
         selectedProfileID = draftProfile.id
+        self.draftProfile = profileStore.profiles.first { $0.id == draftProfile.id } ?? draftProfile
         message = "Saved \(draftProfile.name)."
+    }
+
+    private func runDryRun() {
+        guard let draftProfile else { return }
+        dryRunSummary = onDryRun(draftProfile)
+    }
+
+    private func applyDraft() {
+        guard let draftProfile else { return }
+        saveDraft()
+        dryRunSummary = onApply(draftProfile)
+    }
+
+    private func exportDraft() {
+        guard let draftProfile else { return }
+        export(profile: draftProfile)
     }
 
     private func duplicateSelected() {
@@ -312,6 +409,8 @@ struct ProfileListView: View {
         let copy = profileStore.duplicate(selectedProfile)
         selectedProfileID = copy.id
         draftProfile = copy
+        dryRunSummary = nil
+        message = "Duplicated \(selectedProfile.name)."
     }
 
     private func deleteSelected() {
@@ -319,6 +418,7 @@ struct ProfileListView: View {
         profileStore.delete(selectedProfile)
         selectedProfileID = profileStore.profiles.first?.id
         loadDraft()
+        message = "Deleted \(selectedProfile.name)."
     }
 
     private func addTrigger(rule: TriggerRule, name: String) {
@@ -330,6 +430,28 @@ struct ProfileListView: View {
         )
         triggerService.addTrigger(trigger)
         onTriggersChanged()
+        message = "Added trigger for \(selectedProfile.name)."
+    }
+
+    private func updateTrigger(_ trigger: TriggerModel, isEnabled: Bool) {
+        var updated = trigger
+        updated.isEnabled = isEnabled
+        triggerService.update(updated)
+        onTriggersChanged()
+    }
+
+    private func deleteTrigger(_ trigger: TriggerModel) {
+        triggerService.delete(trigger)
+        onTriggersChanged()
+        message = "Deleted trigger \(trigger.name)."
+    }
+
+    private func profileName(for id: ProfileModel.ID) -> String {
+        profileStore.profiles.first { $0.id == id }?.name ?? "Missing Profile"
+    }
+
+    private func triggerCount(for profile: ProfileModel) -> Int {
+        triggerService.triggers.filter { $0.profileID == profile.id }.count
     }
 
     private func export(profile: ProfileModel) {
@@ -358,6 +480,7 @@ struct ProfileListView: View {
             let profile = try profileStore.importProfile(from: url)
             selectedProfileID = profile.id
             draftProfile = profile
+            dryRunSummary = nil
             message = "Imported \(profile.name)."
         } catch {
             message = "Import failed: \(error.localizedDescription)"
@@ -430,38 +553,7 @@ private struct ProfileOverviewPill: View {
         .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
         .overlay {
             RoundedRectangle(cornerRadius: 8)
-                .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 1)
-        }
-    }
-}
-
-private struct ProfileSearchField: View {
-    @Binding var text: String
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass")
-                .foregroundStyle(.secondary)
-
-            TextField("Search Profiles", text: $text)
-                .textFieldStyle(.plain)
-
-            if !text.isEmpty {
-                Button("Clear Search", systemImage: "xmark.circle.fill") {
-                    text = ""
-                }
-                .labelStyle(.iconOnly)
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
-                .help("Clear search")
-            }
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(Color(nsColor: .controlBackgroundColor).opacity(0.55), in: .rect(cornerRadius: 7))
-        .overlay {
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.3))
+                .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
         }
     }
 }
@@ -470,113 +562,183 @@ private struct ProfileListRow: View {
     let profile: ProfileModel
     let isSelected: Bool
     let isActive: Bool
+    let triggerCount: Int
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 10) {
-                Image(systemName: "briefcase")
-                    .font(.title3)
-                    .foregroundStyle(isSelected ? .white : .secondary)
-                    .frame(width: 24)
+                ZStack {
+                    RoundedRectangle(cornerRadius: 7)
+                        .fill(iconColor.opacity(isSelected ? 0.20 : 0.12))
 
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(profile.name)
-                        .font(.callout)
-                        .lineLimit(1)
-
-                    Text(profile.updatedAt, format: Date.FormatStyle(date: .abbreviated, time: .shortened))
-                        .font(.caption)
-                        .foregroundStyle(isSelected ? .white.opacity(0.82) : .secondary)
+                    Image(systemName: "person.crop.rectangle.stack")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(iconColor)
                 }
+                .frame(width: 30, height: 30)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text(profile.name)
+                            .font(.body)
+                            .lineLimit(1)
+
+                        if isActive {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.caption)
+                                .foregroundStyle(.green)
+                        }
+                    }
+
+                    HStack(spacing: 6) {
+                        Text("\(profile.targetZonesByBundleID.count) zone\(profile.targetZonesByBundleID.count == 1 ? "" : "s")")
+
+                        if profile.showSecondBar {
+                            ProfileRowBadge("Second Bar", systemImage: "rectangle.bottomthird.inset.filled")
+                        }
+
+                        if triggerCount > 0 {
+                            ProfileRowBadge("\(triggerCount)", systemImage: "bolt")
+                        }
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
                 Spacer(minLength: 8)
 
-                Circle()
-                    .fill(isActive ? Color.green : Color.secondary.opacity(0.35))
-                    .frame(width: 8, height: 8)
-                    .accessibilityLabel(isActive ? "Active profile" : "Inactive profile")
+                Text(profile.updatedAt, format: .dateTime.month().day())
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 9)
+            .padding(.horizontal, 9)
+            .padding(.vertical, 8)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .foregroundStyle(isSelected ? .white : .primary)
-            .background(isSelected ? Color.accentColor : Color(nsColor: .controlBackgroundColor).opacity(0.35), in: .rect(cornerRadius: 7))
+            .contentShape(.rect)
+            .background(rowBackground, in: .rect(cornerRadius: 8))
             .overlay {
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .strokeBorder(isSelected ? Color.white.opacity(0.12) : Color(nsColor: .separatorColor).opacity(0.25))
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(rowStroke, lineWidth: 0.5)
             }
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    private var iconColor: Color {
+        isActive ? .green : .secondary
+    }
+
+    private var rowBackground: Color {
+        isSelected ? Color.accentColor.opacity(0.15) : Color(nsColor: .controlBackgroundColor).opacity(0.35)
+    }
+
+    private var rowStroke: Color {
+        isSelected ? Color.accentColor.opacity(0.42) : Color(nsColor: .separatorColor).opacity(0.24)
     }
 }
 
-private struct TriggerTableHeader: View {
+private struct ProfileRowBadge: View {
+    let text: String
+    let systemImage: String
+
+    init(_ text: String, systemImage: String) {
+        self.text = text
+        self.systemImage = systemImage
+    }
+
     var body: some View {
-        HStack(spacing: 10) {
-            Text("Trigger")
-                .frame(minWidth: 120, maxWidth: .infinity, alignment: .leading)
-            Text("Condition")
-                .frame(minWidth: 180, maxWidth: .infinity, alignment: .leading)
-            Text("Profile")
-                .frame(width: 140, alignment: .leading)
-            Text("Status")
-                .frame(width: 96, alignment: .leading)
-            Text("")
-                .frame(width: 32)
-        }
-        .font(.caption)
-        .foregroundStyle(.secondary)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(.quaternary)
+        Label(text, systemImage: systemImage)
+            .labelStyle(.titleAndIcon)
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(Color(nsColor: .quaternaryLabelColor).opacity(0.12), in: .capsule)
     }
 }
 
-private struct TriggerTableRow: View {
-    let trigger: TriggerModel
-    let profileName: String
-    let onEnabledChanged: (Bool) -> Void
-    let onDelete: () -> Void
+private struct ProfileDetailHeader: View {
+    let profile: ProfileModel
+    let isActive: Bool
+    let triggerCount: Int
+    let dryRunSummary: ProfileApplicationDryRun?
 
     var body: some View {
-        HStack(spacing: 10) {
-            Text(trigger.name)
-                .lineLimit(1)
-                .frame(minWidth: 120, maxWidth: .infinity, alignment: .leading)
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill((isActive ? Color.green : Color.secondary).opacity(0.12))
 
-            Text(trigger.rule.displayName)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .truncationMode(.middle)
-                .frame(minWidth: 180, maxWidth: .infinity, alignment: .leading)
+                    Image(systemName: "person.crop.rectangle.stack")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundStyle(isActive ? .green : .secondary)
+                }
+                .frame(width: 40, height: 40)
 
-            Text(profileName)
-                .lineLimit(1)
-                .frame(width: 140, alignment: .leading)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(profile.name)
+                        .font(.title3)
+                        .lineLimit(1)
 
-            Toggle(
-                trigger.isEnabled ? "Enabled" : "Disabled",
-                isOn: Binding(
-                    get: { trigger.isEnabled },
-                    set: { isEnabled in
-                        onEnabledChanged(isEnabled)
-                    }
+                    Text(profile.notes.isEmpty ? "Local profile" : profile.notes)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+
+                Spacer()
+
+                ClearGlassStatusValue(
+                    text: isActive ? "Active" : "Saved",
+                    style: isActive ? .success : .secondary
                 )
-            )
-            .labelsHidden()
-            .frame(width: 96, alignment: .leading)
+            }
 
-            Button("Delete Trigger", systemImage: "trash", role: .destructive, action: onDelete)
-                .labelStyle(.iconOnly)
-                .buttonStyle(.borderless)
-                .frame(width: 32)
+            HStack(spacing: 8) {
+                ProfileMetricView(value: profile.preferredVisibilityState.profileDisplayName, label: "Visibility")
+                ProfileMetricView(value: "\(profile.targetZonesByBundleID.count)", label: "Zones")
+                ProfileMetricView(value: "\(triggerCount)", label: "Triggers")
+                ProfileMetricView(value: dryRunSummary?.isEmpty == false ? "Review" : "Ready", label: "Preview")
+            }
         }
-        .font(.callout)
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 8))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
+        }
+    }
+}
+
+private struct ProfileMetricView: View {
+    let value: String
+    let label: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(value)
+                .font(.headline)
+                .lineLimit(1)
+                .minimumScaleFactor(0.82)
+
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
-        .background(Color(nsColor: .controlBackgroundColor).opacity(0.28))
-        Divider()
+        .frame(minWidth: 84, alignment: .leading)
+        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 7))
+        .overlay {
+            RoundedRectangle(cornerRadius: 7)
+                .stroke(Color(nsColor: .separatorColor).opacity(0.36), lineWidth: 0.5)
+        }
     }
 }
 
@@ -671,6 +833,7 @@ private struct TriggerDraft {
 
 private struct TriggerDraftForm: View {
     let isProfileSelected: Bool
+    let selectedProfileName: String
     let frontmostBundleIdentifier: @MainActor () -> String?
     let onAdd: (TriggerRule, String) -> Void
 
@@ -679,10 +842,12 @@ private struct TriggerDraftForm: View {
 
     init(
         isProfileSelected: Bool,
+        selectedProfileName: String,
         frontmostBundleIdentifier: @escaping @MainActor () -> String? = Self.currentFrontmostBundleIdentifier,
         onAdd: @escaping (TriggerRule, String) -> Void
     ) {
         self.isProfileSelected = isProfileSelected
+        self.selectedProfileName = selectedProfileName
         self.frontmostBundleIdentifier = frontmostBundleIdentifier
         self.onAdd = onAdd
         self._draft = State(initialValue: TriggerDraft(
@@ -695,20 +860,40 @@ private struct TriggerDraftForm: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            triggerPicker
-            draftControls
-            Button("Add Trigger", systemImage: "plus") {
-                addTrigger()
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Label("New Rule", systemImage: "plus.circle")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                Label(selectedProfileName, systemImage: "person.crop.rectangle.stack")
+                    .font(.caption)
+                    .foregroundStyle(isProfileSelected ? Color.secondary : Color.orange)
+                    .lineLimit(1)
             }
-            .disabled(!isProfileSelected || !draft.canAdd)
+
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .center, spacing: 10) {
+                    triggerPicker
+                    draftControls
+                    Spacer(minLength: 12)
+                    addButton
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    triggerPicker
+                    draftControls
+                    addButton
+                }
+            }
         }
-        .buttonStyle(.bordered)
         .padding(10)
-        .background(Color(nsColor: .controlBackgroundColor).opacity(0.4), in: .rect(cornerRadius: 7))
+        .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 8))
         .overlay {
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.25))
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color(nsColor: .separatorColor).opacity(0.42), lineWidth: 0.5)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .onAppear {
@@ -725,41 +910,47 @@ private struct TriggerDraftForm: View {
                 Text(kind.displayName).tag(kind)
             }
         }
-        .labelsHidden()
-        .frame(minWidth: 130, idealWidth: 170, maxWidth: 220)
+        .pickerStyle(.menu)
+        .frame(width: 160)
     }
 
+    @ViewBuilder
     private var draftControls: some View {
-        Group {
-            switch draft.kind {
-            case .externalDisplay:
-                Stepper(
-                    "Displays: \(draft.minimumDisplayCount)",
-                    value: $draft.minimumDisplayCount,
-                    in: 2...8
-                )
-                .frame(minWidth: 110, idealWidth: 130, maxWidth: 170)
-            case .appLaunched, .frontmostApp:
-                TextField("Bundle ID", text: $draft.bundleIdentifier)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(minWidth: 140, idealWidth: 220, maxWidth: 280)
-            case .batteryLow:
-                Stepper(
-                    "Battery: \(draft.batteryThreshold)%",
-                    value: $draft.batteryThreshold,
-                    in: 1...100
-                )
-                .frame(minWidth: 110, idealWidth: 150, maxWidth: 180)
-            case .timeOfDay:
-                DatePicker(
-                    "Time",
-                    selection: $draft.time,
-                    displayedComponents: .hourAndMinute
-                )
-                .labelsHidden()
-                .frame(minWidth: 90, idealWidth: 110, maxWidth: 160)
-            }
+        switch draft.kind {
+        case .externalDisplay:
+            Stepper(
+                "Displays: \(draft.minimumDisplayCount)",
+                value: $draft.minimumDisplayCount,
+                in: 2...8
+            )
+            .frame(width: 170, alignment: .leading)
+        case .appLaunched, .frontmostApp:
+            TextField("Bundle ID", text: $draft.bundleIdentifier)
+                .textFieldStyle(.roundedBorder)
+                .frame(width: 260)
+        case .batteryLow:
+            Stepper(
+                "Battery: \(draft.batteryThreshold)%",
+                value: $draft.batteryThreshold,
+                in: 1...100
+            )
+            .frame(width: 170, alignment: .leading)
+        case .timeOfDay:
+            DatePicker(
+                "Time",
+                selection: $draft.time,
+                displayedComponents: .hourAndMinute
+            )
+            .labelsHidden()
+            .frame(width: 130, alignment: .leading)
         }
+    }
+
+    private var addButton: some View {
+        Button("Add Rule", systemImage: "plus") {
+            addTrigger()
+        }
+        .disabled(!isProfileSelected || !draft.canAdd)
     }
 
     private static let fallbackBundleIdentifier = "com.apple.finder"
@@ -798,48 +989,236 @@ private struct TriggerDraftForm: View {
     }
 }
 
+private struct TriggerRuleRow: View {
+    let trigger: TriggerModel
+    let profileName: String
+    let smartTriggersEnabled: Bool
+    let automationPaused: Bool
+    let onEnabledChanged: (Bool) -> Void
+    let onDelete: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 7)
+                    .fill(ruleColor.opacity(0.12))
+
+                Image(systemName: trigger.rule.systemImage)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(ruleColor)
+            }
+            .frame(width: 30, height: 30)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(trigger.name)
+                    .font(.body)
+                    .lineLimit(1)
+
+                Text(trigger.rule.displayName)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+
+                HStack(spacing: 6) {
+                    Label(profileName, systemImage: "person.crop.rectangle.stack")
+
+                    if let lastFiredAt = trigger.lastFiredAt {
+                        Label {
+                            Text(lastFiredAt, format: .dateTime.month().day().hour().minute())
+                        } icon: {
+                            Image(systemName: "clock")
+                        }
+                    }
+                }
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            }
+
+            Spacer(minLength: 12)
+
+            ClearGlassStatusValue(text: statusText, style: statusStyle)
+
+            Toggle(
+                trigger.isEnabled ? "Enabled" : "Disabled",
+                isOn: Binding(
+                    get: { trigger.isEnabled },
+                    set: { isEnabled in
+                        onEnabledChanged(isEnabled)
+                    }
+                )
+            )
+            .labelsHidden()
+
+            Button("Delete Trigger", systemImage: "trash", role: .destructive, action: onDelete)
+                .labelStyle(.iconOnly)
+                .buttonStyle(.borderless)
+                .help("Delete Trigger")
+        }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 8)
+        .background(Color(nsColor: .controlBackgroundColor).opacity(0.55), in: .rect(cornerRadius: 7))
+        .overlay {
+            RoundedRectangle(cornerRadius: 7)
+                .stroke(Color(nsColor: .separatorColor).opacity(0.24), lineWidth: 0.5)
+        }
+    }
+
+    private var statusText: String {
+        if !smartTriggersEnabled {
+            return "Off"
+        }
+        if automationPaused {
+            return "Paused"
+        }
+        return trigger.isEnabled ? "Enabled" : "Disabled"
+    }
+
+    private var statusStyle: ClearGlassStatusStyle {
+        if !smartTriggersEnabled || !trigger.isEnabled {
+            return .secondary
+        }
+        return automationPaused ? .warning : .success
+    }
+
+    private var ruleColor: Color {
+        switch trigger.rule {
+        case .externalDisplayConnected:
+            .blue
+        case .appLaunched:
+            .green
+        case .frontmostApp:
+            .purple
+        case .batteryLow:
+            .orange
+        case .timeOfDay:
+            .secondary
+        case .focusModePlaceholder:
+            .indigo
+        case .wifiSSID:
+            .cyan
+        }
+    }
+}
+
 private struct DryRunSummaryView: View {
     let summary: ProfileApplicationDryRun
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Label("Dry Run", systemImage: summary.isEmpty ? "checkmark.circle" : "doc.text.magnifyingglass")
-                    .font(.headline)
+                Label("Preview", systemImage: summary.isEmpty ? "checkmark.circle" : "doc.text.magnifyingglass")
+                    .font(.subheadline)
                     .foregroundStyle(summary.isEmpty ? .green : .primary)
 
                 Spacer()
-            }
 
-            Text(summary.summary)
-                .foregroundStyle(.secondary)
-
-            ForEach(Array(summary.itemsToReveal.enumerated()), id: \.offset) { _, item in
-                Label(item, systemImage: "eye")
-            }
-
-            ForEach(summary.itemsToMove, id: \.bundleIdentifier) { item in
-                Label(
-                    "\(item.displayName): \(item.currentZone.displayName) -> \(item.targetZone.displayName)",
-                    systemImage: "arrow.left.and.right"
+                ClearGlassStatusValue(
+                    text: summary.isEmpty ? "Ready" : "Review",
+                    style: summary.isEmpty ? .success : .warning
                 )
             }
 
-            ForEach(Array(summary.unavailableItems.enumerated()), id: \.offset) { _, item in
-                Label(item, systemImage: "questionmark.circle")
-                    .foregroundStyle(.orange)
-            }
+            Text(summary.summary)
+                .font(.callout)
+                .foregroundStyle(.secondary)
 
-            ForEach(Array(summary.permissionRequirements.enumerated()), id: \.offset) { _, requirement in
-                Label(requirement, systemImage: "exclamationmark.triangle")
-                    .foregroundStyle(.orange)
-            }
+            DryRunSummarySection(title: "Reveal", items: summary.itemsToReveal, systemImage: "eye", color: .secondary)
+            DryRunMoveSection(items: summary.itemsToMove)
+            DryRunSummarySection(title: "Groups", items: summary.groupChanges, systemImage: "person.2", color: .secondary)
+            DryRunSummarySection(title: "Layout", items: summary.layoutChanges, systemImage: "rectangle.split.3x1", color: .secondary)
+            DryRunSummarySection(title: "Labs", items: summary.labsChanges, systemImage: "testtube.2", color: .secondary)
+            DryRunSummarySection(title: "Unavailable", items: summary.unavailableItems, systemImage: "questionmark.circle", color: .orange)
+            DryRunSummarySection(title: "Requirements", items: summary.permissionRequirements, systemImage: "exclamationmark.triangle", color: .orange)
+            DryRunSummarySection(title: "Protected", items: summary.protectedActions, systemImage: "lock.fill", color: .secondary)
         }
         .padding(10)
-        .background(Color(nsColor: .controlBackgroundColor).opacity(0.45), in: .rect(cornerRadius: 7))
+        .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 8))
         .overlay {
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.3))
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color(nsColor: .separatorColor).opacity(0.42), lineWidth: 0.5)
+        }
+    }
+}
+
+private struct DryRunSummarySection: View {
+    let title: String
+    let items: [String]
+    let systemImage: String
+    let color: Color
+
+    var body: some View {
+        if !items.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(title)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+                    Label(item, systemImage: systemImage)
+                        .font(.callout)
+                        .foregroundStyle(color)
+                        .lineLimit(2)
+                }
+            }
+        }
+    }
+}
+
+private struct DryRunMoveSection: View {
+    let items: [ProfileMovePreview]
+
+    var body: some View {
+        if !items.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Moves")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                ForEach(items, id: \.bundleIdentifier) { item in
+                    Label(
+                        "\(item.displayName): \(item.currentZone.displayName) -> \(item.targetZone.displayName)",
+                        systemImage: "arrow.left.and.right"
+                    )
+                    .font(.callout)
+                    .lineLimit(2)
+                }
+            }
+        }
+    }
+}
+
+private extension TriggerRule {
+    var systemImage: String {
+        switch self {
+        case .externalDisplayConnected:
+            "display.2"
+        case .appLaunched:
+            "app.badge"
+        case .frontmostApp:
+            "macwindow"
+        case .batteryLow:
+            "battery.25percent"
+        case .timeOfDay:
+            "clock"
+        case .focusModePlaceholder:
+            "moon"
+        case .wifiSSID:
+            "wifi"
+        }
+    }
+}
+
+private extension HidingVisibilityState {
+    var profileDisplayName: String {
+        switch self {
+        case .collapsed:
+            "Collapsed"
+        case .expanded:
+            "Expanded"
+        case .revealAll:
+            "Reveal All"
         }
     }
 }

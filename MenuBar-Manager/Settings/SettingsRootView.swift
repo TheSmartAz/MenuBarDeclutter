@@ -182,6 +182,7 @@ struct SettingsRootView: View {
                             Label(section.title, systemImage: section.systemImage)
                                 .tag(section)
                                 .help(section.helpText)
+                                .accessibilityIdentifier(section.sidebarAccessibilityIdentifier)
                         }
                     }
                 }
@@ -191,7 +192,8 @@ struct SettingsRootView: View {
             .searchable(text: $settingsSearchText, prompt: "Search Settings")
             .navigationSplitViewColumnWidth(min: 220, ideal: 246, max: 290)
         } detail: {
-            detailView(for: navigationModel.selectedSection ?? .general)
+            detailView(for: selectedSection)
+                .accessibilityIdentifier(selectedSection.pageAccessibilityIdentifier)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(minWidth: 980, minHeight: 620)
@@ -199,6 +201,10 @@ struct SettingsRootView: View {
         .onAppear {
             navigationModel.selectedSection = navigationModel.selectedSection ?? .general
         }
+    }
+
+    private var selectedSection: SettingsSection {
+        navigationModel.selectedSection ?? .general
     }
 
     private var filteredSidebarGroups: [SettingsSidebarGroup] {
@@ -536,6 +542,16 @@ struct SettingsRootView: View {
     }
 }
 
+private extension SettingsSection {
+    var pageAccessibilityIdentifier: String {
+        "settings.page.\(rawValue)"
+    }
+
+    var sidebarAccessibilityIdentifier: String {
+        "settings.sidebar.\(rawValue)"
+    }
+}
+
 struct ClearGlassSettingsPage<Content: View>: View {
     private let title: String
     private let subtitle: String?
@@ -566,6 +582,7 @@ struct ClearGlassSettingsPage<Content: View>: View {
             .frame(maxWidth: 980, alignment: .topLeading)
             .frame(maxWidth: .infinity, alignment: .topLeading)
         }
+        .accessibilityIdentifier("settings.page.scroll")
         .background(Color(nsColor: .windowBackgroundColor))
     }
 }

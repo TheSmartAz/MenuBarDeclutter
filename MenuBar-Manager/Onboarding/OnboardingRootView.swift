@@ -52,7 +52,7 @@ struct OnboardingRootView: View {
 
             TabView(selection: $navigationModel.currentIndex) {
                 ForEach(Array(OnboardingStep.allSteps.enumerated()), id: \.element.id) { index, step in
-                    OnboardingStepView(step: step)
+                    OnboardingStepView(step: step, index: index)
                         .tag(index)
                 }
             }
@@ -67,20 +67,8 @@ struct OnboardingRootView: View {
                 onComplete: onComplete
             )
         }
-        .frame(minWidth: 620, idealWidth: 680, minHeight: 500, idealHeight: 590)
-        .background(.regularMaterial, in: .rect(cornerRadius: 12))
-        .overlay {
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(.primary.opacity(0.14), lineWidth: 1)
-        }
-        .shadow(color: .black.opacity(0.12), radius: 18, y: 10)
-        .padding(18)
-        .background {
-            Rectangle()
-                .fill(Color(nsColor: .windowBackgroundColor))
-                .overlay(.ultraThinMaterial)
-                .ignoresSafeArea()
-        }
+        .frame(minWidth: 700, idealWidth: 740, minHeight: 560, idealHeight: 620)
+        .background(Color(nsColor: .windowBackgroundColor))
     }
 }
 
@@ -101,7 +89,7 @@ private struct OnboardingHeader: View {
                     .font(.title2)
                     .bold()
 
-                Text("Onboarding")
+                Text("Setup Assistant")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
@@ -109,23 +97,27 @@ private struct OnboardingHeader: View {
             Spacer(minLength: 18)
 
             HStack(spacing: 8) {
+                ClearGlassBadge(style: .basicMode)
                 ClearGlassBadge(style: .privacySafe)
-                ClearGlassBadge(style: .diagnostics)
-                ClearGlassBadge(style: .experimental)
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 18)
+        .padding(.horizontal, 24)
+        .padding(.top, 16)
         .padding(.bottom, 14)
     }
 }
 
 private struct OnboardingStepView: View {
     let step: OnboardingStep
+    let index: Int
 
     var body: some View {
-        VStack(spacing: 18) {
+        VStack(spacing: 16) {
             Spacer(minLength: 6)
+
+            Text("Step \(index + 1) of \(OnboardingStep.allSteps.count)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
 
             OnboardingStepIcon(systemImage: step.symbol)
 
@@ -148,7 +140,7 @@ private struct OnboardingStepView: View {
             if let callout = step.callout {
                 ClearGlassInlineMessage(
                     text: callout,
-                    systemImage: "exclamationmark.bubble",
+                    systemImage: "info.circle",
                     style: .info
                 )
                 .frame(maxWidth: 420)
@@ -157,7 +149,7 @@ private struct OnboardingStepView: View {
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 42)
-        .padding(.vertical, 18)
+        .padding(.vertical, 16)
     }
 }
 
@@ -166,12 +158,12 @@ private struct OnboardingStepIcon: View {
 
     var body: some View {
         Image(systemName: systemImage)
-            .font(.system(size: 38, weight: .regular))
-            .foregroundStyle(.blue)
-            .frame(width: 78, height: 78)
-            .background(.quaternary, in: .rect(cornerRadius: 18))
+            .font(.system(size: 32, weight: .regular))
+            .foregroundStyle(Color.accentColor)
+            .frame(width: 64, height: 64)
+            .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 14))
             .overlay {
-                RoundedRectangle(cornerRadius: 18)
+                RoundedRectangle(cornerRadius: 14)
                     .stroke(.primary.opacity(0.12), lineWidth: 1)
             }
     }
@@ -213,7 +205,7 @@ private struct OnboardingMenuStrip: View {
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 12)
-        .background(.quaternary, in: .rect(cornerRadius: 8))
+        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
         .overlay {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(.primary.opacity(0.10), lineWidth: 1)
@@ -238,7 +230,7 @@ private struct OnboardingNativeCleanupSummary: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
         .frame(maxWidth: 430)
-        .background(.quaternary.opacity(0.7), in: .rect(cornerRadius: 8))
+        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
         .overlay {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(.primary.opacity(0.10), lineWidth: 1)
@@ -261,7 +253,7 @@ private struct OnboardingCommandDragStrip: View {
         .font(.callout)
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .background(.quaternary, in: .rect(cornerRadius: 8))
+        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
         .overlay {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(.primary.opacity(0.10), lineWidth: 1)
@@ -315,7 +307,7 @@ private struct OnboardingShortcutSummary: View {
         .font(.callout)
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
-        .background(.quaternary.opacity(0.7), in: .rect(cornerRadius: 8))
+        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
     }
 }
 
@@ -353,7 +345,7 @@ private struct OnboardingPrivacySummary: View {
             }
         }
         .frame(maxWidth: 430)
-        .background(.quaternary.opacity(0.6), in: .rect(cornerRadius: 8))
+        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
         .overlay {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(.primary.opacity(0.10), lineWidth: 1)

@@ -38,11 +38,10 @@ struct SecondBarRootView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            if unavailableState == nil {
+            if secondBarIsAvailable {
                 filterBar
             }
             Divider()
-                .overlay(.primary.opacity(0.10))
 
             if let unavailableState {
                 SecondBarUnavailableView(state: unavailableState)
@@ -58,16 +57,10 @@ struct SecondBarRootView: View {
             }
 
             Divider()
-                .overlay(.primary.opacity(0.10))
             footer
         }
         .frame(width: 760, height: panelHeight)
-        .background(.regularMaterial, in: .rect(cornerRadius: 12))
-        .overlay {
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(.primary.opacity(0.14), lineWidth: 1)
-        }
-        .shadow(color: .black.opacity(0.16), radius: 18, y: 10)
+        .background(Color(nsColor: .windowBackgroundColor))
         .onAppear {
             onRefresh()
             refreshItems()
@@ -113,36 +106,18 @@ struct SecondBarRootView: View {
     }
 
     private var panelHeight: CGFloat {
-        settingsStore.secondBarShowLabels ? 274 : 228
+        if !secondBarIsAvailable {
+            return 274
+        }
+        return settingsStore.secondBarShowLabels ? 274 : 228
+    }
+
+    private var secondBarIsAvailable: Bool {
+        unavailableState == nil
     }
 
     private var header: some View {
-        HStack(spacing: 14) {
-            Image(systemName: "menubar.rectangle")
-                .font(.system(size: 28, weight: .light))
-                .frame(width: 38)
-
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 8) {
-                    Text("Second Bar")
-                        .font(.title2)
-                        .bold()
-
-                    Text(items.count, format: .number)
-                        .font(.callout)
-                        .bold()
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(.quaternary, in: .capsule)
-                }
-
-                Text("Hidden menu bar items in a secondary bar.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            }
-
-            Spacer()
-
+        HStack(spacing: 10) {
             HStack(spacing: 7) {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(.secondary)
@@ -150,6 +125,7 @@ struct SecondBarRootView: View {
                 TextField("Search hidden items", text: $searchQuery)
                     .textFieldStyle(.plain)
                     .focused($searchFocused)
+                    .disabled(!secondBarIsAvailable)
 
                 if !searchQuery.isEmpty {
                     Button("Clear Search", systemImage: "xmark.circle.fill") {
@@ -164,11 +140,27 @@ struct SecondBarRootView: View {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
-            .frame(width: 260)
-            .background(.quaternary, in: .rect(cornerRadius: 8))
+            .frame(maxWidth: .infinity)
+            .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 7))
             .overlay {
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(.primary.opacity(0.10), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 7)
+                    .stroke(searchFocused ? Color.accentColor.opacity(0.45) : Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
+            }
+
+            HStack(spacing: 6) {
+                Image(systemName: "menubar.rectangle")
+                    .foregroundStyle(.secondary)
+
+                Text(items.count, format: .number)
+                    .font(.caption.monospacedDigit())
+                    .bold()
+            }
+            .padding(.horizontal, 9)
+            .padding(.vertical, 6)
+            .background(Color(nsColor: .controlBackgroundColor), in: .capsule)
+            .overlay {
+                Capsule()
+                    .stroke(Color(nsColor: .separatorColor).opacity(0.45), lineWidth: 0.5)
             }
 
             Button("Refresh", systemImage: "arrow.clockwise") {
@@ -176,20 +168,14 @@ struct SecondBarRootView: View {
             }
             .labelStyle(.iconOnly)
             .buttonStyle(.bordered)
-            .controlSize(.small)
             .help("Refresh Menu Bar Items")
+            .disabled(!secondBarIsAvailable)
 
-            Button("Close", systemImage: "xmark") {
-                onDismiss()
-            }
-            .labelStyle(.iconOnly)
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-            .help("Close Second Bar")
+            ClearGlassBadge(style: .privacySafe)
         }
+        .controlSize(.small)
         .padding(.horizontal, 18)
-        .padding(.top, 18)
-        .padding(.bottom, 14)
+        .padding(.vertical, 14)
     }
 
     private var filterBar: some View {
@@ -210,6 +196,7 @@ struct SecondBarRootView: View {
         }
         .padding(.horizontal, 18)
         .padding(.bottom, 10)
+        .controlSize(.small)
     }
 
     @ViewBuilder
@@ -280,26 +267,39 @@ struct SecondBarRootView: View {
 
     private var footer: some View {
         HStack(spacing: 10) {
-            Image(systemName: "return")
+            Image(systemName: secondBarIsAvailable ? "return" : "info.circle")
                 .foregroundStyle(.secondary)
 
-            Text(liveStatus.iconMoveInProgress ? "Icon move in progress..." : "Return reveals and highlights. Click original icon manually.")
+            Text(footerMessage)
                 .foregroundStyle(.secondary)
 
             Spacer()
 
-            if let statusMessage {
+            if secondBarIsAvailable, let statusMessage {
                 Text(statusMessage)
                     .lineLimit(1)
                     .foregroundStyle(.secondary)
-            } else {
+            } else if secondBarIsAvailable {
                 Label("Ready", systemImage: "checkmark.shield")
                     .foregroundStyle(.green)
+            } else {
+                Text("Unavailable")
+                    .foregroundStyle(.secondary)
             }
         }
         .font(.caption)
         .padding(.horizontal, 18)
         .padding(.vertical, 10)
+    }
+
+    private var footerMessage: String {
+        if !secondBarIsAvailable {
+            return "Enable the requirements above to use the optional secondary bar."
+        }
+        if liveStatus.iconMoveInProgress {
+            return "Icon move in progress..."
+        }
+        return "Return reveals and highlights. Click original icon manually."
     }
 
     private var emptyStateTitle: String {
@@ -585,7 +585,7 @@ struct SecondBarRootView: View {
     /// several redundant `viewModel.items(...)` recomputations per SwiftUI body
     /// evaluation with a single pass driven by explicit input changes.
     private func refreshItems() {
-        guard unavailableState == nil else {
+        guard secondBarIsAvailable else {
             if !items.isEmpty { items = [] }
             return
         }
@@ -667,11 +667,11 @@ private struct SecondBarUnavailableView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .top, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
                 Image(systemName: state.systemImage)
-                    .font(.system(size: 32, weight: .light))
+                    .font(.system(size: 28, weight: .regular))
                     .foregroundStyle(.orange)
-                    .frame(width: 44)
+                    .frame(width: 34)
 
                 VStack(alignment: .leading, spacing: 6) {
                     Text(state.title)
@@ -700,12 +700,12 @@ private struct SecondBarUnavailableView: View {
                 style: .success
             )
         }
-        .padding(22)
+        .padding(24)
         .frame(maxWidth: 620, alignment: .leading)
-        .background(.quaternary.opacity(0.58), in: .rect(cornerRadius: 10))
+        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
         .overlay {
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(.primary.opacity(0.12), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

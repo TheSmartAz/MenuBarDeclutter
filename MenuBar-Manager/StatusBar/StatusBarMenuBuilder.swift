@@ -57,11 +57,14 @@ final class StatusBarMenuBuilder {
     func makeMenu() -> NSMenu {
         let menu = NSMenu(title: AppConstants.displayName)
 
+        menu.addItem(sectionHeader("Visibility"))
+
         menu.addItem(
             menuItem(
                 title: "Expand Hidden Items",
                 command: .expand,
-                keyEquivalent: ""
+                keyEquivalent: "",
+                systemImage: "eye"
             )
         )
 
@@ -69,7 +72,8 @@ final class StatusBarMenuBuilder {
             menuItem(
                 title: "Collapse Hidden Items",
                 command: .collapse,
-                keyEquivalent: ""
+                keyEquivalent: "",
+                systemImage: "eye.slash"
             )
         )
 
@@ -77,15 +81,17 @@ final class StatusBarMenuBuilder {
             menuItem(
                 title: "Toggle Hidden Items",
                 command: .toggle,
-                keyEquivalent: "h"
+                keyEquivalent: "h",
+                systemImage: "menubar.rectangle"
             )
         )
 
         menu.addItem(
             menuItem(
-                title: "Reveal All Hidden Items",
+                title: "Reveal All Items",
                 command: .revealAll,
-                keyEquivalent: ""
+                keyEquivalent: "",
+                systemImage: "rectangle.expand.vertical"
             )
         )
 
@@ -93,56 +99,40 @@ final class StatusBarMenuBuilder {
             menuItem(
                 title: "Toggle Reveal All",
                 command: .toggleRevealAll,
-                keyEquivalent: ""
-            )
-        )
-
-        menu.addItem(
-            menuItem(
-                title: "Emergency: Reveal All + Reset Separators",
-                command: .emergencyRevealAndResetSeparators,
-                keyEquivalent: ""
+                keyEquivalent: "",
+                systemImage: "arrow.up.left.and.arrow.down.right"
             )
         )
 
         menu.addItem(.separator())
+        menu.addItem(sectionHeader("Find & Bars"))
 
         menu.addItem(
             menuItem(
-                title: "Find Icon...",
+                title: "Find Icon…",
                 command: .findIcon,
-                keyEquivalent: "f"
+                keyEquivalent: "f",
+                systemImage: "magnifyingglass"
             )
         )
 
         menu.addItem(
             menuItem(
-                title: "Show Second Bar",
-                command: .showSecondBar,
-                keyEquivalent: ""
-            )
-        )
-
-        menu.addItem(
-            menuItem(
-                title: "Hide Second Bar",
-                command: .hideSecondBar,
-                keyEquivalent: ""
-            )
-        )
-
-        menu.addItem(
-            menuItem(
-                title: "Toggle Second Bar",
+                title: actions.secondBarVisible() ? "Hide Second Bar" : "Show Second Bar",
                 command: .toggleSecondBar,
-                keyEquivalent: "s"
+                keyEquivalent: "s",
+                systemImage: "rectangle.bottomthird.inset.filled"
             )
         )
+
+        menu.addItem(.separator())
+        menu.addItem(sectionHeader("Pro Features"))
 
         let refreshItem = menuItem(
             title: "Refresh Menu Bar Items",
             command: .refreshMenuBarItems,
-            keyEquivalent: "r"
+            keyEquivalent: "r",
+            systemImage: "arrow.clockwise"
         )
         refreshItem.isEnabled = actions.canRefreshMenuBarItems()
         menu.addItem(refreshItem)
@@ -151,7 +141,8 @@ final class StatusBarMenuBuilder {
             menuItem(
                 title: actions.proModeTitle(),
                 command: .toggleProMode,
-                keyEquivalent: ""
+                keyEquivalent: "",
+                systemImage: "star"
             )
         )
 
@@ -159,29 +150,13 @@ final class StatusBarMenuBuilder {
             menuItem(
                 title: actions.automationPausedTitle(),
                 command: .toggleAutomationPaused,
-                keyEquivalent: ""
+                keyEquivalent: "",
+                systemImage: actions.automationPaused() ? "play.circle" : "pause.circle"
             )
         )
 
         menu.addItem(.separator())
-
-        menu.addItem(
-            menuItem(
-                title: "Reset Separator Length",
-                command: .resetSeparatorLength,
-                keyEquivalent: ""
-            )
-        )
-
-        menu.addItem(
-            menuItem(
-                title: "Show Drag Hint",
-                command: .showDragHint,
-                keyEquivalent: ""
-            )
-        )
-
-        menu.addItem(.separator())
+        menu.addItem(sectionHeader("Layout"))
 
         // Phase 10 — Layout menu items
         if actions.fullMenuBarModeIsActive() {
@@ -189,7 +164,8 @@ final class StatusBarMenuBuilder {
                 menuItem(
                     title: "Exit Full Menu Bar Mode",
                     command: .exitFullMenuBarMode,
-                    keyEquivalent: ""
+                    keyEquivalent: "",
+                    systemImage: "rectangle.compress.vertical"
                 )
             )
         } else {
@@ -197,7 +173,8 @@ final class StatusBarMenuBuilder {
                 menuItem(
                     title: "Enter Full Menu Bar Mode",
                     command: .enterFullMenuBarMode,
-                    keyEquivalent: ""
+                    keyEquivalent: "",
+                    systemImage: "rectangle.expand.vertical"
                 )
             )
         }
@@ -206,7 +183,8 @@ final class StatusBarMenuBuilder {
             menuItem(
                 title: "Layout Suggestions…",
                 command: .showLayoutSuggestions,
-                keyEquivalent: ""
+                keyEquivalent: "",
+                systemImage: "lightbulb"
             )
         )
 
@@ -215,18 +193,18 @@ final class StatusBarMenuBuilder {
                 menuItem(
                     title: "Reveal Inline Anyway",
                     command: .revealInlineAnyway,
-                    keyEquivalent: ""
+                    keyEquivalent: "",
+                    systemImage: "arrow.right.circle"
                 )
             )
         }
-
-        menu.addItem(.separator())
 
         menu.addItem(
             menuItem(
                 title: "Add Divider",
                 command: .addSpacerDivider,
-                keyEquivalent: ""
+                keyEquivalent: "",
+                systemImage: "rectangle.split.1x2"
             )
         )
 
@@ -234,7 +212,8 @@ final class StatusBarMenuBuilder {
             menuItem(
                 title: "Add Spacer",
                 command: .addSpacer,
-                keyEquivalent: ""
+                keyEquivalent: "",
+                systemImage: "arrow.left.and.right"
             )
         )
 
@@ -242,43 +221,77 @@ final class StatusBarMenuBuilder {
             menuItem(
                 title: "Toggle Spacer Markers",
                 command: .toggleSpacerMarkers,
-                keyEquivalent: ""
+                keyEquivalent: "",
+                systemImage: "eye"
             )
         )
 
         menu.addItem(
             menuItem(
-                title: "Open Layout Settings",
+                title: "Layout Settings…",
                 command: .openLayoutSettings,
-                keyEquivalent: ""
+                keyEquivalent: "",
+                systemImage: "slider.horizontal.3"
             )
         )
 
         menu.addItem(.separator())
+        menu.addItem(sectionHeader("Recovery"))
 
         menu.addItem(
             menuItem(
-                title: "Settings...",
+                title: "Show Drag Hint",
+                command: .showDragHint,
+                keyEquivalent: "",
+                systemImage: "hand.point.up.left"
+            )
+        )
+
+        menu.addItem(
+            menuItem(
+                title: "Reset Separator Length",
+                command: .resetSeparatorLength,
+                keyEquivalent: "",
+                systemImage: "ruler"
+            )
+        )
+
+        menu.addItem(
+            menuItem(
+                title: "Reveal All and Reset Separators",
+                command: .emergencyRevealAndResetSeparators,
+                keyEquivalent: "",
+                systemImage: "exclamationmark.arrow.triangle.2.circlepath"
+            )
+        )
+
+        menu.addItem(.separator())
+        menu.addItem(sectionHeader(AppConstants.displayName))
+
+        menu.addItem(
+            menuItem(
+                title: "Settings…",
                 command: .openSettings,
-                keyEquivalent: ","
+                keyEquivalent: ",",
+                systemImage: "gearshape"
             )
         )
 
         menu.addItem(
             menuItem(
-                title: "Show Diagnostics",
+                title: "Diagnostics…",
                 command: .showDiagnostics,
-                keyEquivalent: ""
+                keyEquivalent: "",
+                systemImage: "waveform.path.ecg"
             )
         )
-
-        menu.addItem(.separator())
 
         menu.addItem(
             menuItem(
                 title: "About \(AppConstants.displayName)",
                 command: .showAbout,
-                keyEquivalent: ""
+                keyEquivalent: "",
+                systemImage: "info.circle"
             )
         )
 
@@ -288,7 +301,8 @@ final class StatusBarMenuBuilder {
             menuItem(
                 title: "Quit",
                 command: .quit,
-                keyEquivalent: "q"
+                keyEquivalent: "q",
+                systemImage: "power"
             )
         )
 
@@ -312,7 +326,18 @@ final class StatusBarMenuBuilder {
         refresh(for: state.isCollapsed ? HidingVisibilityState.collapsed : HidingVisibilityState.expanded)
     }
 
-    private func menuItem(title: String, command: StatusBarMenuCommand, keyEquivalent: String) -> NSMenuItem {
+    private func sectionHeader(_ title: String) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+        item.isEnabled = false
+        return item
+    }
+
+    private func menuItem(
+        title: String,
+        command: StatusBarMenuCommand,
+        keyEquivalent: String,
+        systemImage: String? = nil
+    ) -> NSMenuItem {
         let item = NSMenuItem(
             title: title,
             action: #selector(StatusBarMenuCommandTarget.performCommand(_:)),
@@ -320,6 +345,9 @@ final class StatusBarMenuBuilder {
         )
         item.tag = command.rawValue
         item.target = commandTarget
+        if let systemImage {
+            item.image = NSImage(systemSymbolName: systemImage, accessibilityDescription: title)
+        }
         return item
     }
 }

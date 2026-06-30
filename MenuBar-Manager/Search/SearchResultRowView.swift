@@ -5,36 +5,18 @@ struct SearchResultRowView: View {
     let result: MenuBarSearchResult
     let isSelected: Bool
 
-    private let iconCache: AppIconCache
-
-    @State private var appIcon: NSImage
-
-    private var iconLookup: AppIconCache.Lookup {
-        AppIconCache.Lookup(snapshot: result.snapshot)
-    }
-
     @MainActor
     init(
         result: MenuBarSearchResult,
-        isSelected: Bool,
-        iconCache: AppIconCache = .shared
+        isSelected: Bool
     ) {
         self.result = result
         self.isSelected = isSelected
-        self.iconCache = iconCache
-        _appIcon = State(initialValue: iconCache.cachedIcon(for: result.snapshot) ?? iconCache.placeholderIcon)
     }
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(nsImage: appIcon)
-                .resizable()
-                .frame(width: 34, height: 34)
-                .clipShape(.rect(cornerRadius: 8))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(isSelected ? .white.opacity(0.22) : .primary.opacity(0.10), lineWidth: 1)
-                }
+        HStack(spacing: 10) {
+            AppIconView(snapshot: result.snapshot, size: 32, cornerRadius: 7)
 
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 8) {
@@ -66,34 +48,28 @@ struct SearchResultRowView: View {
 
             Spacer(minLength: 8)
 
-            Image(systemName: "ellipsis")
-                .font(.body)
+            Image(systemName: isSelected ? "return.left" : "ellipsis")
+                .font(.callout)
                 .foregroundStyle(isSelected ? .white.opacity(0.78) : .secondary)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(rowBackground, in: .rect(cornerRadius: 9))
+        .background(rowBackground, in: .rect(cornerRadius: 7))
         .overlay {
-            RoundedRectangle(cornerRadius: 9)
-                .stroke(rowStroke, lineWidth: 1)
+            RoundedRectangle(cornerRadius: 7)
+                .stroke(rowStroke, lineWidth: 0.5)
         }
         .foregroundStyle(isSelected ? .white : .primary)
         .contentShape(.rect)
-        .task(id: iconLookup) { @MainActor in
-            let resolvedIcon = iconCache.icon(for: result.snapshot)
-            if appIcon !== resolvedIcon {
-                appIcon = resolvedIcon
-            }
-        }
     }
 
     private var rowBackground: Color {
-        isSelected ? Color.accentColor : Color.primary.opacity(0.035)
+        isSelected ? Color.accentColor : Color(nsColor: .controlBackgroundColor).opacity(0.45)
     }
 
     private var rowStroke: Color {
-        isSelected ? Color.accentColor.opacity(0.55) : Color.primary.opacity(0.08)
+        isSelected ? Color.accentColor.opacity(0.55) : Color(nsColor: .separatorColor).opacity(0.24)
     }
 
     private var zoneColor: Color {

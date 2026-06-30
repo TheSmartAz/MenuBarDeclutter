@@ -18,20 +18,21 @@ final class IconGroupPanelWindowController: NSWindowController, NSWindowDelegate
 
         let panel = IconGroupPanel(
             contentRect: NSRect(x: 0, y: 0, width: 560, height: 420),
-            styleMask: [.titled, .closable, .nonactivatingPanel, .fullSizeContentView],
+            styleMask: [.titled, .closable, .utilityWindow],
             backing: .buffered,
             defer: false
         )
         panel.title = "Group"
-        panel.titleVisibility = .hidden
-        panel.titlebarAppearsTransparent = true
+        panel.titleVisibility = .visible
+        panel.titlebarAppearsTransparent = false
         panel.isFloatingPanel = true
         panel.isReleasedWhenClosed = false
         panel.level = .floating
         panel.collectionBehavior = [.canJoinAllSpaces, .transient]
-        panel.backgroundColor = .clear
-        panel.isOpaque = false
+        panel.backgroundColor = .windowBackgroundColor
+        panel.isOpaque = true
         panel.hasShadow = true
+        panel.minSize = NSSize(width: 500, height: 360)
 
         super.init(window: panel)
         panel.delegate = self
@@ -58,6 +59,7 @@ final class IconGroupPanelWindowController: NSWindowController, NSWindowDelegate
         )
 
         window?.contentViewController = NSHostingController(rootView: root)
+        window?.title = group.name
         window?.setContentSize(NSSize(width: 560, height: 420))
         window?.center()
         showWindow(nil)

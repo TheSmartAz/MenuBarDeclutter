@@ -48,8 +48,10 @@ struct DiagnosticsSettingsView: View {
                 onExport: exportCurrent
             )
 
+            Divider()
+
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 12) {
+                LazyVStack(alignment: .leading, spacing: 14) {
                     if let exportError {
                         ExportErrorBanner(message: exportError)
                     }
@@ -102,11 +104,12 @@ struct DiagnosticsSettingsView: View {
                         selectedEventID: $selectedEventID
                     )
                 }
-                .padding(14)
+                .padding(.horizontal, 22)
+                .padding(.vertical, 16)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(nsColor: .controlBackgroundColor))
+        .background(Color(nsColor: .windowBackgroundColor))
     }
 
     private func exportCurrent() {
@@ -129,29 +132,30 @@ struct DiagnosticsSettingsView: View {
         panel.nameFieldStringValue = suggestedName
         panel.directoryURL = directory
 
-        let response = panel.runModal()
-        guard response == .OK, let url = panel.url else { return }
+        presentSavePanel(panel) { url in
+            guard let url else { return }
 
-        let snapshot = exporter.makeSnapshot(
-            settingsStore: settingsStore,
-            logger: diagnosticsLogger,
-            events: filteredEvents
-        )
-        do {
-            let data = try exporter.serialize(
-                snapshot,
-                format: exportFormat,
-                includeAppSupportPath: false,
-                appSupportPath: nil
+            let snapshot = exporter.makeSnapshot(
+                settingsStore: settingsStore,
+                logger: diagnosticsLogger,
+                events: filteredEvents
             )
-            try data.write(to: url, options: .atomic)
-            lastExportedURL = url
-            exportError = nil
-            diagnosticsLogger.log("Diagnostics exported to \(url.lastPathComponent).", level: .info)
-        } catch {
-            exportError = error.localizedDescription
-            lastExportedURL = nil
-            diagnosticsLogger.log("Diagnostics export failed: \(error.localizedDescription)", level: .error)
+            do {
+                let data = try exporter.serialize(
+                    snapshot,
+                    format: exportFormat,
+                    includeAppSupportPath: false,
+                    appSupportPath: nil
+                )
+                try data.write(to: url, options: .atomic)
+                lastExportedURL = url
+                exportError = nil
+                diagnosticsLogger.log("Diagnostics exported to \(url.lastPathComponent).", level: .info)
+            } catch {
+                exportError = error.localizedDescription
+                lastExportedURL = nil
+                diagnosticsLogger.log("Diagnostics export failed: \(error.localizedDescription)", level: .error)
+            }
         }
     }
 
@@ -186,18 +190,33 @@ struct DiagnosticsSettingsView: View {
         panel.nameFieldStringValue = suggestedName
         panel.directoryURL = directory
 
-        let response = panel.runModal()
-        guard response == .OK, let url = panel.url else { return }
+        presentSavePanel(panel) { url in
+            guard let url else { return }
 
-        do {
-            try Data(report.plainText().utf8).write(to: url, options: .atomic)
-            lastExportedURL = url
-            exportError = nil
-            diagnosticsLogger.log("Health report exported to \(url.lastPathComponent).", level: .info)
-        } catch {
-            exportError = error.localizedDescription
-            lastExportedURL = nil
-            diagnosticsLogger.log("Health report export failed: \(error.localizedDescription)", level: .error)
+            do {
+                try Data(report.plainText().utf8).write(to: url, options: .atomic)
+                lastExportedURL = url
+                exportError = nil
+                diagnosticsLogger.log("Health report exported to \(url.lastPathComponent).", level: .info)
+            } catch {
+                exportError = error.localizedDescription
+                lastExportedURL = nil
+                diagnosticsLogger.log("Health report export failed: \(error.localizedDescription)", level: .error)
+            }
+        }
+    }
+
+    private func presentSavePanel(_ panel: NSSavePanel, completion: @escaping (URL?) -> Void) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(150)) {
+            let handler: (NSApplication.ModalResponse) -> Void = { response in
+                completion(response == .OK ? panel.url : nil)
+            }
+
+            if let window = NSApplication.shared.keyWindow ?? NSApplication.shared.mainWindow {
+                panel.beginSheetModal(for: window, completionHandler: handler)
+            } else {
+                panel.begin(completionHandler: handler)
+            }
         }
     }
 
@@ -340,10 +359,10 @@ private struct DiagnosticsPanel<Accessory: View, Content: View>: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.thinMaterial, in: .rect(cornerRadius: 8))
+        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
         .overlay {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.45))
+                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
         }
     }
 }
@@ -356,6 +375,7 @@ private struct DiagnosticsStatusBadge: View {
     var body: some View {
         Label(title, systemImage: systemImage)
             .font(.caption)
+            .lineLimit(1)
             .padding(.horizontal, 8)
             .padding(.vertical, 5)
             .foregroundStyle(style)
@@ -371,8 +391,12 @@ private struct DiagnosticsSummaryStrip: View {
     let liveStatus: LiveDiagnosticsStatus
     let settingsStore: SettingsStore
 
+    private let columns = [
+        GridItem(.adaptive(minimum: 180, maximum: 260), spacing: 10, alignment: .top)
+    ]
+
     var body: some View {
-        LazyVStack(alignment: .leading, spacing: 8) {
+        LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
             summaryTiles
         }
     }
@@ -478,28 +502,45 @@ private struct DiagnosticsToolbar: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 10) {
-                Label("Diagnostics", systemImage: "waveform.path.ecg")
-                    .font(.title2)
-                    .bold()
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center, spacing: 12) {
+                Label {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Diagnostics")
+                            .font(.title2)
+                            .bold()
+
+                        Text("Health, recovery, and privacy-safe local logs.")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
+                } icon: {
+                    Image(systemName: "waveform.path.ecg")
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                }
 
                 Spacer()
 
-                DiagnosticsStatusBadge(title: "Privacy Safe", systemImage: "checkmark.shield", style: .green)
-                DiagnosticsStatusBadge(title: "Accessibility Aware", systemImage: "accessibility", style: .blue)
+                HStack(spacing: 8) {
+                    DiagnosticsStatusBadge(title: "Privacy Safe", systemImage: "checkmark.shield", style: .green)
+                    DiagnosticsStatusBadge(title: "Accessibility Aware", systemImage: "accessibility", style: .blue)
+                }
             }
 
+            toolbarControls
+        }
+        .padding(.horizontal, 22)
+        .padding(.top, 18)
+        .padding(.bottom, 12)
+        .background(Color(nsColor: .windowBackgroundColor))
+    }
+
+    private var toolbarControls: some View {
+        ViewThatFits(in: .horizontal) {
+            wideToolbar
             wrappedToolbar
         }
-        .padding(14)
-        .background(.regularMaterial, in: .rect(cornerRadius: 8))
-        .overlay {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.5))
-        }
-        .padding([.horizontal, .top], 14)
-        .padding(.bottom, 4)
     }
 
     private var wideToolbar: some View {
@@ -519,31 +560,46 @@ private struct DiagnosticsToolbar: View {
             Button("Clear", systemImage: "trash", action: clear)
                 .disabled(eventCount == 0)
         }
+        .controlSize(.small)
     }
 
     private var wrappedToolbar: some View {
-        VStack(spacing: 8) {
-            HStack {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
                 eventCounter
                 Spacer()
             }
 
-            HStack {
+            HStack(spacing: 10) {
                 severityPicker
                 categoryPicker
                 Spacer()
             }
 
-            HStack {
-                exportFormatPicker
-                Spacer()
-                Button("Copy Selected", systemImage: "doc.on.doc", action: onCopySelected)
-                    .disabled(!canCopySelected)
-                Button("Export Filtered…", systemImage: "square.and.arrow.up", action: onExport)
-                    .disabled(filteredEventCount == 0)
-                Button("Clear", systemImage: "trash", action: clear)
-                    .disabled(eventCount == 0)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) {
+                    exportFormatPicker
+                    Spacer()
+                    actionButtons
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    exportFormatPicker
+                    actionButtons
+                }
             }
+        }
+        .controlSize(.small)
+    }
+
+    private var actionButtons: some View {
+        HStack(spacing: 8) {
+            Button("Copy Selected", systemImage: "doc.on.doc", action: onCopySelected)
+                .disabled(!canCopySelected)
+            Button("Export Filtered…", systemImage: "square.and.arrow.up", action: onExport)
+                .disabled(filteredEventCount == 0)
+            Button("Clear", systemImage: "trash", action: clear)
+                .disabled(eventCount == 0)
         }
     }
 
@@ -616,10 +672,18 @@ private struct DiagnosticEventList: View {
     var body: some View {
         DiagnosticsPanel("Diagnostic Events", systemImage: "list.bullet.rectangle") {
             if diagnosticsLogger.events.isEmpty {
-                ContentUnavailableView("No Events", systemImage: "list.bullet.rectangle")
+                ContentUnavailableView(
+                    "No Events",
+                    systemImage: "list.bullet.rectangle",
+                    description: Text("Diagnostics events will appear here as the app runs.")
+                )
                     .frame(maxWidth: .infinity, minHeight: 160)
             } else if filteredEvents.isEmpty {
-                ContentUnavailableView("No Matching Events", systemImage: "line.3.horizontal.decrease.circle")
+                ContentUnavailableView(
+                    "No Matching Events",
+                    systemImage: "line.3.horizontal.decrease.circle",
+                    description: Text("Adjust the severity or category filters to show more events.")
+                )
                     .frame(maxWidth: .infinity, minHeight: 160)
             } else {
                 VStack(spacing: 0) {
@@ -724,8 +788,14 @@ private struct HealthStatusSection: View {
                         .foregroundStyle(.secondary)
                 }
 
-                VStack(alignment: .leading, spacing: 6) {
-                    healthButtons
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
+                        healthButtons
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        healthButtons
+                    }
                 }
                 .buttonStyle(.bordered)
             }
@@ -849,49 +919,54 @@ private struct ScreenStatusSection: View {
                 Button("Refresh", systemImage: "arrow.clockwise", action: refreshScreens)
             },
             content: {
-            if screens.isEmpty {
-                ContentUnavailableView("No Screens Reported", systemImage: "display")
+                if screens.isEmpty {
+                    ContentUnavailableView(
+                        "No Screens Reported",
+                        systemImage: "display",
+                        description: Text("Display snapshots will appear after the screen list refreshes.")
+                    )
                     .frame(maxWidth: .infinity, minHeight: 120)
-            } else {
-                VStack(spacing: 0) {
-                    ScreenTableHeader()
+                } else {
+                    VStack(spacing: 0) {
+                        ScreenTableHeader()
 
-                    ForEach(screens, id: \.index) { screen in
-                        HStack(spacing: 10) {
-                            Text(screen.index, format: .number)
-                                .font(.caption.monospacedDigit())
-                                .foregroundStyle(.secondary)
-                                .frame(width: 28, alignment: .leading)
+                        ForEach(screens, id: \.index) { screen in
+                            HStack(spacing: 10) {
+                                Text(screen.index, format: .number)
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 28, alignment: .leading)
 
-                            Text(screen.displayName)
-                                .lineLimit(1)
-                                .frame(minWidth: 120, maxWidth: .infinity, alignment: .leading)
+                                Text(screen.displayName)
+                                    .lineLimit(1)
+                                    .frame(minWidth: 120, maxWidth: .infinity, alignment: .leading)
 
-                            Text(screen.frameSummary)
-                                .font(.caption.monospacedDigit())
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                                .frame(minWidth: 120, maxWidth: .infinity, alignment: .leading)
+                                Text(screen.frameSummary)
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                                    .frame(minWidth: 120, maxWidth: .infinity, alignment: .leading)
 
-                            DiagnosticsStatusBadge(
-                                title: screen.isMain ? "Main" : "Active",
-                                systemImage: screen.isMain ? "checkmark.circle" : "circle",
-                                style: screen.isMain ? .green : .secondary
-                            )
+                                DiagnosticsStatusBadge(
+                                    title: screen.isMain ? "Main" : "Active",
+                                    systemImage: screen.isMain ? "checkmark.circle" : "circle",
+                                    style: screen.isMain ? .green : .secondary
+                                )
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 7)
+                            .background(Color(nsColor: .controlBackgroundColor).opacity(0.28))
+                            Divider()
                         }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 7)
-                        .background(Color(nsColor: .controlBackgroundColor).opacity(0.28))
-                        Divider()
+                    }
+                    .clipShape(.rect(cornerRadius: 7))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 7, style: .continuous)
+                            .strokeBorder(Color(nsColor: .separatorColor).opacity(0.35))
                     }
                 }
-                .clipShape(.rect(cornerRadius: 7))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .strokeBorder(Color(nsColor: .separatorColor).opacity(0.35))
-                }
             }
-        })
+        )
         .onAppear(perform: refreshScreens)
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)) { _ in
             refreshScreens()
@@ -923,21 +998,22 @@ private struct LiveStatusSection: View {
                 .disabled(scanCoordinator?.isManualRefreshAvailable != true)
             },
             content: {
-            VStack(alignment: .leading, spacing: 4) {
-                LiveStatusCoreGrid(liveStatus: liveStatus)
-                LiveStatusAccessibilityGrid(liveStatus: liveStatus)
-                LiveStatusSearchGrid(liveStatus: liveStatus)
-                LiveStatusSecondBarGrid(liveStatus: liveStatus)
-                LiveStatusIconMoveGrid(liveStatus: liveStatus, settingsStore: settingsStore)
-                LiveStatusAutomationGrid(
-                    liveStatus: liveStatus,
-                    settingsStore: settingsStore,
-                    launchAtLoginService: launchAtLoginService
-                )
-            }
+                VStack(alignment: .leading, spacing: 8) {
+                    LiveStatusCoreGrid(liveStatus: liveStatus)
+                    LiveStatusAccessibilityGrid(liveStatus: liveStatus)
+                    LiveStatusSearchGrid(liveStatus: liveStatus)
+                    LiveStatusSecondBarGrid(liveStatus: liveStatus)
+                    LiveStatusIconMoveGrid(liveStatus: liveStatus, settingsStore: settingsStore)
+                    LiveStatusAutomationGrid(
+                        liveStatus: liveStatus,
+                        settingsStore: settingsStore,
+                        launchAtLoginService: launchAtLoginService
+                    )
+                }
 
-            LiveMenuBarSnapshotSection(liveStatus: liveStatus)
-        })
+                LiveMenuBarSnapshotSection(liveStatus: liveStatus)
+            }
+        )
     }
 }
 
@@ -959,8 +1035,12 @@ private struct LiveStatusRowData: Identifiable {
 private struct LiveStatusGrid: View {
     let rows: [LiveStatusRowData]
 
+    private let columns = [
+        GridItem(.adaptive(minimum: 260), spacing: 8, alignment: .top)
+    ]
+
     var body: some View {
-        LazyVStack(alignment: .leading, spacing: 8) {
+        LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
             ForEach(rows) { row in
                 LiveStatusRow(row: row)
             }
@@ -1216,9 +1296,12 @@ private struct LiveMenuBarSnapshotSection: View {
             }
 
             if liveStatus.scannedMenuBarItems.isEmpty {
-                Text("No Accessibility snapshots yet.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                ContentUnavailableView(
+                    "No Accessibility Snapshots",
+                    systemImage: "menubar.rectangle",
+                    description: Text("Menu bar item snapshots appear after a Pro Mode Accessibility scan.")
+                )
+                .frame(maxWidth: .infinity, minHeight: 120)
             } else {
                 MenuBarSnapshotTable(snapshots: liveStatus.scannedMenuBarItems)
                     .frame(minHeight: 180, maxHeight: 240)
@@ -1339,6 +1422,8 @@ private struct DiagnosticEventRow: View {
 
                 Text(event.message)
                     .foregroundStyle(.primary)
+                    .lineLimit(3)
+                    .truncationMode(.tail)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -1354,6 +1439,8 @@ private struct DiagnosticEventRow: View {
                     Text(event.metadata.description)
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .lineLimit(3)
+                        .truncationMode(.tail)
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }

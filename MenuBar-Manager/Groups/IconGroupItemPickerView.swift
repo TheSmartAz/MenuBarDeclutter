@@ -26,7 +26,7 @@ struct IconGroupItemPickerView: View {
     }
 
     var body: some View {
-        DisclosureGroup("Add from Current Menu Bar Items") {
+        DisclosureGroup {
             if !isAvailable {
                 ClearGlassInlineMessage(
                     text: "Enable Pro Mode and Accessibility Discovery for the current menu bar item picker.",
@@ -40,42 +40,38 @@ struct IconGroupItemPickerView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     SearchField("Search items", text: $query, width: nil)
 
-                    ScrollView {
-                        LazyVStack(spacing: 0) {
-                            ForEach(filteredSnapshots) { snapshot in
-                                HStack(spacing: 10) {
-                                    AppIconView(snapshot: snapshot, size: 24)
-
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(displayTitle(for: snapshot))
-                                            .lineLimit(1)
-                                        Text(snapshot.bundleIdentifier ?? snapshot.zone.displayName)
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                            .lineLimit(1)
-                                    }
-
-                                    Spacer()
-
-                                    Text(snapshot.zone.displayName)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-
-                                    Button("Add", systemImage: "plus") {
-                                        onAdd(snapshot)
-                                    }
-                                    .labelStyle(.iconOnly)
-                                    .help("Add Item")
+                    if filteredSnapshots.isEmpty {
+                        ContentUnavailableView("No Matching Items", systemImage: "magnifyingglass")
+                            .frame(maxWidth: .infinity, minHeight: 128)
+                    } else {
+                        ScrollView {
+                            LazyVStack(spacing: 6) {
+                                ForEach(filteredSnapshots) { snapshot in
+                                    IconGroupPickerSnapshotRow(
+                                        snapshot: snapshot,
+                                        title: displayTitle(for: snapshot),
+                                        subtitle: displaySubtitle(for: snapshot),
+                                        onAdd: {
+                                            onAdd(snapshot)
+                                        }
+                                    )
                                 }
-                                .padding(.vertical, 6)
-
-                                ClearGlassDivider()
                             }
+                            .padding(6)
+                        }
+                        .frame(maxHeight: 220)
+                        .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 8))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color(nsColor: .separatorColor).opacity(0.42), lineWidth: 0.5)
                         }
                     }
-                    .frame(maxHeight: 180)
                 }
+                .padding(.top, 8)
             }
+        } label: {
+            Label("Current Menu Bar Items", systemImage: "menubar.rectangle")
+                .font(.body)
         }
     }
 
@@ -85,5 +81,86 @@ struct IconGroupItemPickerView: View {
             snapshot.title,
             snapshot.bundleIdentifier
         ]) ?? "Menu Bar Item"
+    }
+
+    private func displaySubtitle(for snapshot: MenuBarItemSnapshot) -> String {
+        DisplayString.firstNonEmpty([
+            snapshot.bundleIdentifier,
+            snapshot.title,
+            snapshot.zone.displayName
+        ]) ?? snapshot.zone.displayName
+    }
+}
+
+private struct IconGroupPickerSnapshotRow: View {
+    let snapshot: MenuBarItemSnapshot
+    let title: String
+    let subtitle: String
+    let onAdd: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            AppIconView(snapshot: snapshot, size: 26, cornerRadius: 6)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .lineLimit(1)
+
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 12)
+
+            PickerZoneBadge(title: snapshot.zone.displayName, color: zoneColor)
+
+            Button("Add", systemImage: "plus") {
+                onAdd()
+            }
+            .labelStyle(.iconOnly)
+            .buttonStyle(.borderless)
+            .help("Add Item")
+        }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 7)
+        .background(Color(nsColor: .controlBackgroundColor).opacity(0.55), in: .rect(cornerRadius: 7))
+        .overlay {
+            RoundedRectangle(cornerRadius: 7)
+                .stroke(Color(nsColor: .separatorColor).opacity(0.24), lineWidth: 0.5)
+        }
+    }
+
+    private var zoneColor: Color {
+        switch snapshot.zone {
+        case .visible:
+            .green
+        case .hidden:
+            .orange
+        case .alwaysHidden:
+            .red
+        case .unknown:
+            .secondary
+        }
+    }
+}
+
+private struct PickerZoneBadge: View {
+    let title: String
+    let color: Color
+
+    var body: some View {
+        Text(title)
+            .font(.caption)
+            .bold()
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .foregroundStyle(color)
+            .background(color.opacity(0.12), in: .capsule)
+            .overlay {
+                Capsule()
+                    .stroke(color.opacity(0.24), lineWidth: 0.5)
+            }
     }
 }

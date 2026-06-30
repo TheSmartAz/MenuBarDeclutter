@@ -24,7 +24,7 @@ Manual QA is required for behavior that depends on macOS menu bar state, app act
 - Launch the app and confirm two new menu bar items appear: a square control toggle and a thin separator.
 - Confirm the control icon is `chevron.left` while expanded.
 - Confirm the separator icon is `chevron.left.2` while expanded.
-- Open the menu (right-click the control item on macOS 26+); confirm these items are present: Expand Hidden Items, Collapse Hidden Items, Toggle Hidden Items, Reset Separator Length, Show Drag Hint, Settings..., Show Diagnostics, About MenuBarDeclutter, Quit.
+- Open the menu (right-click the control item on macOS 26+); confirm these items are present: Expand Hidden Items, Collapse Hidden Items, Toggle Hidden Items, Reset Separator Length, Show Drag Hint, Settings…, Diagnostics…, About MenuBarDeclutter, Quit.
 
 ### Drag hint
 
@@ -345,8 +345,8 @@ This checklist verifies the Phase 1 hiding MVP. Later-phase features such as glo
 ### Search unavailable states
 
 - Start from a clean install or choose Settings → General → Reset All Settings.
-- Open the status menu and choose "Find Icon...".
-- Confirm the Find Icon panel opens centered with the search field focused.
+- Open the status menu and choose "Find Icon…".
+- Confirm the Find Icon panel opens centered as a native floating utility panel with the search field focused.
 - With Pro Mode disabled, confirm the panel explains that Pro Mode is required and Basic Mode remains available.
 - Click "Enable Pro Mode" in the panel; confirm no Accessibility prompt appears automatically.
 - If Accessibility permission is not granted, confirm the panel explains that Accessibility permission is needed and offers Request Permission / System Settings actions.
@@ -363,7 +363,7 @@ This checklist verifies the Phase 1 hiding MVP. Later-phase features such as glo
 
 ### Open search and type
 
-- Choose "Find Icon..." from the status menu.
+- Choose "Find Icon…" from the status menu.
 - Confirm the search field is focused on open.
 - Type a visible app name from the menu bar; confirm matching results appear.
 - Type part of a bundle identifier shown in Diagnostics; confirm bundle-id matches appear.
@@ -450,7 +450,7 @@ This checklist verifies the Phase 1 hiding MVP. Later-phase features such as glo
 
 - Enable Pro Mode, Accessibility Discovery, and grant Accessibility permission.
 - Choose "Refresh Menu Bar Items" from the status menu.
-- Choose "Show Second Bar"; confirm a floating panel appears near the menu bar.
+- Choose "Show Second Bar"; confirm a native utility panel appears near the menu bar with visible titlebar controls and no nested rounded-card shell.
 - Choose "Hide Second Bar"; confirm the panel closes.
 - Choose "Toggle Second Bar" twice; confirm it opens and closes.
 - Press Escape while the panel is key; confirm it closes.
@@ -459,7 +459,7 @@ This checklist verifies the Phase 1 hiding MVP. Later-phase features such as glo
 ### Content and selection
 
 - Position at least one item in the hidden zone and refresh the AX scan.
-- Open the Second Bar and confirm hidden items appear with app icons, app names, optional item titles, and zone badges.
+- Open the Second Bar and confirm hidden items appear with app icons, app names, optional item titles, zone badges, and restrained native selection styling.
 - Enable the always-hidden separator, place at least one item in that zone, refresh the AX scan, and confirm it appears when "Show always-hidden items" is enabled.
 - Select a hidden item; confirm the primary hidden zone is revealed and the highlight appears if highlighting is enabled.
 - Select an always-hidden item; confirm reveal-all is used and the highlight appears if enabled.
@@ -732,7 +732,7 @@ This checklist verifies the Phase 1 hiding MVP. Later-phase features such as glo
 - Confirm the sidebar width does not shift between tabs and remains at the same column position.
 - Resize the Settings window down to its minimum size and click through every tab; confirm the sidebar stays at least 180 pt wide and content adapts (Diagnostics toolbar wraps to multiple rows, Profiles list/detail panes stay usable).
 - Resize the Settings window wider and confirm the Profiles tab still allows dragging the HSplitView divider to rebalance the profile list and detail panes.
-- Confirm Diagnostics toolbar controls are reachable when narrow (buttons wrap below pickers) and stay on one row when wide.
+- Confirm Diagnostics header and filter controls are reachable when narrow (buttons wrap below pickers) and stay on one row when wide.
 
 ## Clear Glass Control Redesign QA
 
@@ -753,13 +753,14 @@ This checklist verifies the Phase 1 hiding MVP. Later-phase features such as glo
 ### Floating surfaces
 
 - Complete the seven-step Onboarding flow; confirm the redesigned panels preserve step order, native cleanup copy, privacy copy, completion behavior, and window sizing.
-- Open Find Icon with Pro disabled, Pro enabled without Accessibility, and Pro enabled with a seeded scan; confirm focus, debounce, keyboard selection, empty/unavailable states, and move context menu actions are intact.
-- Open Second Bar with Pro disabled, Pro enabled without Accessibility, and Pro enabled with icons available; confirm sizing, positioning, outside-click dismissal, keyboard handling, icon cache loading, and unavailable copy.
+- Open Find Icon with Pro disabled, Pro enabled without Accessibility, and Pro enabled with a seeded scan; confirm native utility chrome, focus, debounce, keyboard selection, empty/unavailable states, and move context menu actions are intact.
+- Open Second Bar with Pro disabled, Pro enabled without Accessibility, and Pro enabled with icons available; confirm native utility chrome, sizing, positioning, outside-click dismissal, keyboard handling, icon cache loading, and unavailable copy.
 - Show the drag hint from the status menu; confirm it anchors to the separator/control item, uses the compact instructional popover, and closes transiently.
 
 ### Native status menu
 
 - Open the status menu from the control item and separator right-click path.
-- Confirm command groups are visually separated: visibility, Pro/floating tools, separator help, settings/diagnostics, about/quit.
+- Confirm command groups are visually separated: Visibility, Find & Bars, Pro Features, Layout, Recovery, and app-level commands.
 - Confirm key equivalents still work for Toggle Hidden Items, Find Icon, Toggle Second Bar, Refresh Menu Bar Items, Settings, and Quit.
 - Pause and resume automation from the menu and confirm the dynamic title updates without changing Basic Mode behavior.
+- In a fresh Basic Mode profile, complete onboarding, use the status menu to expand/collapse hidden items, open Settings, open Diagnostics, show the drag hint, and quit/relaunch without any sensitive permission prompts.

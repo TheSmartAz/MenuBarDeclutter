@@ -93,6 +93,7 @@ struct SearchSettingsView: View {
                                 settingsStore.resetSearchHotkeyToDefault()
                                 onChange?()
                             }
+                            .controlSize(.small)
                         }
                     }
                 }
@@ -150,7 +151,7 @@ struct SearchRequirementRow: View {
             subtitle: detail,
             iconTint: isSatisfied ? .green : .orange
         ) {
-            HStack(spacing: 12) {
+            VStack(alignment: .trailing, spacing: 8) {
                 ClearGlassStatusValue(
                     text: status,
                     style: isSatisfied ? .success : .warning
@@ -160,6 +161,7 @@ struct SearchRequirementRow: View {
                     Button(actionTitle) {
                         action()
                     }
+                    .controlSize(.small)
                 }
             }
         }

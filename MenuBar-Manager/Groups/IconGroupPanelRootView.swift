@@ -30,11 +30,7 @@ struct IconGroupPanelRootView: View {
             footer
         }
         .frame(width: 560, height: 420)
-        .background(.regularMaterial, in: .rect(cornerRadius: 12))
-        .overlay {
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(.primary.opacity(0.14), lineWidth: 1)
-        }
+        .background(Color(nsColor: .windowBackgroundColor))
         .onAppear {
             selectedID = matchedSnapshots.first?.id
             searchFocused = true
@@ -63,41 +59,38 @@ struct IconGroupPanelRootView: View {
     }
 
     private var header: some View {
-        HStack(spacing: 12) {
-            Image(systemName: group.symbolName ?? "folder")
-                .font(.title2)
-                .foregroundStyle(.secondary)
-                .frame(width: 32)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Image(systemName: group.symbolName ?? "folder")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 24)
 
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 8) {
-                    Text(group.name)
-                        .font(.title3.bold())
-                        .lineLimit(1)
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 8) {
+                        Text(group.name)
+                            .font(.title3.bold())
+                            .lineLimit(1)
 
-                    if group.isProtected {
-                        Image(systemName: "lock.fill")
-                            .foregroundStyle(.secondary)
+                        if group.isProtected {
+                            Image(systemName: "lock.fill")
+                                .foregroundStyle(.secondary)
+                        }
                     }
+
+                    Text("\(matchedSnapshots.count) available item\(matchedSnapshots.count == 1 ? "" : "s")")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
                 }
 
-                Text("\(matchedSnapshots.count) available item\(matchedSnapshots.count == 1 ? "" : "s")")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
+                Spacer()
             }
 
-            Spacer()
-
-            SearchField("Search group", text: $searchQuery, width: 190)
-
-            Button("Close", systemImage: "xmark") {
-                onDismiss()
-            }
-            .labelStyle(.iconOnly)
-            .buttonStyle(.bordered)
-            .help("Close")
+            SearchField("Search group", text: $searchQuery)
         }
-        .padding(16)
+        .controlSize(.small)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
     }
 
     private var content: some View {
@@ -108,7 +101,7 @@ struct IconGroupPanelRootView: View {
             } else {
                 ScrollViewReader { proxy in
                     ScrollView {
-                        LazyVStack(spacing: 0) {
+                        LazyVStack(spacing: 6) {
                             ForEach(matchedSnapshots) { snapshot in
                                 IconGroupPanelItemRowView(
                                     snapshot: snapshot,
@@ -118,12 +111,9 @@ struct IconGroupPanelRootView: View {
                                     activate(snapshot)
                                 }
                                 .id(snapshot.id)
-
-                                ClearGlassDivider()
                             }
                         }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
+                        .padding(12)
                     }
                     .onChange(of: selectedID) { _, newValue in
                         guard let newValue else { return }

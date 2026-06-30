@@ -14,11 +14,32 @@ pass() {
   echo "PASS: $*"
 }
 
+search_to_file() {
+  local pattern="$1"
+  local output_file="$2"
+  shift 2
+  if command -v rg >/dev/null 2>&1; then
+    rg -n "$pattern" "$@" >"$output_file" 2>/dev/null
+  else
+    grep -R -n -E "$pattern" "$@" >"$output_file" 2>/dev/null
+  fi
+}
+
+contains_pattern() {
+  local pattern="$1"
+  shift
+  if command -v rg >/dev/null 2>&1; then
+    rg -q "$pattern" "$@"
+  else
+    grep -E -q "$pattern" "$@"
+  fi
+}
+
 check_absent() {
   local description="$1"
   local pattern="$2"
   shift 2
-  if rg -n "$pattern" "$@" >/tmp/menubardeclutter-privacy-match.txt 2>/dev/null; then
+  if search_to_file "$pattern" /tmp/menubardeclutter-privacy-match.txt "$@"; then
     fail "$description"
     sed -n '1,12p' /tmp/menubardeclutter-privacy-match.txt
   else
@@ -41,25 +62,25 @@ check_absent "No Apple Events usage string is registered" "NSAppleEventsUsageDes
 check_absent "No Input Monitoring usage string is registered" "NSInputMonitoringUsageDescription|Input Monitoring" Config MenuBar-Manager.xcodeproj
 check_absent "No direct network client APIs or analytics SDK names are present in app code" "URLSession|NWConnection|import[[:space:]]+Network|Sentry|Firebase|TelemetryDeck|Mixpanel|Amplitude" MenuBar-Manager
 
-if rg -n "AXIsProcessTrusted|AXUIElement|AccessibilityPermissionService|AXMenuBarScanner" MenuBar-Manager >/tmp/menubardeclutter-ax-match.txt 2>/dev/null; then
+if search_to_file "AXIsProcessTrusted|AXUIElement|AccessibilityPermissionService|AXMenuBarScanner" /tmp/menubardeclutter-ax-match.txt MenuBar-Manager; then
   pass "Accessibility references are present for opt-in Pro discovery"
 else
   fail "Expected Accessibility references were not found"
 fi
 
-if plutil -extract CFBundleURLTypes xml1 -o - Config/MenuBarDeclutter-Info.plist | rg -q "menubardeclutter"; then
+if plutil -extract CFBundleURLTypes xml1 -o - Config/MenuBarDeclutter-Info.plist | contains_pattern "menubardeclutter"; then
   pass "Local menubardeclutter:// URL scheme is registered"
 else
   fail "menubardeclutter:// URL scheme is missing"
 fi
 
-if rg -n "Application Support|MenuBarDeclutter|AppSupportPaths" MenuBar-Manager/Core MenuBar-Manager/Profiles >/tmp/menubardeclutter-appsupport-match.txt 2>/dev/null; then
+if search_to_file "Application Support|MenuBarDeclutter|AppSupportPaths" /tmp/menubardeclutter-appsupport-match.txt MenuBar-Manager/Core MenuBar-Manager/Profiles; then
   pass "App Support paths are local MenuBarDeclutter paths"
 else
   fail "Could not confirm local App Support path usage"
 fi
 
-if rg -n "excludes|Excluded by design|live search text|selected item identity|screenshots|screen contents" MenuBar-Manager/Core/DiagnosticsExporter.swift >/tmp/menubardeclutter-export-match.txt 2>/dev/null; then
+if search_to_file "excludes|Excluded by design|live search text|selected item identity|screenshots|screen contents" /tmp/menubardeclutter-export-match.txt MenuBar-Manager/Core/DiagnosticsExporter.swift; then
   pass "Diagnostics exporter documents privacy exclusions"
 else
   fail "Diagnostics exporter privacy exclusions were not found"
@@ -71,12 +92,12 @@ if [[ -n "$APP_PATH" ]]; then
   else
     INFO_PLIST="$APP_PATH/Contents/Info.plist"
     if [[ -f "$INFO_PLIST" ]]; then
-      if /usr/libexec/PlistBuddy -c "Print :LSUIElement" "$INFO_PLIST" 2>/dev/null | rg -q "true|1|YES"; then
+      if /usr/libexec/PlistBuddy -c "Print :LSUIElement" "$INFO_PLIST" 2>/dev/null | contains_pattern "true|1|YES"; then
         pass "Built app has LSUIElement enabled"
       else
         fail "Built app does not have LSUIElement enabled"
       fi
-      if /usr/libexec/PlistBuddy -c "Print :CFBundleURLTypes:0:CFBundleURLSchemes:0" "$INFO_PLIST" 2>/dev/null | rg -q "^menubardeclutter$"; then
+      if /usr/libexec/PlistBuddy -c "Print :CFBundleURLTypes:0:CFBundleURLSchemes:0" "$INFO_PLIST" 2>/dev/null | contains_pattern "^menubardeclutter$"; then
         pass "Built app URL scheme is menubardeclutter"
       else
         fail "Built app URL scheme is missing or different"
@@ -93,7 +114,7 @@ if [[ -n "$APP_PATH" ]]; then
     fi
 
     if codesign -d --entitlements :- "$APP_PATH" >/tmp/menubardeclutter-entitlements.plist 2>/dev/null; then
-      if rg -q "com\\.apple\\.security\\.network\\.(client|server)" /tmp/menubardeclutter-entitlements.plist; then
+      if contains_pattern "com\\.apple\\.security\\.network\\.(client|server)" /tmp/menubardeclutter-entitlements.plist; then
         fail "Built app has network entitlements"
       else
         pass "Built app has no network entitlements"
@@ -105,7 +126,7 @@ if [[ -n "$APP_PATH" ]]; then
     EXECUTABLE_NAME="$(/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$INFO_PLIST" 2>/dev/null || true)"
     EXECUTABLE="$APP_PATH/Contents/MacOS/$EXECUTABLE_NAME"
     if [[ -f "$EXECUTABLE" ]]; then
-      if otool -L "$EXECUTABLE" | rg -q "ScreenCaptureKit"; then
+      if otool -L "$EXECUTABLE" | contains_pattern "ScreenCaptureKit"; then
         fail "Built app executable links ScreenCaptureKit"
       else
         pass "Built app executable does not link ScreenCaptureKit"

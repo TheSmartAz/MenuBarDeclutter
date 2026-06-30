@@ -20,8 +20,13 @@ final class MenuBar_ManagerUITestsLaunchTests: XCTestCase {
     @MainActor
     func testLaunch() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing"]
+        app.launchArguments = ["--ui-testing", "--ui-testing-show-general"]
         app.launch()
+
+        XCTAssertTrue(
+            app.descendants(matching: .any)["settings.page.general"].waitForExistence(timeout: 10),
+            "Expected Settings to open on the General page for launch screenshot capture."
+        )
 
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = "Launch Screen"

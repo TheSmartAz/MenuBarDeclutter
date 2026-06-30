@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 
 struct SecondBarItemView: View {
@@ -7,36 +6,26 @@ struct SecondBarItemView: View {
     let showLabels: Bool
     let isSelected: Bool
 
-    private let iconCache: AppIconCache
-
-    @State private var appIcon: NSImage
-
-    private var iconLookup: AppIconCache.Lookup {
-        AppIconCache.Lookup(snapshot: snapshot)
-    }
-
     @MainActor
     init(
         snapshot: MenuBarItemSnapshot,
         iconSize: Double,
         showLabels: Bool,
-        isSelected: Bool,
-        iconCache: AppIconCache = .shared
+        isSelected: Bool
     ) {
         self.snapshot = snapshot
         self.iconSize = iconSize
         self.showLabels = showLabels
         self.isSelected = isSelected
-        self.iconCache = iconCache
-        _appIcon = State(initialValue: iconCache.cachedIcon(for: snapshot) ?? iconCache.placeholderIcon)
     }
 
     var body: some View {
         VStack(spacing: 6) {
-            Image(nsImage: appIcon)
-                .resizable()
-                .frame(width: iconSize, height: iconSize)
-                .clipShape(.rect(cornerRadius: min(8, iconSize / 4)))
+            AppIconView(
+                snapshot: snapshot,
+                size: CGFloat(iconSize),
+                cornerRadius: CGFloat(min(8, iconSize / 4))
+            )
                 .overlay(alignment: .topTrailing) {
                     ZoneBadge(zone: snapshot.zone)
                         .offset(x: 5, y: -5)
@@ -61,16 +50,22 @@ struct SecondBarItemView: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .frame(minWidth: max(72, iconSize + 28), minHeight: showLabels ? 92 : iconSize + 22)
-        .background(isSelected ? Color.accentColor.opacity(0.18) : Color.clear, in: .rect(cornerRadius: 8))
+        .background(itemBackground, in: .rect(cornerRadius: 7))
+        .overlay {
+            RoundedRectangle(cornerRadius: 7)
+                .stroke(itemStroke, lineWidth: 0.5)
+        }
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(displayTitle), \(snapshot.zone.displayName)")
-        .task(id: iconLookup) { @MainActor in
-            let resolvedIcon = iconCache.icon(for: snapshot)
-            if appIcon !== resolvedIcon {
-                appIcon = resolvedIcon
-            }
-        }
+    }
+
+    private var itemBackground: Color {
+        isSelected ? Color.accentColor.opacity(0.16) : Color(nsColor: .controlBackgroundColor).opacity(0.34)
+    }
+
+    private var itemStroke: Color {
+        isSelected ? Color.accentColor.opacity(0.55) : Color(nsColor: .separatorColor).opacity(0.24)
     }
 
     private var displayTitle: String {
