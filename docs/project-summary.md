@@ -36,7 +36,7 @@ The stable claim is Basic Mode: app-owned menu bar controls, local settings, loc
 
 The latest dated installed-app QA record is `docs/testing/installed-app-qa-2026-06-30-native-redesign.md`. It records a dry-run release archive/export/package/install pass, installed-app verification, privacy-boundary verification, native Settings page inspection, health report export fix and retest, URL scheme smoke, no-network watch, clean crash-marker recovery, Launch at Login enable/disable/restore, and `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS'` passing with 410 Swift tests and 11 UI tests.
 
-Public distribution is still blocked by external signing and notarization requirements. The repo has Developer ID export and notarization tooling, but this machine/session only has an Apple Development identity; real Developer ID export, notarization, stapling, and Gatekeeper acceptance require external credentials. Dry-run artifacts are expected to fail `spctl` and stapler validation until notarized.
+The current distribution stage is internal/local alpha. Public Developer ID distribution is intentionally deferred, so the repo uses dry-run archive/export/package/install flows for this stage. Developer ID export and notarization tooling remain available, but this machine/session only has an Apple Development identity; real Developer ID export, notarization, stapling, and Gatekeeper acceptance require external credentials when public distribution becomes in scope. Dry-run artifacts are expected to fail `spctl` and stapler validation until notarized.
 
 Manual system QA remains partial. Live menu bar interaction, hover-only behavior, notch and external-display layouts, sleep/wake, logout/login or restart, Accessibility grant/revoke, real Shortcuts execution, Touch ID / LocalAuthentication behavior, Spacing Labs apply/restore, and real icon moving still require hands-on validation.
 
@@ -360,7 +360,7 @@ For docs-only changes, a full build/test run is usually not necessary. For code,
 - Import/export safe apply is merge-by-ID, not destructive full restore or stable competitor migration.
 - Focus and Wi-Fi trigger providers remain model-level/deferred until safe providers exist.
 - Spacing Labs apply/restore/reset UI remains constrained until backup/restore behavior is sufficiently proven.
-- Developer ID export/notarization is blocked until external Apple credentials are installed or injected.
+- Developer ID export/notarization is deferred for the current internal/local alpha stage and requires external Apple credentials when public distribution becomes in scope.
 - Several system behaviors still require physical QA outside repository automation.
 
 ## Phase History
@@ -387,7 +387,7 @@ Immediate work:
 
 - Keep Phase 13 Command Center adoption moving across remaining advanced actions.
 - Finish physical/manual QA gates for live menu bar behavior and OS state changes.
-- Install Developer ID Application credentials and run real notarization/stapling/Gatekeeper validation.
+- Keep Developer ID Application credentials and real notarization/stapling/Gatekeeper validation deferred until public distribution becomes in scope.
 - Keep public docs and Settings copy aligned with Stable/Preview/Labs/Experimental/Deferred statuses.
 
 Near-term hardening:
