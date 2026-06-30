@@ -401,6 +401,10 @@ final class SettingsImportService {
             return applyBool(rawValue) { settingsStore.privateAccessProtectIconMoving = $0 }
         case .privateAccessProtectSpacingLabs:
             return applyBool(rawValue) { settingsStore.privateAccessProtectSpacingLabs = $0 }
+        case .privateAccessProtectProfileApply:
+            return applyBool(rawValue) { settingsStore.privateAccessProtectProfileApply = $0 }
+        case .privateAccessProtectAutomationCommands:
+            return applyBool(rawValue) { settingsStore.privateAccessProtectAutomationCommands = $0 }
         case .privateAccessUnlockDurationSeconds:
             return applyDouble(rawValue) { settingsStore.privateAccessUnlockDurationSeconds = $0 }
         case .privateAccessAllowDevicePasswordFallback:

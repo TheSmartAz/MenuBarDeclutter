@@ -105,7 +105,6 @@ nonisolated struct LayoutCapacityService {
         let visibleCount = scanResult.visibleCount
         let hiddenCount = scanResult.hiddenCount
         let alwaysHiddenCount = scanResult.alwaysHiddenCount
-        let unknownCount = scanResult.unknownCount
         let totalCount = scanResult.snapshots.count
 
         // Calculate occupied width from AX frames.

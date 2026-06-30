@@ -1,11 +1,23 @@
 # Phase 13 v0.1.1 Pro Workflow Completion Progress
 
 Date started: 2026-06-29
-Last updated: 2026-06-29
+Last updated: 2026-06-30
 
 ## Summary
 
 Phase 13 implementation is underway on the `v0.1.1` release line. This phase is not `v0.2`.
+
+2026-06-30 audit follow-up:
+
+- Rechecked Phase 12/13 plan alignment with parallel subagent audits.
+- Added the missing Phase 13 feature note files under `docs/features/` plus `docs/release/v0.1.1-pro-workflow-notes.md`, with deferred items called out explicitly instead of implied as complete.
+- Closed the App Intents result gap so Shortcut actions return user-visible Command Center result messages.
+- Added opt-in Private Access toggles for profile apply and automation commands, and routed automation-source commands through the automation Private Access gate.
+- Routed Smart Trigger profile apply through Command Center so profile gates are shared with App Intents, URL automation, Dynamic Hotkeys, and Settings apply.
+- Added a latest-backup restore path to the Import / Export assistant and focused coverage for backup ordering plus experimental-state restore.
+- Fixed the Search unavailable-state accessibility label used by UI preflight.
+- Fixed `scripts/build_release.sh` custom `APP_PATH` verification handoff.
+- Verification after the audit: focused Search UI test PASS, full `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -quiet` PASS, full `RESULT_BUNDLE_PATH=/tmp/menubardeclutter-qa-preflight-current.xcresult scripts/qa_preflight.sh` PASS, custom `APP_PATH` release dry run PASS, final canonical build PASS, privacy boundary PASS, and `git diff --check` PASS.
 
 Branch context:
 

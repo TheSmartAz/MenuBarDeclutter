@@ -353,6 +353,55 @@ struct SettingsExportImportTests {
         #expect(backupService.listBackups() == [backupURL])
         #expect(try backupService.readBackup(at: backupURL) == data)
     }
+
+    @Test func importBackupServiceReturnsLatestBackupFirst() throws {
+        let backupsDirectory = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+            .appendingPathComponent("ImportBackupLatestTests-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: backupsDirectory) }
+
+        var now = Date(timeIntervalSince1970: 0)
+        let backupService = ImportBackupService(
+            backupsDirectory: backupsDirectory,
+            now: { now }
+        )
+
+        let older = try backupService.createBackup(data: Data(#"{"older":true}"#.utf8))
+        now = Date(timeIntervalSince1970: 3_600)
+        let newer = try backupService.createBackup(data: Data(#"{"newer":true}"#.utf8))
+
+        #expect(backupService.listBackups() == [newer, older])
+        #expect(backupService.latestBackup() == newer)
+    }
+
+    @Test func backupPackageRestoreCanReapplyPreviousExperimentalState() throws {
+        let suiteName = "backup-restore-tests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let store = SettingsStore(defaults: defaults)
+        store.iconMovingEnabled = true
+        store.menuBarSpacingLabsEnabled = true
+        store.smartTriggersEnabled = true
+        let logger = DiagnosticsLogger()
+        let exportService = SettingsExportService(settingsStore: store, diagnosticsLogger: logger)
+        let importService = SettingsImportService(diagnosticsLogger: logger)
+        let backupPackage = exportService.createExportPackage()
+
+        store.iconMovingEnabled = false
+        store.menuBarSpacingLabsEnabled = false
+        store.smartTriggersEnabled = false
+
+        let result = try importService.apply(
+            package: backupPackage,
+            settingsStore: store,
+            importExperimentalSettings: true
+        )
+
+        #expect(store.iconMovingEnabled)
+        #expect(store.menuBarSpacingLabsEnabled)
+        #expect(store.smartTriggersEnabled)
+        #expect(result.skippedExperimentalFlags.isEmpty)
+    }
 }
 
 private func makeTempPaths() -> AppSupportPaths {

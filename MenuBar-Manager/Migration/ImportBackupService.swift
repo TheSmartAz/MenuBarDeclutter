@@ -35,12 +35,42 @@ final class ImportBackupService {
         guard let urls = try? fileManager.contentsOfDirectory(at: backupsDirectory, includingPropertiesForKeys: [.creationDateKey]) else {
             return []
         }
-        return urls.filter { $0.pathExtension == "json" }
+        return urls
+            .filter { $0.pathExtension == "json" }
+            .sorted { lhs, rhs in
+                let lhsDate = backupDate(for: lhs)
+                let rhsDate = backupDate(for: rhs)
+                if lhsDate == rhsDate {
+                    return lhs.lastPathComponent > rhs.lastPathComponent
+                }
+                return lhsDate > rhsDate
+            }
+    }
+
+    /// Return the most recent backup by filename timestamp, falling back to file metadata.
+    func latestBackup() -> URL? {
+        listBackups().first
     }
 
     /// Read a backup file.
     func readBackup(at url: URL) throws -> Data {
         try Data(contentsOf: url)
+    }
+
+    private func backupDate(for url: URL) -> Date {
+        let basename = url.deletingPathExtension().lastPathComponent
+        let timestampLength = "yyyy-MM-dd_HHmmss".count
+        if basename.count >= timestampLength,
+           let date = backupTimestampFormatter.date(from: String(basename.suffix(timestampLength))) {
+            return date
+        }
+
+        if let values = try? url.resourceValues(forKeys: [.creationDateKey, .contentModificationDateKey]),
+           let date = values.creationDate ?? values.contentModificationDate {
+            return date
+        }
+
+        return .distantPast
     }
 
     private let backupTimestampFormatter: DateFormatter = {

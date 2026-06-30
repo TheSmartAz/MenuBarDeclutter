@@ -8,6 +8,7 @@ nonisolated enum MenuBarCommandSource: String, Equatable, Hashable, Sendable {
     case iconPanel
     case groupPanel
     case dynamicHotkey
+    case smartTrigger
     case appIntent
     case urlAutomation
     case crowdedRescue

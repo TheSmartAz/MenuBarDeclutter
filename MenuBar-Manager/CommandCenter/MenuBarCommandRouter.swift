@@ -196,6 +196,17 @@ final class MenuBarCommandRouter {
             )
         }
 
+        if command.source.isAutomationSource,
+           let privateAccess,
+           !privateAccess.canAccessWithoutPrompt(.appIntent(command.action.rawValue)) {
+            return .unavailable(
+                status: .requiresUnlock,
+                message: "This automation command requires Private Access unlock.",
+                diagnosticReason: "privateAccessLocked",
+                failedGate: .privateAccess
+            )
+        }
+
         if let resource = command.action.privateAccessResource(for: command.target),
            let privateAccess,
            !privateAccess.canAccessWithoutPrompt(resource) {

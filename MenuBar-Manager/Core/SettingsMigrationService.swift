@@ -381,6 +381,10 @@ struct SettingsMigrationService {
             return settingsStore.privateAccessProtectIconMoving.description
         case .privateAccessProtectSpacingLabs:
             return settingsStore.privateAccessProtectSpacingLabs.description
+        case .privateAccessProtectProfileApply:
+            return settingsStore.privateAccessProtectProfileApply.description
+        case .privateAccessProtectAutomationCommands:
+            return settingsStore.privateAccessProtectAutomationCommands.description
         case .privateAccessUnlockDurationSeconds:
             return settingsStore.privateAccessUnlockDurationSeconds.description
         case .privateAccessLastAuthStatus:

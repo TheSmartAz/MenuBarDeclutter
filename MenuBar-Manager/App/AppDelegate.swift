@@ -55,10 +55,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
+        let shouldSeedMenuBarItems = launchArguments.contains("--ui-testing-seed-menu-bar-items")
+
         if launchArguments.contains("--ui-testing-show-diagnostics") {
             environment.showDiagnostics()
         } else if launchArguments.contains("--ui-testing-show-privacy") {
             environment.showSettings(section: .privacy)
+        } else if launchArguments.contains("--ui-testing-show-menu-bar-items") {
+            environment.showSettings(section: .menuBarItems)
         } else if launchArguments.contains("--ui-testing-show-second-bar-settings") {
             environment.showSettings(section: .secondBar)
         } else if launchArguments.contains("--ui-testing-show-search") {
@@ -68,6 +72,115 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else if launchArguments.contains("--ui-testing-show-settings") {
             environment.showSettings()
         }
+
+        if shouldSeedMenuBarItems {
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 700_000_000)
+                seedMenuBarItemsUITestingSnapshot(environment)
+            }
+        }
+    }
+
+    private func seedMenuBarItemsUITestingSnapshot(_ environment: AppEnvironment) {
+        let scanTimestamp = Date()
+        let snapshots = [
+            MenuBarItemSnapshot(
+                id: "ui-test-control-center",
+                title: "Control Center",
+                role: "AXMenuBarItem",
+                subrole: nil,
+                frame: CGRect(x: 1466, y: 0, width: 26, height: 24),
+                owningProcessIdentifier: 101,
+                owningApplicationName: "Control Center",
+                bundleIdentifier: "com.apple.controlcenter",
+                zone: .visible,
+                isLikelySystemItem: true,
+                scanTimestamp: scanTimestamp
+            ),
+            MenuBarItemSnapshot(
+                id: "ui-test-wifi",
+                title: "Wi-Fi",
+                role: "AXMenuBarItem",
+                subrole: nil,
+                frame: CGRect(x: 1432, y: 0, width: 28, height: 24),
+                owningProcessIdentifier: 101,
+                owningApplicationName: "Control Center",
+                bundleIdentifier: "com.apple.controlcenter",
+                zone: .visible,
+                isLikelySystemItem: true,
+                scanTimestamp: scanTimestamp
+            ),
+            MenuBarItemSnapshot(
+                id: "ui-test-calendar",
+                title: "Calendar",
+                role: "AXMenuBarItem",
+                subrole: nil,
+                frame: CGRect(x: 1344, y: 0, width: 31, height: 24),
+                owningProcessIdentifier: 502,
+                owningApplicationName: "Fantastical",
+                bundleIdentifier: "com.flexibits.fantastical2.mac",
+                zone: .hidden,
+                isLikelySystemItem: false,
+                scanTimestamp: scanTimestamp
+            ),
+            MenuBarItemSnapshot(
+                id: "ui-test-sync",
+                title: "Sync",
+                role: "AXMenuBarItem",
+                subrole: "AXUnknown",
+                frame: CGRect(x: 1296, y: 0, width: 29, height: 24),
+                owningProcessIdentifier: 744,
+                owningApplicationName: "Dropbox",
+                bundleIdentifier: "com.getdropbox.dropbox",
+                zone: .hidden,
+                isLikelySystemItem: false,
+                scanTimestamp: scanTimestamp
+            ),
+            MenuBarItemSnapshot(
+                id: "ui-test-vpn",
+                title: "VPN",
+                role: "AXMenuBarItem",
+                subrole: nil,
+                frame: CGRect(x: 1238, y: 0, width: 26, height: 24),
+                owningProcessIdentifier: 881,
+                owningApplicationName: "Tailscale",
+                bundleIdentifier: "io.tailscale.ipn.macos",
+                zone: .alwaysHidden,
+                isLikelySystemItem: false,
+                scanTimestamp: scanTimestamp
+            ),
+            MenuBarItemSnapshot(
+                id: "ui-test-unknown",
+                title: nil,
+                role: "AXMenuBarItem",
+                subrole: nil,
+                frame: nil,
+                owningProcessIdentifier: nil,
+                owningApplicationName: nil,
+                bundleIdentifier: nil,
+                zone: .unknown,
+                isLikelySystemItem: false,
+                scanTimestamp: scanTimestamp
+            )
+        ]
+        let result = MenuBarScanResult(
+            snapshots: snapshots,
+            scanTimestamp: scanTimestamp,
+            axFailuresCount: 0
+        )
+
+        environment.liveStatus.accessibilityPermissionStatus = .granted
+        environment.liveStatus.scannedMenuBarItems = result.snapshots
+        environment.liveStatus.lastMenuBarScanTime = result.scanTimestamp
+        environment.liveStatus.menuBarScanFailuresCount = result.axFailuresCount
+        environment.liveStatus.menuBarScanVisibleCount = result.visibleCount
+        environment.liveStatus.menuBarScanHiddenCount = result.hiddenCount
+        environment.liveStatus.menuBarScanAlwaysHiddenCount = result.alwaysHiddenCount
+        environment.liveStatus.menuBarScanUnknownCount = result.unknownCount
+        environment.liveStatus.searchIndexItemCount = result.snapshots.count
+        environment.diagnosticsLogger.log(
+            "Seeded UI testing menu bar item snapshot with \(result.snapshots.count) items."
+        )
     }
 
     private var launchArguments: Set<String> {

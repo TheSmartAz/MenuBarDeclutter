@@ -9,6 +9,8 @@ nonisolated struct PrivateAccessPolicy: Equatable, Sendable {
     var protectFindIcon: Bool
     var protectIconMoving: Bool
     var protectSpacingLabs: Bool
+    var protectProfileApply: Bool
+    var protectAutomationCommands: Bool
     var protectedGroupsRequireAuth: Bool
     var unlockDurationSeconds: Double
     var allowDevicePasswordFallback: Bool
@@ -21,6 +23,8 @@ nonisolated struct PrivateAccessPolicy: Equatable, Sendable {
         self.protectFindIcon = store.privateAccessProtectFindIcon
         self.protectIconMoving = store.privateAccessProtectIconMoving
         self.protectSpacingLabs = store.privateAccessProtectSpacingLabs
+        self.protectProfileApply = store.privateAccessProtectProfileApply
+        self.protectAutomationCommands = store.privateAccessProtectAutomationCommands
         self.protectedGroupsRequireAuth = store.protectedGroupsRequireAuth
         self.unlockDurationSeconds = store.privateAccessUnlockDurationSeconds
         self.allowDevicePasswordFallback = store.privateAccessAllowDevicePasswordFallback
@@ -43,11 +47,11 @@ nonisolated struct PrivateAccessPolicy: Equatable, Sendable {
         case .protectedGroup:
             return protectedGroupsRequireAuth
         case .profileApply:
-            return false
+            return protectProfileApply
         case .layoutSpacingLabs:
             return protectSpacingLabs
         case .appIntent:
-            return false
+            return protectAutomationCommands
         }
     }
 }

@@ -37,6 +37,8 @@ final class SettingsExportService {
             protectFindIcon: settingsStore.privateAccessProtectFindIcon,
             protectIconMoving: settingsStore.privateAccessProtectIconMoving,
             protectSpacingLabs: settingsStore.privateAccessProtectSpacingLabs,
+            protectProfileApply: settingsStore.privateAccessProtectProfileApply,
+            protectAutomationCommands: settingsStore.privateAccessProtectAutomationCommands,
             protectedGroupsRequireAuth: settingsStore.protectedGroupsRequireAuth,
             unlockDurationSeconds: settingsStore.privateAccessUnlockDurationSeconds,
             allowDevicePasswordFallback: settingsStore.privateAccessAllowDevicePasswordFallback
@@ -255,6 +257,10 @@ final class SettingsExportService {
             return settingsStore.privateAccessProtectIconMoving.description
         case .privateAccessProtectSpacingLabs:
             return settingsStore.privateAccessProtectSpacingLabs.description
+        case .privateAccessProtectProfileApply:
+            return settingsStore.privateAccessProtectProfileApply.description
+        case .privateAccessProtectAutomationCommands:
+            return settingsStore.privateAccessProtectAutomationCommands.description
         case .privateAccessUnlockDurationSeconds:
             return settingsStore.privateAccessUnlockDurationSeconds.description
         case .privateAccessLastAuthStatus:

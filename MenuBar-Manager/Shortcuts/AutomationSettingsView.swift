@@ -97,7 +97,7 @@ struct AutomationSettingsView: View {
         ClearGlassDivider()
         shortcutActionRow(.resumeAutomation)
         ClearGlassDivider()
-        shortcutActionRow(.setLayoutSpacingPreset)
+        shortcutActionRow(.previewLayoutSpacingPreset)
     }
 
     private func shortcutActionRow(_ action: AutomationShortcutAction) -> some View {
@@ -137,7 +137,7 @@ struct AutomationShortcutAction: Identifiable, Equatable, Sendable {
     static let applyProfile = AutomationShortcutAction(title: "Apply Profile", gate: .profileApply)
     static let pauseAutomation = AutomationShortcutAction(title: "Pause Automation", gate: .none)
     static let resumeAutomation = AutomationShortcutAction(title: "Resume Automation", gate: .none)
-    static let setLayoutSpacingPreset = AutomationShortcutAction(title: "Set Layout Spacing Preset", gate: .spacingLabs)
+    static let previewLayoutSpacingPreset = AutomationShortcutAction(title: "Preview Layout Spacing Preset", gate: .spacingLabs)
 
     static let allActions: [AutomationShortcutAction] = [
         .expandMenuBarItems,
@@ -150,7 +150,7 @@ struct AutomationShortcutAction: Identifiable, Equatable, Sendable {
         .applyProfile,
         .pauseAutomation,
         .resumeAutomation,
-        .setLayoutSpacingPreset
+        .previewLayoutSpacingPreset
     ]
 
     func status(

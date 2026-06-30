@@ -115,7 +115,7 @@ echo
 SCHEME="$scheme" ARCHIVE_PATH="$ARCHIVE_PATH" scripts/release_archive.sh
 DRY_RUN="$DRY_RUN" ARCHIVE_PATH="$ARCHIVE_PATH" EXPORT_DIR="$EXPORT_DIR" APP_PATH="$APP_PATH" scripts/release_export_app.sh
 VERSION="$VERSION" APP_PATH="$APP_PATH" ZIP_PATH="$ZIP_PATH" scripts/release_package_zip.sh
-EXPECTED_MARKETING_VERSION="$VERSION" EXPECTED_BUILD_VERSION="${EXPECTED_BUILD_VERSION:-2}" scripts/verify_release_artifact.sh "$APP_PATH"
+APP_PATH="$APP_PATH" EXPECTED_MARKETING_VERSION="$VERSION" EXPECTED_BUILD_VERSION="${EXPECTED_BUILD_VERSION:-2}" scripts/verify_release_artifact.sh
 
 if [[ "$NOTARIZE" -eq 1 ]]; then
   if [[ "$DRY_RUN" -eq 1 ]]; then

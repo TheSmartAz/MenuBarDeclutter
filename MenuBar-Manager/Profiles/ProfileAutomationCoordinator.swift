@@ -55,7 +55,8 @@ final class ProfileAutomationCoordinator {
             profileApplicationService: profileApplicationService,
             appSupportPaths: appSupportPaths,
             diagnosticsLogger: diagnosticsLogger,
-            liveStatus: liveStatus
+            liveStatus: liveStatus,
+            routeCommand: routeCommand
         )
     }
 

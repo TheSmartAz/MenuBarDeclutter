@@ -194,6 +194,35 @@ struct ProtectedActionGateTests {
         #expect(actionExecuted)
     }
 
+    @Test func profileApplyAndAutomationResourcesHonorOptInProtection() {
+        let suiteName = "pa-tests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let store = SettingsStore(defaults: defaults)
+        store.privateAccessEnabled = true
+        store.privateAccessProtectProfileApply = true
+        store.privateAccessProtectAutomationCommands = true
+
+        let logger = DiagnosticsLogger()
+        let mockAuth = MockAuthenticationService()
+        let coordinator = PrivateAccessCoordinator(
+            settingsStore: store,
+            diagnosticsLogger: logger,
+            authService: mockAuth
+        )
+        let gate = ProtectedActionGate(coordinator: coordinator)
+
+        #expect(!gate.canAccessWithoutPrompt(.profileApply))
+        #expect(!gate.canAccessWithoutPrompt(.appIntent("expand")))
+
+        store.privateAccessProtectProfileApply = false
+        store.privateAccessProtectAutomationCommands = false
+
+        #expect(gate.canAccessWithoutPrompt(.profileApply))
+        #expect(gate.canAccessWithoutPrompt(.appIntent("expand")))
+    }
+
     @Test func diagnosticsRedactProtectedGroupIdentifier() async throws {
         let suiteName = "pa-tests-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!

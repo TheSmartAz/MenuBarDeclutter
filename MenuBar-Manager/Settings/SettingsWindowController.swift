@@ -84,14 +84,14 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         )
 
         window.title = "\(AppConstants.displayName) Settings"
-        window.titleVisibility = .hidden
-        window.titlebarAppearsTransparent = true
-        window.toolbarStyle = .unifiedCompact
+        window.titleVisibility = .visible
+        window.titlebarAppearsTransparent = false
+        window.toolbarStyle = .unified
         window.contentViewController = NSHostingController(rootView: contentView)
-        window.backgroundColor = .clear
-        window.isOpaque = false
+        window.backgroundColor = .windowBackgroundColor
+        window.isOpaque = true
         window.isReleasedWhenClosed = false
-        window.minSize = NSSize(width: 920, height: 580)
+        window.minSize = NSSize(width: 980, height: 620)
 
         super.init(window: window)
 
