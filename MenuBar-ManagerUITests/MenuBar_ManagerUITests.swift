@@ -168,19 +168,80 @@ final class MenuBar_ManagerUITests: XCTestCase {
         ]
 
         for page in pages {
-            try XCTContext.runActivity(named: "Visual smoke: \(page.name)") { _ in
+            XCTContext.runActivity(named: "Visual smoke: \(page.name)") { _ in
                 let app = launchApp(opening: page.arguments)
                 defer { app.terminate() }
 
+                let window = assertSettingsWindow(in: app)
                 assertElement(page.pageIdentifier, in: app, timeout: 10)
                 assertStaticText(page.expectedText, in: app, timeout: 5)
 
-                let attachment = XCTAttachment(screenshot: app.screenshot())
+                let attachment = XCTAttachment(screenshot: window.screenshot())
                 attachment.name = "Settings - \(page.name)"
                 attachment.lifetime = .keepAlways
                 add(attachment)
             }
         }
+    }
+
+    @MainActor
+    func testSettingsSearchFieldFocusAndFiltering() throws {
+        let app = launchApp(opening: "--ui-testing-show-settings")
+        let window = assertSettingsWindow(in: app)
+        assertElement("settings.page.general", in: app, timeout: 10)
+
+        let searchField = app.searchFields.firstMatch
+        XCTAssertTrue(searchField.waitForExistence(timeout: 5), "Expected the Settings search field to exist.")
+        searchField.click()
+        searchField.typeText("privacy")
+
+        XCTAssertTrue(
+            app.staticTexts["Privacy"].waitForExistence(timeout: 5),
+            "Expected focused Settings search to reveal the Privacy sidebar result."
+        )
+
+        let value = String(describing: searchField.value ?? "")
+        XCTAssertTrue(
+            value.localizedStandardContains("privacy"),
+            "Expected typing to land in Settings search, got value: \(value)."
+        )
+
+        let attachment = XCTAttachment(screenshot: window.screenshot())
+        attachment.name = "Settings - Keyboard Search Focus"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    @MainActor
+    func testSearchPanelEscapeDismisses() throws {
+        let app = launchApp(opening: "--ui-testing-show-search")
+
+        assertStaticText("Find Icon Disabled", in: app)
+        app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
+
+        XCTAssertFalse(
+            app.staticTexts["Find Icon Disabled"].waitForExistence(timeout: 3),
+            "Expected Escape to dismiss the floating Find Icon panel."
+        )
+    }
+
+    @MainActor
+    func testSettingsWindowSizingAndAdvancedContentStructure() throws {
+        let app = launchApp(opening: "--ui-testing-show-advanced")
+        let window = assertSettingsWindow(in: app)
+
+        XCTAssertGreaterThanOrEqual(window.frame.width, 980)
+        XCTAssertGreaterThanOrEqual(window.frame.height, 620)
+        assertElement("settings.page.advanced", in: app, timeout: 10)
+        assertStaticText("Separator Geometry", in: app)
+
+        let developerNotes = app.staticTexts["Developer Notes"]
+        XCTAssertTrue(developerNotes.exists, "Expected Advanced page bottom content to exist.")
+
+        let attachment = XCTAttachment(screenshot: window.screenshot())
+        attachment.name = "Settings - Advanced Window Structure"
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 
     @MainActor
@@ -242,5 +303,22 @@ final class MenuBar_ManagerUITests: XCTestCase {
             file: file,
             line: line
         )
+    }
+
+    @MainActor
+    @discardableResult
+    private func assertSettingsWindow(
+        in app: XCUIApplication,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        let window = app.windows.firstMatch
+        XCTAssertTrue(
+            window.waitForExistence(timeout: 10),
+            "Expected the Settings window to exist.",
+            file: file,
+            line: line
+        )
+        return window
     }
 }

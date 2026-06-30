@@ -577,6 +577,7 @@ struct ClearGlassSettingsPage<Content: View>: View {
             .frame(maxWidth: 980, alignment: .topLeading)
             .frame(maxWidth: .infinity, alignment: .topLeading)
         }
+        .accessibilityIdentifier("settings.page.scroll")
         .background(Color(nsColor: .windowBackgroundColor))
     }
 }

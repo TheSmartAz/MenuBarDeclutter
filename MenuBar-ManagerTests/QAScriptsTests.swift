@@ -9,7 +9,8 @@ struct QAScriptsTests {
             "scripts/qa_build_fixture.sh",
             "scripts/qa_run_fixture.sh",
             "scripts/qa_stop_fixture.sh",
-            "scripts/qa_dogfood_preflight.sh"
+            "scripts/qa_dogfood_preflight.sh",
+            "scripts/export_visual_smoke_screenshots.sh"
         ]
 
         for script in scripts {
