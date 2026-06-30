@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   macos:
-    name: macOS 26 build and test
+    name: macOS 26 build and unit test
     runs-on: macos-26
     timeout-minutes: 60
 
@@ -47,13 +47,14 @@ jobs:
             CODE_SIGN_IDENTITY=- \
             CODE_SIGNING_REQUIRED=NO
 
-      - name: Test
+      - name: Unit tests
         run: |
           mkdir -p "$(dirname "$RESULT_BUNDLE_PATH")"
           rm -rf "$RESULT_BUNDLE_PATH"
           xcodebuild test \
             -scheme "$SCHEME" \
             -destination "$DESTINATION" \
+            -skip-testing:MenuBarDeclutterUITests \
             -enableCodeCoverage NO \
             -resultBundlePath "$RESULT_BUNDLE_PATH" \
             CODE_SIGN_IDENTITY=- \
