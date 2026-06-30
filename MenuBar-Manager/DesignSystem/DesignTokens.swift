@@ -77,7 +77,7 @@ enum DesignTokens {
             case .privacySafe:
                 .green
             case .permissionRequired:
-                .blue
+                .orange
             case .diagnostics:
                 .secondary
             case .experimental:
@@ -94,20 +94,20 @@ enum DesignTokens {
         var backgroundStyle: Color {
             switch self {
             case .neutral:
-                .primary.opacity(0.06)
+                Color(nsColor: .quaternaryLabelColor).opacity(0.10)
             case .disabled:
-                .secondary.opacity(0.08)
+                .secondary.opacity(0.07)
             default:
-                foregroundStyle.opacity(0.14)
+                foregroundStyle.opacity(0.08)
             }
         }
 
         var borderStyle: Color {
             switch self {
             case .neutral, .disabled, .diagnostics:
-                .secondary.opacity(0.22)
+                Color(nsColor: .separatorColor).opacity(0.48)
             default:
-                foregroundStyle.opacity(0.32)
+                foregroundStyle.opacity(0.20)
             }
         }
     }
@@ -119,12 +119,14 @@ struct ClearGlassSurfaceModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .background(.regularMaterial, in: .rect(cornerRadius: cornerRadius))
+            .background(
+                isProminent ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(Color(nsColor: .controlBackgroundColor)),
+                in: .rect(cornerRadius: cornerRadius)
+            )
             .overlay {
                 RoundedRectangle(cornerRadius: cornerRadius)
-                    .strokeBorder(.white.opacity(isProminent ? 0.32 : 0.18), lineWidth: DesignTokens.Stroke.hairline)
+                    .strokeBorder(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: DesignTokens.Stroke.hairline)
             }
-            .shadow(color: .black.opacity(isProminent ? 0.18 : 0.08), radius: isProminent ? 18 : 8, y: isProminent ? 8 : 3)
     }
 }
 

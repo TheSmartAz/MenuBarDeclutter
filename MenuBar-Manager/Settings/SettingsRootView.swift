@@ -4,6 +4,7 @@ import SwiftUI
 
 enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
     case general
+    case menuBarItems
     case behavior
     case layout
     case search
@@ -24,6 +25,8 @@ enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .general:
             "General"
+        case .menuBarItems:
+            "Menu Bar Items"
         case .behavior:
             "Behavior"
         case .layout:
@@ -57,6 +60,8 @@ enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .general:
             "gearshape"
+        case .menuBarItems:
+            "list.bullet.rectangle"
         case .behavior:
             "slider.horizontal.3"
         case .layout:
@@ -87,6 +92,61 @@ enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
     }
 }
 
+private struct SettingsSidebarGroup: Identifiable {
+    let title: String
+    let sections: [SettingsSection]
+
+    var id: String { title }
+
+    static let all: [SettingsSidebarGroup] = [
+        SettingsSidebarGroup(title: "General", sections: [.general, .menuBarItems, .behavior, .layout]),
+        SettingsSidebarGroup(title: "Pro Features", sections: [.search, .secondBar, .groups, .hotkeys, .profiles, .automation]),
+        SettingsSidebarGroup(title: "Privacy", sections: [.privacy, .privateAccess]),
+        SettingsSidebarGroup(title: "System", sections: [.importExport, .diagnostics, .advanced])
+    ]
+}
+
+private extension SettingsSection {
+    var helpText: String {
+        switch self {
+        case .general:
+            "Startup, onboarding, app mode, and app identity."
+        case .menuBarItems:
+            "Inspect discovered menu bar items, owners, zones, and geometry."
+        case .behavior:
+            "Auto-rehide, hover reveal, separators, click behavior, and the global hotkey."
+        case .layout:
+            "Capacity, layout suggestions, Full Menu Bar Mode, spacers, and spacing labs."
+        case .search:
+            "Find Icon and search hotkey settings."
+        case .secondBar:
+            "Second Bar behavior, requirements, and presentation."
+        case .privateAccess:
+            "Authentication boundaries for protected app surfaces."
+        case .groups:
+            "Create and manage item groups."
+        case .hotkeys:
+            "Dynamic shortcut bindings for commands, groups, and profiles."
+        case .profiles:
+            "Profiles and automatic triggers."
+        case .automation:
+            "App Shortcuts and URL command settings."
+        case .importExport:
+            "Privacy-safe import, export, backups, and migration."
+        case .privacy:
+            "Basic Mode, Pro Mode, permissions, and local data policy."
+        case .diagnostics:
+            "Health checks, logs, live status, and diagnostics export."
+        case .advanced:
+            "Developer-oriented recovery and experimental controls."
+        }
+    }
+
+    var searchKeywords: String {
+        "\(title) \(helpText)"
+    }
+}
+
 @Observable
 @MainActor
 final class SettingsNavigationModel {
@@ -111,20 +171,48 @@ struct SettingsRootView: View {
     var hotkeyBindingStore: HotkeyBindingStore?
     var privateAccessCoordinator: PrivateAccessCoordinator?
     var actions: SettingsActions = .empty
+    @State private var settingsSearchText = ""
 
     var body: some View {
-        HStack(spacing: 0) {
-            ClearGlassSettingsSidebar(selection: $navigationModel.selectedSection)
-
-            Rectangle()
-                .fill(.primary.opacity(0.12))
-                .frame(width: 1)
-
+        NavigationSplitView {
+            List(selection: $navigationModel.selectedSection) {
+                ForEach(filteredSidebarGroups) { group in
+                    Section(group.title) {
+                        ForEach(group.sections) { section in
+                            Label(section.title, systemImage: section.systemImage)
+                                .tag(section)
+                                .help(section.helpText)
+                        }
+                    }
+                }
+            }
+            .listStyle(.sidebar)
+            .navigationTitle("Settings")
+            .searchable(text: $settingsSearchText, prompt: "Search Settings")
+            .navigationSplitViewColumnWidth(min: 220, ideal: 246, max: 290)
+        } detail: {
             detailView(for: navigationModel.selectedSection ?? .general)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(minWidth: 920, minHeight: 580)
-        .background(ClearGlassWindowBackground())
+        .frame(minWidth: 980, minHeight: 620)
+        .background(Color(nsColor: .windowBackgroundColor))
+        .onAppear {
+            navigationModel.selectedSection = navigationModel.selectedSection ?? .general
+        }
+    }
+
+    private var filteredSidebarGroups: [SettingsSidebarGroup] {
+        let query = settingsSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return SettingsSidebarGroup.all }
+
+        return SettingsSidebarGroup.all.compactMap { group in
+            let sections = group.sections.filter { section in
+                section.title.localizedStandardContains(query)
+                    || section.searchKeywords.localizedStandardContains(query)
+            }
+            guard !sections.isEmpty else { return nil }
+            return SettingsSidebarGroup(title: group.title, sections: sections)
+        }
     }
 
     @ViewBuilder
@@ -137,6 +225,15 @@ struct SettingsRootView: View {
                 onResetLayout: actions.resetLayout,
                 onResetAllSettings: actions.resetAllSettings,
                 onShowOnboarding: actions.showOnboarding
+            )
+        case .menuBarItems:
+            MenuBarItemsSettingsView(
+                settingsStore: settingsStore,
+                liveStatus: liveStatus,
+                scanCoordinator: menuBarScanCoordinator,
+                onOpenPrivacySettings: {
+                    navigationModel.selectedSection = .privacy
+                }
             )
         case .behavior:
             BehaviorSettingsView(settingsStore: settingsStore, onChange: actions.behaviorChanged)
@@ -459,16 +556,17 @@ struct ClearGlassSettingsPage<Content: View>: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 20) {
                 ClearGlassPageHeader(title: title, subtitle: subtitle, badges: badges)
                 content
             }
-            .padding(.horizontal, 28)
-            .padding(.top, 34)
-            .padding(.bottom, 32)
+            .padding(.horizontal, 32)
+            .padding(.top, 24)
+            .padding(.bottom, 36)
+            .frame(maxWidth: 980, alignment: .topLeading)
             .frame(maxWidth: .infinity, alignment: .topLeading)
         }
-        .scrollClipDisabled()
+        .background(Color(nsColor: .windowBackgroundColor))
     }
 }
 
@@ -488,28 +586,34 @@ struct ClearGlassSection<Content: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 7) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.headline)
+                    .font(.subheadline)
                     .foregroundStyle(.primary)
 
                 if let subtitle {
                     Text(subtitle)
-                        .font(.callout)
+                        .font(.caption)
                         .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
+            .padding(.horizontal, 2)
 
-            content
+            VStack(spacing: 0) {
+                content
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
+            .overlay {
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
+            }
         }
-        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.regularMaterial, in: .rect(cornerRadius: 8))
-        .overlay {
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(.primary.opacity(0.12), lineWidth: 1)
-        }
     }
 }
 
@@ -535,11 +639,11 @@ struct ClearGlassControlRow<Accessory: View>: View {
     }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 14) {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
             Image(systemName: systemImage)
-                .font(.system(size: 18, weight: .regular))
+                .font(.system(size: 15, weight: .regular))
                 .foregroundStyle(iconTint)
-                .frame(width: 26, height: 26)
+                .frame(width: 22)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
@@ -563,7 +667,7 @@ struct ClearGlassControlRow<Accessory: View>: View {
                 .fixedSize()
                 .layoutPriority(1)
         }
-        .padding(.vertical, 7)
+        .padding(.vertical, 9)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
@@ -602,7 +706,7 @@ struct ClearGlassValueRow<ValueContent: View>: View {
     }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 16) {
+        HStack(alignment: .firstTextBaseline, spacing: 16) {
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
                     .font(.body)
@@ -621,7 +725,7 @@ struct ClearGlassValueRow<ValueContent: View>: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.trailing)
         }
-        .padding(.vertical, 7)
+        .padding(.vertical, 9)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
@@ -657,7 +761,7 @@ struct ClearGlassSliderRow: View {
     }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 16) {
+        HStack(alignment: .firstTextBaseline, spacing: 16) {
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
                     .font(.body)
@@ -680,7 +784,7 @@ struct ClearGlassSliderRow: View {
                 .foregroundStyle(.secondary)
                 .frame(width: valueWidth, alignment: .trailing)
         }
-        .padding(.vertical, 7)
+        .padding(.vertical, 9)
     }
 
     private var formattedValue: String {
@@ -691,8 +795,9 @@ struct ClearGlassSliderRow: View {
 struct ClearGlassDivider: View {
     var body: some View {
         Rectangle()
-            .fill(.primary.opacity(0.10))
-            .frame(height: 1)
+            .fill(Color(nsColor: .separatorColor).opacity(0.55))
+            .frame(height: 0.5)
+            .padding(.leading, 34)
     }
 }
 
@@ -718,10 +823,10 @@ struct ClearGlassInlineMessage: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(style.tint.opacity(0.08), in: .rect(cornerRadius: 7))
+        .background(style.background, in: .rect(cornerRadius: 7))
         .overlay {
             RoundedRectangle(cornerRadius: 7)
-                .stroke(style.tint.opacity(0.20), lineWidth: 1)
+                .stroke(style.border, lineWidth: 0.5)
         }
     }
 }
@@ -837,6 +942,36 @@ enum ClearGlassStatusStyle {
             .secondary
         }
     }
+
+    var background: Color {
+        switch self {
+        case .success:
+            Color.green.opacity(0.08)
+        case .warning:
+            Color.orange.opacity(0.10)
+        case .danger:
+            Color.red.opacity(0.08)
+        case .info:
+            Color.accentColor.opacity(0.08)
+        case .secondary:
+            Color(nsColor: .quaternaryLabelColor).opacity(0.10)
+        }
+    }
+
+    var border: Color {
+        switch self {
+        case .success:
+            Color.green.opacity(0.22)
+        case .warning:
+            Color.orange.opacity(0.26)
+        case .danger:
+            Color.red.opacity(0.22)
+        case .info:
+            Color.accentColor.opacity(0.20)
+        case .secondary:
+            Color(nsColor: .separatorColor).opacity(0.45)
+        }
+    }
 }
 
 struct ClearGlassBadge: View {
@@ -844,15 +979,15 @@ struct ClearGlassBadge: View {
 
     var body: some View {
         Label(style.title, systemImage: style.systemImage)
-            .font(.system(size: 12, weight: .medium))
+            .font(.caption)
             .foregroundStyle(style.tint)
             .labelStyle(.titleAndIcon)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(style.tint.opacity(0.12), in: .rect(cornerRadius: 7))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(style.tint.opacity(0.08), in: .capsule)
             .overlay {
-                RoundedRectangle(cornerRadius: 7)
-                    .stroke(style.tint.opacity(0.24), lineWidth: 1)
+                Capsule()
+                    .stroke(style.tint.opacity(0.18), lineWidth: 0.5)
             }
     }
 }
@@ -952,8 +1087,10 @@ enum ClearGlassBadgeStyle: Hashable {
             .green
         case .proMode:
             .primary
-        case .accessibilityRequired, .diagnostics:
-            .blue
+        case .accessibilityRequired:
+            .orange
+        case .diagnostics:
+            .secondary
         case .stable:
             FeatureStatus.stable.tint
         case .preview:
@@ -972,122 +1109,15 @@ enum ClearGlassBadgeStyle: Hashable {
     }
 }
 
-private struct ClearGlassSettingsSidebar: View {
-    @Binding var selection: SettingsSection?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            appIdentity
-
-            VStack(alignment: .leading, spacing: 6) {
-                sectionRows([.general, .behavior, .layout, .search, .secondBar])
-                ClearGlassSidebarDivider()
-                sectionRows([.privacy, .privateAccess])
-                ClearGlassSidebarDivider()
-                sectionRows([.groups, .hotkeys, .profiles, .automation, .importExport])
-                ClearGlassSidebarDivider()
-                sectionRows([.diagnostics])
-                ClearGlassSidebarDivider()
-                sectionRows([.advanced])
-            }
-
-            Spacer()
-        }
-        .padding(.horizontal, 14)
-        .padding(.top, 58)
-        .padding(.bottom, 18)
-        .frame(width: 220)
-        .background(.regularMaterial)
-    }
-
-    private var appIdentity: some View {
-        HStack(spacing: 12) {
-            Image(nsImage: NSApp.applicationIconImage)
-                .resizable()
-                .frame(width: 44, height: 44)
-                .clipShape(.rect(cornerRadius: 8))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(.primary.opacity(0.16), lineWidth: 1)
-                }
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(AppConstants.displayName)
-                    .font(.headline)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-
-                Text("Settings")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .padding(.horizontal, 6)
-        .padding(.bottom, 8)
-    }
-
-    @ViewBuilder
-    private func sectionRows(_ sections: [SettingsSection]) -> some View {
-        ForEach(sections) { section in
-            ClearGlassSidebarButton(
-                section: section,
-                isSelected: (selection ?? .general) == section
-            ) {
-                selection = section
-            }
-        }
-    }
-}
-
-private struct ClearGlassSidebarButton: View {
-    let section: SettingsSection
-    let isSelected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 12) {
-                Image(systemName: section.systemImage)
-                    .font(.system(size: 17, weight: .regular))
-                    .frame(width: 22)
-
-                Text(section.title)
-                    .font(.body)
-                    .lineLimit(1)
-
-                Spacer(minLength: 0)
-            }
-            .foregroundStyle(isSelected ? .white : .primary)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(isSelected ? Color.accentColor : Color.clear, in: .rect(cornerRadius: 8))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-private struct ClearGlassSidebarDivider: View {
-    var body: some View {
-        Rectangle()
-            .fill(.primary.opacity(0.14))
-            .frame(height: 1)
-            .padding(.vertical, 6)
-            .padding(.horizontal, 6)
-    }
-}
-
 private struct ClearGlassPageHeader: View {
     let title: String
     let subtitle: String?
     let badges: [ClearGlassBadgeStyle]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             Text(title)
-                .font(.system(size: 28, weight: .semibold))
+                .font(.largeTitle)
                 .foregroundStyle(.primary)
 
             if let subtitle {
@@ -1103,17 +1133,10 @@ private struct ClearGlassPageHeader: View {
                         ClearGlassBadge(style: badge)
                     }
                 }
+                .padding(.top, 2)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-private struct ClearGlassWindowBackground: View {
-    var body: some View {
-        Rectangle()
-            .fill(Color(nsColor: .windowBackgroundColor))
-            .overlay(.ultraThinMaterial)
     }
 }
 
