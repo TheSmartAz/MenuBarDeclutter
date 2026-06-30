@@ -11,16 +11,18 @@ struct BehaviorSettingsView: View {
     var body: some View {
         ClearGlassSettingsPage(
             "Behavior",
-            subtitle: "Tune the Basic Mode interactions that hide and reveal menu bar items.",
+            subtitle: "Control how hidden menu bar items reveal, collapse, and respond to shortcuts.",
             badges: [.stable, .privacySafe]
         ) {
-            ClearGlassSection("Auto-Rehide", subtitle: "Automatically rehide shown items after a delay.") {
+            BehaviorSummaryStrip(settingsStore: settingsStore)
+
+            ClearGlassSection("Reveal", subtitle: "Choose how hidden items temporarily come back into view.") {
                 ClearGlassControlRow(
                     systemImage: "clock",
-                    title: "Re-hide automatically after delay",
-                    subtitle: "Collapse again after you reveal hidden items."
+                    title: "Re-hide after reveal",
+                    subtitle: "Collapse hidden items again after a short delay."
                 ) {
-                    Toggle("Re-hide automatically after delay", isOn: $settingsStore.autoRehideEnabled)
+                    Toggle("Re-hide after reveal", isOn: $settingsStore.autoRehideEnabled)
                         .labelsHidden()
                 }
 
@@ -36,15 +38,15 @@ struct BehaviorSettingsView: View {
                         valueFractionLength: 0
                     )
                 }
-            }
 
-            ClearGlassSection("Hover Reveal", subtitle: "Reveal hidden items while hovering near the menu bar.") {
+                ClearGlassDivider()
+
                 ClearGlassControlRow(
                     systemImage: "eye",
-                    title: "Reveal hidden items on hover",
-                    subtitle: "Temporarily expand the bar when hover reveal is active."
+                    title: "Reveal on hover",
+                    subtitle: "Show hidden items while the pointer is near the menu bar."
                 ) {
-                    Toggle("Reveal hidden items on hover", isOn: $settingsStore.hoverRevealEnabled)
+                    Toggle("Reveal on hover", isOn: $settingsStore.hoverRevealEnabled)
                         .labelsHidden()
                 }
 
@@ -63,19 +65,19 @@ struct BehaviorSettingsView: View {
                 }
 
                 ClearGlassInlineMessage(
-                    text: "No sensitive permissions are used for hover reveal.",
+                    text: "Reveal behavior stays in Basic Mode and does not use Accessibility, Screen Recording, Apple Events, Input Monitoring, or network access.",
                     systemImage: "checkmark.shield",
                     style: .success
                 )
             }
 
-            ClearGlassSection("Always-Hidden Zone", subtitle: "Keep selected items hidden even when the main group is revealed.") {
+            ClearGlassSection("Hidden Zones", subtitle: "Keep sensitive or noisy items separate from the main reveal group.") {
                 ClearGlassControlRow(
                     systemImage: "square.dashed",
-                    title: "Enable always-hidden separator",
-                    subtitle: "Adds a second separator to the right. Items beyond it stay hidden when the primary zone expands."
+                    title: "Always-hidden zone",
+                    subtitle: "Items beyond the second separator stay hidden when the primary zone expands."
                 ) {
-                    Toggle("Enable always-hidden separator", isOn: $settingsStore.alwaysHiddenEnabled)
+                    Toggle("Always-hidden zone", isOn: $settingsStore.alwaysHiddenEnabled)
                         .labelsHidden()
                 }
 
@@ -83,37 +85,37 @@ struct BehaviorSettingsView: View {
                     ClearGlassDivider()
                     AlwaysHiddenZonePreview()
                 }
-            }
 
-            ClearGlassSection("Separator Appearance", subtitle: "Control the visible marker for menu bar separators.") {
-                ClearGlassControlRow(
-                    systemImage: "parallelpipe",
-                    title: "Show separator visual marker",
-                    subtitle: "When off, separators remain in place but their icons disappear."
-                ) {
-                    Toggle("Show separator visual marker", isOn: $settingsStore.showSeparators)
-                        .labelsHidden()
-                }
-            }
+                ClearGlassDivider()
 
-            ClearGlassSection("Click Behavior", subtitle: "Shortcut behavior for quickly revealing hidden items.") {
                 ClearGlassControlRow(
                     systemImage: "cursorarrow.click",
-                    title: "Option-click reveals all hidden items",
+                    title: "Option-click reveals all",
                     subtitle: "Temporarily reveal both primary hidden items and always-hidden items."
                 ) {
-                    Toggle("Option-click reveals all hidden items", isOn: $settingsStore.revealAllOnOptionClick)
+                    Toggle("Option-click reveals all", isOn: $settingsStore.revealAllOnOptionClick)
                         .labelsHidden()
                 }
             }
 
-            ClearGlassSection("Global Hotkey", subtitle: "Show or hide all hidden items using a keyboard shortcut.") {
+            ClearGlassSection("Separators", subtitle: "Control the visible marker for app-owned separator items.") {
+                ClearGlassControlRow(
+                    systemImage: "parallelpipe",
+                    title: "Show separator markers",
+                    subtitle: "When off, separators remain in place but their icons disappear."
+                ) {
+                    Toggle("Show separator markers", isOn: $settingsStore.showSeparators)
+                        .labelsHidden()
+                }
+            }
+
+            ClearGlassSection("Keyboard Shortcut", subtitle: "Show or hide all hidden items without leaving the keyboard.") {
                 ClearGlassControlRow(
                     systemImage: "keyboard",
-                    title: "Enable global hotkey",
-                    subtitle: "The hotkey works without Accessibility, Screen Recording, Apple Events, or Input Monitoring."
+                    title: "Global hotkey",
+                    subtitle: "The shortcut works without Accessibility, Screen Recording, Apple Events, or Input Monitoring."
                 ) {
-                    Toggle("Enable global hotkey", isOn: $settingsStore.globalHotkeyEnabled)
+                    Toggle("Global hotkey", isOn: $settingsStore.globalHotkeyEnabled)
                         .labelsHidden()
                 }
 
@@ -122,15 +124,7 @@ struct BehaviorSettingsView: View {
 
                     ClearGlassValueRow("Current Hotkey") {
                         HStack(spacing: 10) {
-                            Text(settingsStore.effectiveGlobalHotkey().displayName)
-                                .font(.system(.body, design: .monospaced))
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 6)
-                                .background(.thinMaterial, in: .rect(cornerRadius: 7))
-                                .overlay {
-                                    RoundedRectangle(cornerRadius: 7)
-                                        .stroke(.primary.opacity(0.12), lineWidth: 1)
-                                }
+                            KeyboardShortcutToken(text: settingsStore.effectiveGlobalHotkey().displayName)
 
                             Button("Reset to Default") {
                                 settingsStore.resetGlobalHotkeyToDefault()
@@ -142,6 +136,81 @@ struct BehaviorSettingsView: View {
             }
         }
         .onBehaviorSettingsChanges(from: settingsStore, perform: onChange)
+    }
+}
+
+private struct BehaviorSummaryStrip: View {
+    @Bindable var settingsStore: SettingsStore
+
+    private let columns = [
+        GridItem(.adaptive(minimum: 150), spacing: 10)
+    ]
+
+    var body: some View {
+        LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
+            BehaviorSummaryPill(
+                title: "Auto-Rehide",
+                value: settingsStore.autoRehideEnabled
+                    ? "\(Int(settingsStore.autoRehideDelaySeconds))s"
+                    : "Off",
+                systemImage: "clock"
+            )
+
+            BehaviorSummaryPill(
+                title: "Hover Reveal",
+                value: settingsStore.hoverRevealEnabled ? "On" : "Off",
+                systemImage: "eye"
+            )
+
+            BehaviorSummaryPill(
+                title: "Hidden Zone",
+                value: settingsStore.alwaysHiddenEnabled ? "On" : "Off",
+                systemImage: "square.dashed"
+            )
+
+            BehaviorSummaryPill(
+                title: "Shortcut",
+                value: settingsStore.globalHotkeyEnabled
+                    ? settingsStore.effectiveGlobalHotkey().displayName
+                    : "Off",
+                systemImage: "keyboard"
+            )
+        }
+    }
+}
+
+private struct BehaviorSummaryPill: View {
+    let title: String
+    let value: String
+    let systemImage: String
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.system(size: 16, weight: .regular))
+                .foregroundStyle(.secondary)
+                .frame(width: 20)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Text(value)
+                    .font(.callout)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 1)
+        }
     }
 }
 
@@ -163,10 +232,10 @@ private struct AlwaysHiddenZonePreview: View {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
-            .background(.thinMaterial, in: .rect(cornerRadius: 7))
+            .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 7))
             .overlay {
                 RoundedRectangle(cornerRadius: 7)
-                    .stroke(.primary.opacity(0.12), lineWidth: 1)
+                    .stroke(Color(nsColor: .separatorColor).opacity(0.75), lineWidth: 1)
             }
 
             Text("Right Zone")

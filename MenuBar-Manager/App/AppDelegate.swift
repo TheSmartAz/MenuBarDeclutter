@@ -59,12 +59,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if launchArguments.contains("--ui-testing-show-diagnostics") {
             environment.showDiagnostics()
+        } else if launchArguments.contains("--ui-testing-show-general") {
+            environment.showSettings(section: .general)
+        } else if launchArguments.contains("--ui-testing-show-behavior") {
+            environment.showSettings(section: .behavior)
+        } else if launchArguments.contains("--ui-testing-show-layout") {
+            environment.showSettings(section: .layout)
         } else if launchArguments.contains("--ui-testing-show-privacy") {
             environment.showSettings(section: .privacy)
+        } else if launchArguments.contains("--ui-testing-show-private-access") {
+            environment.showSettings(section: .privateAccess)
         } else if launchArguments.contains("--ui-testing-show-menu-bar-items") {
             environment.showSettings(section: .menuBarItems)
         } else if launchArguments.contains("--ui-testing-show-second-bar-settings") {
             environment.showSettings(section: .secondBar)
+        } else if launchArguments.contains("--ui-testing-show-groups") {
+            environment.showSettings(section: .groups)
+        } else if launchArguments.contains("--ui-testing-show-hotkeys") {
+            environment.showSettings(section: .hotkeys)
+        } else if launchArguments.contains("--ui-testing-show-profiles") {
+            environment.showSettings(section: .profiles)
+        } else if launchArguments.contains("--ui-testing-show-automation") {
+            environment.showSettings(section: .automation)
+        } else if launchArguments.contains("--ui-testing-show-import-export") {
+            environment.showSettings(section: .importExport)
+        } else if launchArguments.contains("--ui-testing-show-advanced") {
+            environment.showSettings(section: .advanced)
         } else if launchArguments.contains("--ui-testing-show-search") {
             environment.showSearch()
         } else if launchArguments.contains("--ui-testing-show-second-bar") {

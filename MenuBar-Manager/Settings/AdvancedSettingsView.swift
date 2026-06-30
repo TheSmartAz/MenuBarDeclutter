@@ -306,7 +306,11 @@ private struct SeparatorGeometryPreview: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.thinMaterial, in: .rect(cornerRadius: 7))
+        .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 7))
+        .overlay {
+            RoundedRectangle(cornerRadius: 7)
+                .stroke(Color(nsColor: .separatorColor).opacity(0.75), lineWidth: 1)
+        }
     }
 
     private func geometryLine(_ title: String, length: Double, icons: [String]) -> some View {

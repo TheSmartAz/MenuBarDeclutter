@@ -1,8 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// Phase 3 "General" settings: identity, startup, onboarding, layout resets,
-/// and app version metadata.
+/// General settings: app identity, startup behavior, onboarding, and recovery actions.
 struct GeneralSettingsView: View {
     @Bindable var settingsStore: SettingsStore
     var launchAtLoginService: LaunchAtLoginService?
@@ -16,39 +15,28 @@ struct GeneralSettingsView: View {
         Bundle.main.bundleURL.path.hasPrefix("/Applications/")
     }
 
+    private var appLocationSummary: String {
+        isRunningFromApplications ? "Installed in Applications" : "Not installed in Applications"
+    }
+
     var body: some View {
         ClearGlassSettingsPage(
             "General",
-            subtitle: "Startup, layout, onboarding, and app identity.",
+            subtitle: "App identity, startup behavior, and setup state.",
             badges: [.stable, .basicMode, .privacySafe]
         ) {
-            if settingsStore.v01SafeDefaultsNoticePending {
-                ClearGlassInlineMessage(
-                    text: "Updated to v0.1 safe defaults.",
-                    systemImage: "checkmark.shield",
-                    style: .success
+            safeDefaultsNotice
+
+            ClearGlassSection("About", subtitle: "Local app identity and current operating mode.") {
+                GeneralAppIdentityHeader(
+                    mode: settingsStore.appMode.displayName,
+                    version: AppConstants.appVersion,
+                    bundleIdentifier: AppConstants.bundleIdentifier
                 )
-
-                Button("Dismiss Notice") {
-                    settingsStore.v01SafeDefaultsNoticePending = false
-                }
-            }
-
-            ClearGlassSection("Mode", subtitle: "Choose the feature set that fits your needs.") {
-                ClearGlassControlRow(
-                    systemImage: "checkmark.shield",
-                    title: "Current Mode",
-                    subtitle: "Basic Mode stays fully usable without sensitive permissions.",
-                    iconTint: .green
-                ) {
-                    Text(settingsStore.appMode.displayName)
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
 
                 ClearGlassDivider()
 
-                ClearGlassValueRow("App Mode") {
+                ClearGlassValueRow("App Mode", subtitle: "Basic Mode remains fully usable without sensitive permissions.") {
                     Picker("App Mode", selection: $settingsStore.appMode) {
                         ForEach(SettingsStore.AppMode.allCases) { mode in
                             Text(mode.displayName)
@@ -61,11 +49,11 @@ struct GeneralSettingsView: View {
                 }
             }
 
-            ClearGlassSection("Startup", subtitle: "Launch behavior and Login Items status.") {
+            ClearGlassSection("Startup", subtitle: "Launch and first-visible state.") {
                 ClearGlassControlRow(
                     systemImage: "power",
                     title: "Launch at Login",
-                    subtitle: "Automatically launch MenuBarDeclutter when you log in to macOS."
+                    subtitle: "Open MenuBarDeclutter automatically after signing in."
                 ) {
                     Toggle("Launch at Login", isOn: $settingsStore.launchAtLoginEnabled)
                         .labelsHidden()
@@ -74,16 +62,27 @@ struct GeneralSettingsView: View {
                         }
                 }
 
+                ClearGlassDivider()
+
+                ClearGlassControlRow(
+                    systemImage: "rectangle.compress.vertical",
+                    title: "Start Collapsed",
+                    subtitle: "Begin the next launch with hidden menu bar items collapsed."
+                ) {
+                    Toggle("Start Collapsed", isOn: $settingsStore.startCollapsed)
+                        .labelsHidden()
+                }
+
                 if let service = launchAtLoginService {
                     ClearGlassDivider()
 
                     ClearGlassControlRow(
                         systemImage: "checkmark.circle",
-                        title: "SMAppService Status",
-                        subtitle: "Helper tool status for reliable menu bar management.",
-                        iconTint: loginItemStatusStyle(service.statusDisplayName).tint
+                        title: "Login Item Status",
+                        subtitle: "macOS controls final approval in Login Items settings.",
+                        iconTint: loginItemStatusStyle(service.statusDisplayName).foreground
                     ) {
-                        HStack(spacing: 10) {
+                        HStack(spacing: 8) {
                             ClearGlassStatusValue(
                                 text: service.statusDisplayName,
                                 style: loginItemStatusStyle(service.statusDisplayName)
@@ -92,22 +91,13 @@ struct GeneralSettingsView: View {
                             Button("Refresh", systemImage: "arrow.clockwise") {
                                 service.refreshStatus()
                             }
+                            .controlSize(.small)
 
                             Button("Open Settings", systemImage: "arrow.up.forward.app") {
                                 _ = service.openLoginItemsSettings()
                             }
+                            .controlSize(.small)
                         }
-                    }
-
-                    ClearGlassDivider()
-
-                    ClearGlassValueRow("Running From", subtitle: "Current app bundle location.") {
-                        Text(Bundle.main.bundleURL.path)
-                            .font(.system(.caption, design: .monospaced))
-                            .lineLimit(2)
-                            .truncationMode(.middle)
-                            .textSelection(.enabled)
-                            .frame(maxWidth: 360, alignment: .trailing)
                     }
 
                     if let result = service.lastRegistrationResult {
@@ -118,66 +108,78 @@ struct GeneralSettingsView: View {
                                 .font(.callout)
                                 .lineLimit(2)
                                 .truncationMode(.middle)
+                                .textSelection(.enabled)
                         }
-                    }
-
-                    HStack(spacing: 10) {
-                        Button("Open Installed App Location", systemImage: "folder") {
-                            NSWorkspace.shared.activateFileViewerSelecting([Bundle.main.bundleURL])
-                        }
-
-                        Spacer()
-                    }
-
-                    ClearGlassInlineMessage(
-                        text: "Launch at Login must be validated from an installed, signed app. Xcode runs can report a different SMAppService status.",
-                        systemImage: "info.circle",
-                        style: .secondary
-                    )
-
-                    if !isRunningFromApplications {
-                        ClearGlassInlineMessage(
-                            text: "You are not running from /Applications. Install the exported app before validating Launch at Login.",
-                            systemImage: "exclamationmark.triangle",
-                            style: .warning
-                        )
-                    }
-
-                    if let result = service.lastRegistrationResult, result.isFailure {
-                        ClearGlassInlineMessage(
-                            text: "Launch at Login could not be configured. Open Login Items Settings, remove stale entries, then try again from the installed app.",
-                            systemImage: "exclamationmark.triangle",
-                            style: .warning
-                        )
                     }
                 }
+            }
 
-                ClearGlassDivider()
-
+            ClearGlassSection("App Location", subtitle: "Install location used for Login Items validation.") {
                 ClearGlassControlRow(
-                    systemImage: "rectangle.compress.vertical",
-                    title: "Start collapsed",
-                    subtitle: "Open with menu bar items hidden on next launch."
+                    systemImage: isRunningFromApplications ? "checkmark.circle" : "exclamationmark.triangle",
+                    title: appLocationSummary,
+                    subtitle: Bundle.main.bundleURL.path,
+                    iconTint: isRunningFromApplications ? .green : .orange
                 ) {
-                    Toggle("Start collapsed", isOn: $settingsStore.startCollapsed)
+                    Button("Reveal in Finder", systemImage: "folder") {
+                        NSWorkspace.shared.activateFileViewerSelecting([Bundle.main.bundleURL])
+                    }
+                    .controlSize(.small)
+                }
+
+                if !isRunningFromApplications {
+                    ClearGlassDivider()
+
+                    ClearGlassInlineMessage(
+                        text: "Install the exported, signed app in /Applications before validating Launch at Login.",
+                        systemImage: "info.circle",
+                        style: .warning
+                    )
+                }
+
+                if let result = launchAtLoginService?.lastRegistrationResult, result.isFailure {
+                    ClearGlassDivider()
+
+                    ClearGlassInlineMessage(
+                        text: "Launch at Login could not be configured. Open Login Items Settings, remove stale entries, then try again from the installed app.",
+                        systemImage: "exclamationmark.triangle",
+                        style: .warning
+                    )
+                }
+            }
+
+            ClearGlassSection("Setup", subtitle: "Onboarding progress and first-run education.") {
+                ClearGlassControlRow(
+                    systemImage: settingsStore.hasCompletedOnboarding ? "checkmark.circle" : "circle",
+                    title: "Onboarding Completed",
+                    subtitle: "Tracks whether the first-run flow has already been completed.",
+                    iconTint: settingsStore.hasCompletedOnboarding ? .green : .secondary
+                ) {
+                    Toggle("Onboarding Completed", isOn: $settingsStore.hasCompletedOnboarding)
                         .labelsHidden()
                 }
 
                 ClearGlassDivider()
 
-                ClearGlassValueRow("Last Known App Version") {
-                    Text(settingsStore.lastKnownAppVersion)
-                        .font(.callout)
+                ClearGlassControlRow(
+                    systemImage: "sparkles",
+                    title: "Show Onboarding Again",
+                    subtitle: "Reopen the setup tour and feature introduction."
+                ) {
+                    Button("Show Onboarding", systemImage: "play.circle") {
+                        onShowOnboarding?()
+                    }
+                    .disabled(!settingsStore.hasCompletedOnboarding)
                 }
             }
 
-            ClearGlassSection("Layout", subtitle: "Reset app layout and preference state when needed.") {
+            ClearGlassSection("Maintenance", subtitle: "Recovery actions for layout and preferences.") {
                 ClearGlassControlRow(
                     systemImage: "arrow.counterclockwise",
                     title: "Reset App Layout",
-                    subtitle: "Reset separator placement and layout state without changing app preferences."
+                    subtitle: "Reset separator placement and layout state without changing preferences."
                 ) {
-                    Button("Reset App Layout") {
+                    Button("Reset Layout", systemImage: "arrow.counterclockwise") {
                         onResetLayout?()
                     }
                 }
@@ -187,10 +189,10 @@ struct GeneralSettingsView: View {
                 ClearGlassControlRow(
                     systemImage: "exclamationmark.arrow.triangle.2.circlepath",
                     title: "Reset All Settings",
-                    subtitle: "Restore default app preferences. Hidden icons and separator positions remain managed by macOS.",
+                    subtitle: "Restore default preferences. Hidden icons and separator positions remain managed by macOS.",
                     iconTint: .red
                 ) {
-                    Button("Reset All Settings", role: .destructive) {
+                    Button("Reset Settings", systemImage: "exclamationmark.arrow.triangle.2.circlepath", role: .destructive) {
                         showResetAllConfirmation = true
                     }
                 }
@@ -204,35 +206,11 @@ struct GeneralSettingsView: View {
                     }
                     Button("Cancel", role: .cancel) {}
                 } message: {
-                    Text("This restores default app preferences. Your hidden icons and separator position are managed by macOS and are not changed.")
+                    Text("This restores default app preferences. Hidden icons and separator position are managed by macOS and are not changed.")
                 }
             }
 
-            ClearGlassSection("Onboarding", subtitle: "First-run education and completion state.") {
-                ClearGlassControlRow(
-                    systemImage: "checkmark.circle",
-                    title: "Onboarding Completed",
-                    subtitle: "Tracks whether the first-run flow has already been completed."
-                ) {
-                    Toggle("Onboarding Completed", isOn: $settingsStore.hasCompletedOnboarding)
-                        .labelsHidden()
-                }
-
-                ClearGlassDivider()
-
-                ClearGlassControlRow(
-                    systemImage: "sparkles",
-                    title: "Show Onboarding Again",
-                    subtitle: "View the onboarding tour and feature introduction again."
-                ) {
-                    Button("Show Onboarding Again") {
-                        onShowOnboarding?()
-                    }
-                    .disabled(!settingsStore.hasCompletedOnboarding)
-                }
-            }
-
-            ClearGlassSection("App", subtitle: "Build and bundle metadata.") {
+            ClearGlassSection("Version", subtitle: "Build and bundle metadata.") {
                 metadataRow("Name", value: AppConstants.displayName)
                 ClearGlassDivider()
                 metadataRow("Marketing Version", value: versionOrDash(AppConstants.marketingVersion))
@@ -242,6 +220,8 @@ struct GeneralSettingsView: View {
                 metadataRow("App Version", value: AppConstants.appVersion)
                 ClearGlassDivider()
                 metadataRow("Bundle Identifier", value: AppConstants.bundleIdentifier, monospaced: true)
+                ClearGlassDivider()
+                metadataRow("Last Known App Version", value: settingsStore.lastKnownAppVersion)
             }
         }
         .onAppear {
@@ -249,10 +229,30 @@ struct GeneralSettingsView: View {
         }
     }
 
+    @ViewBuilder
+    private var safeDefaultsNotice: some View {
+        if settingsStore.v01SafeDefaultsNoticePending {
+            ClearGlassSection("Update Notice") {
+                ClearGlassControlRow(
+                    systemImage: "checkmark.shield",
+                    title: "Updated to v0.1 safe defaults",
+                    subtitle: "Privacy-first defaults were applied during migration.",
+                    iconTint: .green
+                ) {
+                    Button("Dismiss") {
+                        settingsStore.v01SafeDefaultsNoticePending = false
+                    }
+                }
+            }
+        }
+    }
+
     private func metadataRow(_ title: String, value: String, monospaced: Bool = false) -> some View {
         ClearGlassValueRow(title) {
             Text(value)
                 .font(monospaced ? .system(.caption, design: .monospaced) : .callout)
+                .lineLimit(2)
+                .truncationMode(.middle)
                 .textSelection(.enabled)
         }
     }
@@ -275,6 +275,43 @@ struct GeneralSettingsView: View {
         }
 
         return .secondary
+    }
+}
+
+private struct GeneralAppIdentityHeader: View {
+    let mode: String
+    let version: String
+    let bundleIdentifier: String
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 14) {
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .frame(width: 46, height: 46)
+                .clipShape(.rect(cornerRadius: 10))
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(AppConstants.displayName)
+                    .font(.title3)
+
+                Text("\(version) - \(mode)")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+
+                Text(bundleIdentifier)
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .textSelection(.enabled)
+            }
+
+            Spacer(minLength: 16)
+
+            ClearGlassStatusValue(text: mode, style: .success)
+        }
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

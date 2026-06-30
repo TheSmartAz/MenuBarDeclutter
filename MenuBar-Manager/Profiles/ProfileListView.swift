@@ -30,25 +30,34 @@ struct ProfileListView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            toolbar
+        ClearGlassSettingsPage(
+            "Profiles",
+            subtitle: "Save, preview, and apply local menu bar layouts.",
+            badges: [.stable, .preview, .privacySafe]
+        ) {
+            ProfileOverviewStrip(
+                profileCount: profileStore.profiles.count,
+                triggerCount: triggerService.triggers.count,
+                automationPaused: settingsStore.automationPaused
+            )
 
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 12) {
-                    profileList
-                        .frame(maxHeight: 300)
+            ClearGlassSection("Library", subtitle: "Create, import, search, duplicate, and delete profiles.") {
+                profileActions
 
-                    detail
+                ClearGlassDivider()
 
-                    triggerSection
-                        .frame(minHeight: 150, maxHeight: 260)
-                }
-                .padding(.horizontal, 14)
-                .padding(.bottom, 14)
+                profileList
+                    .frame(maxHeight: 300)
+            }
+
+            ClearGlassSection("Editor", subtitle: "Edit profile metadata, preview changes, and apply explicitly.") {
+                detail
+            }
+
+            ClearGlassSection("Smart Triggers", subtitle: "Optional local automation that can apply profiles when rules match.") {
+                triggerSection
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(nsColor: .controlBackgroundColor))
         .onAppear {
             profileStore.load()
             triggerService.load()
@@ -59,23 +68,8 @@ struct ProfileListView: View {
         }
     }
 
-    private var toolbar: some View {
+    private var profileActions: some View {
         HStack(spacing: 10) {
-            Text("Profiles")
-                .font(.title2)
-                .bold()
-
-            Text(profileStore.profiles.count, format: .number)
-                .font(.callout.monospacedDigit())
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(.quaternary, in: .capsule)
-
-            FeatureStatusBadge(.stable)
-
-            Spacer()
-
             Button("Create", systemImage: "plus") {
                 let profile = profileStore.createProfile()
                 selectedProfileID = profile.id
@@ -98,45 +92,37 @@ struct ProfileListView: View {
                 deleteSelected()
             }
             .disabled(selectedProfile == nil)
+
+            Spacer()
         }
-        .padding(14)
-        .background(.regularMaterial, in: .rect(cornerRadius: 8))
-        .overlay {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.5))
-        }
-        .padding([.horizontal, .top], 14)
-        .padding(.bottom, 12)
     }
 
     private var profileList: some View {
-        ProfileGlassPanel("Library", systemImage: "person.crop.rectangle.stack") {
-            VStack(spacing: 10) {
-                ProfileSearchField(text: $searchText)
+        VStack(spacing: 10) {
+            ProfileSearchField(text: $searchText)
 
-                if filteredProfiles.isEmpty {
-                    ContentUnavailableView(
-                        searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "No Profiles" : "No Matching Profiles",
-                        systemImage: "person.crop.rectangle.stack"
-                    )
-                    .frame(maxWidth: .infinity, minHeight: 180)
-                } else {
-                    ScrollView {
-                        LazyVStack(spacing: 6) {
-                            ForEach(filteredProfiles) { profile in
-                                ProfileListRow(
-                                    profile: profile,
-                                    isSelected: selectedProfileID == profile.id,
-                                    isActive: liveStatus.activeProfileID == profile.id.uuidString
-                                ) {
-                                    selectedProfileID = profile.id
-                                }
+            if filteredProfiles.isEmpty {
+                ContentUnavailableView(
+                    searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "No Profiles" : "No Matching Profiles",
+                    systemImage: "person.crop.rectangle.stack"
+                )
+                .frame(maxWidth: .infinity, minHeight: 180)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 6) {
+                        ForEach(filteredProfiles) { profile in
+                            ProfileListRow(
+                                profile: profile,
+                                isSelected: selectedProfileID == profile.id,
+                                isActive: liveStatus.activeProfileID == profile.id.uuidString
+                            ) {
+                                selectedProfileID = profile.id
                             }
                         }
-                        .padding(2)
                     }
-                    .scrollIndicators(.hidden)
+                    .padding(2)
                 }
+                .scrollIndicators(.hidden)
             }
         }
     }
@@ -144,43 +130,32 @@ struct ProfileListView: View {
     private var detail: some View {
         VStack(alignment: .leading, spacing: 12) {
             if let binding = draftBinding {
-                ProfileGlassPanel("Editor", systemImage: "slider.horizontal.3") {
-                    ProfileEditorView(profile: binding)
+                ProfileEditorView(profile: binding)
 
-                    Divider()
+                ClearGlassDivider()
 
-                    if let draftProfile,
-                       let commandAvailability = commandAvailability?(draftProfile) {
-                        CommandAvailabilityRow(summary: commandAvailability)
+                if let draftProfile,
+                   let commandAvailability = commandAvailability?(draftProfile) {
+                    CommandAvailabilityRow(summary: commandAvailability)
 
-                        Divider()
-                    }
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        profileActionButtons
-                    }
-                    .buttonStyle(.bordered)
-
-                    if let dryRunSummary {
-                        DryRunSummaryView(summary: dryRunSummary)
-                    }
+                    ClearGlassDivider()
                 }
-                .padding(.bottom, 2)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    profileActionButtons
+                }
+                .buttonStyle(.bordered)
+
+                if let dryRunSummary {
+                    DryRunSummaryView(summary: dryRunSummary)
+                }
             } else {
-                ProfileGlassPanel("Editor", systemImage: "slider.horizontal.3") {
-                    ContentUnavailableView("No Profile Selected", systemImage: "person.crop.rectangle.stack")
-                        .frame(maxWidth: .infinity, minHeight: 260)
-                }
+                ContentUnavailableView("No Profile Selected", systemImage: "person.crop.rectangle.stack")
+                    .frame(maxWidth: .infinity, minHeight: 260)
             }
 
             if let message {
-                Label(message, systemImage: "info.circle")
-                    .font(.callout)
-                    .foregroundStyle(.blue)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.blue.opacity(0.08), in: .rect(cornerRadius: 8))
+                ClearGlassInlineMessage(text: message, systemImage: "info.circle", style: .info)
             }
         }
     }
@@ -226,60 +201,57 @@ struct ProfileListView: View {
     }
 
     private var triggerSection: some View {
-        ProfileGlassPanel("Smart Triggers", systemImage: "bolt") {
-            VStack(alignment: .leading, spacing: 10) {
-                FeatureGateNotice(
-                    .preview,
-                    text: "Preview in v0.1.1. Triggers stay paused when automation is paused."
+        VStack(alignment: .leading, spacing: 10) {
+            FeatureGateNotice(
+                .preview,
+                text: "Preview in v0.1.1. Triggers stay paused when automation is paused."
+            )
+
+            VStack(alignment: .leading, spacing: 8) {
+                triggerToggles
+            }
+
+            TriggerDraftForm(isProfileSelected: selectedProfile != nil) { rule, name in
+                addTrigger(rule: rule, name: name)
+            }
+
+            if settingsStore.automationPaused {
+                ClearGlassInlineMessage(
+                    text: "Automation is paused. Smart triggers will not apply profiles until resumed.",
+                    systemImage: "pause.circle",
+                    style: .warning
                 )
+            }
 
-                VStack(alignment: .leading, spacing: 8) {
-                    triggerToggles
-                }
+            if triggerService.triggers.isEmpty {
+                ContentUnavailableView("No Triggers", systemImage: "bolt.badge.xmark")
+                    .frame(maxWidth: .infinity, minHeight: 92)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        TriggerTableHeader()
 
-                TriggerDraftForm(isProfileSelected: selectedProfile != nil) { rule, name in
-                    addTrigger(rule: rule, name: name)
-                }
-
-                if settingsStore.automationPaused {
-                    Label("Automation is paused. Smart triggers will not apply profiles until resumed.", systemImage: "pause.circle")
-                        .font(.caption)
-                        .foregroundStyle(.orange)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 6)
-                        .background(.orange.opacity(0.08), in: .rect(cornerRadius: 7))
-                }
-
-                if triggerService.triggers.isEmpty {
-                    ContentUnavailableView("No Triggers", systemImage: "bolt.badge.xmark")
-                        .frame(maxWidth: .infinity, minHeight: 92)
-                } else {
-                    ScrollView {
-                        LazyVStack(spacing: 0) {
-                            TriggerTableHeader()
-
-                            ForEach(triggerService.triggers) { trigger in
-                                TriggerTableRow(
-                                    trigger: trigger,
-                                    profileName: profileName(for: trigger.profileID),
-                                    onEnabledChanged: { isEnabled in
-                                        var updated = trigger
-                                        updated.isEnabled = isEnabled
-                                        triggerService.update(updated)
-                                        onTriggersChanged()
-                                    },
-                                    onDelete: {
-                                        triggerService.delete(trigger)
-                                        onTriggersChanged()
-                                    }
-                                )
-                            }
+                        ForEach(triggerService.triggers) { trigger in
+                            TriggerTableRow(
+                                trigger: trigger,
+                                profileName: profileName(for: trigger.profileID),
+                                onEnabledChanged: { isEnabled in
+                                    var updated = trigger
+                                    updated.isEnabled = isEnabled
+                                    triggerService.update(updated)
+                                    onTriggersChanged()
+                                },
+                                onDelete: {
+                                    triggerService.delete(trigger)
+                                    onTriggersChanged()
+                                }
+                            )
                         }
-                        .clipShape(.rect(cornerRadius: 7))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.35))
-                        }
+                    }
+                    .clipShape(.rect(cornerRadius: 7))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 7, style: .continuous)
+                            .strokeBorder(Color(nsColor: .separatorColor).opacity(0.35))
                     }
                 }
             }
@@ -393,59 +365,72 @@ struct ProfileListView: View {
     }
 }
 
-private struct ProfileGlassPanel<Accessory: View, Content: View>: View {
-    let title: String
-    let systemImage: String?
-    let accessory: Accessory
-    let content: Content
+private struct ProfileOverviewStrip: View {
+    let profileCount: Int
+    let triggerCount: Int
+    let automationPaused: Bool
 
-    init(
-        _ title: String,
-        systemImage: String? = nil,
-        @ViewBuilder content: () -> Content
-    ) where Accessory == EmptyView {
-        self.title = title
-        self.systemImage = systemImage
-        self.accessory = EmptyView()
-        self.content = content()
-    }
-
-    init(
-        _ title: String,
-        systemImage: String? = nil,
-        @ViewBuilder accessory: () -> Accessory,
-        @ViewBuilder content: () -> Content
-    ) {
-        self.title = title
-        self.systemImage = systemImage
-        self.accessory = accessory()
-        self.content = content()
-    }
+    private let columns = [
+        GridItem(.adaptive(minimum: 150), spacing: 10)
+    ]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-                if let systemImage {
-                    Image(systemName: systemImage)
-                        .foregroundStyle(.secondary)
-                }
+        LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
+            ProfileOverviewPill(
+                title: "Profiles",
+                value: "\(profileCount)",
+                systemImage: "person.crop.rectangle.stack",
+                style: .secondary
+            )
 
-                Text(title)
-                    .font(.headline)
+            ProfileOverviewPill(
+                title: "Triggers",
+                value: "\(triggerCount)",
+                systemImage: "bolt",
+                style: .info
+            )
 
-                Spacer()
-
-                accessory
-            }
-
-            content
+            ProfileOverviewPill(
+                title: "Automation",
+                value: automationPaused ? "Paused" : "Ready",
+                systemImage: automationPaused ? "pause.circle" : "checkmark.circle",
+                style: automationPaused ? .warning : .success
+            )
         }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(.thinMaterial, in: .rect(cornerRadius: 8))
+    }
+}
+
+private struct ProfileOverviewPill: View {
+    let title: String
+    let value: String
+    let systemImage: String
+    let style: ClearGlassStatusStyle
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.system(size: 16, weight: .regular))
+                .foregroundStyle(style.tint)
+                .frame(width: 20)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Text(value)
+                    .font(.callout)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
         .overlay {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.45))
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 1)
         }
     }
 }

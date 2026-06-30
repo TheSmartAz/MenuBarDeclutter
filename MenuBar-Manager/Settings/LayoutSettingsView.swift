@@ -14,9 +14,15 @@ struct LayoutSettingsView: View {
     var body: some View {
         ClearGlassSettingsPage(
             "Layout",
-            subtitle: "Manage menu bar capacity, layout suggestions, spacers, and experimental spacing.",
+            subtitle: "Manage capacity, reveal safeguards, spacer items, and spacing experiments.",
             badges: [.stable, .basicMode, .privacySafe]
         ) {
+            LayoutOverviewStrip(
+                settingsStore: settingsStore,
+                estimate: layoutCoordinator?.currentCapacityEstimate(),
+                suggestionCount: layoutCoordinator?.currentSuggestions().count ?? 0
+            )
+
             CapacitySection(
                 settingsStore: settingsStore,
                 liveStatus: liveStatus,
@@ -36,6 +42,87 @@ struct LayoutSettingsView: View {
             )
 
             MenuBarSpacingLabsSection(settingsStore: settingsStore)
+        }
+    }
+}
+
+private struct LayoutOverviewStrip: View {
+    @Bindable var settingsStore: SettingsStore
+    var estimate: LayoutCapacityEstimate?
+    var suggestionCount: Int
+
+    private let columns = [
+        GridItem(.adaptive(minimum: 150), spacing: 10)
+    ]
+
+    var body: some View {
+        LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
+            LayoutOverviewPill(
+                title: "Capacity",
+                value: capacityValue,
+                systemImage: "chart.bar"
+            )
+
+            LayoutOverviewPill(
+                title: "Suggestions",
+                value: settingsStore.layoutSuggestionsEnabled
+                    ? "\(suggestionCount)"
+                    : "Off",
+                systemImage: "lightbulb"
+            )
+
+            LayoutOverviewPill(
+                title: "Full Menu Bar",
+                value: settingsStore.fullMenuBarModeEnabled ? "On" : "Off",
+                systemImage: "rectangle.expand.vertical"
+            )
+
+            LayoutOverviewPill(
+                title: "Spacers",
+                value: settingsStore.spacerItemsEnabled ? "On" : "Off",
+                systemImage: "line.vertical"
+            )
+        }
+    }
+
+    private var capacityValue: String {
+        guard let estimate else {
+            return "Basic"
+        }
+        return estimate.usedCapacityRatio.formatted(.percent.precision(.fractionLength(0)))
+    }
+}
+
+private struct LayoutOverviewPill: View {
+    let title: String
+    let value: String
+    let systemImage: String
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.system(size: 16, weight: .regular))
+                .foregroundStyle(.secondary)
+                .frame(width: 20)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Text(value)
+                    .font(.callout)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 1)
         }
     }
 }
