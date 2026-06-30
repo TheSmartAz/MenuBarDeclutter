@@ -3,7 +3,7 @@
 Date: 2026-06-30
 Tester: Codex
 Build: `0.1.1 (2)`
-Source commits covered: `ca20f3e` through `4de5517`
+Source commits covered: `ca20f3e` through `cfd9e4f`
 Artifact type: dry-run local release archive/export, Apple Development signed, not notarized
 Installed app: `/Applications/MenuBarDeclutter.app`
 macOS: `26.1 (25B78)`
@@ -25,6 +25,7 @@ This run covers the installed-app acceptance pass after the native macOS Setting
 | Launch at Login toggle | PASS | Enabled from the installed app, observed `Login Item Enabled`, then disabled and refreshed back to `Not Registered`; app defaults restored to `launchAtLoginEnabled = 0`. |
 | Developer ID export | BLOCKED | Real export probe failed with `No signing certificate "Developer ID Application" found`; only an Apple Development identity is installed. |
 | Gatekeeper notarization validation | EXPECTED FAIL | Dry-run app passes strict codesign verification, but `spctl` rejects it and `stapler` reports no ticket until Developer ID notarization is available. |
+| PR / CI status | PASS / NOT CONFIGURED | Draft PR #6 is open. No local `.github` workflow directory exists, GitHub reports `workflow_count=0`, and `gh pr checks 6` reports no checks for the branch. |
 
 ## Installed UI Pass
 
@@ -86,6 +87,10 @@ Privacy scan of the exported report found no screenshot text, screen-content tex
 | `scripts/qa_network_watch.sh --installed` | PASS, no sockets observed for PID `69431` |
 | `/usr/bin/open -b Yongjun-Zhang.MenuBarDeclutter 'menubardeclutter://expand'` | PASS, single installed process stayed active |
 | `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS'` | PASS, 410 Swift tests and 11 UI tests |
+| `scripts/qa_preflight.sh` | PASS, repeated full Xcode tests and privacy boundary verification; result bundle written to `build/TestResults/qa-preflight.xcresult` |
+| `scripts/qa_dogfood_preflight.sh` | PASS, main app build, fixture build, 47 focused QA/unit tests, and privacy boundary verification |
+| `scripts/build_release.sh --dry-run --install --verify-installed` | PASS again on the post-PR hardening pass; archive, dry-run export, packages, install, and installed-app verification completed |
+| `scripts/verify_privacy_boundary.sh /Applications/MenuBarDeclutter.app` | PASS for the installed app |
 | `git diff --check` | PASS |
 | `for key in launchAtLoginEnabled appMode startCollapsed proModeEnabled accessibilityDiscoveryEnabled automationPaused; do printf '%s=' "$key"; defaults read Yongjun-Zhang.MenuBarDeclutter "$key" 2>/dev/null || printf '<unset>\n'; done` | PASS, restored state was Launch at Login off, `appMode = basic`, Pro Mode off, Accessibility Discovery off, automation paused |
 | `lsof -Pan -p 1082 -i` | PASS, no network sockets for the running installed app |
@@ -93,6 +98,30 @@ Privacy scan of the exported report found no screenshot text, screen-content tex
 | `security find-identity -v -p codesigning` | BLOCKED for release signing, only `Apple Development: emailyongjunzhang@gmail.com (834922P6J6)` is installed |
 | `ARCHIVE_PATH="$PWD/build/Archives/MenuBarDeclutter.xcarchive" EXPORT_DIR="$PWD/build/ExportDeveloperIDProbe" APP_PATH="$PWD/build/ExportDeveloperIDProbe/MenuBarDeclutter.app" scripts/release_export_app.sh` | EXPECTED FAIL, `No signing certificate "Developer ID Application" found` |
 | `scripts/release_validate_gatekeeper.sh build/Export/MenuBarDeclutter.app` | EXPECTED FAIL for dry-run build: codesign strict verification PASS; `spctl` rejected; stapler ticket missing |
+
+## Post-PR Hardening Pass
+
+After draft PR #6 was opened for `codex/native-macos-redesign`, a non-disruptive hardening pass was run on the same branch at `cfd9e4f`:
+
+1. GitHub status:
+   - PR #6 is open and remains a draft.
+   - No GitHub Actions workflows are configured: there is no local `.github` workflow directory and GitHub reported `workflow_count=0`.
+   - `gh pr checks 6` reported no checks for `codex/native-macos-redesign`.
+2. Local test gates:
+   - `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS'` passed with 410 Swift tests and 11 UI tests.
+   - `scripts/qa_preflight.sh` passed and wrote `build/TestResults/qa-preflight.xcresult`.
+   - `scripts/qa_dogfood_preflight.sh` passed with the main app build, fixture build, 47 focused tests, and privacy boundary verification.
+3. Release gates:
+   - `scripts/build_release.sh --dry-run --install --verify-installed` passed again.
+   - `scripts/verify_privacy_boundary.sh build/Export/MenuBarDeclutter.app` passed.
+   - `scripts/verify_privacy_boundary.sh /Applications/MenuBarDeclutter.app` passed.
+   - `scripts/release_validate_gatekeeper.sh build/Export/MenuBarDeclutter.app` failed only the expected non-notarized `spctl` and stapler checks.
+4. Runtime checks:
+   - The installed app launched from `/Applications/MenuBarDeclutter.app` as PID `16226`.
+   - `scripts/qa_network_watch.sh --installed` reported no network sockets for PID `16226`.
+   - `sudo -n nettop -P -L 1 -p 16226` remained blocked because an administrator password is required.
+5. Signing:
+   - `security find-identity -v -p codesigning` still showed only the Apple Development identity and no Developer ID Application certificate.
 
 ## Follow-Up System-State Gates
 
