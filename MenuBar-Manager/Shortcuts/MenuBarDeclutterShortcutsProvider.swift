@@ -75,10 +75,9 @@ struct ExpandMenuBarItemsIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult {
         guard let service = AppEnvironment.shared?.intentExecutionService else {
-            return .result()
+            return appIntentDialogResult(message: "MenuBarDeclutter is not ready.")
         }
-        _ = service.expandMenuBarItems()
-        return .result()
+        return appIntentDialogResult(for: service.expandMenuBarItems())
     }
 }
 
@@ -89,10 +88,9 @@ struct CollapseMenuBarItemsIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult {
         guard let service = AppEnvironment.shared?.intentExecutionService else {
-            return .result()
+            return appIntentDialogResult(message: "MenuBarDeclutter is not ready.")
         }
-        _ = service.collapseMenuBarItems()
-        return .result()
+        return appIntentDialogResult(for: service.collapseMenuBarItems())
     }
 }
 
@@ -103,10 +101,9 @@ struct RevealAllMenuBarItemsIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult {
         guard let service = AppEnvironment.shared?.intentExecutionService else {
-            return .result()
+            return appIntentDialogResult(message: "MenuBarDeclutter is not ready.")
         }
-        _ = service.revealAllMenuBarItems()
-        return .result()
+        return appIntentDialogResult(for: service.revealAllMenuBarItems())
     }
 }
 
@@ -117,10 +114,9 @@ struct ShowSecondBarIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult {
         guard let service = AppEnvironment.shared?.intentExecutionService else {
-            return .result()
+            return appIntentDialogResult(message: "MenuBarDeclutter is not ready.")
         }
-        _ = service.showSecondBar()
-        return .result()
+        return appIntentDialogResult(for: service.showSecondBar())
     }
 }
 
@@ -131,10 +127,9 @@ struct HideSecondBarIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult {
         guard let service = AppEnvironment.shared?.intentExecutionService else {
-            return .result()
+            return appIntentDialogResult(message: "MenuBarDeclutter is not ready.")
         }
-        _ = service.hideSecondBar()
-        return .result()
+        return appIntentDialogResult(for: service.hideSecondBar())
     }
 }
 
@@ -145,10 +140,9 @@ struct EnterFullMenuBarModeIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult {
         guard let service = AppEnvironment.shared?.intentExecutionService else {
-            return .result()
+            return appIntentDialogResult(message: "MenuBarDeclutter is not ready.")
         }
-        _ = service.enterFullMenuBarMode()
-        return .result()
+        return appIntentDialogResult(for: service.enterFullMenuBarMode())
     }
 }
 
@@ -159,10 +153,9 @@ struct ExitFullMenuBarModeIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult {
         guard let service = AppEnvironment.shared?.intentExecutionService else {
-            return .result()
+            return appIntentDialogResult(message: "MenuBarDeclutter is not ready.")
         }
-        _ = service.exitFullMenuBarMode()
-        return .result()
+        return appIntentDialogResult(for: service.exitFullMenuBarMode())
     }
 }
 
@@ -176,10 +169,9 @@ struct ApplyProfileIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult {
         guard let service = AppEnvironment.shared?.intentExecutionService else {
-            return .result()
+            return appIntentDialogResult(message: "MenuBarDeclutter is not ready.")
         }
-        _ = service.applyProfile(name: profileName)
-        return .result()
+        return appIntentDialogResult(for: service.applyProfile(name: profileName))
     }
 }
 
@@ -194,10 +186,9 @@ struct OpenGroupPanelIntent: AppIntent {
     func perform() async throws -> some IntentResult {
         guard let service = AppEnvironment.shared?.intentExecutionService,
               let id = UUID(uuidString: groupID) else {
-            return .result()
+            return appIntentDialogResult(message: "Group ID is invalid.")
         }
-        _ = service.openGroupPanel(id: id)
-        return .result()
+        return appIntentDialogResult(for: service.openGroupPanel(id: id))
     }
 }
 
@@ -212,10 +203,9 @@ struct RevealGroupIntent: AppIntent {
     func perform() async throws -> some IntentResult {
         guard let service = AppEnvironment.shared?.intentExecutionService,
               let id = UUID(uuidString: groupID) else {
-            return .result()
+            return appIntentDialogResult(message: "Group ID is invalid.")
         }
-        _ = service.revealGroup(id: id)
-        return .result()
+        return appIntentDialogResult(for: service.revealGroup(id: id))
     }
 }
 
@@ -226,10 +216,9 @@ struct PauseAutomationIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult {
         guard let service = AppEnvironment.shared?.intentExecutionService else {
-            return .result()
+            return appIntentDialogResult(message: "MenuBarDeclutter is not ready.")
         }
-        _ = service.pauseAutomation()
-        return .result()
+        return appIntentDialogResult(for: service.pauseAutomation())
     }
 }
 
@@ -240,16 +229,15 @@ struct ResumeAutomationIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult {
         guard let service = AppEnvironment.shared?.intentExecutionService else {
-            return .result()
+            return appIntentDialogResult(message: "MenuBarDeclutter is not ready.")
         }
-        _ = service.resumeAutomation()
-        return .result()
+        return appIntentDialogResult(for: service.resumeAutomation())
     }
 }
 
-struct SetLayoutSpacingPresetIntent: AppIntent {
-    static let title: LocalizedStringResource = "Set Layout Spacing Preset"
-    static let description = IntentDescription("Set the menu bar spacing preset (Labs only).")
+struct PreviewLayoutSpacingPresetIntent: AppIntent {
+    static let title: LocalizedStringResource = "Preview Layout Spacing Preset"
+    static let description = IntentDescription("Preview a menu bar spacing preset without applying global defaults.")
 
     @Parameter(title: "Preset", description: "Spacing preset: system, compact, dense, or custom.")
     var preset: String
@@ -257,9 +245,20 @@ struct SetLayoutSpacingPresetIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult {
         guard let service = AppEnvironment.shared?.intentExecutionService else {
-            return .result()
+            return appIntentDialogResult(message: "MenuBarDeclutter is not ready.")
         }
-        _ = service.setLayoutSpacingPreset(preset)
-        return .result()
+        return appIntentDialogResult(for: service.previewLayoutSpacingPreset(preset))
     }
+}
+
+private func appIntentDialogResult(
+    for result: AppIntentExecutionService.Result
+) -> IntentResultContainer<Never, Never, Never, IntentDialog> {
+    appIntentDialogResult(message: AppIntentResultMapper.message(for: result))
+}
+
+private func appIntentDialogResult(
+    message: String
+) -> IntentResultContainer<Never, Never, Never, IntentDialog> {
+    .result(dialog: IntentDialog(stringLiteral: message))
 }

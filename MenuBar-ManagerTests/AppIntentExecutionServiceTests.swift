@@ -111,13 +111,13 @@ struct AppIntentExecutionServiceTests {
 
     @Test func spacingPresetRequiresLabs() {
         let (service, _) = makeService(appIntentsCanAccessLabs: true, menuBarSpacingLabsEnabled: false)
-        let result = service.setLayoutSpacingPreset("compact")
+        let result = service.previewLayoutSpacingPreset("compact")
         #expect(result == .requiresLabs)
     }
 
     @Test func spacingPresetBlockedWhenLabsAccessDisabled() {
         let (service, _) = makeService(appIntentsCanAccessLabs: false)
-        let result = service.setLayoutSpacingPreset("compact")
+        let result = service.previewLayoutSpacingPreset("compact")
         guard case .blocked = result else {
             Issue.record("expected .blocked but got \(result)")
             return
@@ -127,7 +127,7 @@ struct AppIntentExecutionServiceTests {
 
     @Test func spacingPresetApplyIsDryRunOnlyWhenLabsAreEnabled() {
         let (service, _) = makeService(appIntentsCanAccessLabs: true, menuBarSpacingLabsEnabled: true)
-        let result = service.setLayoutSpacingPreset("compact")
+        let result = service.previewLayoutSpacingPreset("compact")
         guard case .dryRunOnly = result else {
             Issue.record("expected .dryRunOnly but got \(result)")
             return
@@ -150,7 +150,7 @@ struct AppIntentExecutionServiceTests {
     @Test func shortcutActionStatusesReflectSettingsGates() throws {
         let basicAction = try #require(AutomationShortcutAction.allActions.first { $0.title == "Expand Menu Bar Items" })
         let profileAction = try #require(AutomationShortcutAction.allActions.first { $0.title == "Apply Profile" })
-        let labsAction = try #require(AutomationShortcutAction.allActions.first { $0.title == "Set Layout Spacing Preset" })
+        let labsAction = try #require(AutomationShortcutAction.allActions.first { $0.title == "Preview Layout Spacing Preset" })
 
         #expect(basicAction.status(
             appIntentsEnabled: true,

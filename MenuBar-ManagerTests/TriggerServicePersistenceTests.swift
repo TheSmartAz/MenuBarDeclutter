@@ -113,6 +113,39 @@ struct TriggerServicePersistenceTests {
         #expect(!harness.triggerService.hasTimerForTesting)
     }
 
+    @Test func smartTriggerRoutesProfileApplyThroughCommandCenter() throws {
+        let harness = try makeHarness()
+        defer { harness.cleanup() }
+
+        harness.settingsStore.smartTriggersEnabled = true
+        harness.settingsStore.automationPaused = false
+        let profile = harness.profileStore.createProfile(name: "Work")
+        var routedCommand: MenuBarCommand?
+        let triggerService = harness.makeTriggerService(routeCommand: { command in
+            routedCommand = command
+            return .success(command, message: "Profile applied through router.")
+        })
+        triggerService.addTrigger(TriggerModel(
+            name: "Docked",
+            profileID: profile.id,
+            rule: .externalDisplayConnected(minimumDisplayCount: 2)
+        ))
+
+        triggerService.evaluate(
+            context: TriggerEvaluationContext(displayCount: 2),
+            reason: "test"
+        )
+
+        #expect(routedCommand == MenuBarCommand(
+            action: .applyProfile,
+            target: .profileID(profile.id),
+            source: .smartTrigger
+        ))
+        #expect(harness.visibilityBox.value == nil)
+        #expect(harness.liveStatus.activeProfileID == profile.id.uuidString)
+        #expect(harness.liveStatus.lastTriggerFired == "Docked")
+    }
+
     private func makeHarness() throws -> Harness {
         let baseURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("TriggerServicePersistenceTests-\(UUID().uuidString)", isDirectory: true)
@@ -176,7 +209,9 @@ struct TriggerServicePersistenceTests {
             paths.profilesDirectory.appendingPathComponent(TriggerService.storageFilename)
         }
 
-        func makeTriggerService() -> TriggerService {
+        func makeTriggerService(
+            routeCommand: ((MenuBarCommand) -> MenuBarCommandResult)? = nil
+        ) -> TriggerService {
             let profileApplicationService = ProfileApplicationService(
                 settingsStore: settingsStore,
                 diagnosticsLogger: diagnosticsLogger,
@@ -190,6 +225,7 @@ struct TriggerServicePersistenceTests {
                 appSupportPaths: paths,
                 diagnosticsLogger: diagnosticsLogger,
                 liveStatus: liveStatus,
+                routeCommand: routeCommand,
                 now: { Date(timeIntervalSince1970: 200) }
             )
         }

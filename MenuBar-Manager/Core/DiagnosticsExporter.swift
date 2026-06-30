@@ -179,6 +179,8 @@ struct DiagnosticsExporter {
         let privateAccessProtectFindIcon: Bool
         let privateAccessProtectIconMoving: Bool
         let privateAccessProtectSpacingLabs: Bool
+        let privateAccessProtectProfileApply: Bool
+        let privateAccessProtectAutomationCommands: Bool
         let privateAccessUnlockDurationSeconds: Double
         let privateAccessLastAuthStatus: String?
         let privateAccessAllowDevicePasswordFallback: Bool
@@ -294,6 +296,8 @@ struct DiagnosticsExporter {
             privateAccessProtectFindIcon: store.privateAccessProtectFindIcon,
             privateAccessProtectIconMoving: store.privateAccessProtectIconMoving,
             privateAccessProtectSpacingLabs: store.privateAccessProtectSpacingLabs,
+            privateAccessProtectProfileApply: store.privateAccessProtectProfileApply,
+            privateAccessProtectAutomationCommands: store.privateAccessProtectAutomationCommands,
             privateAccessUnlockDurationSeconds: store.privateAccessUnlockDurationSeconds,
             privateAccessLastAuthStatus: store.privateAccessLastAuthStatus,
             privateAccessAllowDevicePasswordFallback: store.privateAccessAllowDevicePasswordFallback,
@@ -725,6 +729,12 @@ struct DiagnosticsExporter {
         },
         SettingsField(key: "privateAccessProtectSpacingLabs", label: "Private Access Protect Spacing Labs") {
             .bool($0.privateAccessProtectSpacingLabs)
+        },
+        SettingsField(key: "privateAccessProtectProfileApply", label: "Private Access Protect Profile Apply") {
+            .bool($0.privateAccessProtectProfileApply)
+        },
+        SettingsField(key: "privateAccessProtectAutomationCommands", label: "Private Access Protect Automation Commands") {
+            .bool($0.privateAccessProtectAutomationCommands)
         },
         SettingsField(key: "privateAccessUnlockDurationSeconds", label: "Private Access Unlock Duration (s)") {
             .double($0.privateAccessUnlockDurationSeconds)

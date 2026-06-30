@@ -30,11 +30,11 @@ nonisolated enum ProtectedResource: Hashable, Sendable {
         case .protectedGroup:
             return settings.protectedGroupsRequireAuth
         case .profileApply:
-            return false // Not protected by default
+            return settings.privateAccessProtectProfileApply
         case .layoutSpacingLabs:
             return settings.privateAccessProtectSpacingLabs
         case .appIntent:
-            return false
+            return settings.privateAccessProtectAutomationCommands
         }
     }
 

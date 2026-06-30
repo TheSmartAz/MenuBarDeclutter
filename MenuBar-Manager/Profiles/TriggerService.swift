@@ -28,6 +28,7 @@ final class TriggerService {
     private let appSupportPaths: AppSupportPaths
     private let diagnosticsLogger: DiagnosticsLogger
     private let liveStatus: LiveDiagnosticsStatus
+    private let routeCommand: ((MenuBarCommand) -> MenuBarCommandResult)?
     private let evaluator: TriggerRuleEvaluator
     private let fileManager: FileManager
     private let now: () -> Date
@@ -70,6 +71,7 @@ final class TriggerService {
         appSupportPaths: AppSupportPaths,
         diagnosticsLogger: DiagnosticsLogger,
         liveStatus: LiveDiagnosticsStatus,
+        routeCommand: ((MenuBarCommand) -> MenuBarCommandResult)? = nil,
         evaluator: TriggerRuleEvaluator = TriggerRuleEvaluator(),
         fileManager: FileManager = .default,
         now: @escaping () -> Date = { Date() },
@@ -86,6 +88,7 @@ final class TriggerService {
         self.appSupportPaths = appSupportPaths
         self.diagnosticsLogger = diagnosticsLogger
         self.liveStatus = liveStatus
+        self.routeCommand = routeCommand
         self.evaluator = evaluator
         self.fileManager = fileManager
         self.now = now
@@ -306,18 +309,40 @@ final class TriggerService {
             return false
         }
 
-        // Set the active profile id first so a concurrent or coalesced trigger
-        // evaluation observably sees the in-flight transition (the previous
-        // implementation set it only after `applyBasicSettings` returned, leaving a
-        // window where overlapping triggers could not detect the in-progress apply).
-        liveStatus.activeProfileID = profile.id.uuidString
-
-        profileApplicationService.applyBasicSettings(
-            profile: profile,
-            snapshots: liveStatus.scannedMenuBarItems,
-            accessibilityStatus: liveStatus.accessibilityPermissionStatus,
-            allowProMoves: false
-        )
+        if let routeCommand {
+            let command = MenuBarCommand(
+                action: .applyProfile,
+                target: .profileID(profile.id),
+                source: .smartTrigger
+            )
+            let result = routeCommand(command)
+            guard result.didRun else {
+                diagnosticsLogger.log(
+                    "Smart trigger profile apply blocked by Command Center.",
+                    level: .warning,
+                    category: .trigger,
+                    metadata: [
+                        "status": result.status.rawValue,
+                        "reason": result.diagnosticReason
+                    ]
+                )
+                return false
+            }
+            liveStatus.activeProfileID = profile.id.uuidString
+            liveStatus.activeProfileName = profile.name
+            liveStatus.lastProfileApplyLog = result.message
+        } else {
+            // Test-only fallback for isolated TriggerService coverage. Production
+            // construction provides a Command Center route so profile gates stay
+            // centralized.
+            liveStatus.activeProfileID = profile.id.uuidString
+            profileApplicationService.applyBasicSettings(
+                profile: profile,
+                snapshots: liveStatus.scannedMenuBarItems,
+                accessibilityStatus: liveStatus.accessibilityPermissionStatus,
+                allowProMoves: false
+            )
+        }
 
         if let index = triggers.firstIndex(where: { $0.id == trigger.id }) {
             triggers[index].lastFiredAt = now

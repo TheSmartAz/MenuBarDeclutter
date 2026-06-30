@@ -87,9 +87,17 @@ struct MigrationAssistantRootView: View {
                         .font(.system(.body, design: .monospaced))
                 }
 
-                Button("Refresh Backups", systemImage: "arrow.clockwise") {
-                    refreshBackups()
+                HStack(spacing: 10) {
+                    Button("Refresh Backups", systemImage: "arrow.clockwise") {
+                        refreshBackups()
+                    }
+
+                    Button("Restore Latest Backup", systemImage: "arrow.uturn.backward.circle") {
+                        restoreLatestBackup()
+                    }
+                    .disabled(backupCount == 0)
                 }
+                .buttonStyle(.bordered)
             }
 
             if let statusMessage {
@@ -236,6 +244,35 @@ struct MigrationAssistantRootView: View {
             statusMessage = "Safe import applied."
         } catch {
             statusMessage = "Import apply failed: \(error.localizedDescription)"
+        }
+    }
+
+    private func restoreLatestBackup() {
+        guard let backupURL = backupService.latestBackup() else {
+            statusMessage = "No import backup is available to restore."
+            return
+        }
+
+        do {
+            let data = try backupService.readBackup(at: backupURL)
+            let package = try importService.decode(data: data)
+            let result = try importService.apply(
+                package: package,
+                settingsStore: settingsStore,
+                profileStore: profileStore,
+                groupStore: groupStore,
+                hotkeyBindingStore: hotkeyBindingStore,
+                spacerItemStore: spacerItemStore,
+                importExperimentalSettings: true
+            )
+            pendingPackage = nil
+            dryRun = nil
+            lastApplyResult = result
+            onImportApplied?()
+            refreshBackups()
+            statusMessage = "Latest backup restored."
+        } catch {
+            statusMessage = "Backup restore failed: \(error.localizedDescription)"
         }
     }
 

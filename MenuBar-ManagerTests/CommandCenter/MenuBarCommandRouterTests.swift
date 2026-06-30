@@ -168,6 +168,81 @@ struct MenuBarCommandRouterTests {
         #expect(!didShow)
     }
 
+    @Test func protectedProfileApplyRequiresUnlockWithoutRunning() {
+        let store = makeStore()
+        store.appIntentsCanApplyProfiles = true
+        var didApply = false
+        var handlers = MenuBarCommandHandlers()
+        handlers.applyProfileID = { _ in
+            didApply = true
+            return true
+        }
+        let probe = PrivateAccessProbe(canAccess: false)
+        let profileID = UUID()
+        let router = MenuBarCommandRouter(
+            settingsStore: store,
+            privateAccess: probe,
+            handlers: handlers
+        )
+
+        let result = router.route(MenuBarCommand(
+            action: .applyProfile,
+            target: .profileID(profileID),
+            source: .settings
+        ))
+
+        #expect(result.status == .requiresUnlock)
+        #expect(result.diagnosticReason == "privateAccessLocked")
+        #expect(!didApply)
+        #expect(probe.checkedResources.contains(.profileApply))
+    }
+
+    @Test func protectedAutomationCommandRequiresUnlockBeforeRunning() {
+        let store = makeStore()
+        var didExpand = false
+        var handlers = MenuBarCommandHandlers()
+        handlers.expand = { didExpand = true }
+        let probe = PrivateAccessProbe(canAccess: false)
+        let router = MenuBarCommandRouter(
+            settingsStore: store,
+            privateAccess: probe,
+            handlers: handlers
+        )
+
+        let result = router.route(MenuBarCommand(
+            action: .expand,
+            target: .globalVisibility,
+            source: .appIntent
+        ))
+
+        #expect(result.status == .requiresUnlock)
+        #expect(result.diagnosticReason == "privateAccessLocked")
+        #expect(!didExpand)
+        #expect(probe.checkedResources.contains(.appIntent("expand")))
+    }
+
+    @Test func smartTriggerProfileApplyUsesProfileGateWithoutAppIntentOptIn() {
+        let store = makeStore()
+        store.appIntentsCanApplyProfiles = false
+        let profileID = UUID()
+        var appliedProfileID: UUID?
+        var handlers = MenuBarCommandHandlers()
+        handlers.applyProfileID = { id in
+            appliedProfileID = id
+            return true
+        }
+        let router = MenuBarCommandRouter(settingsStore: store, handlers: handlers)
+
+        let result = router.route(MenuBarCommand(
+            action: .applyProfile,
+            target: .profileID(profileID),
+            source: .smartTrigger
+        ))
+
+        #expect(result.status == .success)
+        #expect(appliedProfileID == profileID)
+    }
+
     @Test func itemUtilityActionsUseRoutedHandlers() {
         let store = makeStore()
         store.proModeEnabled = true
@@ -488,12 +563,14 @@ struct MenuBarCommandRouterTests {
 @MainActor
 private final class PrivateAccessProbe: MenuBarCommandPrivateAccessChecking {
     private let canAccess: Bool
+    private(set) var checkedResources: [ProtectedResource] = []
 
     init(canAccess: Bool) {
         self.canAccess = canAccess
     }
 
     func canAccessWithoutPrompt(_ resource: ProtectedResource) -> Bool {
-        canAccess
+        checkedResources.append(resource)
+        return canAccess
     }
 }

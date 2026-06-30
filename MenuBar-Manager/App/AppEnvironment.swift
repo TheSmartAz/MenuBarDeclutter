@@ -1241,7 +1241,31 @@ final class AppEnvironment {
     }
 
     private func applyProfile(_ profile: ProfileModel) -> ProfileApplicationDryRun {
-        profileAutomationCoordinator.applyProfile(profile)
+        let command = MenuBarCommand(
+            action: .applyProfile,
+            target: .profileID(profile.id),
+            source: .settings
+        )
+        let availability = commandRouter.availability(for: command)
+        guard availability.isAvailable else {
+            diagnosticsLogger.log(
+                "Profile apply blocked by Command Center gate.",
+                level: .info,
+                category: .profile,
+                metadata: [
+                    "status": availability.status.rawValue,
+                    "reason": availability.diagnosticReason
+                ]
+            )
+            return ProfileApplicationDryRun(
+                itemsToReveal: [],
+                itemsToMove: [],
+                unavailableItems: [],
+                permissionRequirements: [availability.message]
+            )
+        }
+
+        return profileAutomationCoordinator.applyProfile(profile)
     }
 
     @discardableResult

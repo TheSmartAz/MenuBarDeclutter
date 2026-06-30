@@ -111,6 +111,8 @@ nonisolated struct PrivateAccessPolicyExport: Codable, Equatable, Sendable {
     let protectFindIcon: Bool
     let protectIconMoving: Bool
     let protectSpacingLabs: Bool
+    let protectProfileApply: Bool?
+    let protectAutomationCommands: Bool?
     let protectedGroupsRequireAuth: Bool
     let unlockDurationSeconds: Double
     let allowDevicePasswordFallback: Bool

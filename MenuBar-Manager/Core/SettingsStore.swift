@@ -121,6 +121,8 @@ final class SettingsStore {
         case privateAccessProtectFindIcon
         case privateAccessProtectIconMoving
         case privateAccessProtectSpacingLabs
+        case privateAccessProtectProfileApply
+        case privateAccessProtectAutomationCommands
         case privateAccessUnlockDurationSeconds
         case privateAccessLastAuthStatus
         case privateAccessAllowDevicePasswordFallback
@@ -214,6 +216,8 @@ final class SettingsStore {
         .privateAccessProtectFindIcon: false,
         .privateAccessProtectIconMoving: true,
         .privateAccessProtectSpacingLabs: true,
+        .privateAccessProtectProfileApply: false,
+        .privateAccessProtectAutomationCommands: false,
         .privateAccessUnlockDurationSeconds: AppConstants.defaultPrivateAccessUnlockDurationSeconds,
         .privateAccessAllowDevicePasswordFallback: true,
         .appIntentsEnabled: true,
@@ -673,6 +677,14 @@ final class SettingsStore {
         didSet { persist(privateAccessProtectSpacingLabs, for: .privateAccessProtectSpacingLabs) }
     }
 
+    var privateAccessProtectProfileApply: Bool {
+        didSet { persist(privateAccessProtectProfileApply, for: .privateAccessProtectProfileApply) }
+    }
+
+    var privateAccessProtectAutomationCommands: Bool {
+        didSet { persist(privateAccessProtectAutomationCommands, for: .privateAccessProtectAutomationCommands) }
+    }
+
     private var privateAccessUnlockDurationSecondsStorage: Double
 
     var privateAccessUnlockDurationSeconds: Double {
@@ -1032,6 +1044,8 @@ final class SettingsStore {
         self.privateAccessProtectFindIcon = Self.value(for: .privateAccessProtectFindIcon, default: Self.registeredDefault(.privateAccessProtectFindIcon), in: defaults)
         self.privateAccessProtectIconMoving = Self.value(for: .privateAccessProtectIconMoving, default: Self.registeredDefault(.privateAccessProtectIconMoving), in: defaults)
         self.privateAccessProtectSpacingLabs = Self.value(for: .privateAccessProtectSpacingLabs, default: Self.registeredDefault(.privateAccessProtectSpacingLabs), in: defaults)
+        self.privateAccessProtectProfileApply = Self.value(for: .privateAccessProtectProfileApply, default: Self.registeredDefault(.privateAccessProtectProfileApply), in: defaults)
+        self.privateAccessProtectAutomationCommands = Self.value(for: .privateAccessProtectAutomationCommands, default: Self.registeredDefault(.privateAccessProtectAutomationCommands), in: defaults)
         self.privateAccessUnlockDurationSecondsStorage = Self.clampedDouble(
             for: .privateAccessUnlockDurationSeconds,
             default: Self.registeredDefault(.privateAccessUnlockDurationSeconds),
@@ -1138,6 +1152,8 @@ final class SettingsStore {
         privateAccessProtectFindIcon = Self.registeredDefault(.privateAccessProtectFindIcon)
         privateAccessProtectIconMoving = Self.registeredDefault(.privateAccessProtectIconMoving)
         privateAccessProtectSpacingLabs = Self.registeredDefault(.privateAccessProtectSpacingLabs)
+        privateAccessProtectProfileApply = Self.registeredDefault(.privateAccessProtectProfileApply)
+        privateAccessProtectAutomationCommands = Self.registeredDefault(.privateAccessProtectAutomationCommands)
         privateAccessUnlockDurationSeconds = Self.registeredDefault(.privateAccessUnlockDurationSeconds)
         privateAccessLastAuthStatus = nil
         privateAccessAllowDevicePasswordFallback = Self.registeredDefault(.privateAccessAllowDevicePasswordFallback)

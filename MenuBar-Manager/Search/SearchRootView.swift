@@ -647,6 +647,8 @@ private struct SearchUnavailableView: View {
             HStack(spacing: 10) {
                 Button(state.primaryButtonTitle, action: state.primaryAction)
                     .buttonStyle(.borderedProminent)
+                    .accessibilityLabel(Text(state.primaryButtonTitle))
+                    .accessibilityIdentifier("search.unavailable.primary")
 
                 if let secondaryButtonTitle = state.secondaryButtonTitle,
                    let secondaryAction = state.secondaryAction {

@@ -126,9 +126,27 @@ struct PrivateAccessSettingsView: View {
 
                 protectedToggle(
                     title: "Spacing Labs",
-                    subtitle: "Protect apply, restore, and reset operations for global menu bar spacing.",
+                    subtitle: "Protect spacing commands if Labs apply, restore, or reset operations are enabled.",
                     systemImage: "testtube.2",
                     isOn: $settingsStore.privateAccessProtectSpacingLabs
+                )
+
+                ClearGlassDivider()
+
+                protectedToggle(
+                    title: "Profile Apply",
+                    subtitle: "Require auth before applying a local profile.",
+                    systemImage: "person.crop.rectangle.stack",
+                    isOn: $settingsStore.privateAccessProtectProfileApply
+                )
+
+                ClearGlassDivider()
+
+                protectedToggle(
+                    title: "Automation Commands",
+                    subtitle: "Require an active unlock before App Intents or URL automation can run protected commands.",
+                    systemImage: "sparkles.rectangle.stack",
+                    isOn: $settingsStore.privateAccessProtectAutomationCommands
                 )
             }
 

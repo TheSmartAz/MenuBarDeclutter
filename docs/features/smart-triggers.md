@@ -11,7 +11,7 @@ Smart Triggers are optional local automation rules that apply profiles from loca
 - Debounces event bursts.
 - Uses first-match trigger precedence.
 - Avoids profile loops.
-- Applies profiles through conservative Basic settings.
+- Applies profiles through Command Center so profile gates, Safe Mode, and Private Access outcomes stay consistent with other profile automation paths.
 - Exposes Pause All Automation in Profiles, Advanced, and the status menu.
 
 ## User Flow

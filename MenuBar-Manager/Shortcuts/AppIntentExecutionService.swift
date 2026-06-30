@@ -115,7 +115,7 @@ final class AppIntentExecutionService {
         route(.resumeAutomation, target: .automation)
     }
 
-    func setLayoutSpacingPreset(_ preset: String) -> Result {
+    func previewLayoutSpacingPreset(_ preset: String) -> Result {
         route(.spacingPresetApply, target: .spacingPreset(preset))
     }
 
