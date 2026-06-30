@@ -128,6 +128,15 @@ final class MenuBarCommandRouter {
             )
         }
 
+        if command.action == .revealAlwaysHiddenZone,
+           !settingsStore.alwaysHiddenEnabled {
+            return .unavailable(
+                message: "Always-hidden reveal is disabled.",
+                diagnosticReason: "alwaysHiddenDisabled",
+                failedGate: .featureEnabled
+            )
+        }
+
         if command.action.requiresProMode, !settingsStore.proModeEnabled {
             return .unavailable(
                 status: .requiresPro,

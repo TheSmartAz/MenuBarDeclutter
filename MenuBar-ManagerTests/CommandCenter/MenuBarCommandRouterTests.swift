@@ -95,6 +95,41 @@ struct MenuBarCommandRouterTests {
         #expect(!didApply)
     }
 
+    @Test func alwaysHiddenRevealRequiresEnabledZone() {
+        let store = makeStore()
+        store.alwaysHiddenEnabled = false
+        var didReveal = false
+        var handlers = MenuBarCommandHandlers()
+        handlers.revealAll = { didReveal = true }
+        let router = MenuBarCommandRouter(settingsStore: store, handlers: handlers)
+
+        let result = router.route(MenuBarCommand(
+            action: .revealAlwaysHiddenZone,
+            target: .globalVisibility
+        ))
+
+        #expect(result.status == .unavailable)
+        #expect(result.diagnosticReason == "alwaysHiddenDisabled")
+        #expect(!didReveal)
+    }
+
+    @Test func enabledAlwaysHiddenRevealRunsHandler() {
+        let store = makeStore()
+        store.alwaysHiddenEnabled = true
+        var didReveal = false
+        var handlers = MenuBarCommandHandlers()
+        handlers.revealAll = { didReveal = true }
+        let router = MenuBarCommandRouter(settingsStore: store, handlers: handlers)
+
+        let result = router.route(MenuBarCommand(
+            action: .revealAlwaysHiddenZone,
+            target: .globalVisibility
+        ))
+
+        #expect(result.status == .success)
+        #expect(didReveal)
+    }
+
     @Test func spacingPresetApplyIsDryRunOnlyWhenLabsAreEnabled() {
         let store = makeStore()
         store.automationPaused = false

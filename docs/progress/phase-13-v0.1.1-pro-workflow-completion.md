@@ -42,6 +42,9 @@ Completed in this pass:
 - Routed status-menu Find Icon, Second Bar show/hide/toggle, automation pause/resume, Full Menu Bar Mode, and Layout Suggestions actions through the shared Command Center hook.
 - Preserved Basic Mode recovery controls by keeping expand/collapse/toggle direct, while routing protected always-hidden reveal through Private Access when that resource is locked.
 - Routed optional group status item Open Group actions through Command Center instead of bypassing the shared gate/result model.
+- Added Private Access Settings command availability rows for protected app actions without executing those actions.
+- Tightened Command Center availability so always-hidden reveal reports disabled when the always-hidden separator feature is off.
+- Redacted Private Access diagnostics to log protected resource kinds instead of protected group IDs or other target values.
 
 Not in scope for the first slice:
 
@@ -106,6 +109,9 @@ Current Phase 13 changes:
 - `MenuBar-Manager/Profiles/ProfileListView.swift`
 - `MenuBar-Manager/Profiles/AutomationURLHandler.swift`
 - `MenuBar-Manager/Profiles/ProfileAutomationCoordinator.swift`
+- `MenuBar-Manager/PrivateAccess/PrivateAccessCoordinator.swift`
+- `MenuBar-Manager/PrivateAccess/PrivateAccessSettingsView.swift`
+- `MenuBar-Manager/PrivateAccess/ProtectedResource.swift`
 - `MenuBar-Manager/Search/MenuItemActivator.swift`
 - `MenuBar-Manager/Search/SearchRootView.swift`
 - `MenuBar-Manager/Search/SearchWindowController.swift`
@@ -122,6 +128,7 @@ Current Phase 13 changes:
 - `MenuBar-ManagerTests/AppIntentExecutionServiceTests.swift`
 - `MenuBar-ManagerTests/CommandCenter/MenuBarCommandRouterTests.swift`
 - `MenuBar-ManagerTests/DynamicHotkeyRegistrationServiceTests.swift`
+- `MenuBar-ManagerTests/ProtectedActionGateTests.swift`
 - `MenuBar-ManagerTests/StatusBarMenuBuilderTests.swift`
 - `docs/progress/phase-13-v0.1.1-pro-workflow-completion.md`
 - `docs/project-summary.md`
@@ -149,9 +156,15 @@ Current Phase 13 changes:
 | `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -only-testing:MenuBarDeclutterUITests/MenuBar_ManagerUITests/testSearchUnavailableStateIsVisibleWithoutProMode` | PASS | Isolated retry of the full-suite UI failure passed. Result bundle: `~/Library/Developer/Xcode/DerivedData/MenuBar-Manager-csxowpoejceahkfttjignkqzaccl/Logs/Test/Test-MenuBarDeclutter-2026.06.29_12-29-47--0700.xcresult`. |
 | `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS'` | PASS | Fresh full rerun passed with 338 Swift Testing tests in 61 suites and 7 UI tests; the prior Search unavailable-state UI case passed inside the full run. Result bundle: `~/Library/Developer/Xcode/DerivedData/MenuBar-Manager-csxowpoejceahkfttjignkqzaccl/Logs/Test/Test-MenuBarDeclutter-2026.06.29_12-32-24--0700.xcresult`. |
 | `scripts/verify_privacy_boundary.sh` | PASS | Source/config privacy checks passed after status-menu routing and documentation updates; built-app checks skipped because `APP_PATH` was not set. |
+| `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -only-testing:MenuBarDeclutterTests/ProtectedActionGateTests -only-testing:MenuBarDeclutterTests/MenuBarCommandRouterTests` | PASS | 21 focused tests in 2 suites passed after adding Private Access Settings availability rows, always-hidden reveal availability gating, and protected-group diagnostic redaction. Result bundle: `~/Library/Developer/Xcode/DerivedData/MenuBar-Manager-csxowpoejceahkfttjignkqzaccl/Logs/Test/Test-MenuBarDeclutter-2026.06.29_20-20-13--0700.xcresult`. |
+| `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS'` | FAIL | Swift Testing passed with 341 tests in 61 suites, then `MenuBarDeclutterUITests-Runner` failed before UI test execution with `Timed out while enabling automation mode`. Result bundle: `~/Library/Developer/Xcode/DerivedData/MenuBar-Manager-csxowpoejceahkfttjignkqzaccl/Logs/Test/Test-MenuBarDeclutter-2026.06.29_20-21-52--0700.xcresult`. |
+| `pkill -x MenuBarDeclutter || true`; `pkill -x MenuBarDeclutterUITests-Runner || true`; `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS'` | INTERRUPTED | Swift Testing passed with 341 tests in 61 suites, then the UI runner stayed at `Running tests...` without individual test-case output; interrupted manually. Result bundle: `~/Library/Developer/Xcode/DerivedData/MenuBar-Manager-csxowpoejceahkfttjignkqzaccl/Logs/Test/Test-MenuBarDeclutter-2026.06.29_20-23-17--0700.xcresult`. |
+| `pkill -x MenuBarDeclutter || true`; `pkill -x MenuBarDeclutterUITests-Runner || true`; `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -only-testing:MenuBarDeclutterUITests` | INTERRUPTED | UI-only retry stayed at `Running tests...` without individual test-case output; interrupted manually. Result bundle: `~/Library/Developer/Xcode/DerivedData/MenuBar-Manager-csxowpoejceahkfttjignkqzaccl/Logs/Test/Test-MenuBarDeclutter-2026.06.29_20-26-29--0700.xcresult`. |
+| `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -skip-testing:MenuBarDeclutterUITests` | INTERRUPTED | Non-UI retry was cancelled after the command remained active too long for the current pass. Result bundle: `~/Library/Developer/Xcode/DerivedData/MenuBar-Manager-csxowpoejceahkfttjignkqzaccl/Logs/Test/Test-MenuBarDeclutter-2026.06.29_20-30-58--0700.xcresult`. |
 | `rg -n "v0\.2\|0\.2\.0" README.md docs MenuBar-Manager scripts Config` | Hits inspected | Hits are explicit v0.1.1 guardrails, refusal text, or plan/progress docs; no current UI or release artifact names this phase `v0.2`. |
 | `rg -n "ScreenCaptureKit\|NSScreenCaptureUsageDescription\|NSAppleEventsUsageDescription\|URLSession\|NWConnection\|analytics\|telemetry\|Sentry\|Firebase" MenuBar-Manager Config scripts docs` | Hits inspected | Hits are privacy verification scripts, historical/guardrail docs, or dogfood/export exclusion text. No direct app target network API, analytics SDK, ScreenCaptureKit import, or sensitive usage string was introduced. |
-| `git diff --check` | PASS | No whitespace errors after final docs updates. |
+| `scripts/verify_privacy_boundary.sh` | PASS | Source/config privacy checks passed after Private Access Settings availability rows and diagnostic redaction updates; built-app checks skipped because `APP_PATH` was not set. |
+| `git diff --check` | PASS | No whitespace errors after Private Access docs updates. |
 
 ## Manual QA Notes
 
@@ -164,6 +177,7 @@ Observed Settings behavior:
 - Groups was checked by creating a disposable UI-testing group; the selected detail showed `Command Center: Group Panel`, `Available`, and `Available.`, and the Edit/Export/Delete controls fit after the small control-size tweak.
 - Profiles was checked by creating a disposable UI-testing profile; the editor showed `Command Center: Apply Profile`, `Available`, and `Available.` without exposing the profile target value.
 - Search unavailable-state follow-up was checked with `--ui-testing-show-search`; Codex Computer Use found the `Find Icon Disabled` text and `Enable Find Icon` button in the accessibility tree and screenshot.
+- Private Access Settings was checked with Codex Computer Use against the DerivedData app launched with `--ui-testing --ui-testing-show-settings`; the new `Command Center` section showed protected action rows, default Basic Mode gates such as `Pro Required` and `Labs Required`, and `Reveal Always-Hidden Zone` correctly reported `Unavailable` while the always-hidden separator was disabled.
 
 No Accessibility, Screen Recording, Apple Events, Input Monitoring, network, screenshot, or pixel-capture permission prompt was triggered by these Settings checks.
 
@@ -184,8 +198,10 @@ Phase 13 manual QA will be needed for:
 - Advanced status-menu actions now route through the shared command router where they need shared Pro, automation, Safe Mode, Labs, or Private Access outcomes.
 - Basic status-menu expand/collapse/toggle paths intentionally remain direct so Safe Mode recovery stays available without Pro gating.
 - Search, Second Bar/Icon Panel, Groups, and Profiles Settings now show user-facing command availability rows backed by the shared router.
+- Private Access Settings now shows protected command availability rows backed by the shared router.
 - Some remaining protected-action explanations and non-menu UI utility actions still use existing Phase 10/11 execution paths until their command execution surfaces are migrated end to end.
 - Private Access is represented in the command router as a lock-status gate; status-menu protected always-hidden reveal now uses the UI-mediated unlock gate before routing.
+- Private Access diagnostics now log protected resource kinds rather than protected target IDs.
 - Import remains dry-run only from Phase 12.
 - Spacing Labs remains guarded; apply/restore/reset must either become fully reliable and tested or stay safely deferred.
 - Icon Moving remains Experimental and must stay explicitly gated.

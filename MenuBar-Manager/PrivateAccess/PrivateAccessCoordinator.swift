@@ -60,29 +60,33 @@ final class PrivateAccessCoordinator {
         case .success:
             unlockSession.unlock()
             diagnosticsLogger.log(
-                "Private Access: authentication succeeded for \(resource).",
-                category: .privacy
+                "Private Access: authentication succeeded.",
+                category: .privacy,
+                metadata: ["resource": resource.diagnosticKind]
             )
             return true
         case .failure:
             diagnosticsLogger.log(
-                "Private Access: authentication failed for \(resource).",
+                "Private Access: authentication failed.",
                 level: .warning,
-                category: .privacy
+                category: .privacy,
+                metadata: ["resource": resource.diagnosticKind]
             )
             return false
         case .cancel:
             diagnosticsLogger.log(
-                "Private Access: authentication cancelled for \(resource).",
+                "Private Access: authentication cancelled.",
                 level: .info,
-                category: .privacy
+                category: .privacy,
+                metadata: ["resource": resource.diagnosticKind]
             )
             return false
         case .unavailable:
             diagnosticsLogger.log(
-                "Private Access: authentication unavailable for \(resource).",
+                "Private Access: authentication unavailable.",
                 level: .warning,
-                category: .privacy
+                category: .privacy,
+                metadata: ["resource": resource.diagnosticKind]
             )
             return false
         }

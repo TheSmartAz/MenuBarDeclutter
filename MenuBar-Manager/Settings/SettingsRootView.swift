@@ -191,6 +191,7 @@ struct SettingsRootView: View {
             PrivateAccessSettingsView(
                 settingsStore: settingsStore,
                 coordinator: privateAccessCoordinator,
+                commandAvailabilities: privateAccessCommandSummaries,
                 onChange: actions.privacyChanged
             )
         case .groups:
@@ -323,6 +324,44 @@ struct SettingsRootView: View {
             return nil
         }
         return MenuBarCommandAvailabilitySummary(command: command, availability: availability)
+    }
+
+    private var privateAccessCommandSummaries: [MenuBarCommandAvailabilitySummary] {
+        privateAccessCommands.compactMap(commandSummary)
+    }
+
+    private var privateAccessCommands: [MenuBarCommand] {
+        [
+            MenuBarCommand(
+                action: .revealAlwaysHiddenZone,
+                target: .globalVisibility,
+                source: .settings
+            ),
+            MenuBarCommand(
+                action: .showFindIcon,
+                source: .statusMenu
+            ),
+            MenuBarCommand(
+                action: .showSecondBar,
+                target: .secondBar,
+                source: .statusMenu
+            ),
+            MenuBarCommand(
+                action: .showIconPanel,
+                target: .iconPanel,
+                source: .statusMenu
+            ),
+            MenuBarCommand(
+                action: .experimentalActivateItem,
+                target: .menuBarItem(id: "private-access-settings-preview"),
+                source: .settings
+            ),
+            MenuBarCommand(
+                action: .spacingPresetApply,
+                target: .spacingPreset("private-access-settings-preview"),
+                source: .settings
+            )
+        ]
     }
 }
 
