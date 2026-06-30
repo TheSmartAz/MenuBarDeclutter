@@ -56,6 +56,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let shouldSeedMenuBarItems = launchArguments.contains("--ui-testing-seed-menu-bar-items")
+        let shouldSeedGroups = launchArguments.contains("--ui-testing-seed-groups")
+
+        if shouldSeedGroups {
+            seedIconGroupsUITestingStore(environment)
+        }
 
         if launchArguments.contains("--ui-testing-show-diagnostics") {
             environment.showDiagnostics()
@@ -205,6 +210,85 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         environment.diagnosticsLogger.log(
             "Seeded UI testing menu bar item snapshot with \(result.snapshots.count) items."
         )
+    }
+
+    private func seedIconGroupsUITestingStore(_ environment: AppEnvironment) {
+        let directory = environment.appSupportPaths.applicationSupportDirectory
+            .appendingPathComponent("Groups", isDirectory: true)
+        let fileURL = directory.appendingPathComponent("groups.json")
+        let groups = makeUITestingIconGroups()
+
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+
+            let container = IconGroupContainer(
+                schemaVersion: IconGroupStore.schemaVersion,
+                groups: groups
+            )
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            try encoder.encode(container).write(to: fileURL, options: .atomic)
+
+            environment.diagnosticsLogger.log(
+                "Seeded UI testing group store with \(groups.count) groups."
+            )
+        } catch {
+            environment.diagnosticsLogger.log(
+                "Failed to seed UI testing group store: \(error.localizedDescription)",
+                level: .warning,
+                category: .layout
+            )
+        }
+    }
+
+    private func makeUITestingIconGroups() -> [IconGroup] {
+        var focusApps = makeUITestingIconGroup()
+        focusApps.colorName = "blue"
+        focusApps.showAsStatusItem = true
+
+        let systemItems = IconGroup(
+            id: UUID(uuidString: "63FE86A1-6551-4A83-A2E4-8F1B7B2D6A3F") ?? UUID(),
+            name: "System Essentials",
+            symbolName: "switch.2",
+            colorName: "green",
+            isProtected: true,
+            showInSecondBar: false,
+            itemRefs: [
+                IconGroupItemRef(
+                    bundleIdentifier: "com.apple.controlcenter",
+                    appName: "Control Center",
+                    titleContains: "Wi-Fi",
+                    manualLabel: "Wi-Fi"
+                ),
+                IconGroupItemRef(
+                    bundleIdentifier: "com.apple.controlcenter",
+                    appName: "Control Center",
+                    titleContains: "Control Center",
+                    manualLabel: "Control Center"
+                )
+            ]
+        )
+
+        let quietSync = IconGroup(
+            id: UUID(uuidString: "F4098F79-721F-4F8D-BC52-B83A5DCE29F4") ?? UUID(),
+            name: "Quiet Sync",
+            symbolName: "arrow.triangle.2.circlepath",
+            colorName: "orange",
+            isEnabled: false,
+            itemRefs: [
+                IconGroupItemRef(
+                    bundleIdentifier: "com.getdropbox.dropbox",
+                    appName: "Dropbox",
+                    manualLabel: "Dropbox Sync"
+                ),
+                IconGroupItemRef(
+                    bundleIdentifier: "com.example.missing",
+                    manualLabel: "Missing Helper"
+                )
+            ]
+        )
+
+        return [focusApps, systemItems, quietSync]
     }
 
     private func makeUITestingIconGroup() -> IconGroup {

@@ -77,37 +77,36 @@ struct IconGroupsSettingsView: View {
                 }
             }
 
-            ClearGlassSection("Manage Groups", subtitle: "Create groups manually or from the current Pro snapshot.") {
-                ViewThatFits(in: .horizontal) {
-                    HStack(alignment: .top, spacing: 16) {
+            ClearGlassSection("Manage Groups", subtitle: "Create local groups manually or from the current Pro snapshot.") {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(alignment: .top, spacing: 14) {
                         groupList
-                            .frame(minWidth: 250, idealWidth: 280, maxWidth: 320)
+                            .frame(width: 300)
 
                         selectedGroupDetail
+                            .frame(minWidth: 360, maxWidth: .infinity)
                     }
 
-                    VStack(alignment: .leading, spacing: 14) {
-                        groupList
-                            .frame(maxWidth: .infinity)
+                    if !proModeAvailable {
+                        HStack(alignment: .top, spacing: 10) {
+                            ClearGlassInlineMessage(
+                                text: "Manual bundle ID, app name, and title groups work in Basic Mode. Enable Pro Mode for the current menu bar item picker.",
+                                systemImage: "star",
+                                style: .info
+                            )
 
-                        selectedGroupDetail
+                            Button("Open Privacy Settings", systemImage: "hand.raised") {
+                                onOpenPrivacySettings()
+                            }
+                            .controlSize(.small)
+                            .fixedSize()
+                            .padding(.top, 2)
+                        }
                     }
-                }
 
-                if !proModeAvailable {
-                    ClearGlassInlineMessage(
-                        text: "Manual bundle ID, app name, and title groups work in Basic Mode. Enable Pro Mode for the current menu bar item picker.",
-                        systemImage: "star",
-                        style: .info
-                    )
-
-                    Button("Open Privacy Settings", systemImage: "hand.raised") {
-                        onOpenPrivacySettings()
+                    if let statusMessage {
+                        ClearGlassInlineMessage(text: statusMessage, systemImage: "info.circle")
                     }
-                }
-
-                if let statusMessage {
-                    ClearGlassInlineMessage(text: statusMessage, systemImage: "info.circle")
                 }
             }
         }
@@ -130,7 +129,7 @@ struct IconGroupsSettingsView: View {
     }
 
     private var selectedGroupDetail: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             if let selectedGroup {
                 IconGroupPreviewView(
                     group: selectedGroup,
@@ -138,20 +137,26 @@ struct IconGroupsSettingsView: View {
                     isProtectedRedacted: selectedGroup.isProtected && settingsStore.protectedGroupsRequireAuth
                 )
 
-                if let commandAvailability = commandAvailability?(selectedGroup) {
-                    CommandAvailabilityRow(summary: commandAvailability)
-
-                    ClearGlassDivider()
-                }
-
                 selectedGroupActions(selectedGroup)
 
-                if onAssignGroupHotkey != nil {
-                    ClearGlassDivider()
+                if let commandAvailability = commandAvailability?(selectedGroup) {
+                    VStack(spacing: 0) {
+                        CommandAvailabilityRow(summary: commandAvailability)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 3)
+                    .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 8))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color(nsColor: .separatorColor).opacity(0.42), lineWidth: 0.5)
+                    }
+                }
 
+                if onAssignGroupHotkey != nil {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Hotkeys")
-                            .font(.headline)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
 
                         HStack(spacing: 10) {
                             Button("Assign Open Hotkey", systemImage: "keyboard") {
@@ -163,6 +168,13 @@ struct IconGroupsSettingsView: View {
                             }
                         }
                         .controlSize(.small)
+                    }
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 8))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color(nsColor: .separatorColor).opacity(0.42), lineWidth: 0.5)
                     }
                 }
             } else {
@@ -176,7 +188,7 @@ struct IconGroupsSettingsView: View {
     @ViewBuilder
     private func selectedGroupActions(_ group: IconGroup) -> some View {
         ViewThatFits(in: .horizontal) {
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 selectedGroupActionButtons(group)
             }
 
@@ -185,6 +197,13 @@ struct IconGroupsSettingsView: View {
             }
         }
         .controlSize(.small)
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 8))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color(nsColor: .separatorColor).opacity(0.42), lineWidth: 0.5)
+        }
     }
 
     @ViewBuilder
@@ -210,26 +229,24 @@ struct IconGroupsSettingsView: View {
         }
 
         Button("Delete", systemImage: "trash", role: .destructive) {
+            let remainingGroups = groups.filter { $0.id != group.id }
             groupStore.removeGroup(id: group.id)
-            selectedID = groups.first?.id
+            selectedID = remainingGroups.first?.id
             notifyChanged()
         }
     }
 
     private var groupList: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Groups")
-                    .font(.headline)
+                Label("Groups", systemImage: "sidebar.left")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
 
                 Spacer()
 
                 Button("Add Group", systemImage: "plus") {
-                    editingGroup = IconGroup(
-                        name: "New Group",
-                        symbolName: "folder",
-                        sortOrder: groups.count
-                    )
+                    editingGroup = newGroup()
                 }
                 .labelStyle(.iconOnly)
                 .help("Add Group")
@@ -241,29 +258,43 @@ struct IconGroupsSettingsView: View {
                 .help("Import Groups")
             }
 
-            VStack(spacing: 0) {
+            ScrollView {
                 if groups.isEmpty {
-                    Text("No groups yet.")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, minHeight: 64)
+                    ContentUnavailableView(
+                        "No Groups",
+                        systemImage: "person.2",
+                        description: Text("Create a group to collect related menu bar items.")
+                    )
+                    .frame(maxWidth: .infinity, minHeight: 170)
                 } else {
-                    ForEach(groups) { group in
-                        IconGroupRowView(
-                            group: group,
-                            isSelected: group.id == selectedGroup?.id
-                        ) {
-                            selectedID = group.id
-                        }
-
-                        if group.id != groups.last?.id {
-                            ClearGlassDivider()
+                    LazyVStack(spacing: 6) {
+                        ForEach(groups) { group in
+                            IconGroupRowView(
+                                group: group,
+                                isSelected: group.id == selectedGroup?.id
+                            ) {
+                                selectedID = group.id
+                            }
                         }
                     }
+                    .padding(6)
                 }
             }
-            .background(.quaternary.opacity(0.4), in: .rect(cornerRadius: 8))
+            .frame(minHeight: 220, maxHeight: 420)
+            .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 8))
+            .overlay {
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color(nsColor: .separatorColor).opacity(0.45), lineWidth: 0.5)
+            }
         }
+    }
+
+    private func newGroup() -> IconGroup {
+        IconGroup(
+            name: "New Group",
+            symbolName: "folder",
+            sortOrder: groups.count
+        )
     }
 
     private func save(_ group: IconGroup) {
