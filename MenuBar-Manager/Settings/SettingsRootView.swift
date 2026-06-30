@@ -182,6 +182,7 @@ struct SettingsRootView: View {
                             Label(section.title, systemImage: section.systemImage)
                                 .tag(section)
                                 .help(section.helpText)
+                                .accessibilityIdentifier(section.sidebarAccessibilityIdentifier)
                         }
                     }
                 }
@@ -544,6 +545,10 @@ struct SettingsRootView: View {
 private extension SettingsSection {
     var pageAccessibilityIdentifier: String {
         "settings.page.\(rawValue)"
+    }
+
+    var sidebarAccessibilityIdentifier: String {
+        "settings.sidebar.\(rawValue)"
     }
 }
 

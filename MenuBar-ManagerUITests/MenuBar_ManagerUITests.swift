@@ -192,12 +192,17 @@ final class MenuBar_ManagerUITests: XCTestCase {
 
         let searchField = app.searchFields.firstMatch
         XCTAssertTrue(searchField.waitForExistence(timeout: 5), "Expected the Settings search field to exist.")
-        searchField.click()
-        searchField.typeText("privacy")
+        searchField.coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: 0.5)).click()
+        app.typeText("privacy")
 
         XCTAssertTrue(
             app.staticTexts["Privacy"].waitForExistence(timeout: 5),
             "Expected focused Settings search to reveal the Privacy sidebar result."
+        )
+        assertElement("settings.sidebar.privacy", in: app, timeout: 5)
+        XCTAssertFalse(
+            app.descendants(matching: .any)["settings.sidebar.general"].exists,
+            "Expected focused Settings search to filter non-matching sidebar rows."
         )
 
         let value = String(describing: searchField.value ?? "")
