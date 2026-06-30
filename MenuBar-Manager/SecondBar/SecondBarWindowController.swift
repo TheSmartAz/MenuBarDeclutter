@@ -28,11 +28,13 @@ final class SecondBarWindowController: NSWindowController, NSWindowDelegate {
         settingsStore: SettingsStore,
         permissionService: AccessibilityPermissionService,
         liveStatus: LiveDiagnosticsStatus,
+        itemMemoryStore: MenuBarItemMemoryStore,
         positioningService: SecondBarPositioningService,
         diagnosticsLogger: DiagnosticsLogger,
         onRefresh: @escaping () -> Void,
-        onActivate: @escaping (MenuBarItemSnapshot) -> MenuItemActivationResult,
+        onCommand: @escaping (MenuBarCommand) -> MenuBarCommandResult,
         onMove: @escaping @MainActor (MenuBarItemSnapshot, IconMoveCommand) async -> IconMoveResult,
+        groupsProvider: @escaping () -> [IconGroup],
         onSettingsChanged: @escaping () -> Void,
         onOpenPrivacySettings: @escaping () -> Void
     ) {
@@ -63,9 +65,11 @@ final class SecondBarWindowController: NSWindowController, NSWindowDelegate {
             settingsStore: settingsStore,
             permissionService: permissionService,
             liveStatus: liveStatus,
+            itemMemoryStore: itemMemoryStore,
             onRefresh: onRefresh,
-            onActivate: onActivate,
+            onCommand: onCommand,
             onMove: onMove,
+            groupsProvider: groupsProvider,
             onSettingsChanged: onSettingsChanged,
             onOpenPrivacySettings: onOpenPrivacySettings,
             onDismiss: { [weak panel] in
@@ -200,8 +204,8 @@ final class SecondBarWindowController: NSWindowController, NSWindowDelegate {
 
     private var targetPanelSize: CGSize {
         CGSize(
-            width: 640,
-            height: settingsStore.secondBarShowLabels ? 190 : 132
+            width: 760,
+            height: settingsStore.secondBarShowLabels ? 274 : 228
         )
     }
 

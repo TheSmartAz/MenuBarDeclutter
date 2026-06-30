@@ -3,6 +3,7 @@ import SwiftUI
 struct PrivateAccessSettingsView: View {
     @Bindable var settingsStore: SettingsStore
     let coordinator: PrivateAccessCoordinator?
+    var commandAvailabilities: [MenuBarCommandAvailabilitySummary] = []
     var onChange: (() -> Void)?
 
     @State private var testStatus: String?
@@ -129,6 +130,18 @@ struct PrivateAccessSettingsView: View {
                     systemImage: "testtube.2",
                     isOn: $settingsStore.privateAccessProtectSpacingLabs
                 )
+            }
+
+            if !commandAvailabilities.isEmpty {
+                ClearGlassSection("Command Center", subtitle: "Shared routing status for protected app actions.") {
+                    ForEach(commandAvailabilities.indices, id: \.self) { index in
+                        CommandAvailabilityRow(summary: commandAvailabilities[index])
+
+                        if index < commandAvailabilities.count - 1 {
+                            ClearGlassDivider()
+                        }
+                    }
+                }
             }
 
             ClearGlassSection("Privacy Boundary") {

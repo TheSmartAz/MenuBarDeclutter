@@ -82,6 +82,56 @@ struct SearchServiceTests {
         #expect(results.allSatisfy { $0.matchReason == .recent })
     }
 
+    @Test func zoneFilterLimitsResults() {
+        let snapshots = [
+            makeSnapshot(id: "visible", appName: "Cloud", title: "Sync", zone: .visible),
+            makeSnapshot(id: "hidden", appName: "Cloud", title: "Sync", zone: .hidden),
+            makeSnapshot(id: "always", appName: "Cloud", title: "Sync", zone: .alwaysHidden)
+        ]
+
+        let results = service.results(
+            from: snapshots,
+            query: "Cloud",
+            filter: .hidden
+        )
+
+        #expect(results.map(\.id) == ["hidden"])
+    }
+
+    @Test func favoritesFilterUsesMemoryStore() {
+        let favorite = makeSnapshot(id: "favorite", appName: "Favorite", title: "Sync")
+        let other = makeSnapshot(id: "other", appName: "Other", title: "Sync")
+        let memoryStore = MenuBarItemMemoryStore(fileURL: nil)
+        memoryStore.toggleFavorite(favorite)
+
+        let results = service.results(
+            from: [favorite, other],
+            query: "Sync",
+            filter: .favorites,
+            memoryStore: memoryStore
+        )
+
+        #expect(results.map(\.id) == ["favorite"])
+    }
+
+    @Test func recentFilterUsesMemoryOrder() {
+        let first = makeSnapshot(id: "first", appName: "First", title: "Item")
+        let second = makeSnapshot(id: "second", appName: "Second", title: "Item")
+        let third = makeSnapshot(id: "third", appName: "Third", title: "Item")
+        let memoryStore = MenuBarItemMemoryStore(fileURL: nil)
+        memoryStore.recordSelection(second)
+        memoryStore.recordSelection(first)
+
+        let results = service.results(
+            from: [third, second, first],
+            query: "",
+            filter: .recent,
+            memoryStore: memoryStore
+        )
+
+        #expect(results.map(\.id) == ["first", "second"])
+    }
+
     private func makeSnapshot(
         id: String,
         appName: String,

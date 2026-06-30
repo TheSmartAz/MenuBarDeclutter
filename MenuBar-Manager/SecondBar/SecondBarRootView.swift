@@ -4,10 +4,12 @@ struct SecondBarRootView: View {
     @Bindable var settingsStore: SettingsStore
     @Bindable var permissionService: AccessibilityPermissionService
     @Bindable var liveStatus: LiveDiagnosticsStatus
+    @Bindable var itemMemoryStore: MenuBarItemMemoryStore
 
     let onRefresh: () -> Void
-    let onActivate: (MenuBarItemSnapshot) -> MenuItemActivationResult
+    let onCommand: (MenuBarCommand) -> MenuBarCommandResult
     let onMove: (@MainActor (MenuBarItemSnapshot, IconMoveCommand) async -> IconMoveResult)?
+    let groupsProvider: () -> [IconGroup]
     let onSettingsChanged: () -> Void
     let onOpenPrivacySettings: () -> Void
     let onDismiss: () -> Void
@@ -15,6 +17,7 @@ struct SecondBarRootView: View {
     @State private var viewModel = SecondBarViewModel()
     @State private var statusMessage: String?
     @State private var searchQuery = ""
+    @State private var selectedFilter: MenuBarItemCollectionFilter = .all
     @FocusState private var searchFocused: Bool
 
     /// Cached filtered+sorted item list. The previous implementation recomputed `items`
@@ -35,6 +38,9 @@ struct SecondBarRootView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
+            if unavailableState == nil {
+                filterBar
+            }
             Divider()
                 .overlay(.primary.opacity(0.10))
 
@@ -42,13 +48,9 @@ struct SecondBarRootView: View {
                 SecondBarUnavailableView(state: unavailableState)
             } else if items.isEmpty {
                 ContentUnavailableView(
-                    searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "No Hidden Items" : "No Matching Items",
-                    systemImage: searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "menubar.rectangle" : "magnifyingglass",
-                    description: Text(
-                        searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                            ? "Refresh menu bar items after hiding icons with the separators."
-                            : "Try another app name, menu title, or bundle identifier."
-                    )
+                    emptyStateTitle,
+                    systemImage: searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? selectedFilter.systemImage : "magnifyingglass",
+                    description: Text(emptyStateDescription)
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -72,6 +74,15 @@ struct SecondBarRootView: View {
             searchFocused = true
         }
         .onChange(of: searchQuery) {
+            refreshItems()
+        }
+        .onChange(of: selectedFilter) {
+            refreshItems()
+        }
+        .onChange(of: itemMemoryStore.recentCount) {
+            refreshItems()
+        }
+        .onChange(of: itemMemoryStore.favoriteCount) {
             refreshItems()
         }
         .onChange(of: liveStatus.scannedMenuBarItems) { _, _ in
@@ -102,7 +113,7 @@ struct SecondBarRootView: View {
     }
 
     private var panelHeight: CGFloat {
-        settingsStore.secondBarShowLabels ? 236 : 190
+        settingsStore.secondBarShowLabels ? 274 : 228
     }
 
     private var header: some View {
@@ -181,6 +192,54 @@ struct SecondBarRootView: View {
         .padding(.bottom, 14)
     }
 
+    private var filterBar: some View {
+        HStack(spacing: 10) {
+            Picker("Filter", selection: $selectedFilter) {
+                ForEach(MenuBarItemCollectionFilter.secondBarFilters) { filter in
+                    Text(filter.shortDisplayName)
+                        .tag(filter)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(maxWidth: 420)
+
+            secondBarFilterResetButton
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 18)
+        .padding(.bottom, 10)
+    }
+
+    @ViewBuilder
+    private var secondBarFilterResetButton: some View {
+        switch selectedFilter {
+        case .recent where itemMemoryStore.recentCount > 0:
+            Button("Clear Recent Items", systemImage: "clock.arrow.circlepath") {
+                itemMemoryStore.resetRecents()
+                statusMessage = "Recent items cleared."
+                refreshItems()
+            }
+            .labelStyle(.iconOnly)
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .help("Clear Recent Items")
+        case .favorites where itemMemoryStore.favoriteCount > 0:
+            Button("Clear Favorites", systemImage: "star.slash") {
+                itemMemoryStore.resetFavorites()
+                statusMessage = "Favorites cleared."
+                refreshItems()
+            }
+            .labelStyle(.iconOnly)
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .help("Clear Favorites")
+        default:
+            EmptyView()
+        }
+    }
+
     private var content: some View {
         VStack(spacing: 7) {
             SecondBarSectionHeader(
@@ -241,6 +300,42 @@ struct SecondBarRootView: View {
         .font(.caption)
         .padding(.horizontal, 18)
         .padding(.vertical, 10)
+    }
+
+    private var emptyStateTitle: String {
+        if !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return "No Matching Items"
+        }
+
+        switch selectedFilter {
+        case .all:
+            return "No Hidden Items"
+        case .recent:
+            return "No Recent Items"
+        case .favorites:
+            return "No Favorites"
+        case .hidden:
+            return "No Hidden Items"
+        case .alwaysHidden:
+            return "No Always Hidden Items"
+        case .visible:
+            return "No Visible Items"
+        }
+    }
+
+    private var emptyStateDescription: String {
+        if !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return "Try another app name, menu title, or bundle identifier."
+        }
+
+        switch selectedFilter {
+        case .recent:
+            return "Recent hidden items appear after you reveal, highlight, move, or open them."
+        case .favorites:
+            return "Favorite a hidden item from its context menu to keep it here."
+        default:
+            return "Refresh menu bar items after hiding icons with the separators."
+        }
     }
 
     private var unavailableState: SecondBarUnavailableState? {
@@ -326,6 +421,21 @@ struct SecondBarRootView: View {
         .id(snapshot.id)
         .disabled(liveStatus.iconMoveInProgress)
         .contextMenu {
+            Button("Reveal", systemImage: "eye") {
+                route(.revealItem, snapshot: snapshot)
+            }
+            Button("Highlight", systemImage: "scope") {
+                route(.highlightItem, snapshot: snapshot)
+            }
+            Button("Open Owning App", systemImage: "app.badge") {
+                route(.openOwningApp, snapshot: snapshot)
+            }
+            Divider()
+            Button(favoriteButtonTitle(for: snapshot), systemImage: favoriteButtonImage(for: snapshot)) {
+                toggleFavorite(snapshot)
+            }
+            groupContextMenu(for: snapshot)
+            Divider()
             Button("Move to Visible", systemImage: "arrow.right.to.line") {
                 move(snapshot, command: .moveToZone(.visible))
             }
@@ -354,23 +464,116 @@ struct SecondBarRootView: View {
     }
 
     private func activate(_ snapshot: MenuBarItemSnapshot) {
-        let result = onActivate(snapshot)
+        let result = route(.revealItem, snapshot: snapshot)
         liveStatus.lastSecondBarSelectedItem = displayTitle(for: snapshot)
-        statusMessage = result.outcome.displayName
+
+        if settingsStore.secondBarActivateOwningAppOnSelection {
+            let openResult = route(.openOwningApp, snapshot: snapshot)
+            if !openResult.didRun {
+                statusMessage = result.message
+            }
+        }
 
         if settingsStore.secondBarAutoCloseAfterSelection {
             onDismiss()
         }
     }
 
+    @discardableResult
+    private func route(
+        _ action: MenuBarCommandAction,
+        snapshot: MenuBarItemSnapshot
+    ) -> MenuBarCommandResult {
+        viewModel.selectedID = snapshot.id
+        let result = onCommand(MenuBarCommand(
+            action: action,
+            target: .menuBarItem(id: snapshot.id),
+            source: .secondBar
+        ))
+        statusMessage = result.message
+        remember(snapshot)
+        return result
+    }
+
     private func move(_ snapshot: MenuBarItemSnapshot, command: IconMoveCommand) {
         guard let onMove else { return }
         viewModel.selectedID = snapshot.id
+        remember(snapshot)
         statusMessage = "\(command.displayName) in progress..."
         Task { @MainActor in
             let result = await onMove(snapshot, command)
             statusMessage = result.summary
         }
+    }
+
+    private func toggleFavorite(_ snapshot: MenuBarItemSnapshot) {
+        viewModel.selectedID = snapshot.id
+        let isFavorite = itemMemoryStore.toggleFavorite(snapshot)
+        let title = displayTitle(for: snapshot)
+        statusMessage = isFavorite
+            ? "Added \(title) to favorites."
+            : "Removed \(title) from favorites."
+        refreshItems()
+    }
+
+    private func favoriteButtonTitle(for snapshot: MenuBarItemSnapshot) -> String {
+        itemMemoryStore.isFavorite(snapshot) ? "Remove Favorite" : "Favorite"
+    }
+
+    private func favoriteButtonImage(for snapshot: MenuBarItemSnapshot) -> String {
+        itemMemoryStore.isFavorite(snapshot) ? "star.slash" : "star"
+    }
+
+    private func remember(_ snapshot: MenuBarItemSnapshot) {
+        itemMemoryStore.recordSelection(snapshot)
+        refreshItems()
+    }
+
+    @ViewBuilder
+    private func groupContextMenu(for snapshot: MenuBarItemSnapshot) -> some View {
+        if settingsStore.groupsEnabled {
+            Divider()
+            Menu("Groups", systemImage: "person.2") {
+                Button("Create Group from Item", systemImage: "plus") {
+                    createGroup(from: snapshot)
+                }
+
+                let groups = groupsProvider()
+                if groups.isEmpty {
+                    Button("No Existing Groups", systemImage: "person.2") {}
+                        .disabled(true)
+                } else {
+                    Divider()
+                    ForEach(groups) { group in
+                        Button("Add to \(group.name)", systemImage: group.symbolName ?? "folder") {
+                            add(snapshot, to: group)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func createGroup(from snapshot: MenuBarItemSnapshot) {
+        viewModel.selectedID = snapshot.id
+        let result = onCommand(MenuBarCommand(
+            action: .createGroupFromItem,
+            target: .menuBarItem(id: snapshot.id),
+            source: .secondBar
+        ))
+        statusMessage = result.message
+        remember(snapshot)
+    }
+
+    private func add(_ snapshot: MenuBarItemSnapshot, to group: IconGroup) {
+        viewModel.selectedID = snapshot.id
+        let result = onCommand(MenuBarCommand(
+            action: .addItemToGroup,
+            target: .groupItem(groupID: group.id, itemID: snapshot.id),
+            source: .secondBar
+        ))
+        statusMessage = result.message
+        remember(snapshot)
     }
 
     private func synchronizeDiagnostics() {
@@ -389,7 +592,9 @@ struct SecondBarRootView: View {
         items = viewModel.items(
             from: liveStatus.scannedMenuBarItems,
             settingsStore: settingsStore,
-            query: searchQuery
+            query: searchQuery,
+            filter: selectedFilter,
+            memoryStore: itemMemoryStore
         )
         synchronizeDiagnostics()
         viewModel.selectFirstItemIfNeeded(items)
@@ -538,11 +743,13 @@ private struct SecondBarUnavailableView: View {
         settingsStore: store,
         permissionService: permission,
         liveStatus: live,
+        itemMemoryStore: MenuBarItemMemoryStore(fileURL: nil),
         onRefresh: {},
-        onActivate: { _ in
-            MenuItemActivationResult(outcome: .hiddenRevealed, message: "Preview")
+        onCommand: { command in
+            MenuBarCommandResult.success(command, message: "Preview")
         },
         onMove: nil,
+        groupsProvider: { [] },
         onSettingsChanged: {},
         onOpenPrivacySettings: {},
         onDismiss: {}

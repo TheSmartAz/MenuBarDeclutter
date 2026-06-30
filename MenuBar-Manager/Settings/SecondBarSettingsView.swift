@@ -3,6 +3,8 @@ import SwiftUI
 struct SecondBarSettingsView: View {
     @Bindable var settingsStore: SettingsStore
     var permissionService: AccessibilityPermissionService?
+    var commandAvailability: MenuBarCommandAvailabilitySummary?
+    var iconPanelAvailability: MenuBarCommandAvailabilitySummary?
     var onChange: (() -> Void)? = nil
     var onOpenPrivacySettings: (() -> Void)? = nil
 
@@ -80,6 +82,22 @@ struct SecondBarSettingsView: View {
                     systemImage: "checkmark.shield",
                     style: .success
                 )
+            }
+
+            if commandAvailability != nil || iconPanelAvailability != nil {
+                ClearGlassSection("Command Center", subtitle: "Shared routing status for Second Bar and the deferred Icon Panel mode.") {
+                    if let commandAvailability {
+                        CommandAvailabilityRow(summary: commandAvailability)
+                    }
+
+                    if commandAvailability != nil, iconPanelAvailability != nil {
+                        ClearGlassDivider()
+                    }
+
+                    if let iconPanelAvailability {
+                        CommandAvailabilityRow(summary: iconPanelAvailability)
+                    }
+                }
             }
 
             ClearGlassSection("Position & Appearance", subtitle: "Placement and visual density for the Second Bar.") {

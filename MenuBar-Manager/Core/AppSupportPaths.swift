@@ -63,6 +63,11 @@ struct AppSupportPaths {
         dogfoodDirectory.appendingPathComponent("exports", isDirectory: true)
     }
 
+    /// Local-only hashed recents/favorites state for Find Icon and Second Bar.
+    var menuBarItemMemoryFileURL: URL {
+        applicationSupportDirectory.appendingPathComponent("menu-bar-item-memory.json")
+    }
+
     // MARK: Directory creation
 
     /// Creates `applicationSupportDirectory` and all known subdirectories if

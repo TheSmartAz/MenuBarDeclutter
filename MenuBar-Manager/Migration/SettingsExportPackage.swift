@@ -10,7 +10,7 @@ nonisolated struct SettingsExportPackage: Codable, Equatable, Sendable {
     let redactionMode: SettingsExportRedactionMode
     let settings: [String: String]
     let omittedSettings: [String]
-    let profiles: [ProfileExportEntry]
+    let profiles: [ProfileModel]
     let groups: [IconGroup]
     let hotkeyBindings: [HotkeyBinding]
     let spacerItems: [SpacerItemModel]
@@ -25,7 +25,7 @@ nonisolated struct SettingsExportPackage: Codable, Equatable, Sendable {
         redactionMode: SettingsExportRedactionMode = .privacySafe,
         settings: [String: String],
         omittedSettings: [String] = [],
-        profiles: [ProfileExportEntry] = [],
+        profiles: [ProfileModel] = [],
         groups: [IconGroup] = [],
         hotkeyBindings: [HotkeyBinding] = [],
         spacerItems: [SpacerItemModel] = [],
@@ -72,7 +72,12 @@ nonisolated struct SettingsExportPackage: Codable, Equatable, Sendable {
         self.redactionMode = try container.decodeIfPresent(SettingsExportRedactionMode.self, forKey: .redactionMode) ?? .privacySafe
         self.settings = try container.decode([String: String].self, forKey: .settings)
         self.omittedSettings = try container.decodeIfPresent([String].self, forKey: .omittedSettings) ?? []
-        self.profiles = try container.decodeIfPresent([ProfileExportEntry].self, forKey: .profiles) ?? []
+        do {
+            self.profiles = try container.decodeIfPresent([ProfileModel].self, forKey: .profiles) ?? []
+        } catch {
+            _ = try? container.decodeIfPresent([ProfileExportEntry].self, forKey: .profiles)
+            self.profiles = []
+        }
         self.groups = try container.decodeIfPresent([IconGroup].self, forKey: .groups) ?? []
         self.hotkeyBindings = try container.decodeIfPresent([HotkeyBinding].self, forKey: .hotkeyBindings) ?? []
         self.spacerItems = try container.decodeIfPresent([SpacerItemModel].self, forKey: .spacerItems) ?? []

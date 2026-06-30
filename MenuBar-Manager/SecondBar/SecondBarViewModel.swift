@@ -9,10 +9,12 @@ final class SecondBarViewModel {
     func items(
         from snapshots: [MenuBarItemSnapshot],
         settingsStore: SettingsStore,
-        query: String = ""
+        query: String = "",
+        filter: MenuBarItemCollectionFilter = .all,
+        memoryStore: MenuBarItemMemoryStore? = nil
     ) -> [MenuBarItemSnapshot] {
         let normalizedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        return snapshots
+        let results = snapshots
             .filter { snapshot in
                 switch snapshot.zone {
                 case .hidden:
@@ -24,11 +26,26 @@ final class SecondBarViewModel {
                 }
             }
             .filter { snapshot in
+                filter.includes(snapshot, memoryStore: memoryStore)
+            }
+            .filter { snapshot in
                 guard !normalizedQuery.isEmpty else { return true }
                 return searchableText(for: snapshot)
                     .localizedStandardContains(normalizedQuery)
             }
-            .sorted(by: sortSnapshots)
+
+        if filter == .recent, let memoryStore {
+            return results.sorted { lhs, rhs in
+                let leftRank = memoryStore.recentRank(for: lhs) ?? Int.max
+                let rightRank = memoryStore.recentRank(for: rhs) ?? Int.max
+                if leftRank != rightRank {
+                    return leftRank < rightRank
+                }
+                return sortSnapshots(lhs, rhs)
+            }
+        }
+
+        return results.sorted(by: sortSnapshots)
     }
 
     func selectFirstItemIfNeeded(_ items: [MenuBarItemSnapshot]) {

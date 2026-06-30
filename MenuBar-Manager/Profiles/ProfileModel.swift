@@ -1,6 +1,6 @@
 import Foundation
 
-struct ProfileModel: Identifiable, Codable, Equatable, Sendable {
+nonisolated struct ProfileModel: Identifiable, Codable, Equatable, Sendable {
     static let currentSchemaVersion = 2
     private static let firstSchemaVersion = 1
 

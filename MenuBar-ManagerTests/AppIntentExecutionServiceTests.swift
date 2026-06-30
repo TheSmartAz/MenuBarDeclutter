@@ -8,6 +8,8 @@ struct AppIntentExecutionServiceTests {
     private func makeService(
         safeMode: Bool = false,
         automationPaused: Bool = false,
+        proModeEnabled: Bool = false,
+        accessibilityDiscoveryEnabled: Bool = false,
         appIntentsCanApplyProfiles: Bool = false,
         appIntentsCanAccessLabs: Bool = false,
         menuBarSpacingLabsEnabled: Bool = false
@@ -18,6 +20,8 @@ struct AppIntentExecutionServiceTests {
 
         let store = SettingsStore(defaults: defaults)
         store.automationPaused = automationPaused
+        store.proModeEnabled = proModeEnabled
+        store.accessibilityDiscoveryEnabled = accessibilityDiscoveryEnabled
         store.appIntentsCanApplyProfiles = appIntentsCanApplyProfiles
         store.appIntentsCanAccessLabs = appIntentsCanAccessLabs
         store.menuBarSpacingLabsEnabled = menuBarSpacingLabsEnabled
@@ -45,6 +49,8 @@ struct AppIntentExecutionServiceTests {
             enterFullMenuBarMode: { enterFullCalled = true },
             exitFullMenuBarMode: { exitFullCalled = true },
             applyProfileNamed: { _ in true },
+            showGroupPanel: { _ in true },
+            revealGroup: { _ in true },
             pauseAutomation: { pauseCalled = true },
             resumeAutomation: { resumeCalled = true }
         )
@@ -67,7 +73,7 @@ struct AppIntentExecutionServiceTests {
     @Test func applyProfileBlockedWhenDisabled() {
         let (service, _) = makeService(appIntentsCanApplyProfiles: false)
         let result = service.applyProfile(name: "Test")
-        #expect(result == .blocked("App Intents profile application is disabled."))
+        #expect(result == .blocked("Profile automation is disabled."))
     }
 
     @Test func applyProfileBlockedWhenPaused() {
@@ -82,6 +88,27 @@ struct AppIntentExecutionServiceTests {
         #expect(result == .success)
     }
 
+    @Test func openGroupPanelSucceedsThroughRouter() {
+        let (service, _) = makeService()
+        let result = service.openGroupPanel(id: UUID())
+        #expect(result == .success)
+    }
+
+    @Test func revealGroupRequiresProMode() {
+        let (service, _) = makeService()
+        let result = service.revealGroup(id: UUID())
+        #expect(result == .requiresProMode)
+    }
+
+    @Test func revealGroupSucceedsWhenProDiscoveryAndPermissionAreAvailable() {
+        let (service, _) = makeService(
+            proModeEnabled: true,
+            accessibilityDiscoveryEnabled: true
+        )
+        let result = service.revealGroup(id: UUID())
+        #expect(result == .success)
+    }
+
     @Test func spacingPresetRequiresLabs() {
         let (service, _) = makeService(appIntentsCanAccessLabs: true, menuBarSpacingLabsEnabled: false)
         let result = service.setLayoutSpacingPreset("compact")
@@ -93,6 +120,16 @@ struct AppIntentExecutionServiceTests {
         let result = service.setLayoutSpacingPreset("compact")
         guard case .blocked = result else {
             Issue.record("expected .blocked but got \(result)")
+            return
+        }
+        #expect(Bool(true))
+    }
+
+    @Test func spacingPresetApplyIsDryRunOnlyWhenLabsAreEnabled() {
+        let (service, _) = makeService(appIntentsCanAccessLabs: true, menuBarSpacingLabsEnabled: true)
+        let result = service.setLayoutSpacingPreset("compact")
+        guard case .dryRunOnly = result else {
+            Issue.record("expected .dryRunOnly but got \(result)")
             return
         }
         #expect(Bool(true))

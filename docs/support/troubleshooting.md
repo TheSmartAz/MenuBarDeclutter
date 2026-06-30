@@ -44,8 +44,8 @@ Import/Export is Preview in `v0.1.1`.
 
 - Export writes a real local JSON settings package.
 - Export intentionally omits volatile/private local state.
-- Import is dry-run only and creates a backup before any future apply path.
-- There is no import apply/commit button in this release.
+- Import dry-runs first, creates a local backup, then offers an explicit safe apply action.
+- Safe apply merges package objects by ID, skips conflicting dynamic hotkeys, leaves Launch at Login/Login Items system state unchanged, and does not enable Icon Moving, Smart Triggers, or Menu Bar Spacing Labs from an imported package.
 
 ## Release artifact warnings
 

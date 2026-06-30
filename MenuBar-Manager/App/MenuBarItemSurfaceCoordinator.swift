@@ -6,15 +6,18 @@ final class MenuBarItemSurfaceCoordinator {
         settingsStore: settingsStore,
         permissionService: accessibilityPermissionService,
         liveStatus: liveStatus,
+        itemMemoryStore: menuBarItemMemoryStore,
         positioningService: secondBarPositioningService,
         diagnosticsLogger: diagnosticsLogger,
         onRefresh: { [weak self] in
             self?.refreshMenuBarItems()
         },
-        onActivate: { [weak self] snapshot in
-            self?.activateSecondBarItem(snapshot) ?? MenuItemActivationResult(
-                outcome: .selectedWithoutHighlight,
-                message: "Second Bar item selected."
+        onCommand: { [weak self] command in
+            self?.routeCommand(command) ?? MenuBarCommandResult.stopped(
+                command,
+                status: .failed,
+                message: "Command router is unavailable.",
+                diagnosticReason: "routerUnavailable"
             )
         },
         onMove: { [weak self] snapshot, command in
@@ -27,13 +30,18 @@ final class MenuBarItemSurfaceCoordinator {
             }
             return await self.moveIcon(snapshot, command: command)
         },
+        groupsProvider: { [weak self] in
+            self?.availableGroups() ?? []
+        },
         onSettingsChanged: refreshSecondBarSettings,
         onOpenPrivacySettings: openPrivacySettings
     )
 
     private let settingsStore: SettingsStore
     private let diagnosticsLogger: DiagnosticsLogger
+    private let appSupportPaths: AppSupportPaths
     private let liveStatus: LiveDiagnosticsStatus
+    private let groupStore: IconGroupStore
     private let safeModeLaunchState: SafeModeLaunchState
     private let hidingService: HidingService
     private let rehideController: RehideController
@@ -45,16 +53,8 @@ final class MenuBarItemSurfaceCoordinator {
     private let isHoverRevealSuppressed: () -> Bool
 
     private lazy var searchService = SearchService()
-
-    private lazy var highlightOverlayWindow = HighlightOverlayWindow(
-        diagnosticsLogger: diagnosticsLogger
-    )
-
-    private lazy var menuItemActivator = MenuItemActivator(
-        settingsStore: settingsStore,
-        hidingService: hidingService,
-        highlightOverlay: highlightOverlayWindow,
-        diagnosticsLogger: diagnosticsLogger
+    private lazy var menuBarItemMemoryStore = MenuBarItemMemoryStore(
+        fileURL: appSupportPaths.menuBarItemMemoryFileURL
     )
 
     private lazy var searchWindowController = SearchWindowController(
@@ -62,10 +62,18 @@ final class MenuBarItemSurfaceCoordinator {
         permissionService: accessibilityPermissionService,
         liveStatus: liveStatus,
         searchService: searchService,
-        menuItemActivator: menuItemActivator,
+        itemMemoryStore: menuBarItemMemoryStore,
         diagnosticsLogger: diagnosticsLogger,
         onRefresh: { [weak self] in
             self?.refreshMenuBarItems()
+        },
+        onCommand: { [weak self] command in
+            self?.routeCommand(command) ?? MenuBarCommandResult.stopped(
+                command,
+                status: .failed,
+                message: "Command router is unavailable.",
+                diagnosticReason: "routerUnavailable"
+            )
         },
         onMove: { [weak self] result, command in
             guard let self else {
@@ -76,6 +84,9 @@ final class MenuBarItemSurfaceCoordinator {
                 )
             }
             return await self.moveIcon(result.snapshot, command: command)
+        },
+        groupsProvider: { [weak self] in
+            self?.availableGroups() ?? []
         },
         onSettingsChanged: refreshSearchSettings,
         onOpenPrivacySettings: openPrivacySettings
@@ -111,11 +122,14 @@ final class MenuBarItemSurfaceCoordinator {
     private let refreshSearchSettings: () -> Void
     private let refreshSecondBarSettings: () -> Void
     private let openPrivacySettings: () -> Void
+    private let routeCommand: (MenuBarCommand) -> MenuBarCommandResult
 
     init(
         settingsStore: SettingsStore,
         diagnosticsLogger: DiagnosticsLogger,
+        appSupportPaths: AppSupportPaths,
         liveStatus: LiveDiagnosticsStatus,
+        groupStore: IconGroupStore,
         safeModeLaunchState: SafeModeLaunchState,
         hidingService: HidingService,
         rehideController: RehideController,
@@ -129,11 +143,14 @@ final class MenuBarItemSurfaceCoordinator {
         isHoverRevealSuppressed: @escaping () -> Bool,
         refreshSearchSettings: @escaping () -> Void,
         refreshSecondBarSettings: @escaping () -> Void,
-        openPrivacySettings: @escaping () -> Void
+        openPrivacySettings: @escaping () -> Void,
+        routeCommand: @escaping (MenuBarCommand) -> MenuBarCommandResult
     ) {
         self.settingsStore = settingsStore
         self.diagnosticsLogger = diagnosticsLogger
+        self.appSupportPaths = appSupportPaths
         self.liveStatus = liveStatus
+        self.groupStore = groupStore
         self.safeModeLaunchState = safeModeLaunchState
         self.hidingService = hidingService
         self.rehideController = rehideController
@@ -148,6 +165,7 @@ final class MenuBarItemSurfaceCoordinator {
         self.refreshSearchSettings = refreshSearchSettings
         self.refreshSecondBarSettings = refreshSecondBarSettings
         self.openPrivacySettings = openPrivacySettings
+        self.routeCommand = routeCommand
     }
 
     func showSearch() {
@@ -192,23 +210,8 @@ final class MenuBarItemSurfaceCoordinator {
         iconMoveService.resetWarnings()
     }
 
-    private func activateSecondBarItem(_ snapshot: MenuBarItemSnapshot) -> MenuItemActivationResult {
-        let result = menuItemActivator.activate(
-            MenuBarSearchResult(
-                snapshot: snapshot,
-                score: 0,
-                matchReason: .recent
-            )
-        )
-
-        if settingsStore.secondBarActivateOwningAppOnSelection,
-           let processIdentifier = snapshot.owningProcessIdentifier {
-            NSRunningApplication(processIdentifier: processIdentifier)?
-                .activate(options: [])
-        }
-
-        diagnosticsLogger.log("Second Bar activation: \(result.message)")
-        return result
+    private func availableGroups() -> [IconGroup] {
+        IconGroupSort.sort(groupStore.groups).filter(\.isEnabled)
     }
 
     private func moveIcon(_ snapshot: MenuBarItemSnapshot, command: IconMoveCommand) async -> IconMoveResult {

@@ -4,9 +4,10 @@
 - Icon Moving is Experimental and can fail on system items or third-party items that do not behave like normal command-draggable menu bar items.
 - Pro metadata can be incomplete when apps expose sparse Accessibility attributes.
 - Second Bar and Find Icon can only be as accurate as the latest Accessibility snapshot.
-- Import/export migration assistant remains Preview/Dry-run unless a later phase completes apply semantics.
+- Import/export migration assistant remains Preview; safe apply is merge-by-ID and not a destructive full restore.
 - Exported settings packages intentionally omit volatile/private local state such as permission status, authentication status, dogfood run IDs, backup/apply state, and the deprecated primary separator setting.
 - Menu Bar Spacing Labs must remain explicit and should not automatically apply global defaults.
+- Safe import must not enable Icon Moving, Smart Triggers, or Menu Bar Spacing Labs from an imported package.
 - Manual QA still needs real notch/external-display coverage before broad public distribution.
 
 Not acceptable for `v0.1.1`:

@@ -139,6 +139,19 @@ final class ProfileStore {
         try decoder.decode(ProfileModel.self, from: data)
     }
 
+    func importProfiles(_ importedProfiles: [ProfileModel]) {
+        guard !importedProfiles.isEmpty else { return }
+        for profile in importedProfiles {
+            if let index = profiles.firstIndex(where: { $0.id == profile.id }) {
+                profiles[index] = profile
+            } else {
+                profiles.append(profile)
+            }
+            save(profile)
+        }
+        profiles.sort { $0.updatedAt > $1.updatedAt }
+    }
+
     private func save(_ profile: ProfileModel) {
         do {
             try appSupportPaths.ensureDirectoriesExist()

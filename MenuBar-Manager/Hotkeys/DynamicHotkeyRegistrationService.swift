@@ -29,7 +29,7 @@ final class DynamicHotkeyRegistrationService {
     private weak var hotkeyManager: (any DynamicHotkeyManaging)?
     private let protectedActionGate: ProtectedActionGate?
     private let diagnosticsLogger: DiagnosticsLogger
-    private let performAction: (HotkeyAction) async -> Bool
+    private let routeAction: (HotkeyAction) -> MenuBarCommandResult
 
     private var registeredBindingIDs: Set<UUID> = []
     private(set) var lastSnapshot = DynamicHotkeyRegistrationSnapshot(
@@ -46,14 +46,14 @@ final class DynamicHotkeyRegistrationService {
         hotkeyManager: any DynamicHotkeyManaging,
         protectedActionGate: ProtectedActionGate? = nil,
         diagnosticsLogger: DiagnosticsLogger,
-        performAction: @escaping (HotkeyAction) async -> Bool
+        routeAction: @escaping (HotkeyAction) -> MenuBarCommandResult
     ) {
         self.settingsStore = settingsStore
         self.bindingStore = bindingStore
         self.hotkeyManager = hotkeyManager
         self.protectedActionGate = protectedActionGate
         self.diagnosticsLogger = diagnosticsLogger
-        self.performAction = performAction
+        self.routeAction = routeAction
     }
 
     func refreshRegistrations() {
@@ -123,20 +123,32 @@ final class DynamicHotkeyRegistrationService {
                 resource: resource,
                 reason: "Unlock to run \(binding.action.displayLabel)."
             ) {
-                Task { @MainActor in
-                    _ = await self.performAction(binding.action)
-                }
+                self.record(result: self.routeAction(binding.action), for: binding)
             }
         } else {
-            _ = await performAction(binding.action)
+            record(result: routeAction(binding.action), for: binding)
         }
+    }
+
+    private func record(result: MenuBarCommandResult, for binding: HotkeyBinding) {
+        guard !result.didRun else { return }
+        diagnosticsLogger.log(
+            "Dynamic hotkey command did not run.",
+            level: .warning,
+            category: .hotkey,
+            metadata: [
+                "action": binding.action.displayLabel,
+                "status": result.status.rawValue,
+                "reason": result.diagnosticReason
+            ]
+        )
     }
 
     private func protectedResource(for action: HotkeyAction) -> ProtectedResource? {
         switch action {
         case .revealAndHighlightItem:
             .findIcon
-        case .openGroup(let id), .openSecondBarFilteredToGroup(let id):
+        case .openGroup(let id), .revealGroup(let id), .openSecondBarFilteredToGroup(let id):
             .protectedGroup(id)
         case .openSecondBarFilteredToItem:
             .secondBar
@@ -149,7 +161,7 @@ final class DynamicHotkeyRegistrationService {
 
     private func redactedLabel(for binding: HotkeyBinding) -> String {
         switch binding.action {
-        case .openGroup, .openSecondBarFilteredToGroup:
+        case .openGroup, .revealGroup, .openSecondBarFilteredToGroup:
             "Protected/group hotkey"
         case .revealAndHighlightItem, .openSecondBarFilteredToItem:
             "Item hotkey"

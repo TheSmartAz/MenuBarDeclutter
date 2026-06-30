@@ -183,6 +183,42 @@ struct ApplyProfileIntent: AppIntent {
     }
 }
 
+struct OpenGroupPanelIntent: AppIntent {
+    static let title: LocalizedStringResource = "Open Group Panel"
+    static let description = IntentDescription("Open a group panel by group ID.")
+
+    @Parameter(title: "Group ID")
+    var groupID: String
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        guard let service = AppEnvironment.shared?.intentExecutionService,
+              let id = UUID(uuidString: groupID) else {
+            return .result()
+        }
+        _ = service.openGroupPanel(id: id)
+        return .result()
+    }
+}
+
+struct RevealGroupIntent: AppIntent {
+    static let title: LocalizedStringResource = "Reveal Group"
+    static let description = IntentDescription("Reveal a group by group ID.")
+
+    @Parameter(title: "Group ID")
+    var groupID: String
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        guard let service = AppEnvironment.shared?.intentExecutionService,
+              let id = UUID(uuidString: groupID) else {
+            return .result()
+        }
+        _ = service.revealGroup(id: id)
+        return .result()
+    }
+}
+
 struct PauseAutomationIntent: AppIntent {
     static let title: LocalizedStringResource = "Pause Automation"
     static let description = IntentDescription("Pause all automation triggers.")

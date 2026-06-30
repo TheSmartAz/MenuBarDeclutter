@@ -22,7 +22,8 @@ struct DynamicHotkeysSettingsView: View {
     }
 
     private var conflicts: Set<UUID> {
-        Set(HotkeyConflictDetector.detectConflicts(in: bindings).flatMap { [$0.0.id, $0.1.id] })
+        let enabledBindings = bindings.filter(\.isEnabled)
+        return Set(HotkeyConflictDetector.detectConflicts(in: enabledBindings).flatMap { [$0.0.id, $0.1.id] })
     }
 
     var body: some View {
@@ -69,7 +70,7 @@ struct DynamicHotkeysSettingsView: View {
                 }
             }
 
-            ClearGlassSection("Bindings", subtitle: "Add, edit, delete, and test saved hotkey bindings.") {
+            ClearGlassSection("Bindings", subtitle: "Add, edit, disable, refresh, and delete saved hotkey bindings.") {
                 addBindingEditor
 
                 ClearGlassDivider()
@@ -134,16 +135,27 @@ struct DynamicHotkeysSettingsView: View {
     }
 
     private func hotkeyRow(_ binding: HotkeyBinding) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: conflicts.contains(binding.id) ? "exclamationmark.triangle" : "keyboard")
-                .foregroundStyle(conflicts.contains(binding.id) ? .orange : .secondary)
+        let status = DynamicHotkeyBindingStatusPlanner.status(
+            for: binding,
+            in: bindings,
+            dynamicHotkeysEnabled: settingsStore.dynamicHotkeysEnabled,
+            maxDynamicHotkeys: settingsStore.maxDynamicHotkeys,
+            proModeEnabled: settingsStore.proModeEnabled
+        )
+
+        return HStack(spacing: 12) {
+            Image(systemName: status.systemImage)
+                .foregroundStyle(status.isWarning ? .orange : .secondary)
                 .frame(width: 24)
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(binding.label)
                 Text(HotkeyModel(keyCode: UInt32(binding.keyCode), modifiersRaw: UInt32(binding.modifiersRaw)).displayName)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                Text(status.message)
+                    .font(.caption)
+                    .foregroundStyle(status.isWarning ? .orange : .secondary)
             }
 
             Spacer()
@@ -157,12 +169,28 @@ struct DynamicHotkeysSettingsView: View {
             ))
             .labelsHidden()
 
-            Button("Test", systemImage: "play") {
+            Button("Refresh Registration", systemImage: "arrow.clockwise") {
                 // Test registration semantics without firing the action.
                 notifyChanged()
             }
             .labelStyle(.iconOnly)
             .help("Refresh Registration")
+
+            if canResetToSuggestedShortcut(binding) {
+                Button("Reset Suggested Shortcut", systemImage: "arrow.counterclockwise") {
+                    resetToSuggestedShortcut(binding)
+                }
+                .labelStyle(.iconOnly)
+                .help("Reset suggested shortcut")
+            }
+
+            Button("Disable", systemImage: "pause.circle") {
+                bindingStore.update(id: binding.id) { $0.isEnabled = false }
+                notifyChanged()
+            }
+            .labelStyle(.iconOnly)
+            .help("Disable")
+            .disabled(!binding.isEnabled)
 
             Button("Delete", systemImage: "trash", role: .destructive) {
                 bindingStore.remove(id: binding.id)
@@ -182,6 +210,7 @@ struct DynamicHotkeysSettingsView: View {
             .resumeAutomation
         ]
         actions += groups.map { .openGroup($0.id) }
+        actions += groups.map { .revealGroup($0.id) }
         actions += groups.map { .openSecondBarFilteredToGroup($0.id) }
         actions += profiles.map { .applyProfile($0.id) }
         return actions
@@ -204,6 +233,39 @@ struct DynamicHotkeysSettingsView: View {
         )
         bindingStore.add(binding: binding)
         notifyChanged()
+    }
+
+    private func canResetToSuggestedShortcut(_ binding: HotkeyBinding) -> Bool {
+        groupResetTarget(for: binding) != nil
+    }
+
+    private func resetToSuggestedShortcut(_ binding: HotkeyBinding) {
+        guard let target = groupResetTarget(for: binding) else { return }
+        let plan = GroupHotkeyAssignmentPlanner().plan(
+            groupID: target.groupID,
+            kind: target.kind,
+            existingBindings: bindings.filter { $0.id != binding.id }
+        )
+
+        guard case .add(let suggestedBinding) = plan.operation else { return }
+        bindingStore.update(id: binding.id) { existing in
+            existing.keyCode = suggestedBinding.keyCode
+            existing.modifiersRaw = suggestedBinding.modifiersRaw
+            existing.isEnabled = true
+            existing.label = suggestedBinding.label
+        }
+        notifyChanged()
+    }
+
+    private func groupResetTarget(for binding: HotkeyBinding) -> (groupID: UUID, kind: GroupHotkeyAssignmentKind)? {
+        switch binding.action {
+        case .openGroup(let groupID):
+            return (groupID, .openPanel)
+        case .revealGroup(let groupID):
+            return (groupID, .reveal)
+        default:
+            return nil
+        }
     }
 
     private func notifyChanged() {

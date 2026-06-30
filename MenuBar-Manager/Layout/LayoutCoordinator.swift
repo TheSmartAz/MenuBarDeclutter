@@ -38,7 +38,8 @@ final class LayoutCoordinator {
         resumeAutoRehide: @escaping () -> Void,
         showSpacerMarkers: @escaping (Bool) -> Void,
         openSecondBar: @escaping () -> Void,
-        enterFullMenuBarMode: @escaping () -> Void
+        enterFullMenuBarMode: @escaping () -> Void,
+        showLayoutSuggestions: @escaping () -> Void = {}
     ) {
         self.settingsStore = settingsStore
         self.diagnosticsLogger = diagnosticsLogger
@@ -78,7 +79,8 @@ final class LayoutCoordinator {
             diagnosticsLogger: diagnosticsLogger,
             settingsStore: settingsStore,
             openSecondBar: openSecondBar,
-            enterFullMenuBarMode: enterFullMenuBarMode
+            enterFullMenuBarMode: enterFullMenuBarMode,
+            showLayoutSuggestions: showLayoutSuggestions
         )
 
         self.spacingService = MenuBarSpacingService(

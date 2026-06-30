@@ -193,4 +193,34 @@ struct ProtectedActionGateTests {
         #expect(result)
         #expect(actionExecuted)
     }
+
+    @Test func diagnosticsRedactProtectedGroupIdentifier() async throws {
+        let suiteName = "pa-tests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let store = SettingsStore(defaults: defaults)
+        store.privateAccessEnabled = true
+        store.protectedGroupsRequireAuth = true
+
+        let logger = DiagnosticsLogger()
+        let mockAuth = MockAuthenticationService()
+        mockAuth.result = .success
+
+        let coordinator = PrivateAccessCoordinator(
+            settingsStore: store,
+            diagnosticsLogger: logger,
+            authService: mockAuth
+        )
+        let gate = ProtectedActionGate(coordinator: coordinator)
+        let groupID = UUID()
+
+        let result = await gate.execute(resource: .protectedGroup(groupID), reason: "Test") {}
+
+        #expect(result)
+        let event = try #require(logger.events.last)
+        let eventText = ([event.message] + Array(event.metadata.values)).joined(separator: " ")
+        #expect(event.metadata["resource"] == "protectedGroup")
+        #expect(!eventText.contains(groupID.uuidString))
+    }
 }

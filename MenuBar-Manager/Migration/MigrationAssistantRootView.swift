@@ -6,12 +6,16 @@ struct MigrationAssistantRootView: View {
     @Bindable var settingsStore: SettingsStore
     let appSupportPaths: AppSupportPaths
     let diagnosticsLogger: DiagnosticsLogger
-    let groups: [IconGroup]
-    let hotkeyBindings: [HotkeyBinding]
-    let spacerItems: [SpacerItemModel]
+    let profileStore: ProfileStore?
+    let groupStore: IconGroupStore?
+    let hotkeyBindingStore: HotkeyBindingStore?
+    let spacerItemStore: SpacerItemStore?
+    var onImportApplied: (() -> Void)?
 
     @State private var statusMessage: String?
     @State private var dryRun: SettingsImportDryRun?
+    @State private var pendingPackage: SettingsExportPackage?
+    @State private var lastApplyResult: SettingsImportApplyResult?
     @State private var backupCount = 0
 
     private var exportService: SettingsExportService {
@@ -35,7 +39,7 @@ struct MigrationAssistantRootView: View {
             ClearGlassSection("Export") {
                 FeatureGateNotice(
                     .preview,
-                    text: "Preview in v0.1.1. Export writes local JSON; import is dry-run first."
+                    text: "Preview in v0.1.1. Export writes local JSON; import dry-runs, backs up, then applies only after confirmation."
                 )
 
                 ClearGlassDivider()
@@ -61,7 +65,7 @@ struct MigrationAssistantRootView: View {
                 ClearGlassControlRow(
                     systemImage: "square.and.arrow.down",
                     title: "Import Package",
-                    subtitle: "Dry-runs a selected package and creates a backup. No apply path exists in v0.1.1."
+                    subtitle: "Dry-runs a selected package and creates a local backup before safe apply is available."
                 ) {
                     Button("Choose File", systemImage: "doc.badge.plus") {
                         importPackage()
@@ -70,6 +74,10 @@ struct MigrationAssistantRootView: View {
 
                 if let dryRun {
                     importDryRunView(dryRun)
+                }
+
+                if let lastApplyResult {
+                    importApplyResultView(lastApplyResult)
                 }
             }
 
@@ -98,15 +106,58 @@ struct MigrationAssistantRootView: View {
     private func importDryRunView(_ dryRun: SettingsImportDryRun) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             ClearGlassValueRow("Modified Settings") { Text(dryRun.modifiedSettings, format: .number) }
-            ClearGlassValueRow("Added Groups") { Text(dryRun.addedGroups, format: .number) }
-            ClearGlassValueRow("Added Hotkeys") { Text(dryRun.addedHotkeys, format: .number) }
-            ClearGlassValueRow("Added Spacers") { Text(dryRun.addedSpacers, format: .number) }
+            ClearGlassValueRow("Profiles in Package") { Text(dryRun.addedProfiles, format: .number) }
+            ClearGlassValueRow("Groups in Package") { Text(dryRun.addedGroups, format: .number) }
+            ClearGlassValueRow("Hotkeys in Package") { Text(dryRun.addedHotkeys, format: .number) }
+            ClearGlassValueRow("Spacers in Package") { Text(dryRun.addedSpacers, format: .number) }
 
             if dryRun.hasConflicts {
                 ClearGlassInlineMessage(
                     text: dryRun.conflicts.map(\.description).joined(separator: " "),
                     systemImage: "exclamationmark.triangle",
                     style: .warning
+                )
+            }
+
+            if dryRun.hasRisks {
+                ClearGlassInlineMessage(
+                    text: "Safe apply skips experimental enablement unless a future explicit experimental import option is added.",
+                    systemImage: "checkmark.shield",
+                    style: .success
+                )
+            }
+
+            HStack(spacing: 10) {
+                Button("Apply Safe Import", systemImage: "checkmark.shield") {
+                    applyPendingImport()
+                }
+                .disabled(pendingPackage == nil || hasUnsupportedSchema(dryRun))
+
+                Button("Clear Pending Import", systemImage: "xmark.circle") {
+                    pendingPackage = nil
+                    self.dryRun = nil
+                    lastApplyResult = nil
+                    statusMessage = "Pending import cleared."
+                }
+                .disabled(pendingPackage == nil)
+            }
+            .buttonStyle(.bordered)
+        }
+    }
+
+    private func importApplyResultView(_ result: SettingsImportApplyResult) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ClearGlassDivider()
+            ClearGlassValueRow("Applied Settings") { Text(result.appliedSettings, format: .number) }
+            ClearGlassValueRow("Skipped Settings") { Text(result.skippedSettings, format: .number) }
+            ClearGlassValueRow("Imported Objects") { Text(result.importedObjectCount, format: .number) }
+            ClearGlassValueRow("Skipped Hotkeys") { Text(result.skippedHotkeys, format: .number) }
+
+            if !result.skippedExperimentalFlags.isEmpty {
+                ClearGlassInlineMessage(
+                    text: "Skipped experimental enablement: \(result.skippedExperimentalFlags.joined(separator: ", ")).",
+                    systemImage: "checkmark.shield",
+                    style: .success
                 )
             }
         }
@@ -120,9 +171,10 @@ struct MigrationAssistantRootView: View {
 
         do {
             let package = exportService.createExportPackage(
-                groups: groups,
-                hotkeyBindings: hotkeyBindings,
-                spacerItems: spacerItems
+                profiles: profileStore?.profiles ?? [],
+                groups: groupStore?.groups ?? [],
+                hotkeyBindings: hotkeyBindingStore?.bindings ?? [],
+                spacerItems: spacerItemStore?.items ?? []
             )
             let data = try exportService.encode(package)
             try data.write(to: url, options: .atomic)
@@ -142,25 +194,57 @@ struct MigrationAssistantRootView: View {
         do {
             let data = try Data(contentsOf: url)
             let package = try importService.decode(data: data)
+            pendingPackage = package
+            lastApplyResult = nil
             dryRun = importService.dryRun(
                 package: package,
-                existingHotkeyBindings: hotkeyBindings,
+                existingHotkeyBindings: hotkeyBindingStore?.bindings ?? [],
                 importExperimentalSettings: false
             )
             _ = try backupService.createBackup(data: exportService.encode(exportService.createExportPackage(
-                groups: groups,
-                hotkeyBindings: hotkeyBindings,
-                spacerItems: spacerItems
+                profiles: profileStore?.profiles ?? [],
+                groups: groupStore?.groups ?? [],
+                hotkeyBindings: hotkeyBindingStore?.bindings ?? [],
+                spacerItems: spacerItemStore?.items ?? []
             )))
             refreshBackups()
-            statusMessage = "Dry-run complete. Backup created before applying any future import."
+            statusMessage = "Dry-run complete. Backup created; review and apply safe import when ready."
         } catch {
             statusMessage = "Import dry-run failed: \(error.localizedDescription)"
         }
     }
 
+    private func applyPendingImport() {
+        guard let pendingPackage else {
+            statusMessage = "Choose a package before applying import."
+            return
+        }
+
+        do {
+            let result = try importService.apply(
+                package: pendingPackage,
+                settingsStore: settingsStore,
+                profileStore: profileStore,
+                groupStore: groupStore,
+                hotkeyBindingStore: hotkeyBindingStore,
+                spacerItemStore: spacerItemStore,
+                importExperimentalSettings: false
+            )
+            lastApplyResult = result
+            self.pendingPackage = nil
+            onImportApplied?()
+            statusMessage = "Safe import applied."
+        } catch {
+            statusMessage = "Import apply failed: \(error.localizedDescription)"
+        }
+    }
+
     private func refreshBackups() {
         backupCount = backupService.listBackups().count
+    }
+
+    private func hasUnsupportedSchema(_ dryRun: SettingsImportDryRun) -> Bool {
+        dryRun.conflicts.contains { $0.kind == .schemaMismatch }
     }
 }
 

@@ -10,10 +10,12 @@ final class SearchWindowController: NSWindowController, NSWindowDelegate {
         permissionService: AccessibilityPermissionService,
         liveStatus: LiveDiagnosticsStatus,
         searchService: SearchService,
-        menuItemActivator: MenuItemActivator,
+        itemMemoryStore: MenuBarItemMemoryStore,
         diagnosticsLogger: DiagnosticsLogger,
         onRefresh: @escaping () -> Void,
+        onCommand: @escaping (MenuBarCommand) -> MenuBarCommandResult,
         onMove: @escaping @MainActor (MenuBarSearchResult, IconMoveCommand) async -> IconMoveResult,
+        groupsProvider: @escaping () -> [IconGroup],
         onSettingsChanged: @escaping () -> Void,
         onOpenPrivacySettings: @escaping () -> Void
     ) {
@@ -46,11 +48,11 @@ final class SearchWindowController: NSWindowController, NSWindowDelegate {
             permissionService: permissionService,
             liveStatus: liveStatus,
             searchService: searchService,
+            itemMemoryStore: itemMemoryStore,
             onRefresh: onRefresh,
-            onActivate: { result in
-                menuItemActivator.activate(result)
-            },
+            onCommand: onCommand,
             onMove: onMove,
+            groupsProvider: groupsProvider,
             onSettingsChanged: onSettingsChanged,
             onOpenPrivacySettings: onOpenPrivacySettings,
             onDismiss: { [weak panel] in

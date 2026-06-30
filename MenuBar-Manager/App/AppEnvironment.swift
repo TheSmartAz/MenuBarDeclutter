@@ -57,18 +57,6 @@ final class AppEnvironment {
         refreshAfterProfileApply: { [weak self] in
             self?.refreshRuntimeAfterProfileApply()
         },
-        expand: { [weak self] in
-            self?.expandHiddenItems()
-        },
-        collapse: { [weak self] in
-            self?.collapseHiddenItems()
-        },
-        revealAll: { [weak self] in
-            self?.revealAllHiddenItems()
-        },
-        showSecondBar: { [weak self] in
-            self?.showSecondBar()
-        },
         enterFullMenuBarMode: { [weak self] in
             self?.enterFullMenuBarMode()
         },
@@ -77,6 +65,15 @@ final class AppEnvironment {
         },
         refreshGroups: { [weak self] in
             self?.refreshGroupSettings()
+        },
+        routeCommand: { [weak self] command in
+            self?.commandRouter.route(command)
+                ?? MenuBarCommandResult.stopped(
+                    command,
+                    status: .failed,
+                    message: "Command router is unavailable.",
+                    diagnosticReason: "routerUnavailable"
+                )
         }
     )
 
@@ -125,6 +122,26 @@ final class AppEnvironment {
             },
             automationSettingsChanged: { [weak self] in
                 self?.refreshAutomationSettings()
+            },
+            commandAvailability: { [weak self] command in
+                self?.commandRouter.availability(for: command)
+                    ?? MenuBarCommandAvailability.unavailable(
+                        status: .failed,
+                        message: "Command router is unavailable.",
+                        diagnosticReason: "routerUnavailable",
+                        failedGate: .targetAvailable
+                    )
+            },
+            routeCommand: { [weak self] command in
+                guard let self else {
+                    return MenuBarCommandResult.stopped(
+                        command,
+                        status: .failed,
+                        message: "Command router is unavailable.",
+                        diagnosticReason: "routerUnavailable"
+                    )
+                }
+                return self.commandRouter.route(command)
             },
             profile: SettingsProfileActions(
                 dryRun: { [weak self] profile in
@@ -208,8 +225,8 @@ final class AppEnvironment {
             expand: { [weak self] in self?.expandHiddenItems() },
             collapse: { [weak self] in self?.collapseHiddenItems() },
             toggle: { [weak self] in self?.toggleHiddenItems() },
-            revealAll: { [weak self] in self?.revealAllHiddenItems() },
-            toggleRevealAll: { [weak self] in self?.toggleRevealAll() },
+            revealAll: { [weak self] in self?.revealAllFromStatusMenu() },
+            toggleRevealAll: { [weak self] in self?.toggleRevealAllFromStatusMenu() },
             emergencyRevealAndResetSeparators: { [weak self] in self?.emergencyRevealAndResetSeparators() },
             findIcon: { [weak self] in self?.showSearch() },
             showSecondBar: { [weak self] in self?.showSecondBar() },
@@ -223,6 +240,15 @@ final class AppEnvironment {
             toggleAutomationPaused: { [weak self] in self?.toggleAutomationPaused() },
             automationPausedTitle: { [weak self] in
                 self?.settingsStore.automationPaused == true ? "Resume Automation" : "Pause Automation"
+            },
+            automationPaused: { [weak self] in
+                self?.settingsStore.automationPaused == true
+            },
+            secondBarVisible: { [weak self] in
+                self?.liveStatus.secondBarVisible == true
+            },
+            routeCommand: { [weak self] command in
+                self?.routeStatusMenuCommand(command)
             },
             canRefreshMenuBarItems: { [weak self] in
                 self?.menuBarScanCoordinator.isManualRefreshAvailable == true
@@ -252,6 +278,7 @@ final class AppEnvironment {
             },
             revealInlineAnyway: { [weak self] in
                 _ = self?.layoutCoordinator.crowdedRevealRescueService.revealInlineAnyway()
+                self?.revealAllHiddenItemsInline()
             },
             crowdedRevealIntercepted: { [weak self] in
                 self?.layoutCoordinator.crowdedRevealRescueService.lastRevealIntercepted == true
@@ -298,7 +325,9 @@ final class AppEnvironment {
     private lazy var menuBarItemSurfaceCoordinator = MenuBarItemSurfaceCoordinator(
         settingsStore: settingsStore,
         diagnosticsLogger: diagnosticsLogger,
+        appSupportPaths: appSupportPaths,
         liveStatus: liveStatus,
+        groupStore: groupStore,
         safeModeLaunchState: safeModeLaunchState,
         hidingService: hidingService,
         rehideController: rehideController,
@@ -321,6 +350,15 @@ final class AppEnvironment {
         },
         openPrivacySettings: { [weak self] in
             self?.settingsWindowController.show(section: SettingsSection.privacy)
+        },
+        routeCommand: { [weak self] command in
+            self?.commandRouter.route(command)
+                ?? MenuBarCommandResult.stopped(
+                    command,
+                    status: .failed,
+                    message: "Command router is unavailable.",
+                    diagnosticReason: "routerUnavailable"
+                )
         }
     )
 
@@ -352,7 +390,7 @@ final class AppEnvironment {
                 self?.updateLiveStatusFromServices()
             },
             revealAllHiddenItems: { [weak self] in
-                self?.revealAllHiddenItems()
+                self?.revealAllHiddenItemsInline()
             },
             resetAllSettings: { [weak self] in
                 self?.resetAllSettings()
@@ -397,7 +435,7 @@ final class AppEnvironment {
             self?.menuBarScanCoordinator.lastResult
         },
         revealAll: { [weak self] in
-            self?.revealAllHiddenItems()
+            self?.revealAllHiddenItemsInline()
         },
         restoreVisibility: { [weak self] state in
             self?.restoreVisibilityState(state)
@@ -412,10 +450,16 @@ final class AppEnvironment {
             self?.settingsStore.showSpacerMarkers = visible
         },
         openSecondBar: { [weak self] in
-            self?.showSecondBar()
+            self?.routeCrowdedRescueCommand(
+                action: .showSecondBar,
+                target: .secondBar
+            )
         },
         enterFullMenuBarMode: { [weak self] in
             self?.enterFullMenuBarMode()
+        },
+        showLayoutSuggestions: { [weak self] in
+            self?.showLayoutSuggestions()
         }
     )
 
@@ -451,12 +495,35 @@ final class AppEnvironment {
         settingsStore: settingsStore,
         hidingService: hidingService,
         highlightOverlay: groupHighlightOverlayWindow,
-        diagnosticsLogger: diagnosticsLogger
+        diagnosticsLogger: diagnosticsLogger,
+        expandHiddenItems: { [weak self] in
+            self?.performCrowdedReveal(intent: .revealItem) {
+                self?.expandHiddenItemsInline()
+            }
+        },
+        revealAllItems: { [weak self] in
+            self?.performCrowdedReveal(intent: .revealItem) {
+                self?.revealAllHiddenItemsInline()
+            }
+        }
     )
 
     private lazy var groupActivationService = IconGroupActivationService(
         activator: groupMenuItemActivator,
         diagnosticsLogger: diagnosticsLogger
+    )
+
+    private lazy var commandRouter = MenuBarCommandRouter(
+        settingsStore: settingsStore,
+        diagnosticsLogger: diagnosticsLogger,
+        safeModeActive: { [weak self] in
+            self?.safeModeLaunchState.isSafeModeActive == true
+        },
+        accessibilityStatus: { [weak self] in
+            self?.accessibilityPermissionService.status ?? .notRequested
+        },
+        privateAccess: protectedActionGate,
+        handlers: makeCommandHandlers()
     )
 
     private lazy var groupPanelWindowController = IconGroupPanelWindowController(
@@ -471,7 +538,11 @@ final class AppEnvironment {
         factory: IconGroupStatusItemFactory(diagnosticsLogger: diagnosticsLogger),
         diagnosticsLogger: diagnosticsLogger,
         openGroup: { [weak self] group in
-            self?.showGroupPanel(group)
+            self?.routeStatusMenuCommand(MenuBarCommand(
+                action: .showGroupPanel,
+                target: .group(group.id),
+                source: .statusMenu
+            ))
         },
         editGroup: { [weak self] _ in
             self?.showSettings(section: .groups)
@@ -484,36 +555,18 @@ final class AppEnvironment {
         hotkeyManager: hotkeyManager,
         protectedActionGate: protectedActionGate,
         diagnosticsLogger: diagnosticsLogger,
-        performAction: { [weak self] action in
-            await self?.performDynamicHotkeyAction(action) == true
+        routeAction: { [weak self] action in
+            self?.routeDynamicHotkeyAction(action)
+                ?? MenuBarCommandResult.stopped(
+                    MenuBarCommand(action: .toggle, source: .dynamicHotkey),
+                    status: .failed,
+                    message: "Command router is unavailable.",
+                    diagnosticReason: "routerUnavailable"
+                )
         }
     )
 
-    lazy var intentExecutionService = AppIntentExecutionService(
-        settingsStore: settingsStore,
-        diagnosticsLogger: diagnosticsLogger,
-        safeModeActive: { [weak self] in
-            self?.safeModeLaunchState.isSafeModeActive == true
-        },
-        expand: { [weak self] in self?.expandHiddenItems() },
-        collapse: { [weak self] in self?.collapseHiddenItems() },
-        revealAll: { [weak self] in self?.revealAllHiddenItems() },
-        showSecondBar: { [weak self] in self?.showSecondBar() },
-        hideSecondBar: { [weak self] in self?.hideSecondBar() },
-        enterFullMenuBarMode: { [weak self] in self?.enterFullMenuBarMode() },
-        exitFullMenuBarMode: { [weak self] in self?.exitFullMenuBarMode() },
-        applyProfileNamed: { [weak self] name in
-            self?.applyProfileNamed(name) ?? false
-        },
-        pauseAutomation: { [weak self] in
-            self?.settingsStore.automationPaused = true
-            self?.refreshTriggerSettings()
-        },
-        resumeAutomation: { [weak self] in
-            self?.settingsStore.automationPaused = false
-            self?.refreshTriggerSettings()
-        }
-    )
+    lazy var intentExecutionService = AppIntentExecutionService(commandRouter: commandRouter)
 
     init(
         settingsStore: SettingsStore = SettingsStore(),
@@ -758,7 +811,9 @@ final class AppEnvironment {
     // MARK: Hiding actions
 
     func expandHiddenItems() {
-        statusBarController.expand()
+        performCrowdedReveal(intent: .expand) { [weak self] in
+            self?.expandHiddenItemsInline()
+        }
     }
 
     func collapseHiddenItems() {
@@ -766,10 +821,24 @@ final class AppEnvironment {
     }
 
     func toggleHiddenItems() {
-        statusBarController.toggle()
+        if hidingService.visibilityState.isCollapsed {
+            expandHiddenItems()
+        } else {
+            statusBarController.toggle()
+        }
     }
 
     func revealAllHiddenItems() {
+        performCrowdedReveal(intent: .revealAll) { [weak self] in
+            self?.revealAllHiddenItemsInline()
+        }
+    }
+
+    private func expandHiddenItemsInline() {
+        statusBarController.expand()
+    }
+
+    private func revealAllHiddenItemsInline() {
         statusBarController.revealAll()
     }
 
@@ -786,7 +855,103 @@ final class AppEnvironment {
     }
 
     func toggleRevealAll() {
-        statusBarController.toggleRevealAll()
+        if hidingService.visibilityState.isRevealAll {
+            statusBarController.toggleRevealAll()
+        } else {
+            revealAllHiddenItems()
+        }
+    }
+
+    private func revealAllFromStatusMenu() {
+        guard shouldProtectAlwaysHiddenReveal else {
+            revealAllHiddenItems()
+            return
+        }
+
+        routeStatusMenuCommand(MenuBarCommand(
+            action: .revealAlwaysHiddenZone,
+            target: .globalVisibility,
+            source: .statusMenu
+        ))
+    }
+
+    private func toggleRevealAllFromStatusMenu() {
+        guard !hidingService.visibilityState.isRevealAll else {
+            toggleRevealAll()
+            return
+        }
+
+        guard shouldProtectAlwaysHiddenReveal else {
+            toggleRevealAll()
+            return
+        }
+
+        routeStatusMenuCommand(MenuBarCommand(
+            action: .revealAlwaysHiddenZone,
+            target: .globalVisibility,
+            source: .statusMenu
+        ))
+    }
+
+    private var shouldProtectAlwaysHiddenReveal: Bool {
+        settingsStore.alwaysHiddenEnabled && privateAccessCoordinator.isProtected(.alwaysHiddenZone)
+    }
+
+    private func routeStatusMenuCommand(_ command: MenuBarCommand) {
+        guard let resource = command.action.privateAccessResource(for: command.target),
+              !protectedActionGate.canAccessWithoutPrompt(resource) else {
+            _ = commandRouter.route(command)
+            return
+        }
+
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            var didRoute = false
+            let didUnlockAndRun = await self.protectedActionGate.execute(
+                resource: resource,
+                reason: self.statusMenuUnlockReason(for: command)
+            ) {
+                didRoute = true
+                _ = self.commandRouter.route(command)
+            }
+
+            guard !didUnlockAndRun, !didRoute else { return }
+            let result = MenuBarCommandResult.stopped(
+                command,
+                status: .requiresUnlock,
+                message: "This command requires Private Access unlock.",
+                diagnosticReason: "privateAccessLocked"
+            )
+            self.diagnosticsLogger.log(
+                "Status menu command did not run because Private Access unlock was not completed.",
+                level: .info,
+                category: .privacy,
+                metadata: MenuBarCommandDiagnostics.metadata(for: result, source: command.source)
+            )
+        }
+    }
+
+    private func statusMenuUnlockReason(for command: MenuBarCommand) -> String {
+        switch command.action {
+        case .revealAlwaysHiddenZone:
+            "Unlock to reveal always-hidden menu bar items."
+        case .showFindIcon:
+            "Unlock to open Find Icon."
+        case .showSecondBar, .showIconPanel, .showItemInSecondBar:
+            "Unlock to open Second Bar."
+        case .showGroupPanel:
+            "Unlock to open this protected group."
+        case .revealGroup:
+            "Unlock to reveal this protected group."
+        case .applyProfile:
+            "Unlock to apply this profile."
+        case .spacingPresetApply:
+            "Unlock to apply Menu Bar Spacing Labs changes."
+        case .experimentalActivateItem:
+            "Unlock to move this menu bar item."
+        default:
+            "Unlock to run this protected command."
+        }
     }
 
     // MARK: Phase 10 Layout actions
@@ -803,14 +968,70 @@ final class AppEnvironment {
         showSettings(section: .layout)
     }
 
+    private func performCrowdedReveal(
+        intent: CrowdedRevealIntent,
+        inlineAction: () -> Void
+    ) {
+        let estimate = layoutCoordinator.currentCapacityEstimate()
+        let result = layoutCoordinator.crowdedRevealRescueService.evaluate(
+            intent: intent,
+            currentVisibility: hidingService.visibilityState,
+            estimate: estimate,
+            secondBarAvailable: crowdedRescueCommandAvailable(
+                action: .showSecondBar,
+                target: .secondBar
+            ),
+            fullMenuBarModeAvailable: crowdedRescueCommandAvailable(
+                action: .enterFullMenuBarMode,
+                target: .fullMenuBarMode
+            ),
+            layoutSuggestionsAvailable: crowdedRescueCommandAvailable(
+                action: .showLayoutSuggestions,
+                target: .layoutSuggestions
+            ),
+            safeModeActive: safeModeLaunchState.isSafeModeActive
+        )
+
+        switch result {
+        case .proceedInline, .inlineOverride:
+            inlineAction()
+        case .openedSecondBar, .enteredFullMenuBarMode, .suggestedOnly, .noOp:
+            break
+        }
+    }
+
+    private func crowdedRescueCommandAvailable(
+        action: MenuBarCommandAction,
+        target: MenuBarCommandTarget
+    ) -> Bool {
+        commandRouter.availability(for: MenuBarCommand(
+            action: action,
+            target: target,
+            source: .crowdedRescue
+        ))
+        .isAvailable
+    }
+
+    @discardableResult
+    private func routeCrowdedRescueCommand(
+        action: MenuBarCommandAction,
+        target: MenuBarCommandTarget
+    ) -> MenuBarCommandResult {
+        commandRouter.route(MenuBarCommand(
+            action: action,
+            target: target,
+            source: .crowdedRescue
+        ))
+    }
+
     private func restoreVisibilityState(_ state: HidingVisibilityState) {
         switch state {
         case .collapsed:
             collapseHiddenItems()
         case .expanded:
-            expandHiddenItems()
+            expandHiddenItemsInline()
         case .revealAll:
-            revealAllHiddenItems()
+            revealAllHiddenItemsInline()
         }
     }
 
@@ -1086,53 +1307,306 @@ final class AppEnvironment {
         settingsRuntimeCoordinator.toggleProMode()
     }
 
-    private func performDynamicHotkeyAction(_ action: HotkeyAction) async -> Bool {
+    private func makeCommandHandlers() -> MenuBarCommandHandlers {
+        var handlers = MenuBarCommandHandlers()
+        handlers.expand = { [weak self] in self?.expandHiddenItems() }
+        handlers.collapse = { [weak self] in self?.collapseHiddenItems() }
+        handlers.toggle = { [weak self] in self?.toggleHiddenItems() }
+        handlers.revealAll = { [weak self] in self?.revealAllHiddenItems() }
+        handlers.showFindIcon = { [weak self] in self?.showSearch() }
+        handlers.showSecondBar = { [weak self] in self?.showSecondBar() }
+        handlers.hideSecondBar = { [weak self] in self?.hideSecondBar() }
+        handlers.showIconPanel = { [weak self] in self?.showSecondBar() }
+        handlers.showLayoutSuggestions = { [weak self] in self?.showLayoutSuggestions() }
+        handlers.enterFullMenuBarMode = { [weak self] in self?.enterFullMenuBarMode() }
+        handlers.exitFullMenuBarMode = { [weak self] in self?.exitFullMenuBarMode() }
+        handlers.pauseAutomation = { [weak self] in
+            self?.settingsStore.automationPaused = true
+            self?.refreshTriggerSettings()
+        }
+        handlers.resumeAutomation = { [weak self] in
+            self?.settingsStore.automationPaused = false
+            self?.refreshTriggerSettings()
+        }
+        handlers.revealItem = { [weak self] itemID in
+            self?.revealMenuBarItem(id: itemID) == true
+        }
+        handlers.highlightItem = { [weak self] itemID in
+            self?.highlightMenuBarItem(id: itemID) == true
+        }
+        handlers.openOwningApp = { [weak self] itemID in
+            self?.openOwningAppForMenuBarItem(id: itemID) == true
+        }
+        handlers.showItemInSecondBar = { [weak self] itemID in
+            self?.showMenuBarItemInSecondBar(id: itemID) == true
+        }
+        handlers.showGroupPanel = { [weak self] groupID in
+            self?.showGroupPanel(id: groupID) == true
+        }
+        handlers.revealGroup = { [weak self] groupID in
+            self?.revealGroup(id: groupID) == true
+        }
+        handlers.createGroupFromItem = { [weak self] itemID in
+            self?.createGroupFromMenuBarItem(id: itemID) == true
+        }
+        handlers.addItemToGroup = { [weak self] groupID, itemID in
+            self?.addMenuBarItem(id: itemID, toGroup: groupID) == true
+        }
+        handlers.applyProfileNamed = { [weak self] name in
+            self?.applyProfileNamed(name) ?? false
+        }
+        handlers.applyProfileID = { [weak self] id in
+            self?.applyProfile(id: id) == true
+        }
+        handlers.dryRunProfileID = { [weak self] id in
+            self?.dryRunProfile(id: id) == true
+        }
+        handlers.dryRunProfileNamed = { [weak self] name in
+            self?.dryRunProfile(named: name) == true
+        }
+        return handlers
+    }
+
+    private func routeDynamicHotkeyAction(_ action: HotkeyAction) -> MenuBarCommandResult {
         switch action {
         case .revealAndHighlightItem(let itemID):
-            refreshMenuBarItems()
-            guard let snapshot = liveStatus.scannedMenuBarItems.first(where: { $0.id == itemID }) else {
-                diagnosticsLogger.log("Dynamic hotkey item target unavailable.", level: .warning, category: .hotkey)
-                return false
-            }
-            _ = groupActivationService.activate(snapshot: snapshot)
-            return true
-        case .openGroup(let groupID), .openSecondBarFilteredToGroup(let groupID):
-            groupStore.load()
-            guard let group = groupStore.groups.first(where: { $0.id == groupID }) else {
-                diagnosticsLogger.log("Dynamic hotkey group target unavailable.", level: .warning, category: .hotkey)
-                return false
-            }
-            if case .openSecondBarFilteredToGroup = action {
-                showSecondBar()
-            }
-            showGroupPanel(group)
-            return true
-        case .openSecondBarFilteredToItem:
-            showSecondBar()
-            return true
+            return commandRouter.route(MenuBarCommand(
+                action: .revealItem,
+                target: .menuBarItem(id: itemID),
+                source: .dynamicHotkey
+            ))
+        case .openGroup(let groupID):
+            return commandRouter.route(MenuBarCommand(
+                action: .showGroupPanel,
+                target: .group(groupID),
+                source: .dynamicHotkey
+            ))
+        case .revealGroup(let groupID):
+            return commandRouter.route(MenuBarCommand(
+                action: .revealGroup,
+                target: .group(groupID),
+                source: .dynamicHotkey
+            ))
+        case .openSecondBarFilteredToGroup(let groupID):
+            let secondBarResult = commandRouter.route(MenuBarCommand(
+                action: .showSecondBar,
+                target: .secondBar,
+                source: .dynamicHotkey
+            ))
+            guard secondBarResult.didRun else { return secondBarResult }
+            return commandRouter.route(MenuBarCommand(
+                action: .showGroupPanel,
+                target: .group(groupID),
+                source: .dynamicHotkey
+            ))
+        case .openSecondBarFilteredToItem(let itemID):
+            return commandRouter.route(MenuBarCommand(
+                action: .showItemInSecondBar,
+                target: .menuBarItem(id: itemID),
+                source: .dynamicHotkey
+            ))
         case .applyProfile(let profileID):
-            profileAutomationCoordinator.profileStore.load()
-            guard let profile = profileAutomationCoordinator.profileStore.profiles.first(where: { $0.id == profileID }) else {
-                diagnosticsLogger.log("Dynamic hotkey profile target unavailable.", level: .warning, category: .hotkey)
-                return false
-            }
-            _ = applyProfile(profile)
-            return true
+            return commandRouter.route(MenuBarCommand(
+                action: .applyProfile,
+                target: .profileID(profileID),
+                source: .dynamicHotkey
+            ))
         case .enterFullMenuBarMode:
-            enterFullMenuBarMode()
-            return true
+            return commandRouter.route(MenuBarCommand(
+                action: .enterFullMenuBarMode,
+                target: .fullMenuBarMode,
+                source: .dynamicHotkey
+            ))
         case .exitFullMenuBarMode:
-            exitFullMenuBarMode()
-            return true
+            return commandRouter.route(MenuBarCommand(
+                action: .exitFullMenuBarMode,
+                target: .fullMenuBarMode,
+                source: .dynamicHotkey
+            ))
         case .pauseAutomation:
-            settingsStore.automationPaused = true
-            refreshTriggerSettings()
-            return true
+            return commandRouter.route(MenuBarCommand(
+                action: .pauseAutomation,
+                target: .automation,
+                source: .dynamicHotkey
+            ))
         case .resumeAutomation:
-            settingsStore.automationPaused = false
-            refreshTriggerSettings()
+            return commandRouter.route(MenuBarCommand(
+                action: .resumeAutomation,
+                target: .automation,
+                source: .dynamicHotkey
+            ))
+        }
+    }
+
+    private func revealMenuBarItem(id: String) -> Bool {
+        refreshMenuBarItems()
+        guard let snapshot = liveStatus.scannedMenuBarItems.first(where: { $0.id == id }) else {
+            diagnosticsLogger.log("Dynamic hotkey item target unavailable.", level: .warning, category: .hotkey)
+            return false
+        }
+        _ = groupActivationService.activate(snapshot: snapshot)
+        return true
+    }
+
+    private func highlightMenuBarItem(id: String) -> Bool {
+        refreshMenuBarItems()
+        guard let snapshot = liveStatus.scannedMenuBarItems.first(where: { $0.id == id }) else {
+            diagnosticsLogger.log("Command Center item highlight target unavailable.", level: .warning, category: .layout)
+            return false
+        }
+
+        let result = groupMenuItemActivator.highlight(snapshot)
+        diagnosticsLogger.log("Command Center item highlight: \(result.message)", level: .debug, category: .layout)
+        return result.outcome != .missingFrame
+    }
+
+    private func openOwningAppForMenuBarItem(id: String) -> Bool {
+        refreshMenuBarItems()
+        guard let snapshot = liveStatus.scannedMenuBarItems.first(where: { $0.id == id }) else {
+            diagnosticsLogger.log("Command Center owning app target unavailable.", level: .warning, category: .layout)
+            return false
+        }
+
+        guard let processIdentifier = snapshot.owningProcessIdentifier,
+              let application = NSRunningApplication(processIdentifier: processIdentifier) else {
+            diagnosticsLogger.log("Command Center owning app is unavailable.", level: .warning, category: .layout)
+            return false
+        }
+
+        return application.activate(options: [])
+    }
+
+    private func showMenuBarItemInSecondBar(id: String) -> Bool {
+        guard liveStatus.scannedMenuBarItems.contains(where: { $0.id == id }) else {
+            diagnosticsLogger.log("Dynamic hotkey Second Bar item target unavailable.", level: .warning, category: .hotkey)
+            return false
+        }
+        showSecondBar()
+        return true
+    }
+
+    private func showGroupPanel(id: UUID) -> Bool {
+        groupStore.load()
+        guard let group = groupStore.groups.first(where: { $0.id == id }) else {
+            diagnosticsLogger.log("Dynamic hotkey group target unavailable.", level: .warning, category: .hotkey)
+            return false
+        }
+        showGroupPanel(group)
+        return true
+    }
+
+    private func revealGroup(id: UUID) -> Bool {
+        groupStore.load()
+        guard let group = groupStore.groups.first(where: { $0.id == id }) else {
+            diagnosticsLogger.log("Group reveal target unavailable.", level: .warning, category: .layout)
+            return false
+        }
+
+        refreshMenuBarItems()
+        let resolver = IconGroupSnapshotResolver()
+        let plan = resolver.revealPlan(for: group, snapshots: liveStatus.scannedMenuBarItems)
+
+        switch plan {
+        case .noMatchingItems:
+            diagnosticsLogger.log("Group reveal had no matching menu bar items.", level: .warning, category: .layout)
+            return false
+        case .noRevealNeeded:
+            diagnosticsLogger.log("Group reveal did not need visibility changes.", category: .layout)
+            return true
+        case .expandHiddenZone:
+            performCrowdedReveal(intent: .revealGroup) { [weak self] in
+                self?.expandHiddenItemsInline()
+            }
+            diagnosticsLogger.log("Group reveal expanded hidden menu bar items.", category: .layout)
+            return true
+        case .revealAllHiddenItems:
+            performCrowdedReveal(intent: .revealGroup) { [weak self] in
+                self?.revealAllHiddenItemsInline()
+            }
+            diagnosticsLogger.log("Group reveal revealed all hidden menu bar items.", category: .layout)
             return true
         }
+    }
+
+    private func createGroupFromMenuBarItem(id: String) -> Bool {
+        refreshMenuBarItems()
+        guard let snapshot = liveStatus.scannedMenuBarItems.first(where: { $0.id == id }) else {
+            diagnosticsLogger.log("Group creation item target unavailable.", level: .warning, category: .layout)
+            return false
+        }
+
+        groupStore.load()
+        let groupName = IconGroupItemActionPlanner.defaultGroupName(
+            for: snapshot,
+            existingGroups: groupStore.groups
+        )
+        let created = groupStore.createGroup(name: groupName)
+        groupStore.updateGroup(id: created.id) { group in
+            group.symbolName = "folder"
+            group.showInSecondBar = true
+            group.showAsStatusItem = false
+            group.itemRefs = [IconGroupItemActionPlanner.itemRef(from: snapshot)]
+        }
+        refreshGroupSettings()
+        diagnosticsLogger.log("Created group from menu bar item.", category: .layout)
+        return true
+    }
+
+    private func addMenuBarItem(id: String, toGroup groupID: UUID) -> Bool {
+        refreshMenuBarItems()
+        guard let snapshot = liveStatus.scannedMenuBarItems.first(where: { $0.id == id }) else {
+            diagnosticsLogger.log("Group add item target unavailable.", level: .warning, category: .layout)
+            return false
+        }
+
+        groupStore.load()
+        guard groupStore.groups.contains(where: { $0.id == groupID }) else {
+            diagnosticsLogger.log("Group add target unavailable.", level: .warning, category: .layout)
+            return false
+        }
+
+        var didAdd = false
+        groupStore.updateGroup(id: groupID) { group in
+            let result = IconGroupItemActionPlanner.adding(snapshot: snapshot, to: group)
+            group = result.group
+            didAdd = result.didAdd
+        }
+        refreshGroupSettings()
+        diagnosticsLogger.log(
+            didAdd ? "Added menu bar item to group." : "Menu bar item already exists in group.",
+            category: .layout
+        )
+        return true
+    }
+
+    private func applyProfile(id: UUID) -> Bool {
+        profileAutomationCoordinator.profileStore.load()
+        guard let profile = profileAutomationCoordinator.profileStore.profiles.first(where: { $0.id == id }) else {
+            diagnosticsLogger.log("Dynamic hotkey profile target unavailable.", level: .warning, category: .hotkey)
+            return false
+        }
+        _ = applyProfile(profile)
+        return true
+    }
+
+    private func dryRunProfile(id: UUID) -> Bool {
+        profileAutomationCoordinator.profileStore.load()
+        guard let profile = profileAutomationCoordinator.profileStore.profiles.first(where: { $0.id == id }) else {
+            diagnosticsLogger.log("Dynamic hotkey profile dry-run target unavailable.", level: .warning, category: .hotkey)
+            return false
+        }
+        _ = dryRunProfile(profile)
+        return true
+    }
+
+    private func dryRunProfile(named name: String) -> Bool {
+        profileAutomationCoordinator.profileStore.load()
+        guard let profile = profileAutomationCoordinator.profileStore.profile(named: name) else {
+            diagnosticsLogger.log("Profile dry-run target unavailable.", level: .warning, category: .profile)
+            return false
+        }
+        _ = dryRunProfile(profile)
+        return true
     }
 
     func showAbout() {

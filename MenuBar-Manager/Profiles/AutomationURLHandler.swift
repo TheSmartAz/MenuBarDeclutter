@@ -8,6 +8,8 @@ final class AutomationURLHandler {
         case collapse
         case revealAll
         case secondBar
+        case groupPanel
+        case revealGroup
         case profile
         case fullMenuBar
         case exitFullMenuBar
@@ -23,6 +25,10 @@ final class AutomationURLHandler {
                 "reveal-all"
             case .secondBar:
                 "second-bar"
+            case .groupPanel:
+                "group"
+            case .revealGroup:
+                "reveal-group"
             case .profile:
                 "profile"
             case .fullMenuBar:
@@ -44,6 +50,10 @@ final class AutomationURLHandler {
                 self = .revealAll
             case "second-bar", "show-second-bar":
                 self = .secondBar
+            case "group", "open-group", "show-group-panel":
+                self = .groupPanel
+            case "reveal-group":
+                self = .revealGroup
             case "profile":
                 self = .profile
             case "full-menu-bar":
@@ -62,15 +72,7 @@ final class AutomationURLHandler {
     private static let defaultMinimumCommandInterval: TimeInterval = 0.5
 
     private let diagnosticsLogger: DiagnosticsLogger
-    private let expand: () -> Void
-    private let collapse: () -> Void
-    private let revealAll: () -> Void
-    private let showSecondBar: () -> Void
-    private let applyProfileNamed: (String) -> Bool
-    private let isAutomationEnabled: () -> Bool
-    private let enterFullMenuBarMode: () -> Void
-    private let exitFullMenuBarMode: () -> Void
-    private let showLayoutSuggestions: () -> Void
+    private let routeCommand: (MenuBarCommand) -> MenuBarCommandResult
     private let now: () -> Date
     private let minimumCommandInterval: TimeInterval
 
@@ -79,28 +81,12 @@ final class AutomationURLHandler {
 
     init(
         diagnosticsLogger: DiagnosticsLogger,
-        expand: @escaping () -> Void,
-        collapse: @escaping () -> Void,
-        revealAll: @escaping () -> Void,
-        showSecondBar: @escaping () -> Void,
-        applyProfileNamed: @escaping (String) -> Bool,
-        isAutomationEnabled: @escaping () -> Bool = { true },
-        enterFullMenuBarMode: @escaping () -> Void = {},
-        exitFullMenuBarMode: @escaping () -> Void = {},
-        showLayoutSuggestions: @escaping () -> Void = {},
+        routeCommand: @escaping (MenuBarCommand) -> MenuBarCommandResult,
         now: @escaping () -> Date = { Date() },
         minimumCommandInterval: TimeInterval = AutomationURLHandler.defaultMinimumCommandInterval
     ) {
         self.diagnosticsLogger = diagnosticsLogger
-        self.expand = expand
-        self.collapse = collapse
-        self.revealAll = revealAll
-        self.showSecondBar = showSecondBar
-        self.applyProfileNamed = applyProfileNamed
-        self.isAutomationEnabled = isAutomationEnabled
-        self.enterFullMenuBarMode = enterFullMenuBarMode
-        self.exitFullMenuBarMode = exitFullMenuBarMode
-        self.showLayoutSuggestions = showLayoutSuggestions
+        self.routeCommand = routeCommand
         self.now = now
         self.minimumCommandInterval = max(0, minimumCommandInterval)
     }
@@ -123,19 +109,11 @@ final class AutomationURLHandler {
         )
         isInstalled = true
 
-        if isAutomationEnabled() {
-            diagnosticsLogger.log(
-                "Automation URL handler installed.",
-                level: .debug,
-                category: .urlAutomation
-            )
-        } else {
-            diagnosticsLogger.log(
-                "Automation URL handler installed while automation is paused; URL commands will be rejected until automation resumes.",
-                level: .info,
-                category: .urlAutomation
-            )
-        }
+        diagnosticsLogger.log(
+            "Automation URL handler installed.",
+            level: .debug,
+            category: .urlAutomation
+        )
     }
 
     func uninstall() {
@@ -165,15 +143,6 @@ final class AutomationURLHandler {
             return false
         }
 
-        guard isAutomationEnabled() else {
-            logRejection(
-                "automation paused",
-                metadata: eventMetadata,
-                level: .info
-            )
-            return false
-        }
-
         let host = url.host(percentEncoded: false) ?? ""
         guard let command = Command(host: host) else {
             logRejection(
@@ -189,67 +158,11 @@ final class AutomationURLHandler {
             return false
         }
 
-        switch command {
-        case .expand:
-            expand()
-            logSuccess("expand", command: command, metadata: eventMetadata)
-            return true
-        case .collapse:
-            collapse()
-            logSuccess("collapse", command: command, metadata: eventMetadata)
-            return true
-        case .revealAll:
-            revealAll()
-            logSuccess("reveal all", command: command, metadata: eventMetadata)
-            return true
-        case .secondBar:
-            showSecondBar()
-            logSuccess("show second bar", command: command, metadata: eventMetadata)
-            return true
-        case .profile:
-            guard let name = profileName(from: url), !name.isEmpty else {
-                logRejection(
-                    "profile command missing profile name",
-                    metadata: metadata(eventMetadata, adding: [
-                        "command": command.logName
-                    ])
-                )
-                return false
-            }
-            let didApply = applyProfileNamed(name)
-            if didApply {
-                diagnosticsLogger.log(
-                    "Automation URL applied profile.",
-                    level: .info,
-                    category: .urlAutomation,
-                    metadata: metadata(eventMetadata, adding: [
-                        "command": command.logName,
-                        "profile": name
-                    ])
-                )
-            } else {
-                logRejection(
-                    "profile not found",
-                    metadata: metadata(eventMetadata, adding: [
-                        "command": command.logName,
-                        "profile": name
-                    ])
-                )
-            }
-            return didApply
-        case .fullMenuBar:
-            enterFullMenuBarMode()
-            logSuccess("enter full menu bar mode", command: command, metadata: eventMetadata)
-            return true
-        case .exitFullMenuBar:
-            exitFullMenuBarMode()
-            logSuccess("exit full menu bar mode", command: command, metadata: eventMetadata)
-            return true
-        case .layoutSuggestions:
-            showLayoutSuggestions()
-            logSuccess("show layout suggestions", command: command, metadata: eventMetadata)
-            return true
+        guard let routedCommand = routedCommand(for: command, url: url, eventMetadata: eventMetadata) else {
+            return false
         }
+
+        return routeCommand(routedCommand).didRun
     }
 
     private func accept(command: Command, eventMetadata: [String: String]) -> Bool {
@@ -276,15 +189,67 @@ final class AutomationURLHandler {
         url.pathComponents.first { $0 != "/" }
     }
 
-    private func logSuccess(_ action: String, command: Command, metadata eventMetadata: [String: String]) {
-        diagnosticsLogger.log(
-            "Automation URL command handled: \(action).",
-            level: .info,
-            category: .urlAutomation,
-            metadata: metadata(eventMetadata, adding: [
-                "command": command.logName
-            ])
-        )
+    private func groupID(from url: URL) -> UUID? {
+        guard let rawValue = url.pathComponents.first(where: { $0 != "/" }) else {
+            return nil
+        }
+        return UUID(uuidString: rawValue)
+    }
+
+    private func routedCommand(
+        for command: Command,
+        url: URL,
+        eventMetadata: [String: String]
+    ) -> MenuBarCommand? {
+        switch command {
+        case .expand:
+            return MenuBarCommand(action: .expand, target: .globalVisibility, source: .urlAutomation)
+        case .collapse:
+            return MenuBarCommand(action: .collapse, target: .globalVisibility, source: .urlAutomation)
+        case .revealAll:
+            return MenuBarCommand(action: .revealAll, target: .globalVisibility, source: .urlAutomation)
+        case .secondBar:
+            return MenuBarCommand(action: .showSecondBar, target: .secondBar, source: .urlAutomation)
+        case .groupPanel:
+            guard let id = groupID(from: url) else {
+                logRejection(
+                    "group command missing group id",
+                    metadata: metadata(eventMetadata, adding: [
+                        "command": command.logName
+                    ])
+                )
+                return nil
+            }
+            return MenuBarCommand(action: .showGroupPanel, target: .group(id), source: .urlAutomation)
+        case .revealGroup:
+            guard let id = groupID(from: url) else {
+                logRejection(
+                    "group command missing group id",
+                    metadata: metadata(eventMetadata, adding: [
+                        "command": command.logName
+                    ])
+                )
+                return nil
+            }
+            return MenuBarCommand(action: .revealGroup, target: .group(id), source: .urlAutomation)
+        case .profile:
+            guard let name = profileName(from: url), !name.isEmpty else {
+                logRejection(
+                    "profile command missing profile name",
+                    metadata: metadata(eventMetadata, adding: [
+                        "command": command.logName
+                    ])
+                )
+                return nil
+            }
+            return MenuBarCommand(action: .applyProfile, target: .profileName(name), source: .urlAutomation)
+        case .fullMenuBar:
+            return MenuBarCommand(action: .enterFullMenuBarMode, target: .fullMenuBarMode, source: .urlAutomation)
+        case .exitFullMenuBar:
+            return MenuBarCommand(action: .exitFullMenuBarMode, target: .fullMenuBarMode, source: .urlAutomation)
+        case .layoutSuggestions:
+            return MenuBarCommand(action: .showLayoutSuggestions, target: .layoutSuggestions, source: .urlAutomation)
+        }
     }
 
     private func logRejection(

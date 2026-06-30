@@ -115,11 +115,15 @@ struct SearchService {
     func results(
         from snapshots: [MenuBarItemSnapshot],
         query: String,
+        filter: MenuBarItemCollectionFilter = .all,
+        memoryStore: MenuBarItemMemoryStore? = nil,
         limit: Int = 20
     ) -> [MenuBarSearchResult] {
         return results(
             from: SearchIndex(snapshots: snapshots),
             query: query,
+            filter: filter,
+            memoryStore: memoryStore,
             limit: limit
         )
     }
@@ -127,12 +131,18 @@ struct SearchService {
     func results(
         from index: SearchIndex,
         query: String,
+        filter: MenuBarItemCollectionFilter = .all,
+        memoryStore: MenuBarItemMemoryStore? = nil,
         limit: Int = 20
     ) -> [MenuBarSearchResult] {
         let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
         let normalizedQuery = Self.normalize(trimmedQuery)
 
-        let results = index.entries.compactMap { entry -> MenuBarSearchResult? in
+        let entries = index.entries.filter { entry in
+            filter.includes(entry.snapshot, memoryStore: memoryStore)
+        }
+
+        let results = entries.compactMap { entry -> MenuBarSearchResult? in
             if normalizedQuery.isEmpty {
                 return MenuBarSearchResult(
                     snapshot: entry.snapshot,
@@ -155,7 +165,27 @@ struct SearchService {
             )
         }
 
-        return Array(results.sorted(by: isHigherRanked).prefix(max(0, limit)))
+        return Array(sorted(results, filter: filter, memoryStore: memoryStore).prefix(max(0, limit)))
+    }
+
+    private func sorted(
+        _ results: [MenuBarSearchResult],
+        filter: MenuBarItemCollectionFilter,
+        memoryStore: MenuBarItemMemoryStore?
+    ) -> [MenuBarSearchResult] {
+        guard filter == .recent,
+              let memoryStore else {
+            return results.sorted(by: isHigherRanked)
+        }
+
+        return results.sorted { lhs, rhs in
+            let leftRank = memoryStore.recentRank(for: lhs.snapshot) ?? Int.max
+            let rightRank = memoryStore.recentRank(for: rhs.snapshot) ?? Int.max
+            if leftRank != rightRank {
+                return leftRank < rightRank
+            }
+            return isHigherRanked(lhs, rhs)
+        }
     }
 
     private func bestMatch(

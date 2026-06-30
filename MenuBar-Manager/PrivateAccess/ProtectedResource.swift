@@ -37,4 +37,27 @@ nonisolated enum ProtectedResource: Hashable, Sendable {
             return false
         }
     }
+
+    var diagnosticKind: String {
+        switch self {
+        case .revealAll:
+            "revealAll"
+        case .alwaysHiddenZone:
+            "alwaysHiddenZone"
+        case .findIcon:
+            "findIcon"
+        case .secondBar:
+            "secondBar"
+        case .iconMoving:
+            "iconMoving"
+        case .protectedGroup:
+            "protectedGroup"
+        case .profileApply:
+            "profileApply"
+        case .layoutSpacingLabs:
+            "layoutSpacingLabs"
+        case .appIntent:
+            "appIntent"
+        }
+    }
 }

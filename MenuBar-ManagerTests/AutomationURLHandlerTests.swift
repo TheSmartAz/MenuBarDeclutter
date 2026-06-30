@@ -12,9 +12,18 @@ struct AutomationURLHandlerTests {
         #expect(handler.handle(url: try #require(URL(string: "menubardeclutter://expand"))))
         #expect(handler.handle(url: try #require(URL(string: "menubardeclutter://collapse"))))
         #expect(handler.handle(url: try #require(URL(string: "menubardeclutter://reveal-all"))))
-        #expect(handler.handle(url: try #require(URL(string: "menubardeclutter://second-bar"))))
 
-        #expect(recorder.commands == ["expand", "collapse", "revealAll", "secondBar"])
+        #expect(recorder.commands == ["expand", "collapse", "revealAll"])
+    }
+
+    @Test func secondBarCommandUsesSharedProGate() throws {
+        let recorder = AutomationRecorder()
+        let handler = recorder.makeHandler()
+
+        #expect(!handler.handle(url: try #require(URL(string: "menubardeclutter://second-bar"))))
+
+        #expect(recorder.commands.isEmpty)
+        #expect(recorder.loggedCommandReason("proModeDisabled"))
     }
 
     @Test func appliesProfileByDecodedName() throws {
@@ -35,6 +44,39 @@ struct AutomationURLHandlerTests {
         #expect(recorder.profileNames == ["Work%20Mode"])
     }
 
+    @Test func opensGroupPanelByUUID() throws {
+        let groupID = UUID()
+        let recorder = AutomationRecorder(groupsThatOpen: [groupID])
+        let handler = recorder.makeHandler()
+
+        #expect(handler.handle(url: try #require(URL(string: "menubardeclutter://group/\(groupID.uuidString)"))))
+
+        #expect(recorder.groupPanelIDs == [groupID])
+    }
+
+    @Test func revealGroupUsesSharedProGate() throws {
+        let groupID = UUID()
+        let recorder = AutomationRecorder(groupsThatReveal: [groupID])
+        let handler = recorder.makeHandler()
+
+        #expect(!handler.handle(url: try #require(URL(string: "menubardeclutter://reveal-group/\(groupID.uuidString)"))))
+
+        #expect(recorder.revealGroupIDs.isEmpty)
+        #expect(recorder.loggedCommandReason("proModeDisabled"))
+    }
+
+    @Test func revealGroupByUUIDSucceedsWhenGatesAreOpen() throws {
+        let groupID = UUID()
+        let recorder = AutomationRecorder(groupsThatReveal: [groupID])
+        recorder.proModeEnabled = true
+        recorder.accessibilityDiscoveryEnabled = true
+        let handler = recorder.makeHandler()
+
+        #expect(handler.handle(url: try #require(URL(string: "menubardeclutter://reveal-group/\(groupID.uuidString)"))))
+
+        #expect(recorder.revealGroupIDs == [groupID])
+    }
+
     @Test func rejectsUnknownCommandsAndMissingProfiles() throws {
         let recorder = AutomationRecorder()
         let handler = recorder.makeHandler(minimumCommandInterval: 0)
@@ -48,7 +90,7 @@ struct AutomationURLHandlerTests {
         #expect(recorder.profileNames == ["Missing"])
         #expect(recorder.logged("Automation URL rejected: unsupported scheme."))
         #expect(recorder.logged("Automation URL rejected: unknown command."))
-        #expect(recorder.logged("Automation URL rejected: profile not found."))
+        #expect(recorder.loggedCommandReason("profileUnavailable"))
         #expect(recorder.logged("Automation URL rejected: profile command missing profile name."))
     }
 
@@ -60,7 +102,7 @@ struct AutomationURLHandlerTests {
         #expect(!handler.handle(url: try #require(URL(string: "menubardeclutter://expand"))))
 
         #expect(recorder.commands.isEmpty)
-        #expect(recorder.logged("Automation URL rejected: automation paused."))
+        #expect(recorder.loggedCommandReason("automationPaused"))
     }
 
     @Test func rateLimitsRepeatedCommandsPerCommand() throws {
@@ -83,29 +125,66 @@ struct AutomationURLHandlerTests {
 @MainActor
 private final class AutomationRecorder {
     private let profilesThatApply: Set<String>
+    private let groupsThatOpen: Set<UUID>
+    private let groupsThatReveal: Set<UUID>
 
+    let store: SettingsStore
     let logger = DiagnosticsLogger()
     var automationEnabled = true
+    var proModeEnabled = false
+    var accessibilityDiscoveryEnabled = false
     var commands: [String] = []
     var profileNames: [String] = []
+    var groupPanelIDs: [UUID] = []
+    var revealGroupIDs: [UUID] = []
     private var currentDate = Date(timeIntervalSinceReferenceDate: 0)
 
-    init(profilesThatApply: Set<String> = []) {
+    init(
+        profilesThatApply: Set<String> = [],
+        groupsThatOpen: Set<UUID> = [],
+        groupsThatReveal: Set<UUID> = []
+    ) {
         self.profilesThatApply = profilesThatApply
+        self.groupsThatOpen = groupsThatOpen
+        self.groupsThatReveal = groupsThatReveal
+        let suiteName = "AutomationURLHandlerTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        store = SettingsStore(defaults: defaults)
     }
 
     func makeHandler(minimumCommandInterval: TimeInterval = 0.5) -> AutomationURLHandler {
-        AutomationURLHandler(
+        store.automationPaused = !automationEnabled
+        store.proModeEnabled = proModeEnabled
+        store.accessibilityDiscoveryEnabled = accessibilityDiscoveryEnabled
+        store.appIntentsCanApplyProfiles = true
+        var handlers = MenuBarCommandHandlers()
+        handlers.expand = { [self] in commands.append("expand") }
+        handlers.collapse = { [self] in commands.append("collapse") }
+        handlers.revealAll = { [self] in commands.append("revealAll") }
+        handlers.showSecondBar = { [self] in commands.append("secondBar") }
+        handlers.showGroupPanel = { [self] id in
+            groupPanelIDs.append(id)
+            return groupsThatOpen.contains(id)
+        }
+        handlers.revealGroup = { [self] id in
+            revealGroupIDs.append(id)
+            return groupsThatReveal.contains(id)
+        }
+        handlers.applyProfileNamed = { [self] name in
+            profileNames.append(name)
+            return profilesThatApply.contains(name)
+        }
+        let router = MenuBarCommandRouter(
+            settingsStore: store,
             diagnosticsLogger: logger,
-            expand: { [self] in commands.append("expand") },
-            collapse: { [self] in commands.append("collapse") },
-            revealAll: { [self] in commands.append("revealAll") },
-            showSecondBar: { [self] in commands.append("secondBar") },
-            applyProfileNamed: { [self] name in
-                profileNames.append(name)
-                return profilesThatApply.contains(name)
-            },
-            isAutomationEnabled: { [self] in automationEnabled },
+            accessibilityStatus: { .granted },
+            handlers: handlers
+        )
+
+        return AutomationURLHandler(
+            diagnosticsLogger: logger,
+            routeCommand: { command in router.route(command) },
             now: { [self] in currentDate },
             minimumCommandInterval: minimumCommandInterval
         )
@@ -117,5 +196,11 @@ private final class AutomationRecorder {
 
     func logged(_ message: String) -> Bool {
         logger.events.contains { $0.message == message }
+    }
+
+    func loggedCommandReason(_ reason: String) -> Bool {
+        logger.events.contains { event in
+            event.metadata["reason"] == reason
+        }
     }
 }

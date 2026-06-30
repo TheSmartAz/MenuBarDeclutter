@@ -113,6 +113,63 @@ struct CrowdedRevealRescueServiceTests {
         #expect(!service.lastRevealIntercepted)
     }
 
+    @Test func safeModeProceedsInlineWithoutOpeningFallbacks() {
+        let store = SettingsStore(defaults: UserDefaults(suiteName: "crr-tests-\(UUID().uuidString)")!)
+        let logger = DiagnosticsLogger()
+        var secondBarOpened = false
+        var fullModeEntered = false
+
+        let service = CrowdedRevealRescueService(
+            diagnosticsLogger: logger,
+            settingsStore: store,
+            openSecondBar: { secondBarOpened = true },
+            enterFullMenuBarMode: { fullModeEntered = true }
+        )
+
+        let result = service.evaluate(
+            intent: .revealAll,
+            currentVisibility: .collapsed,
+            estimate: makeEstimate(crowded: true),
+            secondBarAvailable: true,
+            fullMenuBarModeAvailable: true,
+            layoutSuggestionsAvailable: true,
+            safeModeActive: true
+        )
+
+        #expect(result == .proceedInline)
+        #expect(!secondBarOpened)
+        #expect(!fullModeEntered)
+        #expect(!service.lastRevealIntercepted)
+    }
+
+    @Test func noFallbackOpensLayoutSuggestions() {
+        let store = SettingsStore(defaults: UserDefaults(suiteName: "crr-tests-\(UUID().uuidString)")!)
+        let logger = DiagnosticsLogger()
+        var suggestionsShown = false
+
+        let service = CrowdedRevealRescueService(
+            diagnosticsLogger: logger,
+            settingsStore: store,
+            openSecondBar: {},
+            enterFullMenuBarMode: {},
+            showLayoutSuggestions: { suggestionsShown = true }
+        )
+
+        let result = service.evaluate(
+            intent: .revealAll,
+            currentVisibility: .collapsed,
+            estimate: makeEstimate(crowded: true),
+            secondBarAvailable: false,
+            fullMenuBarModeAvailable: false,
+            layoutSuggestionsAvailable: true,
+            safeModeActive: false
+        )
+
+        #expect(result == .suggestedOnly)
+        #expect(suggestionsShown)
+        #expect(service.lastRevealIntercepted)
+    }
+
     @Test func disabledInSettingsProceedsInline() {
         let store = SettingsStore(defaults: UserDefaults(suiteName: "crr-tests-\(UUID().uuidString)")!)
         store.crowdedRevealRescueEnabled = false

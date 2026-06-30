@@ -3,6 +3,7 @@ import SwiftUI
 struct SearchSettingsView: View {
     @Bindable var settingsStore: SettingsStore
     var permissionService: AccessibilityPermissionService?
+    var commandAvailability: MenuBarCommandAvailabilitySummary?
     var onChange: (() -> Void)? = nil
     var onOpenPrivacySettings: (() -> Void)? = nil
 
@@ -61,6 +62,12 @@ struct SearchSettingsView: View {
                     systemImage: "checkmark.shield",
                     style: .success
                 )
+            }
+
+            if let commandAvailability {
+                ClearGlassSection("Command Center", subtitle: "Shared routing status for opening Find Icon.") {
+                    CommandAvailabilityRow(summary: commandAvailability)
+                }
             }
 
             ClearGlassSection("Search Hotkey", subtitle: "Keyboard access for the Find Icon panel.") {
