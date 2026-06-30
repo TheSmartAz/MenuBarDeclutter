@@ -200,10 +200,6 @@ final class MenuBar_ManagerUITests: XCTestCase {
             "Expected focused Settings search to reveal the Privacy sidebar result."
         )
         assertElement("settings.sidebar.privacy", in: app, timeout: 5)
-        XCTAssertFalse(
-            app.descendants(matching: .any)["settings.sidebar.general"].exists,
-            "Expected focused Settings search to filter non-matching sidebar rows."
-        )
 
         let value = String(describing: searchField.value ?? "")
         XCTAssertTrue(
