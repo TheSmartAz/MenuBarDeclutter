@@ -6,14 +6,17 @@ struct SearchRootView: View {
     @Bindable var liveStatus: LiveDiagnosticsStatus
 
     let searchService: SearchService
+    @Bindable var itemMemoryStore: MenuBarItemMemoryStore
     let onRefresh: () -> Void
     let onCommand: (MenuBarCommand) -> MenuBarCommandResult
     let onMove: @MainActor (MenuBarSearchResult, IconMoveCommand) async -> IconMoveResult
+    let groupsProvider: () -> [IconGroup]
     let onSettingsChanged: () -> Void
     let onOpenPrivacySettings: () -> Void
     let onDismiss: () -> Void
 
     @State private var query = ""
+    @State private var selectedFilter: MenuBarItemCollectionFilter = .all
     @State private var selectedID: MenuBarSearchResult.ID?
     @State private var activationMessage: String?
     @FocusState private var searchFieldFocused: Bool
@@ -48,9 +51,20 @@ struct SearchRootView: View {
             } else {
                 VStack(alignment: .leading, spacing: 12) {
                     searchInputBar
+                    searchFilterBar
 
-                    Text("Results")
-                        .font(.headline)
+                    HStack {
+                        Text("Results")
+                            .font(.headline)
+
+                        Spacer()
+
+                        if selectedFilter != .all {
+                            Label(selectedFilter.displayName, systemImage: selectedFilter.systemImage)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
 
                     resultList
                 }
@@ -77,6 +91,15 @@ struct SearchRootView: View {
         }
         .onChange(of: query) {
             scheduleSearch()
+        }
+        .onChange(of: selectedFilter) {
+            refreshResults()
+        }
+        .onChange(of: itemMemoryStore.recentCount) {
+            refreshResults()
+        }
+        .onChange(of: itemMemoryStore.favoriteCount) {
+            refreshResults()
         }
         .onChange(of: liveStatus.scannedMenuBarItems) { _, newSnapshots in
             searchIndex = SearchIndex(snapshots: newSnapshots)
@@ -168,12 +191,55 @@ struct SearchRootView: View {
         }
     }
 
+    private var searchFilterBar: some View {
+        HStack(spacing: 10) {
+            Picker("Filter", selection: $selectedFilter) {
+                ForEach(MenuBarItemCollectionFilter.searchFilters) { filter in
+                    Text(filter.shortDisplayName)
+                        .tag(filter)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+
+            filterResetButton
+        }
+    }
+
+    @ViewBuilder
+    private var filterResetButton: some View {
+        switch selectedFilter {
+        case .recent where itemMemoryStore.recentCount > 0:
+            Button("Clear Recent Items", systemImage: "clock.arrow.circlepath") {
+                itemMemoryStore.resetRecents()
+                activationMessage = "Recent items cleared."
+                refreshResults()
+            }
+            .labelStyle(.iconOnly)
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .help("Clear Recent Items")
+        case .favorites where itemMemoryStore.favoriteCount > 0:
+            Button("Clear Favorites", systemImage: "star.slash") {
+                itemMemoryStore.resetFavorites()
+                activationMessage = "Favorites cleared."
+                refreshResults()
+            }
+            .labelStyle(.iconOnly)
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .help("Clear Favorites")
+        default:
+            EmptyView()
+        }
+    }
+
     private var resultList: some View {
         Group {
             if results.isEmpty {
                 ContentUnavailableView(
-                    query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "No Menu Bar Items" : "No Results",
-                    systemImage: "magnifyingglass",
+                    emptyResultsTitle,
+                    systemImage: selectedFilter == .all ? "magnifyingglass" : selectedFilter.systemImage,
                     description: Text(emptyResultsDescription)
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -206,6 +272,11 @@ struct SearchRootView: View {
                                     Button("Open Owning App", systemImage: "app.badge") {
                                         route(.openOwningApp, result: result)
                                     }
+                                    Divider()
+                                    Button(favoriteButtonTitle(for: result), systemImage: favoriteButtonImage(for: result)) {
+                                        toggleFavorite(result)
+                                    }
+                                    groupContextMenu(for: result)
                                     Divider()
                                     Button("Move to Visible", systemImage: "arrow.right.to.line") {
                                         move(result, command: .moveToZone(.visible))
@@ -267,12 +338,41 @@ struct SearchRootView: View {
         .padding(.vertical, 11)
     }
 
-    private var emptyResultsDescription: String {
-        if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            "Refresh menu bar items after enabling Pro Mode and Accessibility."
-        } else {
-            "Try an app name, item title, or bundle identifier."
+    private var emptyResultsTitle: String {
+        if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return "No Results"
         }
+
+        switch selectedFilter {
+        case .all:
+            return "No Menu Bar Items"
+        case .recent:
+            return "No Recent Items"
+        case .favorites:
+            return "No Favorites"
+        case .visible:
+            return "No Visible Items"
+        case .hidden:
+            return "No Hidden Items"
+        case .alwaysHidden:
+            return "No Always Hidden Items"
+        }
+    }
+
+    private var emptyResultsDescription: String {
+        if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return "Try an app name, item title, or bundle identifier."
+        }
+
+        if selectedFilter == .recent {
+            return "Recent items appear after you reveal, highlight, move, or open an item."
+        }
+
+        if selectedFilter == .favorites {
+            return "Favorite an item from its context menu to keep it here."
+        }
+
+        return "Refresh menu bar items after enabling Pro Mode and Accessibility."
     }
 
     private var searchIsAvailable: Bool {
@@ -391,16 +491,87 @@ struct SearchRootView: View {
             source: .findIcon
         ))
         activationMessage = commandResult.message
+        remember(result)
         return commandResult
     }
 
     private func move(_ result: MenuBarSearchResult, command: IconMoveCommand) {
         selectedID = result.id
+        remember(result)
         activationMessage = "\(command.displayName) in progress..."
         Task { @MainActor in
             let moveResult = await onMove(result, command)
             activationMessage = moveResult.summary
         }
+    }
+
+    private func toggleFavorite(_ result: MenuBarSearchResult) {
+        selectedID = result.id
+        let isFavorite = itemMemoryStore.toggleFavorite(result.snapshot)
+        activationMessage = isFavorite
+            ? "Added \(result.displayTitle) to favorites."
+            : "Removed \(result.displayTitle) from favorites."
+        refreshResults()
+    }
+
+    private func favoriteButtonTitle(for result: MenuBarSearchResult) -> String {
+        itemMemoryStore.isFavorite(result.snapshot) ? "Remove Favorite" : "Favorite"
+    }
+
+    private func favoriteButtonImage(for result: MenuBarSearchResult) -> String {
+        itemMemoryStore.isFavorite(result.snapshot) ? "star.slash" : "star"
+    }
+
+    private func remember(_ result: MenuBarSearchResult) {
+        itemMemoryStore.recordSelection(result.snapshot)
+        refreshResults()
+    }
+
+    @ViewBuilder
+    private func groupContextMenu(for result: MenuBarSearchResult) -> some View {
+        if settingsStore.groupsEnabled {
+            Divider()
+            Menu("Groups", systemImage: "person.2") {
+                Button("Create Group from Item", systemImage: "plus") {
+                    createGroup(from: result)
+                }
+
+                let groups = groupsProvider()
+                if groups.isEmpty {
+                    Button("No Existing Groups", systemImage: "person.2") {}
+                        .disabled(true)
+                } else {
+                    Divider()
+                    ForEach(groups) { group in
+                        Button("Add to \(group.name)", systemImage: group.symbolName ?? "folder") {
+                            add(result, to: group)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func createGroup(from result: MenuBarSearchResult) {
+        selectedID = result.id
+        let commandResult = onCommand(MenuBarCommand(
+            action: .createGroupFromItem,
+            target: .menuBarItem(id: result.id),
+            source: .findIcon
+        ))
+        activationMessage = commandResult.message
+        remember(result)
+    }
+
+    private func add(_ result: MenuBarSearchResult, to group: IconGroup) {
+        selectedID = result.id
+        let commandResult = onCommand(MenuBarCommand(
+            action: .addItemToGroup,
+            target: .groupItem(groupID: group.id, itemID: result.id),
+            source: .findIcon
+        ))
+        activationMessage = commandResult.message
+        remember(result)
     }
 
     /// Schedules a debounced result refresh ~100 ms in the future. Fast typists
@@ -427,7 +598,9 @@ struct SearchRootView: View {
         }
         results = searchService.results(
             from: searchIndex,
-            query: query
+            query: query,
+            filter: selectedFilter,
+            memoryStore: itemMemoryStore
         )
         updateSearchDiagnostics()
         selectFirstResultIfNeeded()
@@ -514,6 +687,7 @@ private struct SearchUnavailableView: View {
         permissionService: permission,
         liveStatus: live,
         searchService: SearchService(),
+        itemMemoryStore: MenuBarItemMemoryStore(fileURL: nil),
         onRefresh: {},
         onCommand: { command in
             MenuBarCommandResult.success(command, message: "Preview command")
@@ -521,6 +695,7 @@ private struct SearchUnavailableView: View {
         onMove: { result, command in
             IconMoveResult.skipped(command: command, itemName: result.displayTitle, error: .disabled)
         },
+        groupsProvider: { [] },
         onSettingsChanged: {},
         onOpenPrivacySettings: {},
         onDismiss: {}

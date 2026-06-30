@@ -9,6 +9,7 @@ struct SettingsActions {
     var dynamicHotkeysChanged: (() -> Void)?
     var automationSettingsChanged: (() -> Void)?
     var commandAvailability: ((MenuBarCommand) -> MenuBarCommandAvailability)?
+    var routeCommand: ((MenuBarCommand) -> MenuBarCommandResult)?
     var profile: SettingsProfileActions
     var triggersChanged: (() -> Void)?
     var resetLayout: (() -> Void)?
@@ -30,6 +31,7 @@ struct SettingsActions {
         dynamicHotkeysChanged: (() -> Void)? = nil,
         automationSettingsChanged: (() -> Void)? = nil,
         commandAvailability: ((MenuBarCommand) -> MenuBarCommandAvailability)? = nil,
+        routeCommand: ((MenuBarCommand) -> MenuBarCommandResult)? = nil,
         profile: SettingsProfileActions = .empty,
         triggersChanged: (() -> Void)? = nil,
         resetLayout: (() -> Void)? = nil,
@@ -50,6 +52,7 @@ struct SettingsActions {
         self.dynamicHotkeysChanged = dynamicHotkeysChanged
         self.automationSettingsChanged = automationSettingsChanged
         self.commandAvailability = commandAvailability
+        self.routeCommand = routeCommand
         self.profile = profile
         self.triggersChanged = triggersChanged
         self.resetLayout = resetLayout

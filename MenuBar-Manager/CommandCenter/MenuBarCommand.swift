@@ -10,6 +10,7 @@ nonisolated enum MenuBarCommandSource: String, Equatable, Hashable, Sendable {
     case dynamicHotkey
     case appIntent
     case urlAutomation
+    case crowdedRescue
     case internalRecovery
 }
 
@@ -43,6 +44,7 @@ nonisolated enum MenuBarCommandAction: String, CaseIterable, Equatable, Hashable
     case openOwningApp
     case showGroupPanel
     case revealGroup
+    case createGroupFromItem
     case addItemToGroup
     case removeItemFromGroup
     case assignHotkey
@@ -74,7 +76,7 @@ nonisolated enum MenuBarCommandAction: String, CaseIterable, Equatable, Hashable
         switch self {
         case .showFindIcon, .showSecondBar, .showIconPanel, .showItemInSecondBar,
              .revealItem, .highlightItem, .openOwningApp, .revealGroup,
-             .addItemToGroup, .removeItemFromGroup, .assignHotkey,
+             .createGroupFromItem, .addItemToGroup, .removeItemFromGroup, .assignHotkey,
              .experimentalActivateItem:
             true
         default:
@@ -86,7 +88,7 @@ nonisolated enum MenuBarCommandAction: String, CaseIterable, Equatable, Hashable
         switch self {
         case .showFindIcon, .showSecondBar, .showIconPanel, .showItemInSecondBar,
              .revealItem, .highlightItem, .openOwningApp, .revealGroup,
-             .addItemToGroup, .removeItemFromGroup, .experimentalActivateItem:
+             .createGroupFromItem, .addItemToGroup, .removeItemFromGroup, .experimentalActivateItem:
             true
         default:
             false
@@ -105,7 +107,7 @@ nonisolated enum MenuBarCommandAction: String, CaseIterable, Equatable, Hashable
             .secondBar
         case .showIconPanel:
             .iconPanel
-        case .showGroupPanel, .revealGroup, .addItemToGroup, .removeItemFromGroup:
+        case .showGroupPanel, .revealGroup, .createGroupFromItem, .addItemToGroup, .removeItemFromGroup:
             .groups
         case .assignHotkey:
             .dynamicHotkeys
@@ -163,8 +165,11 @@ nonisolated enum MenuBarCommandAction: String, CaseIterable, Equatable, Hashable
             return .layoutSpacingLabs
         case .applyProfile:
             return .profileApply
-        case .showGroupPanel, .revealGroup:
+        case .showGroupPanel, .revealGroup, .addItemToGroup, .removeItemFromGroup:
             if case .group(let id) = target {
+                return .protectedGroup(id)
+            }
+            if case .groupItem(let id, _) = target {
                 return .protectedGroup(id)
             }
             return nil

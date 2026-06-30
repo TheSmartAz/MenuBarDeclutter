@@ -5,6 +5,7 @@ nonisolated enum MenuBarCommandTarget: Equatable, Hashable, Sendable {
     case globalVisibility
     case menuBarItem(id: String)
     case group(UUID)
+    case groupItem(groupID: UUID, itemID: String)
     case profileID(UUID)
     case profileName(String)
     case secondBar
@@ -23,7 +24,7 @@ nonisolated enum MenuBarCommandTarget: Equatable, Hashable, Sendable {
             "globalVisibility"
         case .menuBarItem:
             "menuBarItem"
-        case .group:
+        case .group, .groupItem:
             "group"
         case .profileID, .profileName:
             "profile"

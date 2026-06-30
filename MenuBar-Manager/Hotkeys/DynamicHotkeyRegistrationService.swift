@@ -148,7 +148,7 @@ final class DynamicHotkeyRegistrationService {
         switch action {
         case .revealAndHighlightItem:
             .findIcon
-        case .openGroup(let id), .openSecondBarFilteredToGroup(let id):
+        case .openGroup(let id), .revealGroup(let id), .openSecondBarFilteredToGroup(let id):
             .protectedGroup(id)
         case .openSecondBarFilteredToItem:
             .secondBar
@@ -161,7 +161,7 @@ final class DynamicHotkeyRegistrationService {
 
     private func redactedLabel(for binding: HotkeyBinding) -> String {
         switch binding.action {
-        case .openGroup, .openSecondBarFilteredToGroup:
+        case .openGroup, .revealGroup, .openSecondBarFilteredToGroup:
             "Protected/group hotkey"
         case .revealAndHighlightItem, .openSecondBarFilteredToItem:
             "Item hotkey"

@@ -11,28 +11,14 @@ struct IconGroupPanelRootView: View {
     @State private var statusMessage = "Ready"
     @FocusState private var searchFocused: Bool
 
-    private let matcher = IconGroupMatcher()
+    private let snapshotResolver = IconGroupSnapshotResolver()
 
     private var matchedSnapshots: [MenuBarItemSnapshot] {
-        let all = matcher.matchGroup(group, snapshots: snapshots)
-            .matchedItems
-            .flatMap(\.snapshots)
-        var seen: Set<MenuBarItemSnapshot.ID> = []
-        let unique = all.filter { snapshot in
-            seen.insert(snapshot.id).inserted
-        }
-        let trimmed = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return unique }
-        return unique.filter { snapshot in
-            [
-                snapshot.owningApplicationName,
-                snapshot.title,
-                snapshot.bundleIdentifier
-            ]
-            .compactMap { $0 }
-            .joined(separator: " ")
-            .localizedStandardContains(trimmed)
-        }
+        snapshotResolver.matchedSnapshots(
+            for: group,
+            snapshots: snapshots,
+            searchQuery: searchQuery
+        )
     }
 
     var body: some View {

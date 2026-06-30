@@ -57,6 +57,48 @@ struct DynamicHotkeyRegistrationServiceTests {
         #expect(harness.routedActions == [.enterFullMenuBarMode])
     }
 
+    @Test func protectedRevealGroupHotkeyRequiresPrivateAccessBeforeRouting() async {
+        let harness = Harness(protectedAuthResult: .cancel)
+        harness.store.dynamicHotkeysEnabled = true
+        harness.store.privateAccessEnabled = true
+        harness.store.protectedGroupsRequireAuth = true
+        let groupID = UUID()
+        let binding = harness.bindingStore.add(binding: HotkeyBinding(
+            action: .revealGroup(groupID),
+            keyCode: 37,
+            modifiersRaw: 0x0900
+        ))
+        harness.service.refreshRegistrations()
+
+        harness.manager.fire(identifier: .dynamic(binding.id))
+        await Task.yield()
+        await Task.yield()
+
+        #expect(harness.routedActions.isEmpty)
+        #expect(harness.store.privateAccessLastAuthStatus == "cancel")
+    }
+
+    @Test func protectedRevealGroupHotkeyRoutesAfterPrivateAccessSuccess() async {
+        let harness = Harness(protectedAuthResult: .success)
+        harness.store.dynamicHotkeysEnabled = true
+        harness.store.privateAccessEnabled = true
+        harness.store.protectedGroupsRequireAuth = true
+        let groupID = UUID()
+        let binding = harness.bindingStore.add(binding: HotkeyBinding(
+            action: .revealGroup(groupID),
+            keyCode: 37,
+            modifiersRaw: 0x0900
+        ))
+        harness.service.refreshRegistrations()
+
+        harness.manager.fire(identifier: .dynamic(binding.id))
+        await Task.yield()
+        await Task.yield()
+
+        #expect(harness.routedActions == [.revealGroup(groupID)])
+        #expect(harness.store.privateAccessLastAuthStatus == "success")
+    }
+
     private final class MockHotkeyManager: DynamicHotkeyManaging {
         var registered: [GlobalHotkeyManager.RegistrationIdentifier: HotkeyModel] = [:]
         var actions: [GlobalHotkeyManager.RegistrationIdentifier: () -> Void] = [:]
@@ -95,12 +137,14 @@ struct DynamicHotkeyRegistrationServiceTests {
         let store: SettingsStore
         let bindingStore: HotkeyBindingStore
         let manager = MockHotkeyManager()
+        let protectedActionGate: ProtectedActionGate?
         var routedActions: [HotkeyAction] = []
 
         lazy var service = DynamicHotkeyRegistrationService(
             settingsStore: store,
             bindingStore: bindingStore,
             hotkeyManager: manager,
+            protectedActionGate: protectedActionGate,
             diagnosticsLogger: DiagnosticsLogger(),
             routeAction: { [self] action in
                 routedActions.append(action)
@@ -114,7 +158,7 @@ struct DynamicHotkeyRegistrationServiceTests {
             }
         )
 
-        init() {
+        init(protectedAuthResult: AuthenticationResult? = nil) {
             let suiteName = "DynamicHotkeyRegistrationServiceTests.\(UUID().uuidString)"
             let defaults = UserDefaults(suiteName: suiteName)!
             defaults.removePersistentDomain(forName: suiteName)
@@ -122,6 +166,18 @@ struct DynamicHotkeyRegistrationServiceTests {
             let root = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
                 .appendingPathComponent(UUID().uuidString, isDirectory: true)
             bindingStore = HotkeyBindingStore(directory: root, backupsDirectory: root.appendingPathComponent("Backups", isDirectory: true))
+            if let protectedAuthResult {
+                let authService = MockAuthenticationService()
+                authService.result = protectedAuthResult
+                let coordinator = PrivateAccessCoordinator(
+                    settingsStore: store,
+                    diagnosticsLogger: DiagnosticsLogger(),
+                    authService: authService
+                )
+                protectedActionGate = ProtectedActionGate(coordinator: coordinator)
+            } else {
+                protectedActionGate = nil
+            }
         }
     }
 }

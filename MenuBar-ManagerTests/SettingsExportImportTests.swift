@@ -64,6 +64,37 @@ struct SettingsExportImportTests {
         #expect(package.settings[SettingsStore.Key.dogfoodRunID.rawValue] == nil)
     }
 
+    @Test func exportPackageRedactsProtectedGroups() throws {
+        let suiteName = "protected-group-export-tests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let store = SettingsStore(defaults: defaults)
+        let logger = DiagnosticsLogger()
+        let service = SettingsExportService(settingsStore: store, diagnosticsLogger: logger)
+        let protectedGroup = IconGroup(
+            name: "Secret Finance",
+            notes: "private notes",
+            isProtected: true,
+            itemRefs: [
+                IconGroupItemRef(
+                    bundleIdentifier: "com.example.finance",
+                    appName: "Secret Finance"
+                )
+            ]
+        )
+
+        let package = service.createExportPackage(groups: [protectedGroup])
+        let data = try service.encode(package)
+        let json = String(decoding: data, as: UTF8.self)
+
+        #expect(package.groups.first?.name == "Protected Group")
+        #expect(package.groups.first?.itemRefs.isEmpty == true)
+        #expect(!json.contains("Secret Finance"))
+        #expect(!json.contains("private notes"))
+        #expect(!json.contains("com.example.finance"))
+    }
+
     @Test func importDryRun() throws {
         let suiteName = "import-tests-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
@@ -83,6 +114,161 @@ struct SettingsExportImportTests {
 
         #expect(dryRun.addedGroups == 1)
         #expect(dryRun.addedHotkeys == 1)
+    }
+
+    @Test func exportPackageIncludesProfilePayloads() throws {
+        let suiteName = "profile-export-tests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let store = SettingsStore(defaults: defaults)
+        let logger = DiagnosticsLogger()
+        let exportService = SettingsExportService(settingsStore: store, diagnosticsLogger: logger)
+        let importService = SettingsImportService(diagnosticsLogger: logger)
+        let profile = ProfileModel.makeDefault(
+            name: "Presentation",
+            now: Date(timeIntervalSince1970: 100)
+        )
+
+        let package = exportService.createExportPackage(profiles: [profile])
+        let decoded = try importService.decode(data: exportService.encode(package))
+
+        #expect(package.profiles == [profile])
+        #expect(decoded.profiles == [profile])
+    }
+
+    @Test func safeImportAppliesSettingsButSkipsExperimentalEnablers() throws {
+        let suiteName = "safe-import-tests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let store = SettingsStore(defaults: defaults)
+        let logger = DiagnosticsLogger()
+        let importService = SettingsImportService(diagnosticsLogger: logger)
+        let package = SettingsExportPackage(
+            appVersion: "1.0",
+            settings: [
+                "autoRehideEnabled": "true",
+                "iconMovingEnabled": "true",
+                "launchAtLoginEnabled": "true",
+                "maxDynamicHotkeys": "-3",
+                "menuBarSpacingLabsEnabled": "true",
+                "smartTriggersEnabled": "true"
+            ]
+        )
+
+        let result = try importService.apply(
+            package: package,
+            settingsStore: store,
+            importExperimentalSettings: false
+        )
+
+        #expect(store.autoRehideEnabled)
+        #expect(!store.iconMovingEnabled)
+        #expect(!store.launchAtLoginEnabled)
+        #expect(!store.menuBarSpacingLabsEnabled)
+        #expect(!store.smartTriggersEnabled)
+        #expect(store.maxDynamicHotkeys == 0)
+        #expect(result.skippedSettings == 4)
+        #expect(result.skippedExperimentalFlags == [
+            "Icon Moving",
+            "Menu Bar Spacing Labs",
+            "Smart Triggers"
+        ])
+    }
+
+    @Test func applyImportMergesObjectsByIdentity() throws {
+        let suiteName = "object-import-tests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let paths = makeTempPaths()
+        defer { try? FileManager.default.removeItem(at: paths.applicationSupportDirectory.deletingLastPathComponent()) }
+
+        let settingsStore = SettingsStore(defaults: defaults)
+        let logger = DiagnosticsLogger()
+        let profileStore = ProfileStore(appSupportPaths: paths)
+        let groupStore = IconGroupStore(
+            directory: paths.applicationSupportDirectory,
+            backupsDirectory: paths.backupsDirectory
+        )
+        let hotkeyStore = HotkeyBindingStore(
+            directory: paths.applicationSupportDirectory,
+            backupsDirectory: paths.backupsDirectory
+        )
+        let spacerStore = SpacerItemStore(
+            directory: paths.applicationSupportDirectory,
+            backupsDirectory: paths.backupsDirectory
+        )
+        let importService = SettingsImportService(diagnosticsLogger: logger)
+        let profile = ProfileModel.makeDefault(
+            name: "Work",
+            now: Date(timeIntervalSince1970: 200)
+        )
+        let group = IconGroup(name: "Work Apps")
+        let hotkey = HotkeyBinding(action: .pauseAutomation, keyCode: 11, modifiersRaw: 0x0100)
+        let spacer = SpacerItemModel(type: .thinSpacer, sortOrder: 2)
+        let package = SettingsExportPackage(
+            appVersion: "1.0",
+            settings: [:],
+            profiles: [profile],
+            groups: [group],
+            hotkeyBindings: [hotkey],
+            spacerItems: [spacer]
+        )
+
+        let result = try importService.apply(
+            package: package,
+            settingsStore: settingsStore,
+            profileStore: profileStore,
+            groupStore: groupStore,
+            hotkeyBindingStore: hotkeyStore,
+            spacerItemStore: spacerStore
+        )
+
+        #expect(result.importedProfiles == 1)
+        #expect(result.importedGroups == 1)
+        #expect(result.importedHotkeys == 1)
+        #expect(result.importedSpacers == 1)
+        #expect(profileStore.profiles.map(\.id) == [profile.id])
+        #expect(groupStore.groups.map(\.id) == [group.id])
+        #expect(hotkeyStore.bindings.map(\.id) == [hotkey.id])
+        #expect(spacerStore.items.map(\.id) == [spacer.id])
+    }
+
+    @Test func applyImportSkipsConflictingHotkeys() throws {
+        let suiteName = "hotkey-import-conflict-tests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let paths = makeTempPaths()
+        defer { try? FileManager.default.removeItem(at: paths.applicationSupportDirectory.deletingLastPathComponent()) }
+
+        let settingsStore = SettingsStore(defaults: defaults)
+        let hotkeyStore = HotkeyBindingStore(
+            directory: paths.applicationSupportDirectory,
+            backupsDirectory: paths.backupsDirectory
+        )
+        let existing = HotkeyBinding(action: .pauseAutomation, keyCode: 11, modifiersRaw: 0x0100)
+        hotkeyStore.add(binding: existing)
+
+        let imported = HotkeyBinding(action: .resumeAutomation, keyCode: 11, modifiersRaw: 0x0100)
+        let package = SettingsExportPackage(
+            appVersion: "1.0",
+            settings: [:],
+            hotkeyBindings: [imported]
+        )
+        let importService = SettingsImportService(diagnosticsLogger: DiagnosticsLogger())
+
+        let result = try importService.apply(
+            package: package,
+            settingsStore: settingsStore,
+            hotkeyBindingStore: hotkeyStore
+        )
+
+        #expect(result.importedHotkeys == 0)
+        #expect(result.skippedHotkeys == 1)
+        #expect(hotkeyStore.bindings.map(\.id) == [existing.id])
     }
 
     @Test func hotkeyConflictDetection() {
@@ -167,6 +353,12 @@ struct SettingsExportImportTests {
         #expect(backupService.listBackups() == [backupURL])
         #expect(try backupService.readBackup(at: backupURL) == data)
     }
+}
+
+private func makeTempPaths() -> AppSupportPaths {
+    let baseURL = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+        .appendingPathComponent("SettingsExportImportTests-\(UUID().uuidString)", isDirectory: true)
+    return AppSupportPaths(baseURL: baseURL)
 }
 
 @Suite("ProfilePack")

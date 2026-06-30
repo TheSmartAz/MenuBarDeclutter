@@ -114,6 +114,20 @@ final class SpacerItemStore {
         save()
     }
 
+    /// Merge imported spacers by identity without deleting local-only spacers.
+    func importItems(_ importedItems: [SpacerItemModel]) {
+        guard !importedItems.isEmpty else { return }
+        for item in importedItems {
+            if let index = items.firstIndex(where: { $0.id == item.id }) {
+                items[index] = item
+            } else {
+                items.append(item)
+            }
+        }
+        items.sort { $0.sortOrder < $1.sortOrder }
+        save()
+    }
+
     /// Hide all spacer markers.
     func hideAllMarkers() {
         for index in items.indices {

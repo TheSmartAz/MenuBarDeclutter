@@ -27,6 +27,9 @@ struct MenuBarCommandHandlers {
     var openOwningApp: (String) -> Bool = { _ in false }
     var showItemInSecondBar: (String) -> Bool = { _ in false }
     var showGroupPanel: (UUID) -> Bool = { _ in false }
+    var revealGroup: (UUID) -> Bool = { _ in false }
+    var createGroupFromItem: (String) -> Bool = { _ in false }
+    var addItemToGroup: (UUID, String) -> Bool = { _, _ in false }
     var applyProfileNamed: (String) -> Bool = { _ in false }
     var applyProfileID: (UUID) -> Bool = { _ in false }
     var dryRunProfileNamed: (String) -> Bool = { _ in false }
@@ -277,9 +280,23 @@ final class MenuBarCommandRouter {
             return executeItem(command, message: "Owning app opened.") { id in
                 handlers.openOwningApp(id)
             }
-        case .showGroupPanel, .revealGroup:
-            return executeGroup(command)
-        case .addItemToGroup, .removeItemFromGroup, .assignHotkey,
+        case .showGroupPanel:
+            return executeGroup(command, message: "Group panel opened.") { id in
+                handlers.showGroupPanel(id)
+            }
+        case .revealGroup:
+            return executeGroup(command, message: "Group revealed.") { id in
+                handlers.revealGroup(id)
+            }
+        case .createGroupFromItem:
+            return executeItem(command, message: "Group created from item.") { id in
+                handlers.createGroupFromItem(id)
+            }
+        case .addItemToGroup:
+            return executeGroupItem(command, message: "Item added to group.") { groupID, itemID in
+                handlers.addItemToGroup(groupID, itemID)
+            }
+        case .removeItemFromGroup, .assignHotkey,
              .protectResource, .unlockProtectedAction,
              .experimentalActivateItem:
             return .stopped(
@@ -307,8 +324,12 @@ final class MenuBarCommandRouter {
         return .success(command, message: message)
     }
 
-    private func executeGroup(_ command: MenuBarCommand) -> MenuBarCommandResult {
-        guard case .group(let id) = command.target, handlers.showGroupPanel(id) else {
+    private func executeGroup(
+        _ command: MenuBarCommand,
+        message: String,
+        handler: (UUID) -> Bool
+    ) -> MenuBarCommandResult {
+        guard case .group(let id) = command.target, handler(id) else {
             return .stopped(
                 command,
                 status: .unavailable,
@@ -316,7 +337,24 @@ final class MenuBarCommandRouter {
                 diagnosticReason: "groupUnavailable"
             )
         }
-        return .success(command, message: "Group panel opened.")
+        return .success(command, message: message)
+    }
+
+    private func executeGroupItem(
+        _ command: MenuBarCommand,
+        message: String,
+        handler: (UUID, String) -> Bool
+    ) -> MenuBarCommandResult {
+        guard case .groupItem(let groupID, let itemID) = command.target,
+              handler(groupID, itemID) else {
+            return .stopped(
+                command,
+                status: .unavailable,
+                message: "Group item target is unavailable.",
+                diagnosticReason: "groupItemUnavailable"
+            )
+        }
+        return .success(command, message: message)
     }
 
     private func executeProfile(_ command: MenuBarCommand, dryRun: Bool) -> MenuBarCommandResult {
@@ -405,8 +443,14 @@ final class MenuBarCommandRouter {
         case .spacingPresetDryRun, .spacingPresetApply:
             if case .spacingPreset = command.target { return true }
             return false
-        case .showGroupPanel, .revealGroup, .addItemToGroup, .removeItemFromGroup:
+        case .showGroupPanel, .revealGroup:
             if case .group = command.target { return true }
+            return false
+        case .addItemToGroup, .removeItemFromGroup:
+            if case .groupItem = command.target { return true }
+            return false
+        case .createGroupFromItem:
+            if case .menuBarItem = command.target { return true }
             return false
         case .revealItem, .highlightItem, .openOwningApp, .showItemInSecondBar, .experimentalActivateItem:
             if case .menuBarItem = command.target { return true }

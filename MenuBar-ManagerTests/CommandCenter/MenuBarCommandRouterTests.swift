@@ -204,6 +204,167 @@ struct MenuBarCommandRouterTests {
         #expect(openedID == "item-2")
     }
 
+    @Test func createGroupFromItemRunsHandlerThroughRouter() {
+        let store = makeStore()
+        store.groupsEnabled = true
+        store.proModeEnabled = true
+        store.accessibilityDiscoveryEnabled = true
+        var createdFromItemID: String?
+        var handlers = MenuBarCommandHandlers()
+        handlers.createGroupFromItem = { itemID in
+            createdFromItemID = itemID
+            return true
+        }
+        let router = MenuBarCommandRouter(
+            settingsStore: store,
+            accessibilityStatus: { .granted },
+            handlers: handlers
+        )
+
+        let result = router.route(MenuBarCommand(
+            action: .createGroupFromItem,
+            target: .menuBarItem(id: "item-1"),
+            source: .findIcon
+        ))
+
+        #expect(result.status == .success)
+        #expect(result.message == "Group created from item.")
+        #expect(createdFromItemID == "item-1")
+    }
+
+    @Test func addItemToGroupRunsHandlerAndRedactsTargetValues() throws {
+        let store = makeStore()
+        store.groupsEnabled = true
+        store.proModeEnabled = true
+        store.accessibilityDiscoveryEnabled = true
+        let logger = DiagnosticsLogger()
+        let groupID = UUID()
+        var handledGroupID: UUID?
+        var handledItemID: String?
+        var handlers = MenuBarCommandHandlers()
+        handlers.addItemToGroup = { groupID, itemID in
+            handledGroupID = groupID
+            handledItemID = itemID
+            return true
+        }
+        let router = MenuBarCommandRouter(
+            settingsStore: store,
+            diagnosticsLogger: logger,
+            accessibilityStatus: { .granted },
+            handlers: handlers
+        )
+
+        let result = router.route(MenuBarCommand(
+            action: .addItemToGroup,
+            target: .groupItem(groupID: groupID, itemID: "secret-item-id"),
+            source: .secondBar
+        ))
+
+        #expect(result.status == .success)
+        #expect(result.message == "Item added to group.")
+        #expect(handledGroupID == groupID)
+        #expect(handledItemID == "secret-item-id")
+
+        let event = try #require(logger.events.last)
+        let metadataText = event.metadata.values.joined(separator: " ")
+        #expect(event.metadata["target"] == "group")
+        #expect(!metadataText.contains(groupID.uuidString))
+        #expect(!metadataText.contains("secret-item-id"))
+    }
+
+    @Test func addItemToProtectedGroupRequiresUnlockWithoutRunning() {
+        let store = makeStore()
+        store.groupsEnabled = true
+        store.proModeEnabled = true
+        store.accessibilityDiscoveryEnabled = true
+        var didAdd = false
+        var handlers = MenuBarCommandHandlers()
+        handlers.addItemToGroup = { _, _ in
+            didAdd = true
+            return true
+        }
+        let router = MenuBarCommandRouter(
+            settingsStore: store,
+            accessibilityStatus: { .granted },
+            privateAccess: PrivateAccessProbe(canAccess: false),
+            handlers: handlers
+        )
+
+        let result = router.route(MenuBarCommand(
+            action: .addItemToGroup,
+            target: .groupItem(groupID: UUID(), itemID: "item-1"),
+            source: .findIcon
+        ))
+
+        #expect(result.status == .requiresUnlock)
+        #expect(result.diagnosticReason == "privateAccessLocked")
+        #expect(!didAdd)
+    }
+
+    @Test func revealGroupRunsDedicatedHandlerThroughRouter() {
+        let store = makeStore()
+        store.groupsEnabled = true
+        store.proModeEnabled = true
+        store.accessibilityDiscoveryEnabled = true
+        let groupID = UUID()
+        var openedGroupID: UUID?
+        var revealedGroupID: UUID?
+        var handlers = MenuBarCommandHandlers()
+        handlers.showGroupPanel = { id in
+            openedGroupID = id
+            return true
+        }
+        handlers.revealGroup = { id in
+            revealedGroupID = id
+            return true
+        }
+        let router = MenuBarCommandRouter(
+            settingsStore: store,
+            accessibilityStatus: { .granted },
+            handlers: handlers
+        )
+
+        let result = router.route(MenuBarCommand(
+            action: .revealGroup,
+            target: .group(groupID),
+            source: .settings
+        ))
+
+        #expect(result.status == .success)
+        #expect(result.message == "Group revealed.")
+        #expect(revealedGroupID == groupID)
+        #expect(openedGroupID == nil)
+    }
+
+    @Test func revealProtectedGroupRequiresUnlockWithoutRunning() {
+        let store = makeStore()
+        store.groupsEnabled = true
+        store.proModeEnabled = true
+        store.accessibilityDiscoveryEnabled = true
+        var didReveal = false
+        var handlers = MenuBarCommandHandlers()
+        handlers.revealGroup = { _ in
+            didReveal = true
+            return true
+        }
+        let router = MenuBarCommandRouter(
+            settingsStore: store,
+            accessibilityStatus: { .granted },
+            privateAccess: PrivateAccessProbe(canAccess: false),
+            handlers: handlers
+        )
+
+        let result = router.route(MenuBarCommand(
+            action: .revealGroup,
+            target: .group(UUID()),
+            source: .settings
+        ))
+
+        #expect(result.status == .requiresUnlock)
+        #expect(result.diagnosticReason == "privateAccessLocked")
+        #expect(!didReveal)
+    }
+
     @Test func commandDiagnosticsRedactTargetValues() throws {
         let store = makeStore()
         store.automationPaused = false

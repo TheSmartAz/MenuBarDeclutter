@@ -211,6 +211,23 @@ struct SettingsRootView: View {
                             source: .settings
                         ))
                     },
+                    onOpenGroupPanel: { group in
+                        routeSettingsCommand(MenuBarCommand(
+                            action: .showGroupPanel,
+                            target: .group(group.id),
+                            source: .settings
+                        ))
+                    },
+                    onRevealGroup: { group in
+                        routeSettingsCommand(MenuBarCommand(
+                            action: .revealGroup,
+                            target: .group(group.id),
+                            source: .settings
+                        ))
+                    },
+                    onAssignGroupHotkey: { group, kind in
+                        assignGroupHotkey(group, kind: kind)
+                    },
                     onGroupsChanged: actions.groupsChanged
                 )
             } else {
@@ -288,9 +305,11 @@ struct SettingsRootView: View {
                 settingsStore: settingsStore,
                 appSupportPaths: appSupportPaths,
                 diagnosticsLogger: diagnosticsLogger,
-                groups: groupStore?.groups ?? [],
-                hotkeyBindings: hotkeyBindingStore?.bindings ?? [],
-                spacerItems: layoutCoordinator?.spacerStore.items ?? []
+                profileStore: profileStore,
+                groupStore: groupStore,
+                hotkeyBindingStore: hotkeyBindingStore,
+                spacerItemStore: layoutCoordinator?.spacerStore,
+                onImportApplied: refreshAfterSettingsImport
             )
         case .diagnostics:
             DiagnosticsSettingsView(
@@ -324,6 +343,50 @@ struct SettingsRootView: View {
             return nil
         }
         return MenuBarCommandAvailabilitySummary(command: command, availability: availability)
+    }
+
+    private func routeSettingsCommand(_ command: MenuBarCommand) -> MenuBarCommandResult {
+        actions.routeCommand?(command)
+            ?? MenuBarCommandResult.stopped(
+                command,
+                status: .failed,
+                message: "Command router is unavailable.",
+                diagnosticReason: "routerUnavailable"
+            )
+    }
+
+    private func assignGroupHotkey(
+        _ group: IconGroup,
+        kind: GroupHotkeyAssignmentKind
+    ) -> GroupHotkeyAssignmentResult {
+        guard let hotkeyBindingStore else {
+            return GroupHotkeyAssignmentResult(
+                status: .unavailable,
+                message: "Hotkey store is unavailable."
+            )
+        }
+
+        hotkeyBindingStore.load()
+        let plan = GroupHotkeyAssignmentPlanner().plan(
+            groupID: group.id,
+            kind: kind,
+            existingBindings: hotkeyBindingStore.bindings
+        )
+
+        switch plan.operation {
+        case .add(let binding):
+            hotkeyBindingStore.add(binding: binding)
+            actions.dynamicHotkeysChanged?()
+        case .enableExisting(let id):
+            hotkeyBindingStore.update(id: id) { binding in
+                binding.isEnabled = true
+            }
+            actions.dynamicHotkeysChanged?()
+        case .none:
+            break
+        }
+
+        return plan.result
     }
 
     private var privateAccessCommandSummaries: [MenuBarCommandAvailabilitySummary] {
@@ -362,6 +425,17 @@ struct SettingsRootView: View {
                 source: .settings
             )
         ]
+    }
+
+    private func refreshAfterSettingsImport() {
+        actions.behaviorChanged?()
+        actions.searchChanged?()
+        actions.secondBarChanged?()
+        actions.privacyChanged?()
+        actions.groupsChanged?()
+        actions.dynamicHotkeysChanged?()
+        actions.automationSettingsChanged?()
+        actions.triggersChanged?()
     }
 }
 

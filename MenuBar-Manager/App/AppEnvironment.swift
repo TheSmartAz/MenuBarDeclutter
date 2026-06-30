@@ -132,6 +132,17 @@ final class AppEnvironment {
                         failedGate: .targetAvailable
                     )
             },
+            routeCommand: { [weak self] command in
+                guard let self else {
+                    return MenuBarCommandResult.stopped(
+                        command,
+                        status: .failed,
+                        message: "Command router is unavailable.",
+                        diagnosticReason: "routerUnavailable"
+                    )
+                }
+                return self.commandRouter.route(command)
+            },
             profile: SettingsProfileActions(
                 dryRun: { [weak self] profile in
                     self?.dryRunProfile(profile) ?? ProfileApplicationDryRun(
@@ -267,6 +278,7 @@ final class AppEnvironment {
             },
             revealInlineAnyway: { [weak self] in
                 _ = self?.layoutCoordinator.crowdedRevealRescueService.revealInlineAnyway()
+                self?.revealAllHiddenItemsInline()
             },
             crowdedRevealIntercepted: { [weak self] in
                 self?.layoutCoordinator.crowdedRevealRescueService.lastRevealIntercepted == true
@@ -313,7 +325,9 @@ final class AppEnvironment {
     private lazy var menuBarItemSurfaceCoordinator = MenuBarItemSurfaceCoordinator(
         settingsStore: settingsStore,
         diagnosticsLogger: diagnosticsLogger,
+        appSupportPaths: appSupportPaths,
         liveStatus: liveStatus,
+        groupStore: groupStore,
         safeModeLaunchState: safeModeLaunchState,
         hidingService: hidingService,
         rehideController: rehideController,
@@ -376,7 +390,7 @@ final class AppEnvironment {
                 self?.updateLiveStatusFromServices()
             },
             revealAllHiddenItems: { [weak self] in
-                self?.revealAllHiddenItems()
+                self?.revealAllHiddenItemsInline()
             },
             resetAllSettings: { [weak self] in
                 self?.resetAllSettings()
@@ -421,7 +435,7 @@ final class AppEnvironment {
             self?.menuBarScanCoordinator.lastResult
         },
         revealAll: { [weak self] in
-            self?.revealAllHiddenItems()
+            self?.revealAllHiddenItemsInline()
         },
         restoreVisibility: { [weak self] state in
             self?.restoreVisibilityState(state)
@@ -436,10 +450,16 @@ final class AppEnvironment {
             self?.settingsStore.showSpacerMarkers = visible
         },
         openSecondBar: { [weak self] in
-            self?.showSecondBar()
+            self?.routeCrowdedRescueCommand(
+                action: .showSecondBar,
+                target: .secondBar
+            )
         },
         enterFullMenuBarMode: { [weak self] in
             self?.enterFullMenuBarMode()
+        },
+        showLayoutSuggestions: { [weak self] in
+            self?.showLayoutSuggestions()
         }
     )
 
@@ -475,7 +495,17 @@ final class AppEnvironment {
         settingsStore: settingsStore,
         hidingService: hidingService,
         highlightOverlay: groupHighlightOverlayWindow,
-        diagnosticsLogger: diagnosticsLogger
+        diagnosticsLogger: diagnosticsLogger,
+        expandHiddenItems: { [weak self] in
+            self?.performCrowdedReveal(intent: .revealItem) {
+                self?.expandHiddenItemsInline()
+            }
+        },
+        revealAllItems: { [weak self] in
+            self?.performCrowdedReveal(intent: .revealItem) {
+                self?.revealAllHiddenItemsInline()
+            }
+        }
     )
 
     private lazy var groupActivationService = IconGroupActivationService(
@@ -781,7 +811,9 @@ final class AppEnvironment {
     // MARK: Hiding actions
 
     func expandHiddenItems() {
-        statusBarController.expand()
+        performCrowdedReveal(intent: .expand) { [weak self] in
+            self?.expandHiddenItemsInline()
+        }
     }
 
     func collapseHiddenItems() {
@@ -789,10 +821,24 @@ final class AppEnvironment {
     }
 
     func toggleHiddenItems() {
-        statusBarController.toggle()
+        if hidingService.visibilityState.isCollapsed {
+            expandHiddenItems()
+        } else {
+            statusBarController.toggle()
+        }
     }
 
     func revealAllHiddenItems() {
+        performCrowdedReveal(intent: .revealAll) { [weak self] in
+            self?.revealAllHiddenItemsInline()
+        }
+    }
+
+    private func expandHiddenItemsInline() {
+        statusBarController.expand()
+    }
+
+    private func revealAllHiddenItemsInline() {
         statusBarController.revealAll()
     }
 
@@ -809,7 +855,11 @@ final class AppEnvironment {
     }
 
     func toggleRevealAll() {
-        statusBarController.toggleRevealAll()
+        if hidingService.visibilityState.isRevealAll {
+            statusBarController.toggleRevealAll()
+        } else {
+            revealAllHiddenItems()
+        }
     }
 
     private func revealAllFromStatusMenu() {
@@ -889,8 +939,10 @@ final class AppEnvironment {
             "Unlock to open Find Icon."
         case .showSecondBar, .showIconPanel, .showItemInSecondBar:
             "Unlock to open Second Bar."
-        case .showGroupPanel, .revealGroup:
+        case .showGroupPanel:
             "Unlock to open this protected group."
+        case .revealGroup:
+            "Unlock to reveal this protected group."
         case .applyProfile:
             "Unlock to apply this profile."
         case .spacingPresetApply:
@@ -916,14 +968,70 @@ final class AppEnvironment {
         showSettings(section: .layout)
     }
 
+    private func performCrowdedReveal(
+        intent: CrowdedRevealIntent,
+        inlineAction: () -> Void
+    ) {
+        let estimate = layoutCoordinator.currentCapacityEstimate()
+        let result = layoutCoordinator.crowdedRevealRescueService.evaluate(
+            intent: intent,
+            currentVisibility: hidingService.visibilityState,
+            estimate: estimate,
+            secondBarAvailable: crowdedRescueCommandAvailable(
+                action: .showSecondBar,
+                target: .secondBar
+            ),
+            fullMenuBarModeAvailable: crowdedRescueCommandAvailable(
+                action: .enterFullMenuBarMode,
+                target: .fullMenuBarMode
+            ),
+            layoutSuggestionsAvailable: crowdedRescueCommandAvailable(
+                action: .showLayoutSuggestions,
+                target: .layoutSuggestions
+            ),
+            safeModeActive: safeModeLaunchState.isSafeModeActive
+        )
+
+        switch result {
+        case .proceedInline, .inlineOverride:
+            inlineAction()
+        case .openedSecondBar, .enteredFullMenuBarMode, .suggestedOnly, .noOp:
+            break
+        }
+    }
+
+    private func crowdedRescueCommandAvailable(
+        action: MenuBarCommandAction,
+        target: MenuBarCommandTarget
+    ) -> Bool {
+        commandRouter.availability(for: MenuBarCommand(
+            action: action,
+            target: target,
+            source: .crowdedRescue
+        ))
+        .isAvailable
+    }
+
+    @discardableResult
+    private func routeCrowdedRescueCommand(
+        action: MenuBarCommandAction,
+        target: MenuBarCommandTarget
+    ) -> MenuBarCommandResult {
+        commandRouter.route(MenuBarCommand(
+            action: action,
+            target: target,
+            source: .crowdedRescue
+        ))
+    }
+
     private func restoreVisibilityState(_ state: HidingVisibilityState) {
         switch state {
         case .collapsed:
             collapseHiddenItems()
         case .expanded:
-            expandHiddenItems()
+            expandHiddenItemsInline()
         case .revealAll:
-            revealAllHiddenItems()
+            revealAllHiddenItemsInline()
         }
     }
 
@@ -1235,6 +1343,15 @@ final class AppEnvironment {
         handlers.showGroupPanel = { [weak self] groupID in
             self?.showGroupPanel(id: groupID) == true
         }
+        handlers.revealGroup = { [weak self] groupID in
+            self?.revealGroup(id: groupID) == true
+        }
+        handlers.createGroupFromItem = { [weak self] itemID in
+            self?.createGroupFromMenuBarItem(id: itemID) == true
+        }
+        handlers.addItemToGroup = { [weak self] groupID, itemID in
+            self?.addMenuBarItem(id: itemID, toGroup: groupID) == true
+        }
         handlers.applyProfileNamed = { [weak self] name in
             self?.applyProfileNamed(name) ?? false
         }
@@ -1261,6 +1378,12 @@ final class AppEnvironment {
         case .openGroup(let groupID):
             return commandRouter.route(MenuBarCommand(
                 action: .showGroupPanel,
+                target: .group(groupID),
+                source: .dynamicHotkey
+            ))
+        case .revealGroup(let groupID):
+            return commandRouter.route(MenuBarCommand(
+                action: .revealGroup,
                 target: .group(groupID),
                 source: .dynamicHotkey
             ))
@@ -1369,6 +1492,90 @@ final class AppEnvironment {
             return false
         }
         showGroupPanel(group)
+        return true
+    }
+
+    private func revealGroup(id: UUID) -> Bool {
+        groupStore.load()
+        guard let group = groupStore.groups.first(where: { $0.id == id }) else {
+            diagnosticsLogger.log("Group reveal target unavailable.", level: .warning, category: .layout)
+            return false
+        }
+
+        refreshMenuBarItems()
+        let resolver = IconGroupSnapshotResolver()
+        let plan = resolver.revealPlan(for: group, snapshots: liveStatus.scannedMenuBarItems)
+
+        switch plan {
+        case .noMatchingItems:
+            diagnosticsLogger.log("Group reveal had no matching menu bar items.", level: .warning, category: .layout)
+            return false
+        case .noRevealNeeded:
+            diagnosticsLogger.log("Group reveal did not need visibility changes.", category: .layout)
+            return true
+        case .expandHiddenZone:
+            performCrowdedReveal(intent: .revealGroup) { [weak self] in
+                self?.expandHiddenItemsInline()
+            }
+            diagnosticsLogger.log("Group reveal expanded hidden menu bar items.", category: .layout)
+            return true
+        case .revealAllHiddenItems:
+            performCrowdedReveal(intent: .revealGroup) { [weak self] in
+                self?.revealAllHiddenItemsInline()
+            }
+            diagnosticsLogger.log("Group reveal revealed all hidden menu bar items.", category: .layout)
+            return true
+        }
+    }
+
+    private func createGroupFromMenuBarItem(id: String) -> Bool {
+        refreshMenuBarItems()
+        guard let snapshot = liveStatus.scannedMenuBarItems.first(where: { $0.id == id }) else {
+            diagnosticsLogger.log("Group creation item target unavailable.", level: .warning, category: .layout)
+            return false
+        }
+
+        groupStore.load()
+        let groupName = IconGroupItemActionPlanner.defaultGroupName(
+            for: snapshot,
+            existingGroups: groupStore.groups
+        )
+        let created = groupStore.createGroup(name: groupName)
+        groupStore.updateGroup(id: created.id) { group in
+            group.symbolName = "folder"
+            group.showInSecondBar = true
+            group.showAsStatusItem = false
+            group.itemRefs = [IconGroupItemActionPlanner.itemRef(from: snapshot)]
+        }
+        refreshGroupSettings()
+        diagnosticsLogger.log("Created group from menu bar item.", category: .layout)
+        return true
+    }
+
+    private func addMenuBarItem(id: String, toGroup groupID: UUID) -> Bool {
+        refreshMenuBarItems()
+        guard let snapshot = liveStatus.scannedMenuBarItems.first(where: { $0.id == id }) else {
+            diagnosticsLogger.log("Group add item target unavailable.", level: .warning, category: .layout)
+            return false
+        }
+
+        groupStore.load()
+        guard groupStore.groups.contains(where: { $0.id == groupID }) else {
+            diagnosticsLogger.log("Group add target unavailable.", level: .warning, category: .layout)
+            return false
+        }
+
+        var didAdd = false
+        groupStore.updateGroup(id: groupID) { group in
+            let result = IconGroupItemActionPlanner.adding(snapshot: snapshot, to: group)
+            group = result.group
+            didAdd = result.didAdd
+        }
+        refreshGroupSettings()
+        diagnosticsLogger.log(
+            didAdd ? "Added menu bar item to group." : "Menu bar item already exists in group.",
+            category: .layout
+        )
         return true
     }
 

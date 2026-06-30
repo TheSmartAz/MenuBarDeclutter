@@ -84,6 +84,12 @@ final class HotkeyBindingStore {
         save()
     }
 
+    /// Replace the in-memory binding list with a validated imported list.
+    func replaceAll(_ importedBindings: [HotkeyBinding]) {
+        bindings = importedBindings
+        save()
+    }
+
     func reset() {
         bindings.removeAll()
         save()

@@ -8,6 +8,8 @@ struct AppIntentExecutionServiceTests {
     private func makeService(
         safeMode: Bool = false,
         automationPaused: Bool = false,
+        proModeEnabled: Bool = false,
+        accessibilityDiscoveryEnabled: Bool = false,
         appIntentsCanApplyProfiles: Bool = false,
         appIntentsCanAccessLabs: Bool = false,
         menuBarSpacingLabsEnabled: Bool = false
@@ -18,6 +20,8 @@ struct AppIntentExecutionServiceTests {
 
         let store = SettingsStore(defaults: defaults)
         store.automationPaused = automationPaused
+        store.proModeEnabled = proModeEnabled
+        store.accessibilityDiscoveryEnabled = accessibilityDiscoveryEnabled
         store.appIntentsCanApplyProfiles = appIntentsCanApplyProfiles
         store.appIntentsCanAccessLabs = appIntentsCanAccessLabs
         store.menuBarSpacingLabsEnabled = menuBarSpacingLabsEnabled
@@ -45,6 +49,8 @@ struct AppIntentExecutionServiceTests {
             enterFullMenuBarMode: { enterFullCalled = true },
             exitFullMenuBarMode: { exitFullCalled = true },
             applyProfileNamed: { _ in true },
+            showGroupPanel: { _ in true },
+            revealGroup: { _ in true },
             pauseAutomation: { pauseCalled = true },
             resumeAutomation: { resumeCalled = true }
         )
@@ -79,6 +85,27 @@ struct AppIntentExecutionServiceTests {
     @Test func applyProfileSucceedsWhenEnabled() {
         let (service, _) = makeService(automationPaused: false, appIntentsCanApplyProfiles: true)
         let result = service.applyProfile(name: "Test")
+        #expect(result == .success)
+    }
+
+    @Test func openGroupPanelSucceedsThroughRouter() {
+        let (service, _) = makeService()
+        let result = service.openGroupPanel(id: UUID())
+        #expect(result == .success)
+    }
+
+    @Test func revealGroupRequiresProMode() {
+        let (service, _) = makeService()
+        let result = service.revealGroup(id: UUID())
+        #expect(result == .requiresProMode)
+    }
+
+    @Test func revealGroupSucceedsWhenProDiscoveryAndPermissionAreAvailable() {
+        let (service, _) = makeService(
+            proModeEnabled: true,
+            accessibilityDiscoveryEnabled: true
+        )
+        let result = service.revealGroup(id: UUID())
         #expect(result == .success)
     }
 

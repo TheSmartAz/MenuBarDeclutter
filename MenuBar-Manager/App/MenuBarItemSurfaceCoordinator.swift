@@ -6,6 +6,7 @@ final class MenuBarItemSurfaceCoordinator {
         settingsStore: settingsStore,
         permissionService: accessibilityPermissionService,
         liveStatus: liveStatus,
+        itemMemoryStore: menuBarItemMemoryStore,
         positioningService: secondBarPositioningService,
         diagnosticsLogger: diagnosticsLogger,
         onRefresh: { [weak self] in
@@ -29,13 +30,18 @@ final class MenuBarItemSurfaceCoordinator {
             }
             return await self.moveIcon(snapshot, command: command)
         },
+        groupsProvider: { [weak self] in
+            self?.availableGroups() ?? []
+        },
         onSettingsChanged: refreshSecondBarSettings,
         onOpenPrivacySettings: openPrivacySettings
     )
 
     private let settingsStore: SettingsStore
     private let diagnosticsLogger: DiagnosticsLogger
+    private let appSupportPaths: AppSupportPaths
     private let liveStatus: LiveDiagnosticsStatus
+    private let groupStore: IconGroupStore
     private let safeModeLaunchState: SafeModeLaunchState
     private let hidingService: HidingService
     private let rehideController: RehideController
@@ -47,12 +53,16 @@ final class MenuBarItemSurfaceCoordinator {
     private let isHoverRevealSuppressed: () -> Bool
 
     private lazy var searchService = SearchService()
+    private lazy var menuBarItemMemoryStore = MenuBarItemMemoryStore(
+        fileURL: appSupportPaths.menuBarItemMemoryFileURL
+    )
 
     private lazy var searchWindowController = SearchWindowController(
         settingsStore: settingsStore,
         permissionService: accessibilityPermissionService,
         liveStatus: liveStatus,
         searchService: searchService,
+        itemMemoryStore: menuBarItemMemoryStore,
         diagnosticsLogger: diagnosticsLogger,
         onRefresh: { [weak self] in
             self?.refreshMenuBarItems()
@@ -74,6 +84,9 @@ final class MenuBarItemSurfaceCoordinator {
                 )
             }
             return await self.moveIcon(result.snapshot, command: command)
+        },
+        groupsProvider: { [weak self] in
+            self?.availableGroups() ?? []
         },
         onSettingsChanged: refreshSearchSettings,
         onOpenPrivacySettings: openPrivacySettings
@@ -114,7 +127,9 @@ final class MenuBarItemSurfaceCoordinator {
     init(
         settingsStore: SettingsStore,
         diagnosticsLogger: DiagnosticsLogger,
+        appSupportPaths: AppSupportPaths,
         liveStatus: LiveDiagnosticsStatus,
+        groupStore: IconGroupStore,
         safeModeLaunchState: SafeModeLaunchState,
         hidingService: HidingService,
         rehideController: RehideController,
@@ -133,7 +148,9 @@ final class MenuBarItemSurfaceCoordinator {
     ) {
         self.settingsStore = settingsStore
         self.diagnosticsLogger = diagnosticsLogger
+        self.appSupportPaths = appSupportPaths
         self.liveStatus = liveStatus
+        self.groupStore = groupStore
         self.safeModeLaunchState = safeModeLaunchState
         self.hidingService = hidingService
         self.rehideController = rehideController
@@ -191,6 +208,10 @@ final class MenuBarItemSurfaceCoordinator {
 
     func resetMovingWarnings() {
         iconMoveService.resetWarnings()
+    }
+
+    private func availableGroups() -> [IconGroup] {
+        IconGroupSort.sort(groupStore.groups).filter(\.isEnabled)
     }
 
     private func moveIcon(_ snapshot: MenuBarItemSnapshot, command: IconMoveCommand) async -> IconMoveResult {

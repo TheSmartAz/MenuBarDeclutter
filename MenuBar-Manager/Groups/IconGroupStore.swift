@@ -122,6 +122,21 @@ final class IconGroupStore {
         save()
     }
 
+    /// Merge imported groups by identity without deleting groups that are only
+    /// present locally.
+    func importGroups(_ importedGroups: [IconGroup]) {
+        guard !importedGroups.isEmpty else { return }
+        for group in importedGroups {
+            if let index = groups.firstIndex(where: { $0.id == group.id }) {
+                groups[index] = group
+            } else {
+                groups.append(group)
+            }
+        }
+        groups = IconGroupSort.sort(groups)
+        save()
+    }
+
     /// Reset all groups.
     func reset() {
         groups.removeAll()

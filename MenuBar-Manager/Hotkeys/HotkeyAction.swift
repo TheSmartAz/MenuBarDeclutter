@@ -4,6 +4,7 @@ import Foundation
 nonisolated enum HotkeyAction: Equatable, Hashable, Codable, Sendable {
     case revealAndHighlightItem(String) // item ref ID
     case openGroup(UUID)
+    case revealGroup(UUID)
     case openSecondBarFilteredToGroup(UUID)
     case openSecondBarFilteredToItem(String) // item ref ID
     case applyProfile(UUID)
@@ -21,6 +22,7 @@ nonisolated enum HotkeyAction: Equatable, Hashable, Codable, Sendable {
     private enum Kind: String, Codable {
         case revealAndHighlightItem
         case openGroup
+        case revealGroup
         case openSecondBarFilteredToGroup
         case openSecondBarFilteredToItem
         case applyProfile
@@ -38,6 +40,8 @@ nonisolated enum HotkeyAction: Equatable, Hashable, Codable, Sendable {
             self = .revealAndHighlightItem(try container.decode(String.self, forKey: .stringValue))
         case .openGroup:
             self = .openGroup(try container.decode(UUID.self, forKey: .uuidValue))
+        case .revealGroup:
+            self = .revealGroup(try container.decode(UUID.self, forKey: .uuidValue))
         case .openSecondBarFilteredToGroup:
             self = .openSecondBarFilteredToGroup(try container.decode(UUID.self, forKey: .uuidValue))
         case .openSecondBarFilteredToItem:
@@ -63,6 +67,9 @@ nonisolated enum HotkeyAction: Equatable, Hashable, Codable, Sendable {
             try container.encode(value, forKey: .stringValue)
         case .openGroup(let uuid):
             try container.encode(Kind.openGroup, forKey: .kind)
+            try container.encode(uuid, forKey: .uuidValue)
+        case .revealGroup(let uuid):
+            try container.encode(Kind.revealGroup, forKey: .kind)
             try container.encode(uuid, forKey: .uuidValue)
         case .openSecondBarFilteredToGroup(let uuid):
             try container.encode(Kind.openSecondBarFilteredToGroup, forKey: .kind)
@@ -90,6 +97,8 @@ nonisolated enum HotkeyAction: Equatable, Hashable, Codable, Sendable {
             "Reveal and Highlight Item"
         case .openGroup:
             "Open Group"
+        case .revealGroup:
+            "Reveal Group"
         case .openSecondBarFilteredToGroup:
             "Open Second Bar (Group)"
         case .openSecondBarFilteredToItem:
@@ -109,7 +118,7 @@ nonisolated enum HotkeyAction: Equatable, Hashable, Codable, Sendable {
 
     var requiresProMode: Bool {
         switch self {
-        case .revealAndHighlightItem, .openSecondBarFilteredToItem:
+        case .revealAndHighlightItem, .revealGroup, .openSecondBarFilteredToItem:
             true
         default:
             false

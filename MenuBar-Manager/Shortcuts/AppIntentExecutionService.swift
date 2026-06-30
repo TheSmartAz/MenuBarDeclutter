@@ -38,6 +38,8 @@ final class AppIntentExecutionService {
         enterFullMenuBarMode: @escaping () -> Void,
         exitFullMenuBarMode: @escaping () -> Void,
         applyProfileNamed: @escaping (String) -> Bool,
+        showGroupPanel: @escaping (UUID) -> Bool = { _ in false },
+        revealGroup: @escaping (UUID) -> Bool = { _ in false },
         pauseAutomation: @escaping () -> Void,
         resumeAutomation: @escaping () -> Void
     ) {
@@ -50,6 +52,8 @@ final class AppIntentExecutionService {
         handlers.enterFullMenuBarMode = enterFullMenuBarMode
         handlers.exitFullMenuBarMode = exitFullMenuBarMode
         handlers.applyProfileNamed = applyProfileNamed
+        handlers.showGroupPanel = showGroupPanel
+        handlers.revealGroup = revealGroup
         handlers.pauseAutomation = pauseAutomation
         handlers.resumeAutomation = resumeAutomation
 
@@ -93,6 +97,14 @@ final class AppIntentExecutionService {
 
     func applyProfile(name: String) -> Result {
         route(.applyProfile, target: .profileName(name))
+    }
+
+    func openGroupPanel(id: UUID) -> Result {
+        route(.showGroupPanel, target: .group(id))
+    }
+
+    func revealGroup(id: UUID) -> Result {
+        route(.revealGroup, target: .group(id))
     }
 
     func pauseAutomation() -> Result {

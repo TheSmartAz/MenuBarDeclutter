@@ -22,6 +22,7 @@ final class SettingsExportService {
 
     /// Create an export package from current settings.
     func createExportPackage(
+        profiles: [ProfileModel] = [],
         groups: [IconGroup] = [],
         hotkeyBindings: [HotkeyBinding] = [],
         spacerItems: [SpacerItemModel] = [],
@@ -48,7 +49,8 @@ final class SettingsExportService {
             redactionMode: .privacySafe,
             settings: settings,
             omittedSettings: Self.intentionallyOmittedSettings.map(\.rawValue).sorted(),
-            groups: groups,
+            profiles: profiles,
+            groups: IconGroupImportExport.groupsForExport(groups),
             hotkeyBindings: hotkeyBindings,
             spacerItems: spacerItems,
             privateAccessPolicy: privateAccessPolicy,

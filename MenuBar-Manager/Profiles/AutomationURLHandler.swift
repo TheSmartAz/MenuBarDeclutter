@@ -8,6 +8,8 @@ final class AutomationURLHandler {
         case collapse
         case revealAll
         case secondBar
+        case groupPanel
+        case revealGroup
         case profile
         case fullMenuBar
         case exitFullMenuBar
@@ -23,6 +25,10 @@ final class AutomationURLHandler {
                 "reveal-all"
             case .secondBar:
                 "second-bar"
+            case .groupPanel:
+                "group"
+            case .revealGroup:
+                "reveal-group"
             case .profile:
                 "profile"
             case .fullMenuBar:
@@ -44,6 +50,10 @@ final class AutomationURLHandler {
                 self = .revealAll
             case "second-bar", "show-second-bar":
                 self = .secondBar
+            case "group", "open-group", "show-group-panel":
+                self = .groupPanel
+            case "reveal-group":
+                self = .revealGroup
             case "profile":
                 self = .profile
             case "full-menu-bar":
@@ -179,6 +189,13 @@ final class AutomationURLHandler {
         url.pathComponents.first { $0 != "/" }
     }
 
+    private func groupID(from url: URL) -> UUID? {
+        guard let rawValue = url.pathComponents.first(where: { $0 != "/" }) else {
+            return nil
+        }
+        return UUID(uuidString: rawValue)
+    }
+
     private func routedCommand(
         for command: Command,
         url: URL,
@@ -193,6 +210,28 @@ final class AutomationURLHandler {
             return MenuBarCommand(action: .revealAll, target: .globalVisibility, source: .urlAutomation)
         case .secondBar:
             return MenuBarCommand(action: .showSecondBar, target: .secondBar, source: .urlAutomation)
+        case .groupPanel:
+            guard let id = groupID(from: url) else {
+                logRejection(
+                    "group command missing group id",
+                    metadata: metadata(eventMetadata, adding: [
+                        "command": command.logName
+                    ])
+                )
+                return nil
+            }
+            return MenuBarCommand(action: .showGroupPanel, target: .group(id), source: .urlAutomation)
+        case .revealGroup:
+            guard let id = groupID(from: url) else {
+                logRejection(
+                    "group command missing group id",
+                    metadata: metadata(eventMetadata, adding: [
+                        "command": command.logName
+                    ])
+                )
+                return nil
+            }
+            return MenuBarCommand(action: .revealGroup, target: .group(id), source: .urlAutomation)
         case .profile:
             guard let name = profileName(from: url), !name.isEmpty else {
                 logRejection(

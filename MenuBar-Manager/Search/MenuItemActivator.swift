@@ -38,17 +38,27 @@ final class MenuItemActivator {
     private let hidingService: HidingService
     private let highlightOverlay: HighlightOverlayWindow
     private let diagnosticsLogger: DiagnosticsLogger
+    private let expandHiddenItems: () -> Void
+    private let revealAllItems: () -> Void
 
     init(
         settingsStore: SettingsStore,
         hidingService: HidingService,
         highlightOverlay: HighlightOverlayWindow,
-        diagnosticsLogger: DiagnosticsLogger
+        diagnosticsLogger: DiagnosticsLogger,
+        expandHiddenItems: (() -> Void)? = nil,
+        revealAllItems: (() -> Void)? = nil
     ) {
         self.settingsStore = settingsStore
         self.hidingService = hidingService
         self.highlightOverlay = highlightOverlay
         self.diagnosticsLogger = diagnosticsLogger
+        self.expandHiddenItems = expandHiddenItems ?? { [weak hidingService] in
+            hidingService?.expand()
+        }
+        self.revealAllItems = revealAllItems ?? { [weak hidingService] in
+            hidingService?.revealAll()
+        }
     }
 
     func activate(_ result: MenuBarSearchResult) -> MenuItemActivationResult {
@@ -106,10 +116,10 @@ final class MenuItemActivator {
         case .visible, .unknown:
             return false
         case .hidden:
-            hidingService.expand()
+            expandHiddenItems()
             return true
         case .alwaysHidden:
-            hidingService.revealAll()
+            revealAllItems()
             return true
         }
     }

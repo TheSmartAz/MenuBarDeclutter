@@ -15,6 +15,7 @@ struct AppSupportPathsTests {
         #expect(paths.dogfoodDirectory.path.hasSuffix("/\(AppConstants.displayName)/Dogfood"))
         #expect(paths.dogfoodRunsDirectory.path.hasSuffix("/\(AppConstants.displayName)/Dogfood/runs"))
         #expect(paths.dogfoodExportsDirectory.path.hasSuffix("/\(AppConstants.displayName)/Dogfood/exports"))
+        #expect(paths.menuBarItemMemoryFileURL.path.hasSuffix("/\(AppConstants.displayName)/menu-bar-item-memory.json"))
     }
 
     @Test func ensureDirectoriesExistCreatesAllKnownSubdirectories() throws {

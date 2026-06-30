@@ -121,6 +121,8 @@ private extension MenuBarCommandAction {
             "Group Panel"
         case .revealGroup:
             "Reveal Group"
+        case .createGroupFromItem:
+            "Create Group from Item"
         case .addItemToGroup:
             "Add Item to Group"
         case .removeItemFromGroup:

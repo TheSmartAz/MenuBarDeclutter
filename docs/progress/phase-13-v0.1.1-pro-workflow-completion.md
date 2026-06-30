@@ -45,6 +45,36 @@ Completed in this pass:
 - Added Private Access Settings command availability rows for protected app actions without executing those actions.
 - Tightened Command Center availability so always-hidden reveal reports disabled when the always-hidden separator feature is off.
 - Redacted Private Access diagnostics to log protected resource kinds instead of protected group IDs or other target values.
+- Added shared Find Icon / Second Bar item filters for All, Recent, Favorites, Visible, Hidden, and Always Hidden views.
+- Added a local-only `MenuBarItemMemoryStore` for hashed recents/favorites state under Application Support without storing raw item IDs, item titles, app names, bundle identifiers, screen contents, or network data.
+- Wired Find Icon result actions and Second Bar item actions to update shared recents, toggle favorites, clear recents/favorites, and refresh through the existing cached search/list paths.
+- Kept Second Bar filters scoped to Second Bar-eligible hidden and always-hidden items so visible items do not appear there just because they are recent or favorited.
+- Added unit coverage for hashed persistence privacy, recents ordering/limits, favorites persistence/reset, search filters, and Second Bar filter scoping/order.
+- Added a pure `CrowdedRevealDecisionEngine` for privacy-safe crowded reveal fallback policy.
+- Wired normal expand, reveal-all, item reveal, and the status-menu inline override through rescue-aware paths while keeping internal restore/recovery reveals inline to avoid recursive fallback loops.
+- Routed crowded rescue availability and fallback execution through Command Center checks with a dedicated `crowdedRescue` source so Pro, Safe Mode, feature, and Labs gates remain consistent.
+- Added focused coverage for crowded reveal decisions, Safe Mode inline recovery, layout-suggestion fallback, and geometry-only Basic Mode behavior.
+- Completed a safer Groups import/export slice with schema-version checks, import normalization, generic import warnings, and protected-group redaction by default.
+- Routed both single-group exports and full settings-package group exports through the same privacy-safe redaction helper so protected group names, notes, and item identities are omitted unless an explicit unredacted export mode is used.
+- Updated the Groups Settings import/export workflow to avoid protected group names in default filenames and to surface generic import warnings for empty groups or skipped unmatchable item refs.
+- Added Find Icon and Second Bar item context actions for creating a group from an item and adding an item to an existing enabled group.
+- Routed group item actions through Command Center with a privacy-safe group+item target kind, protected-group Private Access gating, and local-only group store mutation.
+- Added a pure `IconGroupItemActionPlanner` for snapshot-to-group-ref creation, unique group naming, and duplicate item-ref avoidance.
+- Added a pure `IconGroupSnapshotResolver` for de-duplicated group matches, localized search-within-group filtering, and reveal-plan selection.
+- Split `revealGroup` from `showGroupPanel` in Command Center so group reveal runs a dedicated handler, respects protected-group Private Access locks, and reports the correct routed result.
+- Added Settings-side Open Panel and Reveal entry points for selected groups, both routed through Command Center instead of bypassing feature, Pro, permission, and Private Access gates.
+- Wired group reveal through the crowded-rescue path so hidden groups expand inline only when appropriate and crowded layouts can fall back to Second Bar, Full Menu Bar Mode, or layout suggestions.
+- Added `Reveal Group` as a first-class dynamic hotkey action with schema-safe Codable persistence.
+- Added a group hotkey assignment planner that creates generic local Open Group / Reveal Group bindings using the first non-conflicting suggested shortcut and re-enables existing disabled bindings instead of duplicating them.
+- Added Groups Settings assignment buttons for Open Group and Reveal Group hotkeys, backed by the shared hotkey binding store and dynamic hotkey refresh path.
+- Routed Reveal Group dynamic hotkeys through Command Center and the existing protected-group Private Access gate, with redacted group hotkey diagnostics.
+- Added Dynamic Hotkeys row status explanations for disabled, globally disabled, conflict, over-limit, Pro-required, and ready states.
+- Added one-click disable plus suggested shortcut reset for group open/reveal hotkeys without duplicating bindings.
+- Added safe settings-package apply after dry-run and backup creation. Import now merges profiles, groups, hotkeys, and spacers by ID, skips conflicting dynamic hotkeys, leaves Launch at Login/Login Items system state unchanged, and does not enable Icon Moving, Smart Triggers, or Menu Bar Spacing Labs from imported settings.
+- Export packages now include real profile payloads instead of profile metadata only, while legacy metadata-only packages decode safely with an empty profile payload.
+- Added group UUID URL automation routes: `menubardeclutter://group/<uuid>` and `menubardeclutter://reveal-group/<uuid>`.
+- Added App Intent execution methods and App Intent types for group panel and group reveal by group ID, routed through Command Center gates.
+- Updated release/support/manual QA docs to reflect safe import apply, group automation routes, and the still-deferred Spacing Labs apply/restore/reset UI.
 
 Not in scope for the first slice:
 
@@ -104,18 +134,33 @@ Current Phase 13 changes:
 - `MenuBar-Manager/CommandCenter/MenuBarCommandResult.swift`
 - `MenuBar-Manager/CommandCenter/MenuBarCommandRouter.swift`
 - `MenuBar-Manager/CommandCenter/MenuBarCommandTarget.swift`
+- `MenuBar-Manager/Core/AppSupportPaths.swift`
+- `MenuBar-Manager/Groups/IconGroupImportExport.swift`
+- `MenuBar-Manager/Groups/IconGroupItemActionPlanner.swift`
+- `MenuBar-Manager/Groups/IconGroupSnapshotResolver.swift`
 - `MenuBar-Manager/Groups/IconGroupsSettingsView.swift`
+- `MenuBar-Manager/Layout/CrowdedRevealDecisionEngine.swift`
+- `MenuBar-Manager/Layout/CrowdedRevealRescueService.swift`
+- `MenuBar-Manager/Layout/LayoutCoordinator.swift`
 - `MenuBar-Manager/Hotkeys/DynamicHotkeyRegistrationService.swift`
+- `MenuBar-Manager/Hotkeys/DynamicHotkeysSettingsView.swift`
+- `MenuBar-Manager/Hotkeys/GroupHotkeyAssignmentPlanner.swift`
+- `MenuBar-Manager/Hotkeys/HotkeyAction.swift`
+- `MenuBar-Manager/Migration/SettingsExportService.swift`
 - `MenuBar-Manager/Profiles/ProfileListView.swift`
 - `MenuBar-Manager/Profiles/AutomationURLHandler.swift`
 - `MenuBar-Manager/Profiles/ProfileAutomationCoordinator.swift`
 - `MenuBar-Manager/PrivateAccess/PrivateAccessCoordinator.swift`
 - `MenuBar-Manager/PrivateAccess/PrivateAccessSettingsView.swift`
 - `MenuBar-Manager/PrivateAccess/ProtectedResource.swift`
+- `MenuBar-Manager/Search/MenuBarItemCollectionFilter.swift`
+- `MenuBar-Manager/Search/MenuBarItemMemoryStore.swift`
 - `MenuBar-Manager/Search/MenuItemActivator.swift`
 - `MenuBar-Manager/Search/SearchRootView.swift`
+- `MenuBar-Manager/Search/SearchService.swift`
 - `MenuBar-Manager/Search/SearchWindowController.swift`
 - `MenuBar-Manager/SecondBar/SecondBarRootView.swift`
+- `MenuBar-Manager/SecondBar/SecondBarViewModel.swift`
 - `MenuBar-Manager/SecondBar/SecondBarWindowController.swift`
 - `MenuBar-Manager/Settings/SearchSettingsView.swift`
 - `MenuBar-Manager/Settings/SecondBarSettingsView.swift`
@@ -125,10 +170,19 @@ Current Phase 13 changes:
 - `MenuBar-Manager/Shortcuts/AppIntentResultMapper.swift`
 - `MenuBar-Manager/StatusBar/StatusBarMenuBuilder.swift`
 - `MenuBar-ManagerTests/AutomationURLHandlerTests.swift`
+- `MenuBar-ManagerTests/AppSupportPathsTests.swift`
 - `MenuBar-ManagerTests/AppIntentExecutionServiceTests.swift`
 - `MenuBar-ManagerTests/CommandCenter/MenuBarCommandRouterTests.swift`
+- `MenuBar-ManagerTests/CrowdedRevealDecisionEngineTests.swift`
+- `MenuBar-ManagerTests/CrowdedRevealRescueServiceTests.swift`
 - `MenuBar-ManagerTests/DynamicHotkeyRegistrationServiceTests.swift`
+- `MenuBar-ManagerTests/HotkeyBindingStoreTests.swift`
+- `MenuBar-ManagerTests/IconGroupStoreTests.swift`
+- `MenuBar-ManagerTests/MenuBarItemMemoryStoreTests.swift`
 - `MenuBar-ManagerTests/ProtectedActionGateTests.swift`
+- `MenuBar-ManagerTests/SearchServiceTests.swift`
+- `MenuBar-ManagerTests/SecondBarViewModelTests.swift`
+- `MenuBar-ManagerTests/SettingsExportImportTests.swift`
 - `MenuBar-ManagerTests/StatusBarMenuBuilderTests.swift`
 - `docs/progress/phase-13-v0.1.1-pro-workflow-completion.md`
 - `docs/project-summary.md`
@@ -165,6 +219,49 @@ Current Phase 13 changes:
 | `rg -n "ScreenCaptureKit\|NSScreenCaptureUsageDescription\|NSAppleEventsUsageDescription\|URLSession\|NWConnection\|analytics\|telemetry\|Sentry\|Firebase" MenuBar-Manager Config scripts docs` | Hits inspected | Hits are privacy verification scripts, historical/guardrail docs, or dogfood/export exclusion text. No direct app target network API, analytics SDK, ScreenCaptureKit import, or sensitive usage string was introduced. |
 | `scripts/verify_privacy_boundary.sh` | PASS | Source/config privacy checks passed after Private Access Settings availability rows and diagnostic redaction updates; built-app checks skipped because `APP_PATH` was not set. |
 | `git diff --check` | PASS | No whitespace errors after Private Access docs updates. |
+| `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS'` | PASS | Full run passed with 350 Swift Testing tests in 62 suites and 7 UI tests after adding shared Find Icon / Second Bar filters and hashed recents/favorites state. Result bundle: `~/Library/Developer/Xcode/DerivedData/MenuBar-Manager-csxowpoejceahkfttjignkqzaccl/Logs/Test/Test-MenuBarDeclutter-2026.06.29_20-45-53--0700.xcresult`. |
+| `scripts/verify_privacy_boundary.sh` | PASS | Source/config privacy checks passed after adding local hashed item memory; built-app checks skipped because `APP_PATH` was not set. |
+| `rg -n "ScreenCaptureKit\|SCStream\|SCShareableContent\|CGWindowListCreateImage\|kTCCServiceScreenCapture\|NSAppleEventsUsageDescription\|NSInputMonitoringUsageDescription\|telemetry\|analytics" MenuBar-Manager Config` | Hits inspected | Only existing dogfood/export exclusion text matched `telemetry`; no prohibited app target capability, sensitive usage string, analytics SDK, or ScreenCaptureKit reference was introduced. |
+| `git diff --check` | PASS | No whitespace errors after the shared filter and item-memory slice. |
+| `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -only-testing:MenuBarDeclutterTests/MenuBarItemMemoryStoreTests -only-testing:MenuBarDeclutterTests/SearchServiceTests -only-testing:MenuBarDeclutterTests/SecondBarViewModelTests` | PASS | 16 focused tests in 3 suites passed after final Search empty-state and loaded-recents trimming polish. Result bundle: `~/Library/Developer/Xcode/DerivedData/MenuBar-Manager-csxowpoejceahkfttjignkqzaccl/Logs/Test/Test-MenuBarDeclutter-2026.06.29_20-50-02--0700.xcresult`. |
+| `git diff --check` | PASS | No whitespace errors after final progress-note and polish updates. |
+| `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -only-testing:MenuBarDeclutterTests/CrowdedRevealDecisionEngineTests -only-testing:MenuBarDeclutterTests/CrowdedRevealRescueServiceTests -quiet` | PASS | Focused crowded rescue policy and service tests passed after adding the decision engine and rescue-aware reveal wiring. |
+| `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -skip-testing:MenuBarDeclutterUITests -quiet` | PASS | Non-UI scheme tests passed after the crowded rescue integration. |
+| `scripts/verify_privacy_boundary.sh` | PASS | Source/config privacy checks passed after the crowded rescue integration; built-app checks skipped because `APP_PATH` was not set. |
+| `git diff --check` | PASS | No whitespace errors after the crowded rescue integration and progress-note update. |
+| `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -only-testing:MenuBarDeclutterTests/IconGroupImportExportTests -only-testing:MenuBarDeclutterTests/IconGroupStoreTests -only-testing:MenuBarDeclutterTests/IconGroupValidationTests -only-testing:MenuBarDeclutterTests/SettingsExportImportTests -quiet` | PASS | Focused Groups import/export and settings package export tests passed after adding schema checks, import warnings, and protected-group export redaction. |
+| `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -skip-testing:MenuBarDeclutterUITests -quiet` | PASS | Non-UI scheme tests passed after the Groups import/export integration. |
+| `scripts/verify_privacy_boundary.sh` | PASS | Source/config privacy checks passed after Groups import/export privacy changes; built-app checks skipped because `APP_PATH` was not set. |
+| `git diff --check` | PASS | No whitespace errors after the Groups import/export integration. |
+| `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -only-testing:MenuBarDeclutterTests/IconGroupItemActionPlannerTests -only-testing:MenuBarDeclutterTests/MenuBarCommandRouterTests -quiet` | PASS | Focused planner and Command Center tests passed after wiring create-group-from-item and add-item-to-group actions. |
+| `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -skip-testing:MenuBarDeclutterUITests -quiet` | PASS | Non-UI scheme tests passed after the Groups item-action integration. |
+| `scripts/verify_privacy_boundary.sh` | PASS | Source/config privacy checks passed after Groups item-action integration; built-app checks skipped because `APP_PATH` was not set. |
+| `git diff --check` | PASS | No whitespace errors after the Groups item-action integration and progress-note update. |
+| `xcodebuild -list` | PASS | Canonical `MenuBarDeclutter` scheme remains present. |
+| `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -only-testing:MenuBarDeclutterTests/IconGroupSnapshotResolverTests -only-testing:MenuBarDeclutterTests/MenuBarCommandRouterTests -quiet` | PASS | Focused group resolver and Command Center tests passed after adding search/reveal resolution and the dedicated reveal-group handler. |
+| `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -skip-testing:MenuBarDeclutterUITests -quiet` | PASS | Non-UI scheme tests passed after the Groups reveal/search workflow integration. |
+| `scripts/verify_privacy_boundary.sh` | PASS | Source/config privacy checks passed after the Groups reveal/search workflow integration; built-app checks skipped because `APP_PATH` was not set. |
+| `git diff --check` | PASS | No whitespace errors after the Groups reveal/search workflow integration and progress-note update. |
+| `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -only-testing:MenuBarDeclutterTests/HotkeyBindingStoreTests -only-testing:MenuBarDeclutterTests/GroupHotkeyAssignmentPlannerTests -only-testing:MenuBarDeclutterTests/DynamicHotkeyRegistrationServiceTests -only-testing:MenuBarDeclutterTests/MenuBarCommandRouterTests -quiet` | PASS | Focused hotkey persistence, group assignment planner, Private Access protected reveal-group hotkey, and Command Center tests passed after adding group hotkey assignment. |
+| `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -skip-testing:MenuBarDeclutterUITests -quiet` | PASS | Non-UI scheme tests passed after the group hotkey assignment integration. |
+| `scripts/verify_privacy_boundary.sh` | PASS | Source/config privacy checks passed after the group hotkey assignment integration; built-app checks skipped because `APP_PATH` was not set. |
+| `git diff --check` | PASS | No whitespace errors after the group hotkey assignment integration and progress-note update. |
+| `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -only-testing:MenuBarDeclutterTests/SettingsExportImportTests -quiet` | PASS | Focused import/export tests passed after adding safe settings-package apply and profile payload export. |
+| `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -only-testing:MenuBarDeclutterTests/HotkeyBindingStoreTests -only-testing:MenuBarDeclutterTests/DynamicHotkeyRegistrationServiceTests -quiet` | PASS | Focused hotkey store, row status planner, group hotkey assignment, and registration service tests passed after Dynamic Hotkeys UI/status/reset updates. |
+| `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -only-testing:MenuBarDeclutterTests/AutomationURLHandlerTests -only-testing:MenuBarDeclutterTests/AppIntentExecutionServiceTests -quiet` | PASS | Focused URL automation and App Intent execution tests passed after adding group panel/reveal-by-ID routes through Command Center gates. |
+| `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -only-testing:MenuBarDeclutterTests/SettingsExportImportTests -only-testing:MenuBarDeclutterTests/HotkeyBindingStoreTests -only-testing:MenuBarDeclutterTests/DynamicHotkeyRegistrationServiceTests -only-testing:MenuBarDeclutterTests/AutomationURLHandlerTests -only-testing:MenuBarDeclutterTests/AppIntentExecutionServiceTests -only-testing:MenuBarDeclutterTests/MenuBarCommandRouterTests -quiet` | PASS | Combined focused Phase 13 suites passed for import/export, hotkeys, URL automation, App Intents, and Command Center. |
+| `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -skip-testing:MenuBarDeclutterUITests -quiet` | PASS | Non-UI scheme tests passed after all remaining Phase 13 code/doc updates. |
+| `xcodebuild -scheme MenuBarDeclutter -destination 'platform=macOS' build` | PASS | Build passed before committing the remaining Phase 13 integration batch. |
+| `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -skip-testing:MenuBarDeclutterUITests -quiet` | PASS | Current non-UI scheme validation passed with 403 tests after reviewing the pending integration batch. Result bundle: `~/Library/Developer/Xcode/DerivedData/MenuBar-Manager-csxowpoejceahkfttjignkqzaccl/Logs/Test/Test-MenuBarDeclutter-2026.06.29_23-41-50--0700.xcresult`. |
+| `scripts/verify_privacy_boundary.sh` | PASS | Source/config privacy checks passed after all remaining Phase 13 updates; built-app checks skipped because `APP_PATH` was not set. |
+| `rg -n "ScreenCaptureKit\|SCStream\|SCShareableContent\|CGWindowListCreateImage\|kTCCServiceScreenCapture\|NSAppleEventsUsageDescription\|NSInputMonitoringUsageDescription\|URLSession\|NWConnection\|analytics\|telemetry\|Sentry\|Firebase" MenuBar-Manager Config scripts docs` | Hits inspected | Hits are privacy guardrail docs, verifier scripts, or the existing dogfood/export exclusion text. No app-target network API, analytics SDK, ScreenCaptureKit import/linkage, or sensitive usage string was introduced. |
+| `git diff --check` | PASS | No whitespace errors after all remaining Phase 13 updates. |
+| `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -quiet` | INTERRUPTED | Full scheme run entered the known UI-test runner teardown/handoff hang after `Testing started` with no individual UI test output. It was interrupted after about 165 seconds and lingering `xcodebuild`/UI runner/app processes were killed. |
+| `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -only-testing:MenuBarDeclutterTests/SettingsExportImportTests -quiet` | PASS | Focused import/export tests passed after safe import was tightened to leave Launch at Login/Login Items system state unchanged. |
+| `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -only-testing:MenuBarDeclutterTests/SettingsExportImportTests -only-testing:MenuBarDeclutterTests/HotkeyBindingStoreTests -only-testing:MenuBarDeclutterTests/DynamicHotkeyRegistrationServiceTests -only-testing:MenuBarDeclutterTests/AutomationURLHandlerTests -only-testing:MenuBarDeclutterTests/AppIntentExecutionServiceTests -only-testing:MenuBarDeclutterTests/MenuBarCommandRouterTests -quiet` | PASS | Final focused Phase 13 pass covered safe import, dynamic hotkeys, URL automation, App Intents, and shared Command Center routing. |
+| `xcodebuild -scheme MenuBarDeclutter -destination 'platform=macOS' build -quiet` | PASS | Final app build passed before staging the Phase 13 batch. |
+| `scripts/verify_privacy_boundary.sh` | PASS | Final privacy boundary verification passed; built-app checks skipped because `APP_PATH` was not set. |
+| `git diff --check` | PASS | Final whitespace check passed before staging. |
 
 ## Manual QA Notes
 
@@ -178,6 +275,7 @@ Observed Settings behavior:
 - Profiles was checked by creating a disposable UI-testing profile; the editor showed `Command Center: Apply Profile`, `Available`, and `Available.` without exposing the profile target value.
 - Search unavailable-state follow-up was checked with `--ui-testing-show-search`; Codex Computer Use found the `Find Icon Disabled` text and `Enable Find Icon` button in the accessibility tree and screenshot.
 - Private Access Settings was checked with Codex Computer Use against the DerivedData app launched with `--ui-testing --ui-testing-show-settings`; the new `Command Center` section showed protected action rows, default Basic Mode gates such as `Pro Required` and `Labs Required`, and `Reveal Always-Hidden Zone` correctly reported `Unavailable` while the always-hidden separator was disabled.
+- Current remaining Phase 13 Settings smoke QA was checked with Codex Computer Use against the DerivedData app launched with `--ui-testing --ui-testing-show-settings`: Search and Second Bar showed Command Center gate rows without permission prompts; Groups could create a disposable UI-testing group and showed routed Open Panel / Reveal plus hotkey assignment controls; Hotkeys stayed disabled by default; Import / Export showed the safe apply and local backup language.
 
 No Accessibility, Screen Recording, Apple Events, Input Monitoring, network, screenshot, or pixel-capture permission prompt was triggered by these Settings checks.
 
@@ -199,10 +297,14 @@ Phase 13 manual QA will be needed for:
 - Basic status-menu expand/collapse/toggle paths intentionally remain direct so Safe Mode recovery stays available without Pro gating.
 - Search, Second Bar/Icon Panel, Groups, and Profiles Settings now show user-facing command availability rows backed by the shared router.
 - Private Access Settings now shows protected command availability rows backed by the shared router.
+- Find Icon and Second Bar now share local recents/favorites filtering, backed by hashed Application Support state and explicit clear controls.
+- Crowded Menu Rescue now uses a dedicated decision engine and is wired into normal expand, reveal-all, and item reveal paths; live crowded-menu behavior still needs manual QA on real menu bar layouts.
+- Groups now have schema-checked import/export and protected-group export redaction by default; live file-panel import/export behavior still needs manual QA.
+- Find Icon and Second Bar now expose group item actions from context menus; live menu interaction still needs manual QA with real scanned items.
 - Some remaining protected-action explanations and non-menu UI utility actions still use existing Phase 10/11 execution paths until their command execution surfaces are migrated end to end.
 - Private Access is represented in the command router as a lock-status gate; status-menu protected always-hidden reveal now uses the UI-mediated unlock gate before routing.
 - Private Access diagnostics now log protected resource kinds rather than protected target IDs.
-- Import remains dry-run only from Phase 12.
+- Full settings-package import now has an explicit safe apply path after dry-run plus backup; it is merge-by-ID and is not a destructive full restore.
 - Spacing Labs remains guarded; apply/restore/reset must either become fully reliable and tested or stay safely deferred.
 - Icon Moving remains Experimental and must stay explicitly gated.
 

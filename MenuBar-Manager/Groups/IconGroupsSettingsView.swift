@@ -9,6 +9,9 @@ struct IconGroupsSettingsView: View {
     let proModeAvailable: Bool
     let onOpenPrivacySettings: () -> Void
     var commandAvailability: ((IconGroup) -> MenuBarCommandAvailabilitySummary?)?
+    var onOpenGroupPanel: ((IconGroup) -> MenuBarCommandResult)?
+    var onRevealGroup: ((IconGroup) -> MenuBarCommandResult)?
+    var onAssignGroupHotkey: ((IconGroup, GroupHotkeyAssignmentKind) -> GroupHotkeyAssignmentResult)?
     var onGroupsChanged: (() -> Void)?
 
     @State private var selectedID: UUID?
@@ -94,6 +97,18 @@ struct IconGroupsSettingsView: View {
                             }
 
                             HStack(spacing: 10) {
+                                if onOpenGroupPanel != nil {
+                                    Button("Open Panel", systemImage: "rectangle.on.rectangle") {
+                                        runOpenPanel(selectedGroup)
+                                    }
+                                }
+
+                                if onRevealGroup != nil {
+                                    Button("Reveal", systemImage: "eye") {
+                                        runReveal(selectedGroup)
+                                    }
+                                }
+
                                 Button("Edit", systemImage: "pencil") {
                                     editingGroup = selectedGroup
                                 }
@@ -109,6 +124,26 @@ struct IconGroupsSettingsView: View {
                                 }
                             }
                             .controlSize(.small)
+
+                            if onAssignGroupHotkey != nil {
+                                ClearGlassDivider()
+
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("Hotkeys")
+                                        .font(.headline)
+
+                                    HStack(spacing: 10) {
+                                        Button("Assign Open Hotkey", systemImage: "keyboard") {
+                                            assignHotkey(.openPanel, to: selectedGroup)
+                                        }
+
+                                        Button("Assign Reveal Hotkey", systemImage: "eye") {
+                                            assignHotkey(.reveal, to: selectedGroup)
+                                        }
+                                    }
+                                    .controlSize(.small)
+                                }
+                            }
                         } else {
                             ContentUnavailableView("No Groups", systemImage: "person.2", description: Text("Create a group to organize menu bar items."))
                                 .frame(maxWidth: .infinity, minHeight: 220)
@@ -227,15 +262,32 @@ struct IconGroupsSettingsView: View {
         notifyChanged()
     }
 
+    private func runOpenPanel(_ group: IconGroup) {
+        guard let result = onOpenGroupPanel?(group) else { return }
+        statusMessage = result.message
+    }
+
+    private func runReveal(_ group: IconGroup) {
+        guard let result = onRevealGroup?(group) else { return }
+        statusMessage = result.message
+    }
+
+    private func assignHotkey(_ kind: GroupHotkeyAssignmentKind, to group: IconGroup) {
+        guard let result = onAssignGroupHotkey?(group, kind) else { return }
+        statusMessage = result.message
+    }
+
     private func export(_ group: IconGroup) {
         let panel = NSSavePanel()
-        panel.nameFieldStringValue = "\(group.name)-group.json"
+        panel.nameFieldStringValue = exportFileName(for: group)
         panel.allowedContentTypes = [.json]
         guard panel.runModal() == .OK, let url = panel.url else { return }
 
         do {
             try IconGroupImportExport.exportGroup(group).write(to: url, options: .atomic)
-            statusMessage = "Group exported."
+            statusMessage = group.isProtected
+                ? "Protected group exported with name and item details redacted."
+                : "Group exported."
         } catch {
             statusMessage = "Export failed: \(error.localizedDescription)"
         }
@@ -249,7 +301,8 @@ struct IconGroupsSettingsView: View {
         guard panel.runModal() == .OK, let url = panel.url else { return }
 
         do {
-            let imported = try IconGroupImportExport.importFrom(data: Data(contentsOf: url))
+            let report = try IconGroupImportExport.importReport(from: Data(contentsOf: url))
+            let imported = report.groups
             for group in imported {
                 let created = groupStore.createGroup(name: uniqueName(group.name))
                 groupStore.updateGroup(id: created.id) { stored in
@@ -263,11 +316,27 @@ struct IconGroupsSettingsView: View {
                     stored.itemRefs = group.itemRefs
                 }
             }
-            statusMessage = "Imported \(imported.count) group(s)."
+            statusMessage = [
+                "Imported \(imported.count) group(s).",
+                report.warningSummary
+            ]
+            .compactMap { $0 }
+            .joined(separator: " ")
             notifyChanged()
         } catch {
             statusMessage = "Import failed: \(error.localizedDescription)"
         }
+    }
+
+    private func exportFileName(for group: IconGroup) -> String {
+        let baseName = group.isProtected ? "protected" : group.name
+        let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-_ "))
+        let sanitized = String(baseName.unicodeScalars.map { scalar in
+            allowed.contains(scalar) ? Character(scalar) : "-"
+        })
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return "\(sanitized.isEmpty ? "group" : sanitized)-group.json"
     }
 
     private func uniqueName(_ base: String) -> String {
