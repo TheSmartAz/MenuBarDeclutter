@@ -125,8 +125,9 @@ struct BehaviorSettingsView: View {
                     ClearGlassValueRow("Current Hotkey") {
                         HStack(spacing: 10) {
                             KeyboardShortcutToken(text: settingsStore.effectiveGlobalHotkey().displayName)
+                                .lineLimit(1)
 
-                            Button("Reset to Default") {
+                            Button("Reset to Default", systemImage: "arrow.counterclockwise") {
                                 settingsStore.resetGlobalHotkeyToDefault()
                                 onChange?()
                             }

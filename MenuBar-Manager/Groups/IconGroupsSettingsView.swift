@@ -78,78 +78,20 @@ struct IconGroupsSettingsView: View {
             }
 
             ClearGlassSection("Manage Groups", subtitle: "Create groups manually or from the current Pro snapshot.") {
-                HStack(alignment: .top, spacing: 16) {
-                    groupList
-                        .frame(minWidth: 250, idealWidth: 280, maxWidth: 320)
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .top, spacing: 16) {
+                        groupList
+                            .frame(minWidth: 250, idealWidth: 280, maxWidth: 320)
 
-                    VStack(alignment: .leading, spacing: 12) {
-                        if let selectedGroup {
-                            IconGroupPreviewView(
-                                group: selectedGroup,
-                                snapshots: snapshots,
-                                isProtectedRedacted: selectedGroup.isProtected && settingsStore.protectedGroupsRequireAuth
-                            )
-
-                            if let commandAvailability = commandAvailability?(selectedGroup) {
-                                CommandAvailabilityRow(summary: commandAvailability)
-
-                                ClearGlassDivider()
-                            }
-
-                            HStack(spacing: 10) {
-                                if onOpenGroupPanel != nil {
-                                    Button("Open Panel", systemImage: "rectangle.on.rectangle") {
-                                        runOpenPanel(selectedGroup)
-                                    }
-                                }
-
-                                if onRevealGroup != nil {
-                                    Button("Reveal", systemImage: "eye") {
-                                        runReveal(selectedGroup)
-                                    }
-                                }
-
-                                Button("Edit", systemImage: "pencil") {
-                                    editingGroup = selectedGroup
-                                }
-
-                                Button("Export", systemImage: "square.and.arrow.up") {
-                                    export(selectedGroup)
-                                }
-
-                                Button("Delete", systemImage: "trash", role: .destructive) {
-                                    groupStore.removeGroup(id: selectedGroup.id)
-                                    selectedID = groups.first?.id
-                                    notifyChanged()
-                                }
-                            }
-                            .controlSize(.small)
-
-                            if onAssignGroupHotkey != nil {
-                                ClearGlassDivider()
-
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text("Hotkeys")
-                                        .font(.headline)
-
-                                    HStack(spacing: 10) {
-                                        Button("Assign Open Hotkey", systemImage: "keyboard") {
-                                            assignHotkey(.openPanel, to: selectedGroup)
-                                        }
-
-                                        Button("Assign Reveal Hotkey", systemImage: "eye") {
-                                            assignHotkey(.reveal, to: selectedGroup)
-                                        }
-                                    }
-                                    .controlSize(.small)
-                                }
-                            }
-                        } else {
-                            ContentUnavailableView("No Groups", systemImage: "person.2", description: Text("Create a group to organize menu bar items."))
-                                .frame(maxWidth: .infinity, minHeight: 220)
-                        }
+                        selectedGroupDetail
                     }
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
+
+                    VStack(alignment: .leading, spacing: 14) {
+                        groupList
+                            .frame(maxWidth: .infinity)
+
+                        selectedGroupDetail
+                    }
                 }
 
                 if !proModeAvailable {
@@ -187,6 +129,93 @@ struct IconGroupsSettingsView: View {
         }
     }
 
+    private var selectedGroupDetail: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if let selectedGroup {
+                IconGroupPreviewView(
+                    group: selectedGroup,
+                    snapshots: snapshots,
+                    isProtectedRedacted: selectedGroup.isProtected && settingsStore.protectedGroupsRequireAuth
+                )
+
+                if let commandAvailability = commandAvailability?(selectedGroup) {
+                    CommandAvailabilityRow(summary: commandAvailability)
+
+                    ClearGlassDivider()
+                }
+
+                selectedGroupActions(selectedGroup)
+
+                if onAssignGroupHotkey != nil {
+                    ClearGlassDivider()
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Hotkeys")
+                            .font(.headline)
+
+                        HStack(spacing: 10) {
+                            Button("Assign Open Hotkey", systemImage: "keyboard") {
+                                assignHotkey(.openPanel, to: selectedGroup)
+                            }
+
+                            Button("Assign Reveal Hotkey", systemImage: "eye") {
+                                assignHotkey(.reveal, to: selectedGroup)
+                            }
+                        }
+                        .controlSize(.small)
+                    }
+                }
+            } else {
+                ContentUnavailableView("No Groups", systemImage: "person.2", description: Text("Create a group to organize menu bar items."))
+                    .frame(maxWidth: .infinity, minHeight: 220)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+    }
+
+    @ViewBuilder
+    private func selectedGroupActions(_ group: IconGroup) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 10) {
+                selectedGroupActionButtons(group)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                selectedGroupActionButtons(group)
+            }
+        }
+        .controlSize(.small)
+    }
+
+    @ViewBuilder
+    private func selectedGroupActionButtons(_ group: IconGroup) -> some View {
+        if onOpenGroupPanel != nil {
+            Button("Open Panel", systemImage: "rectangle.on.rectangle") {
+                runOpenPanel(group)
+            }
+        }
+
+        if onRevealGroup != nil {
+            Button("Reveal", systemImage: "eye") {
+                runReveal(group)
+            }
+        }
+
+        Button("Edit", systemImage: "pencil") {
+            editingGroup = group
+        }
+
+        Button("Export", systemImage: "square.and.arrow.up") {
+            export(group)
+        }
+
+        Button("Delete", systemImage: "trash", role: .destructive) {
+            groupStore.removeGroup(id: group.id)
+            selectedID = groups.first?.id
+            notifyChanged()
+        }
+    }
+
     private var groupList: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
@@ -213,16 +242,23 @@ struct IconGroupsSettingsView: View {
             }
 
             VStack(spacing: 0) {
-                ForEach(groups) { group in
-                    IconGroupRowView(
-                        group: group,
-                        isSelected: group.id == selectedGroup?.id
-                    ) {
-                        selectedID = group.id
-                    }
+                if groups.isEmpty {
+                    Text("No groups yet.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, minHeight: 64)
+                } else {
+                    ForEach(groups) { group in
+                        IconGroupRowView(
+                            group: group,
+                            isSelected: group.id == selectedGroup?.id
+                        ) {
+                            selectedID = group.id
+                        }
 
-                    if group.id != groups.last?.id {
-                        ClearGlassDivider()
+                        if group.id != groups.last?.id {
+                            ClearGlassDivider()
+                        }
                     }
                 }
             }

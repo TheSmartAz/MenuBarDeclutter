@@ -14,7 +14,7 @@ struct PrivateAccessSettingsView: View {
             subtitle: "Use LocalAuthentication to gate sensitive app actions. No biometric data is stored.",
             badges: [.preview, .privacySafe]
         ) {
-            ClearGlassSection("Lock") {
+            ClearGlassSection("Lock", subtitle: "Authentication options and current lock state.") {
                 FeatureGateNotice(
                     .preview,
                     text: "Preview in v0.1.1. Gates app actions only; not encryption or system icon hiding."
@@ -55,32 +55,7 @@ struct PrivateAccessSettingsView: View {
                     valueSuffix: "s"
                 )
 
-                HStack(spacing: 10) {
-                    Button("Test Authentication", systemImage: "touchid") {
-                        Task { @MainActor in
-                            guard let coordinator else {
-                                testStatus = "Authentication service unavailable."
-                                return
-                            }
-                            let result = await coordinator.testAuthentication()
-                            testStatus = "Authentication \(result.statusString)."
-                        }
-                    }
-                    .disabled(!settingsStore.privateAccessEnabled)
-
-                    Button("Clear Unlock Session", systemImage: "lock") {
-                        coordinator?.clearUnlock()
-                        testStatus = "Unlock session cleared."
-                    }
-                    .disabled(coordinator == nil)
-
-                    if let coordinator {
-                        ClearGlassStatusValue(
-                            text: coordinator.isUnlocked ? "Unlocked" : "Locked",
-                            style: coordinator.isUnlocked ? .success : .secondary
-                        )
-                    }
-                }
+                lockActionControls
 
                 if let testStatus {
                     ClearGlassInlineMessage(text: testStatus, systemImage: "info.circle")
@@ -152,8 +127,8 @@ struct PrivateAccessSettingsView: View {
 
             if !commandAvailabilities.isEmpty {
                 ClearGlassSection("Command Center", subtitle: "Shared routing status for protected app actions.") {
-                    ForEach(commandAvailabilities.indices, id: \.self) { index in
-                        CommandAvailabilityRow(summary: commandAvailabilities[index])
+                    ForEach(Array(commandAvailabilities.enumerated()), id: \.offset) { index, summary in
+                        CommandAvailabilityRow(summary: summary)
 
                         if index < commandAvailabilities.count - 1 {
                             ClearGlassDivider()
@@ -162,13 +137,60 @@ struct PrivateAccessSettingsView: View {
                 }
             }
 
-            ClearGlassSection("Privacy Boundary") {
+            ClearGlassSection("Privacy Boundary", subtitle: "What Private Access does and does not protect.") {
                 ClearGlassInlineMessage(
                     text: "Private Access gates MenuBarDeclutter actions. It is not encryption and does not hide third-party menu bar items that are already visible outside the app.",
                     systemImage: "lock.shield",
                     style: .info
                 )
             }
+        }
+    }
+
+    private var lockActionControls: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 10) {
+                lockButtons
+                lockStatus
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                lockButtons
+                lockStatus
+            }
+        }
+        .controlSize(.small)
+    }
+
+    private var lockButtons: some View {
+        HStack(spacing: 10) {
+            Button("Test Authentication", systemImage: "touchid") {
+                Task { @MainActor in
+                    guard let coordinator else {
+                        testStatus = "Authentication service unavailable."
+                        return
+                    }
+                    let result = await coordinator.testAuthentication()
+                    testStatus = "Authentication \(result.statusString)."
+                }
+            }
+            .disabled(!settingsStore.privateAccessEnabled)
+
+            Button("Clear Unlock Session", systemImage: "lock") {
+                coordinator?.clearUnlock()
+                testStatus = "Unlock session cleared."
+            }
+            .disabled(coordinator == nil)
+        }
+    }
+
+    @ViewBuilder
+    private var lockStatus: some View {
+        if let coordinator {
+            ClearGlassStatusValue(
+                text: coordinator.isUnlocked ? "Unlocked" : "Locked",
+                style: coordinator.isUnlocked ? .success : .secondary
+            )
         }
     }
 

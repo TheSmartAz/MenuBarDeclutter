@@ -40,6 +40,7 @@ struct AutomationSettingsView: View {
                         .disabled(!settingsStore.appIntentsEnabled)
                         .onChange(of: settingsStore.appIntentsCanApplyProfiles) { _, _ in onChange?() }
                 }
+                .opacity(settingsStore.appIntentsEnabled ? 1 : 0.55)
 
                 ClearGlassDivider()
 
@@ -53,12 +54,14 @@ struct AutomationSettingsView: View {
                         .disabled(!settingsStore.appIntentsEnabled)
                         .onChange(of: settingsStore.appIntentsCanAccessLabs) { _, _ in onChange?() }
                 }
+                .opacity(settingsStore.appIntentsEnabled ? 1 : 0.55)
 
                 ClearGlassDivider()
 
                 Button("Open Shortcuts", systemImage: "arrow.up.right.square") {
                     NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Shortcuts.app"))
                 }
+                .controlSize(.small)
             }
 
             ClearGlassSection("Shortcut Actions") {
@@ -77,27 +80,13 @@ struct AutomationSettingsView: View {
 
     @ViewBuilder
     private var shortcutActionRows: some View {
-        shortcutActionRow(.expandMenuBarItems)
-        ClearGlassDivider()
-        shortcutActionRow(.collapseMenuBarItems)
-        ClearGlassDivider()
-        shortcutActionRow(.revealAllMenuBarItems)
-        ClearGlassDivider()
-        shortcutActionRow(.showSecondBar)
-        ClearGlassDivider()
-        shortcutActionRow(.hideSecondBar)
-        ClearGlassDivider()
-        shortcutActionRow(.enterFullMenuBarMode)
-        ClearGlassDivider()
-        shortcutActionRow(.exitFullMenuBarMode)
-        ClearGlassDivider()
-        shortcutActionRow(.applyProfile)
-        ClearGlassDivider()
-        shortcutActionRow(.pauseAutomation)
-        ClearGlassDivider()
-        shortcutActionRow(.resumeAutomation)
-        ClearGlassDivider()
-        shortcutActionRow(.previewLayoutSpacingPreset)
+        ForEach(AutomationShortcutAction.allActions) { action in
+            shortcutActionRow(action)
+
+            if action.id != AutomationShortcutAction.allActions.last?.id {
+                ClearGlassDivider()
+            }
+        }
     }
 
     private func shortcutActionRow(_ action: AutomationShortcutAction) -> some View {
@@ -108,9 +97,11 @@ struct AutomationSettingsView: View {
             spacingLabsEnabled: settingsStore.menuBarSpacingLabsEnabled
         )
 
-        return ClearGlassControlRow(systemImage: "sparkles", title: action.title) {
-            Text(status.displayName)
-                .foregroundStyle(status == .ready ? Color.secondary : Color.orange)
+        return ClearGlassControlRow(systemImage: "sparkles", title: action.title, iconTint: status.clearGlassStyle.tint) {
+            ClearGlassStatusValue(
+                text: status.displayName,
+                style: status.clearGlassStyle
+            )
         }
     }
 }
@@ -196,6 +187,17 @@ enum AutomationShortcutStatus: Equatable, Sendable {
             "Labs Gate"
         case .requiresLabs:
             "Requires Labs"
+        }
+    }
+
+    var clearGlassStyle: ClearGlassStatusStyle {
+        switch self {
+        case .ready:
+            .success
+        case .disabled:
+            .secondary
+        case .profileGated, .labsGated, .requiresLabs:
+            .warning
         }
     }
 }

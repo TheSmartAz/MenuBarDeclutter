@@ -110,7 +110,7 @@ struct SecondBarSettingsView: View {
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
-                    .frame(width: 420)
+                    .frame(width: 320)
                     .disabled(!settingsStore.secondBarEnabled)
                 }
                 .opacity(settingsStore.secondBarEnabled ? 1 : 0.55)
@@ -238,9 +238,10 @@ private struct SecondBarPreviewStrip: View {
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)
+                                .minimumScaleFactor(0.8)
                         }
                     }
-                    .frame(minWidth: 34)
+                    .frame(minWidth: 38)
                 }
             }
         }

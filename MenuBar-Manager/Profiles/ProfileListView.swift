@@ -106,7 +106,7 @@ struct ProfileListView: View {
                     searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "No Profiles" : "No Matching Profiles",
                     systemImage: "person.crop.rectangle.stack"
                 )
-                .frame(maxWidth: .infinity, minHeight: 180)
+                .frame(maxWidth: .infinity, minHeight: 140, maxHeight: 160)
             } else {
                 ScrollView {
                     LazyVStack(spacing: 6) {
@@ -151,7 +151,7 @@ struct ProfileListView: View {
                 }
             } else {
                 ContentUnavailableView("No Profile Selected", systemImage: "person.crop.rectangle.stack")
-                    .frame(maxWidth: .infinity, minHeight: 260)
+                    .frame(maxWidth: .infinity, minHeight: 150, maxHeight: 180)
             }
 
             if let message {

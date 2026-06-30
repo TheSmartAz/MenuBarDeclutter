@@ -36,7 +36,7 @@ struct MigrationAssistantRootView: View {
             subtitle: "Move local MenuBarDeclutter configuration explicitly and safely.",
             badges: [.preview, .privacySafe]
         ) {
-            ClearGlassSection("Export") {
+            ClearGlassSection("Export", subtitle: "Create a local JSON package with volatile support data omitted.") {
                 FeatureGateNotice(
                     .preview,
                     text: "Preview in v0.1.1. Export writes local JSON; import dry-runs, backs up, then applies only after confirmation."
@@ -61,7 +61,7 @@ struct MigrationAssistantRootView: View {
                 )
             }
 
-            ClearGlassSection("Import") {
+            ClearGlassSection("Import", subtitle: "Review packages with a dry-run before applying changes.") {
                 ClearGlassControlRow(
                     systemImage: "square.and.arrow.down",
                     title: "Import Package",
@@ -73,6 +73,7 @@ struct MigrationAssistantRootView: View {
                 }
 
                 if let dryRun {
+                    ClearGlassDivider()
                     importDryRunView(dryRun)
                 }
 
@@ -81,21 +82,20 @@ struct MigrationAssistantRootView: View {
                 }
             }
 
-            ClearGlassSection("Backups") {
+            ClearGlassSection("Backups", subtitle: "Local restore points created before imports are applied.") {
                 ClearGlassValueRow("Available Backups") {
                     Text(backupCount, format: .number)
                         .font(.system(.body, design: .monospaced))
                 }
 
-                HStack(spacing: 10) {
-                    Button("Refresh Backups", systemImage: "arrow.clockwise") {
-                        refreshBackups()
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 10) {
+                        backupButtons
                     }
 
-                    Button("Restore Latest Backup", systemImage: "arrow.uturn.backward.circle") {
-                        restoreLatestBackup()
+                    VStack(alignment: .leading, spacing: 8) {
+                        backupButtons
                     }
-                    .disabled(backupCount == 0)
                 }
                 .buttonStyle(.bordered)
             }
@@ -113,15 +113,21 @@ struct MigrationAssistantRootView: View {
 
     private func importDryRunView(_ dryRun: SettingsImportDryRun) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            ClearGlassValueRow("Modified Settings") { Text(dryRun.modifiedSettings, format: .number) }
-            ClearGlassValueRow("Profiles in Package") { Text(dryRun.addedProfiles, format: .number) }
-            ClearGlassValueRow("Groups in Package") { Text(dryRun.addedGroups, format: .number) }
-            ClearGlassValueRow("Hotkeys in Package") { Text(dryRun.addedHotkeys, format: .number) }
-            ClearGlassValueRow("Spacers in Package") { Text(dryRun.addedSpacers, format: .number) }
+            VStack(spacing: 0) {
+                ClearGlassValueRow("Modified Settings") { Text(dryRun.modifiedSettings, format: .number) }
+                ClearGlassDivider()
+                ClearGlassValueRow("Profiles in Package") { Text(dryRun.addedProfiles, format: .number) }
+                ClearGlassDivider()
+                ClearGlassValueRow("Groups in Package") { Text(dryRun.addedGroups, format: .number) }
+                ClearGlassDivider()
+                ClearGlassValueRow("Hotkeys in Package") { Text(dryRun.addedHotkeys, format: .number) }
+                ClearGlassDivider()
+                ClearGlassValueRow("Spacers in Package") { Text(dryRun.addedSpacers, format: .number) }
+            }
 
             if dryRun.hasConflicts {
                 ClearGlassInlineMessage(
-                    text: dryRun.conflicts.map(\.description).joined(separator: " "),
+                    text: dryRun.conflicts.map(\.description).joined(separator: "\n"),
                     systemImage: "exclamationmark.triangle",
                     style: .warning
                 )
@@ -135,19 +141,14 @@ struct MigrationAssistantRootView: View {
                 )
             }
 
-            HStack(spacing: 10) {
-                Button("Apply Safe Import", systemImage: "checkmark.shield") {
-                    applyPendingImport()
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) {
+                    importDryRunButtons(dryRun)
                 }
-                .disabled(pendingPackage == nil || hasUnsupportedSchema(dryRun))
 
-                Button("Clear Pending Import", systemImage: "xmark.circle") {
-                    pendingPackage = nil
-                    self.dryRun = nil
-                    lastApplyResult = nil
-                    statusMessage = "Pending import cleared."
+                VStack(alignment: .leading, spacing: 8) {
+                    importDryRunButtons(dryRun)
                 }
-                .disabled(pendingPackage == nil)
             }
             .buttonStyle(.bordered)
         }
@@ -156,10 +157,15 @@ struct MigrationAssistantRootView: View {
     private func importApplyResultView(_ result: SettingsImportApplyResult) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             ClearGlassDivider()
-            ClearGlassValueRow("Applied Settings") { Text(result.appliedSettings, format: .number) }
-            ClearGlassValueRow("Skipped Settings") { Text(result.skippedSettings, format: .number) }
-            ClearGlassValueRow("Imported Objects") { Text(result.importedObjectCount, format: .number) }
-            ClearGlassValueRow("Skipped Hotkeys") { Text(result.skippedHotkeys, format: .number) }
+            VStack(spacing: 0) {
+                ClearGlassValueRow("Applied Settings") { Text(result.appliedSettings, format: .number) }
+                ClearGlassDivider()
+                ClearGlassValueRow("Skipped Settings") { Text(result.skippedSettings, format: .number) }
+                ClearGlassDivider()
+                ClearGlassValueRow("Imported Objects") { Text(result.importedObjectCount, format: .number) }
+                ClearGlassDivider()
+                ClearGlassValueRow("Skipped Hotkeys") { Text(result.skippedHotkeys, format: .number) }
+            }
 
             if !result.skippedExperimentalFlags.isEmpty {
                 ClearGlassInlineMessage(
@@ -169,6 +175,34 @@ struct MigrationAssistantRootView: View {
                 )
             }
         }
+    }
+
+    @ViewBuilder
+    private func importDryRunButtons(_ dryRun: SettingsImportDryRun) -> some View {
+        Button("Apply Safe Import", systemImage: "checkmark.shield") {
+            applyPendingImport()
+        }
+        .disabled(pendingPackage == nil || hasUnsupportedSchema(dryRun))
+
+        Button("Clear Pending Import", systemImage: "xmark.circle") {
+            pendingPackage = nil
+            self.dryRun = nil
+            lastApplyResult = nil
+            statusMessage = "Pending import cleared."
+        }
+        .disabled(pendingPackage == nil)
+    }
+
+    @ViewBuilder
+    private var backupButtons: some View {
+        Button("Refresh Backups", systemImage: "arrow.clockwise") {
+            refreshBackups()
+        }
+
+        Button("Restore Latest Backup", systemImage: "arrow.uturn.backward.circle") {
+            restoreLatestBackup()
+        }
+        .disabled(backupCount == 0)
     }
 
     private func exportPackage() {

@@ -21,6 +21,7 @@ struct PrivacySettingsView: View {
             ClearGlassSection("Basic Mode", subtitle: "Fully usable without permissions.") {
                 PrivacyCapabilityRow(
                     title: "Accessibility",
+                    subtitle: "Not requested by Basic Mode.",
                     status: settingsStore.proModeEnabled ? accessibilityStatusText : "Not Requested",
                     systemImage: "hand.raised"
                 )
@@ -29,6 +30,7 @@ struct PrivacySettingsView: View {
 
                 PrivacyCapabilityRow(
                     title: "Screen Recording",
+                    subtitle: "No screenshots or pixel capture.",
                     status: "Not Requested",
                     systemImage: "rectangle.on.rectangle"
                 )
@@ -37,6 +39,7 @@ struct PrivacySettingsView: View {
 
                 PrivacyCapabilityRow(
                     title: "Apple Events",
+                    subtitle: "No control of other apps.",
                     status: "Not Requested",
                     systemImage: "apple.terminal"
                 )
@@ -45,6 +48,7 @@ struct PrivacySettingsView: View {
 
                 PrivacyCapabilityRow(
                     title: "Input Monitoring",
+                    subtitle: "No keyboard monitoring.",
                     status: "Not Requested",
                     systemImage: "keyboard"
                 )
@@ -53,6 +57,7 @@ struct PrivacySettingsView: View {
 
                 PrivacyCapabilityRow(
                     title: "Network Access",
+                    subtitle: "No telemetry, sync, or analytics.",
                     status: "Not Used",
                     systemImage: "network"
                 )
@@ -121,13 +126,13 @@ struct PrivacySettingsView: View {
                             style: accessibilityStatusStyle
                         )
 
-                        Button("Request Permission") {
+                        Button("Request Permission", systemImage: "hand.raised") {
                             permissionService?.requestPromptFromUserAction()
                             notifyPrivacyChanged()
                         }
                         .disabled(!settingsStore.proModeEnabled || permissionService?.status == .granted)
 
-                        Button("Open Settings") {
+                        Button("Open Settings", systemImage: "gearshape") {
                             permissionService?.openSystemSettingsPrivacyPane()
                         }
                         .disabled(!settingsStore.proModeEnabled)
@@ -236,6 +241,8 @@ struct PrivacySettingsView: View {
             Text(title)
                 .font(.callout)
                 .foregroundStyle(.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
         }
         .frame(width: 120)
     }
@@ -329,6 +336,7 @@ private struct PrivacyOverviewPill: View {
 
 private struct PrivacyCapabilityRow: View {
     let title: String
+    let subtitle: String
     let status: String
     let systemImage: String
 
@@ -336,6 +344,7 @@ private struct PrivacyCapabilityRow: View {
         ClearGlassControlRow(
             systemImage: systemImage,
             title: title,
+            subtitle: subtitle,
             iconTint: .secondary
         ) {
             ClearGlassStatusValue(text: status, style: statusStyle)

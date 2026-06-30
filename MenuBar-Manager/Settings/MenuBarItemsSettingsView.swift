@@ -183,39 +183,41 @@ private struct MenuBarItemsSummaryStrip: View {
     var liveStatus: LiveDiagnosticsStatus?
     let snapshots: [MenuBarItemSnapshot]
 
+    private let columns = [
+        GridItem(.adaptive(minimum: 128), spacing: 14)
+    ]
+
     var body: some View {
-        Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 12) {
-            GridRow {
-                MenuBarItemsMetric(
-                    title: "Total",
-                    value: snapshots.count,
-                    systemImage: "list.bullet.rectangle"
-                )
-                MenuBarItemsMetric(
-                    title: "Visible",
-                    value: liveStatus?.menuBarScanVisibleCount ?? zoneCount(.visible),
-                    systemImage: "eye",
-                    tone: .privacySafe
-                )
-                MenuBarItemsMetric(
-                    title: "Hidden",
-                    value: liveStatus?.menuBarScanHiddenCount ?? zoneCount(.hidden),
-                    systemImage: "eye.slash",
-                    tone: .experimental
-                )
-                MenuBarItemsMetric(
-                    title: "Always Hidden",
-                    value: liveStatus?.menuBarScanAlwaysHiddenCount ?? zoneCount(.alwaysHidden),
-                    systemImage: "lock",
-                    tone: .destructive
-                )
-                MenuBarItemsMetric(
-                    title: "Unknown",
-                    value: liveStatus?.menuBarScanUnknownCount ?? zoneCount(.unknown),
-                    systemImage: "questionmark.circle",
-                    tone: .disabled
-                )
-            }
+        LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
+            MenuBarItemsMetric(
+                title: "Total",
+                value: snapshots.count,
+                systemImage: "list.bullet.rectangle"
+            )
+            MenuBarItemsMetric(
+                title: "Visible",
+                value: liveStatus?.menuBarScanVisibleCount ?? zoneCount(.visible),
+                systemImage: "eye",
+                tone: .privacySafe
+            )
+            MenuBarItemsMetric(
+                title: "Hidden",
+                value: liveStatus?.menuBarScanHiddenCount ?? zoneCount(.hidden),
+                systemImage: "eye.slash",
+                tone: .experimental
+            )
+            MenuBarItemsMetric(
+                title: "Always Hidden",
+                value: liveStatus?.menuBarScanAlwaysHiddenCount ?? zoneCount(.alwaysHidden),
+                systemImage: "lock",
+                tone: .destructive
+            )
+            MenuBarItemsMetric(
+                title: "Unknown",
+                value: liveStatus?.menuBarScanUnknownCount ?? zoneCount(.unknown),
+                systemImage: "questionmark.circle",
+                tone: .disabled
+            )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -244,8 +246,10 @@ private struct MenuBarItemsMetric: View {
                 Text(title)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
     }
 }
@@ -255,21 +259,37 @@ private struct MenuBarItemsToolbar: View {
     @Binding var selectedFilter: MenuBarItemsFilter
 
     var body: some View {
-        HStack(spacing: 12) {
-            Picker("Filter", selection: $selectedFilter) {
-                ForEach(MenuBarItemsFilter.allCases) { filter in
-                    Text(filter.title)
-                        .tag(filter)
-                }
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                filterPicker
+
+                Spacer(minLength: 16)
+
+                searchField
             }
-            .pickerStyle(.segmented)
-            .frame(width: 500)
 
-            Spacer(minLength: 16)
-
-            SearchField("Search Items", text: $searchText, width: 240)
+            VStack(alignment: .leading, spacing: 8) {
+                filterPicker
+                searchField
+            }
         }
         .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var filterPicker: some View {
+        Picker("Filter", selection: $selectedFilter) {
+            ForEach(MenuBarItemsFilter.allCases) { filter in
+                Text(filter.title)
+                    .tag(filter)
+            }
+        }
+        .pickerStyle(.segmented)
+        .frame(minWidth: 360, idealWidth: 500, maxWidth: 500)
+    }
+
+    private var searchField: some View {
+        SearchField("Search Items", text: $searchText, width: 240)
     }
 }
 
@@ -286,12 +306,15 @@ private struct MenuBarItemsTable: View {
 
             TableColumn("App") { snapshot in
                 Text(snapshot.owningApplicationName ?? "-")
+                    .lineLimit(1)
+                    .truncationMode(.tail)
             }
             .width(min: 120, ideal: 150)
 
             TableColumn("Zone") { snapshot in
                 Text(snapshot.zone.displayName)
                     .foregroundStyle(snapshot.zone.statusStyle.foreground)
+                    .lineLimit(1)
             }
             .width(min: 95, ideal: 120)
 
@@ -309,11 +332,13 @@ private struct MenuBarItemTitleCell: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(snapshot.displayTitle)
                     .lineLimit(1)
+                    .truncationMode(.tail)
 
                 Text(snapshot.bundleIdentifier ?? snapshot.role ?? "Unknown owner")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                    .truncationMode(.middle)
             }
         }
     }
@@ -370,6 +395,7 @@ private struct MenuBarItemInspector: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                    .truncationMode(.tail)
             }
         }
     }

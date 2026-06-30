@@ -146,6 +146,8 @@ private struct CapacitySection: View {
                     .labelsHidden()
             }
 
+            ClearGlassDivider()
+
             ClearGlassControlRow(
                 systemImage: "lightbulb",
                 title: "Layout Suggestions",
@@ -157,6 +159,8 @@ private struct CapacitySection: View {
             }
 
             if let liveStatus, let scanTime = liveStatus.lastMenuBarScanTime {
+                ClearGlassDivider()
+
                 ClearGlassValueRow("Last AX Scan", subtitle: "Pro Mode snapshot timestamp") {
                     Text(scanTime, style: .time)
                 }
@@ -170,14 +174,22 @@ private struct CapacitySection: View {
                         .font(.system(.body, design: .monospaced))
                 }
 
+                ClearGlassDivider()
+
                 ClearGlassValueRow("Estimated Slots") {
                     Text("\(estimate.estimatedUsedSlots) / \(estimate.estimatedItemSlots)")
                         .font(.system(.body, design: .monospaced))
                 }
 
+                ClearGlassDivider()
+
                 ClearGlassValueRow("Known Items") {
                     Text("\(estimate.knownVisibleItemCount) visible, \(estimate.knownHiddenItemCount) hidden")
                         .foregroundStyle(.secondary)
+                }
+
+                if estimate.warnings.isEmpty == false {
+                    ClearGlassDivider()
                 }
 
                 ForEach(estimate.warnings, id: \.rawValue) { warning in
@@ -188,6 +200,8 @@ private struct CapacitySection: View {
                     )
                 }
             }
+
+            ClearGlassDivider()
 
             ClearGlassInlineMessage(
                 text: "Capacity estimates are more accurate with Pro Mode and Accessibility. Basic Mode uses approximate geometry.",
@@ -248,6 +262,8 @@ private struct FullMenuBarModeSection: View {
                     .labelsHidden()
             }
 
+            ClearGlassDivider()
+
             ClearGlassControlRow(
                 systemImage: "clock",
                 title: "Auto-Exit",
@@ -259,6 +275,8 @@ private struct FullMenuBarModeSection: View {
             }
 
             if settingsStore.fullMenuBarModeAutoExitEnabled {
+                ClearGlassDivider()
+
                 ClearGlassSliderRow(
                     "Auto-Exit Delay",
                     subtitle: "Seconds before auto-exit.",
@@ -268,6 +286,8 @@ private struct FullMenuBarModeSection: View {
                     valueSuffix: "s"
                 )
             }
+
+            ClearGlassDivider()
 
             ClearGlassControlRow(
                 systemImage: "menubar.rectangle",
@@ -279,6 +299,8 @@ private struct FullMenuBarModeSection: View {
                     .labelsHidden()
             }
 
+            ClearGlassDivider()
+
             ClearGlassControlRow(
                 systemImage: "pause.circle",
                 title: "Suspend Auto-Rehide",
@@ -288,6 +310,8 @@ private struct FullMenuBarModeSection: View {
                     .toggleStyle(.switch)
                     .labelsHidden()
             }
+
+            ClearGlassDivider()
 
             ClearGlassControlRow(
                 systemImage: "line.vertical",
@@ -326,6 +350,8 @@ private struct CrowdedRevealSection: View {
                     .labelsHidden()
             }
 
+            ClearGlassDivider()
+
             ClearGlassControlRow(
                 systemImage: "menubar.rectangle",
                 title: "Auto-Open Second Bar",
@@ -336,6 +362,8 @@ private struct CrowdedRevealSection: View {
                     .labelsHidden()
             }
 
+            ClearGlassDivider()
+
             ClearGlassSliderRow(
                 "Crowded Threshold",
                 subtitle: "Capacity ratio above which the menu bar is considered crowded.",
@@ -345,6 +373,8 @@ private struct CrowdedRevealSection: View {
                 valueSuffix: "",
                 valueFractionLength: 2
             )
+
+            ClearGlassDivider()
 
             ClearGlassControlRow(
                 systemImage: "star",
@@ -378,6 +408,8 @@ private struct SpacerItemsSection: View {
                     .labelsHidden()
             }
 
+            ClearGlassDivider()
+
             ClearGlassControlRow(
                 systemImage: "eye",
                 title: "Show Spacer Markers",
@@ -387,6 +419,8 @@ private struct SpacerItemsSection: View {
                     .toggleStyle(.switch)
                     .labelsHidden()
             }
+
+            ClearGlassDivider()
 
             ClearGlassInlineMessage(
                 text: "Spacer items are app-owned NSStatusItem instances. You can Command-drag them like other menu bar items.",
@@ -478,6 +512,8 @@ private struct MenuBarSpacingLabsSection: View {
             }
 
             if settingsStore.menuBarSpacingLabsEnabled {
+                ClearGlassDivider()
+
                 ClearGlassControlRow(
                     systemImage: "slider.horizontal.3",
                     title: "Preset",
@@ -493,6 +529,8 @@ private struct MenuBarSpacingLabsSection: View {
                 }
 
                 if settingsStore.menuBarSpacingPreset == MenuBarSpacingPreset.custom.rawValue {
+                    ClearGlassDivider()
+
                     ClearGlassSliderRow(
                         "Custom Item Spacing",
                         value: Binding(
@@ -503,6 +541,8 @@ private struct MenuBarSpacingLabsSection: View {
                         step: 1,
                         valueSuffix: "pt"
                     )
+
+                    ClearGlassDivider()
 
                     ClearGlassSliderRow(
                         "Custom Selection Padding",
@@ -517,6 +557,8 @@ private struct MenuBarSpacingLabsSection: View {
                 }
 
                 if settingsStore.menuBarSpacingHasBackup {
+                    ClearGlassDivider()
+
                     ClearGlassInlineMessage(
                         text: "A backup of your previous spacing values exists. You can restore it.",
                         systemImage: "checkmark.circle",
@@ -525,10 +567,14 @@ private struct MenuBarSpacingLabsSection: View {
                 }
 
                 if let status = settingsStore.menuBarSpacingLastApplyStatus {
+                    ClearGlassDivider()
+
                     ClearGlassValueRow("Last Apply Status") {
                         Text(status)
                     }
                 }
+
+                ClearGlassDivider()
 
                 ClearGlassInlineMessage(
                     text: "This is experimental. Menu bar apps, SystemUIServer, ControlCenter, logout, or reboot may be needed for full effect. Never automatically restarts system processes.",

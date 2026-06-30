@@ -57,8 +57,20 @@ struct DynamicHotkeysSettingsView: View {
                     title: "Maximum Dynamic Hotkeys",
                     subtitle: "Limit registrations so accidental bulk imports cannot register too many shortcuts."
                 ) {
-                    Stepper("\(settingsStore.maxDynamicHotkeys)", value: $settingsStore.maxDynamicHotkeys, in: 0...50)
+                    HStack(spacing: 10) {
+                        Text(settingsStore.maxDynamicHotkeys, format: .number)
+                            .font(.system(.body, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 32, alignment: .trailing)
+
+                        Stepper(
+                            "Maximum Dynamic Hotkeys",
+                            value: $settingsStore.maxDynamicHotkeys,
+                            in: 0...50
+                        )
+                        .labelsHidden()
                         .onChange(of: settingsStore.maxDynamicHotkeys) { _, _ in notifyChanged() }
+                    }
                 }
 
                 if !conflicts.isEmpty {
@@ -113,23 +125,27 @@ struct DynamicHotkeysSettingsView: View {
             }
             .pickerStyle(.menu)
 
-            HStack(spacing: 12) {
-                Toggle("Command", isOn: $command)
-                Toggle("Option", isOn: $option)
-                Toggle("Shift", isOn: $shift)
-                Toggle("Control", isOn: $control)
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 12) {
+                    Toggle("Command", isOn: $command)
+                    Toggle("Option", isOn: $option)
+                    Toggle("Shift", isOn: $shift)
+                    Toggle("Control", isOn: $control)
+                }
 
-                Picker("Key", selection: $selectedKeyCode) {
-                    ForEach(Self.commonKeys, id: \.keyCode) { key in
-                        Text(key.label).tag(key.keyCode)
+                HStack(spacing: 12) {
+                    Picker("Key", selection: $selectedKeyCode) {
+                        ForEach(Self.commonKeys, id: \.keyCode) { key in
+                            Text(key.label).tag(key.keyCode)
+                        }
                     }
-                }
-                .frame(width: 120)
+                    .frame(width: 120)
 
-                Button("Add Binding", systemImage: "plus") {
-                    addBinding()
+                    Button("Add Binding", systemImage: "plus") {
+                        addBinding()
+                    }
+                    .disabled(currentModifiersRaw == 0)
                 }
-                .disabled(currentModifiersRaw == 0)
             }
         }
     }
@@ -143,61 +159,68 @@ struct DynamicHotkeysSettingsView: View {
             proModeEnabled: settingsStore.proModeEnabled
         )
 
-        return HStack(spacing: 12) {
-            Image(systemName: status.systemImage)
-                .foregroundStyle(status.isWarning ? .orange : .secondary)
-                .frame(width: 24)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(binding.label)
-                Text(HotkeyModel(keyCode: UInt32(binding.keyCode), modifiersRaw: UInt32(binding.modifiersRaw)).displayName)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text(status.message)
-                    .font(.caption)
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: status.systemImage)
                     .foregroundStyle(status.isWarning ? .orange : .secondary)
+                    .frame(width: 24)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(binding.label)
+                        .lineLimit(1)
+                    Text(HotkeyModel(keyCode: UInt32(binding.keyCode), modifiersRaw: UInt32(binding.modifiersRaw)).displayName)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(status.message)
+                        .font(.caption)
+                        .foregroundStyle(status.isWarning ? .orange : .secondary)
+                        .lineLimit(2)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Toggle("Enabled", isOn: Binding(
+                    get: { binding.isEnabled },
+                    set: { isEnabled in
+                        bindingStore.update(id: binding.id) { $0.isEnabled = isEnabled }
+                        notifyChanged()
+                    }
+                ))
+                .labelsHidden()
             }
 
-            Spacer()
-
-            Toggle("Enabled", isOn: Binding(
-                get: { binding.isEnabled },
-                set: { isEnabled in
-                    bindingStore.update(id: binding.id) { $0.isEnabled = isEnabled }
+            HStack(spacing: 8) {
+                Button("Refresh Registration", systemImage: "arrow.clockwise") {
+                    // Test registration semantics without firing the action.
                     notifyChanged()
                 }
-            ))
-            .labelsHidden()
+                .labelStyle(.iconOnly)
+                .help("Refresh Registration")
 
-            Button("Refresh Registration", systemImage: "arrow.clockwise") {
-                // Test registration semantics without firing the action.
-                notifyChanged()
-            }
-            .labelStyle(.iconOnly)
-            .help("Refresh Registration")
+                if canResetToSuggestedShortcut(binding) {
+                    Button("Reset Suggested Shortcut", systemImage: "arrow.counterclockwise") {
+                        resetToSuggestedShortcut(binding)
+                    }
+                    .labelStyle(.iconOnly)
+                    .help("Reset suggested shortcut")
+                }
 
-            if canResetToSuggestedShortcut(binding) {
-                Button("Reset Suggested Shortcut", systemImage: "arrow.counterclockwise") {
-                    resetToSuggestedShortcut(binding)
+                Button("Disable", systemImage: "pause.circle") {
+                    bindingStore.update(id: binding.id) { $0.isEnabled = false }
+                    notifyChanged()
                 }
                 .labelStyle(.iconOnly)
-                .help("Reset suggested shortcut")
-            }
+                .help("Disable")
+                .disabled(!binding.isEnabled)
 
-            Button("Disable", systemImage: "pause.circle") {
-                bindingStore.update(id: binding.id) { $0.isEnabled = false }
-                notifyChanged()
+                Button("Delete", systemImage: "trash", role: .destructive) {
+                    bindingStore.remove(id: binding.id)
+                    notifyChanged()
+                }
+                .labelStyle(.iconOnly)
+                .help("Delete")
             }
-            .labelStyle(.iconOnly)
-            .help("Disable")
-            .disabled(!binding.isEnabled)
-
-            Button("Delete", systemImage: "trash", role: .destructive) {
-                bindingStore.remove(id: binding.id)
-                notifyChanged()
-            }
-            .labelStyle(.iconOnly)
-            .help("Delete")
+            .controlSize(.small)
+            .padding(.leading, 36)
         }
         .padding(.vertical, 8)
     }

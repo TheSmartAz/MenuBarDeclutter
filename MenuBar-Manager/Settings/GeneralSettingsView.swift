@@ -254,6 +254,7 @@ struct GeneralSettingsView: View {
                 .lineLimit(2)
                 .truncationMode(.middle)
                 .textSelection(.enabled)
+                .frame(maxWidth: 420, alignment: .trailing)
         }
     }
 
@@ -305,6 +306,7 @@ private struct GeneralAppIdentityHeader: View {
                     .truncationMode(.middle)
                     .textSelection(.enabled)
             }
+            .layoutPriority(1)
 
             Spacer(minLength: 16)
 

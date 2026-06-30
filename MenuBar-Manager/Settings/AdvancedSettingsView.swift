@@ -97,19 +97,26 @@ struct AdvancedSettingsView: View {
             }
 
             ClearGlassSection("Application Support", subtitle: "File system locations used by the app.") {
-                ClearGlassValueRow("Diagnostics Directory") {
+                ClearGlassValueRow("Diagnostics Directory", subtitle: "Used for logs, exports, and dogfood bundles.") {
                     Text(appSupportPaths.diagnosticsDirectory.path)
                         .font(.system(.caption, design: .monospaced))
                         .lineLimit(2)
                         .truncationMode(.middle)
                         .textSelection(.enabled)
                         .frame(maxWidth: 360, alignment: .trailing)
+                        .help(appSupportPaths.diagnosticsDirectory.path)
                 }
 
                 ClearGlassDivider()
 
-                Button("Reveal Diagnostics Folder", systemImage: "folder") {
-                    revealInFinder(appSupportPaths.diagnosticsDirectory)
+                ClearGlassControlRow(
+                    systemImage: "folder",
+                    title: "Reveal Diagnostics Folder",
+                    subtitle: "Open the diagnostics directory in Finder."
+                ) {
+                    Button("Reveal", systemImage: "folder") {
+                        revealInFinder(appSupportPaths.diagnosticsDirectory)
+                    }
                 }
             }
 
@@ -124,7 +131,11 @@ struct AdvancedSettingsView: View {
                 ClearGlassValueRow("Bundle Identifier", subtitle: "Used in logs and diagnostics.") {
                     Text(AppConstants.bundleIdentifier)
                         .font(.system(.caption, design: .monospaced))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
                         .textSelection(.enabled)
+                        .frame(maxWidth: 360, alignment: .trailing)
+                        .help(AppConstants.bundleIdentifier)
                 }
             }
 
@@ -235,7 +246,7 @@ struct AdvancedSettingsView: View {
                     title: "Reset moving warnings",
                     subtitle: "Clear all icon-moving warning suppressions."
                 ) {
-                    Button("Reset moving warnings") {
+                    Button("Reset", systemImage: "arrow.counterclockwise") {
                         onResetMovingWarnings?()
                     }
                 }
