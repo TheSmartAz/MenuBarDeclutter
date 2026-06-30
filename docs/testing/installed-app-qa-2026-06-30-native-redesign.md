@@ -98,6 +98,13 @@ Privacy scan of the exported report found no screenshot text, screen-content tex
 | `security find-identity -v -p codesigning` | BLOCKED for release signing, only `Apple Development: emailyongjunzhang@gmail.com (834922P6J6)` is installed |
 | `ARCHIVE_PATH="$PWD/build/Archives/MenuBarDeclutter.xcarchive" EXPORT_DIR="$PWD/build/ExportDeveloperIDProbe" APP_PATH="$PWD/build/ExportDeveloperIDProbe/MenuBarDeclutter.app" scripts/release_export_app.sh` | EXPECTED FAIL, `No signing certificate "Developer ID Application" found` |
 | `scripts/release_validate_gatekeeper.sh build/Export/MenuBarDeclutter.app` | EXPECTED FAIL for dry-run build: codesign strict verification PASS; `spctl` rejected; stapler ticket missing |
+| `shortcuts list` | PARTIAL, user shortcuts are listed but MenuBarDeclutter App Intents are not exposed as runnable CLI shortcuts |
+| `system_profiler SPDisplaysDataType` | PARTIAL, only the built-in Liquid Retina XDR display was detected; no external display QA available in this session |
+| `pmset -g custom` | INFO, sleep settings recorded without changing power state |
+| `SystemUIServer` Computer Use inspection | BLOCKED, timed out before status-item interaction; live click/command-drag/hover-only QA remains hands-on |
+| `scripts/release_notarize.sh build/Dist/MenuBarDeclutter-v0.1.1-alpha.zip` | EXPECTED FAIL, notarization credentials are missing |
+| `scripts/verify_release_artifact.sh build/Export/MenuBarDeclutter.app --expected-version 0.1.1 --expected-build 2` | PASS with expected non-notarized `spctl`/stapler warnings |
+| `scripts/verify_installed_app.sh /Applications/MenuBarDeclutter.app` | PASS with expected non-notarized `spctl`/stapler warnings |
 
 ## Post-PR Hardening Pass
 
@@ -122,6 +129,36 @@ After draft PR #6 was opened for `codex/native-macos-redesign`, a non-disruptive
    - `sudo -n nettop -P -L 1 -p 16226` remained blocked because an administrator password is required.
 5. Signing:
    - `security find-identity -v -p codesigning` still showed only the Apple Development identity and no Developer ID Application certificate.
+
+## Final In-Order Follow-Up
+
+The user asked to keep the refreshed `docs/project-summary.md` change and proceed through the remaining queue in order. The following additional non-disruptive checks were completed:
+
+1. Installed-app state:
+   - `/Applications/MenuBarDeclutter.app` launched as PID `63066`.
+   - General showed Basic Mode, Login Item `Not Registered`, Launch at Login off, Start Collapsed off, installed location `/Applications/MenuBarDeclutter.app`, and onboarding complete.
+   - Privacy showed Basic Mode ready, Pro Mode off, Accessibility Discovery off, Screen Recording not requested, Apple Events not requested, Input Monitoring not requested, and Network Access not used.
+   - Private Access showed off, session inactive, authentication test disabled, and "gates app actions only" copy.
+   - Automation showed App Intents on, Profile and Labs access gated off, Apple Events not used, and 9 of 11 actions ready.
+2. Physical/system limitations:
+   - `SystemUIServer` inspection timed out, so live status item click, command-drag positioning, and hover-only behavior remain hands-on QA.
+   - Restart/logout Launch at Login validation was not run because it would end or disrupt this session.
+   - Accessibility grant/revoke was not changed because it mutates macOS Privacy & Security state; Pro Mode and discovery were left off.
+   - `system_profiler SPDisplaysDataType` detected only the built-in Liquid Retina XDR display, so external display QA was unavailable.
+   - `shortcuts list` only listed user-created shortcuts and did not expose App Intents as runnable CLI shortcuts; real Shortcuts app execution remains hands-on QA.
+   - Touch ID / LocalAuthentication was not triggered because Private Access is off and biometric/password prompts require a physical user action.
+3. Runtime/network:
+   - `scripts/qa_network_watch.sh --installed` observed no sockets for PID `63066`.
+   - `sudo -n nettop -P -L 1 -p 63066` remains blocked by the administrator password requirement.
+4. Signing and notarization:
+   - Only the Apple Development codesigning identity is installed.
+   - Real Developer ID export to `build/ExportDeveloperIDProbe` failed with `No signing certificate "Developer ID Application" found`.
+   - `scripts/release_notarize.sh build/Dist/MenuBarDeclutter-v0.1.1-alpha.zip` failed before submission because notarization credentials are missing.
+   - Gatekeeper validation for the dry-run export still passes strict codesign and fails `spctl`/stapler as expected for a non-notarized artifact.
+5. Final artifact checks:
+   - `scripts/verify_release_artifact.sh build/Export/MenuBarDeclutter.app --expected-version 0.1.1 --expected-build 2` passed.
+   - `scripts/verify_installed_app.sh /Applications/MenuBarDeclutter.app` passed.
+   - Built and installed app privacy boundary verification passed.
 
 ## Follow-Up System-State Gates
 
