@@ -22,21 +22,22 @@ final class SearchWindowController: NSWindowController, NSWindowDelegate {
         self.diagnosticsLogger = diagnosticsLogger
 
         let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 640, height: 460),
-            styleMask: [.titled, .closable, .fullSizeContentView],
+            contentRect: NSRect(x: 0, y: 0, width: 620, height: 440),
+            styleMask: [.titled, .closable, .utilityWindow],
             backing: .buffered,
             defer: false
         )
         panel.title = "Find Icon"
-        panel.titleVisibility = .hidden
-        panel.titlebarAppearsTransparent = true
+        panel.titleVisibility = .visible
+        panel.titlebarAppearsTransparent = false
         panel.isFloatingPanel = true
         panel.hidesOnDeactivate = false
         panel.isReleasedWhenClosed = false
         panel.level = .floating
-        panel.backgroundColor = .clear
-        panel.isOpaque = false
-        panel.hasShadow = false
+        panel.backgroundColor = .windowBackgroundColor
+        panel.isOpaque = true
+        panel.hasShadow = true
+        panel.minSize = NSSize(width: 560, height: 380)
         panel.collectionBehavior = [.moveToActiveSpace, .transient]
         panel.standardWindowButton(.miniaturizeButton)?.isHidden = true
         panel.standardWindowButton(.zoomButton)?.isHidden = true

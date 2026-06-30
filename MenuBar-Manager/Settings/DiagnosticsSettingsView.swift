@@ -48,8 +48,10 @@ struct DiagnosticsSettingsView: View {
                 onExport: exportCurrent
             )
 
+            Divider()
+
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 12) {
+                LazyVStack(alignment: .leading, spacing: 14) {
                     if let exportError {
                         ExportErrorBanner(message: exportError)
                     }
@@ -102,7 +104,8 @@ struct DiagnosticsSettingsView: View {
                         selectedEventID: $selectedEventID
                     )
                 }
-                .padding(14)
+                .padding(.horizontal, 22)
+                .padding(.vertical, 16)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -483,28 +486,38 @@ private struct DiagnosticsToolbar: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 10) {
-                Label("Diagnostics", systemImage: "waveform.path.ecg")
-                    .font(.title2)
-                    .bold()
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center, spacing: 12) {
+                Label {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Diagnostics")
+                            .font(.title2)
+                            .bold()
+
+                        Text("Health, recovery, and privacy-safe local logs.")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
+                } icon: {
+                    Image(systemName: "waveform.path.ecg")
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                }
 
                 Spacer()
 
-                DiagnosticsStatusBadge(title: "Privacy Safe", systemImage: "checkmark.shield", style: .green)
-                DiagnosticsStatusBadge(title: "Accessibility Aware", systemImage: "accessibility", style: .blue)
+                HStack(spacing: 8) {
+                    DiagnosticsStatusBadge(title: "Privacy Safe", systemImage: "checkmark.shield", style: .green)
+                    DiagnosticsStatusBadge(title: "Accessibility Aware", systemImage: "accessibility", style: .blue)
+                }
             }
 
             toolbarControls
         }
-        .padding(14)
-        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
-        .overlay {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
-        }
-        .padding([.horizontal, .top], 14)
-        .padding(.bottom, 4)
+        .padding(.horizontal, 22)
+        .padding(.top, 18)
+        .padding(.bottom, 12)
+        .background(Color(nsColor: .windowBackgroundColor))
     }
 
     private var toolbarControls: some View {
@@ -531,6 +544,7 @@ private struct DiagnosticsToolbar: View {
             Button("Clear", systemImage: "trash", action: clear)
                 .disabled(eventCount == 0)
         }
+        .controlSize(.small)
     }
 
     private var wrappedToolbar: some View {
@@ -559,6 +573,7 @@ private struct DiagnosticsToolbar: View {
                 }
             }
         }
+        .controlSize(.small)
     }
 
     private var actionButtons: some View {

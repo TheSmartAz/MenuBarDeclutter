@@ -42,47 +42,20 @@ struct SearchRootView: View {
         VStack(spacing: 0) {
             searchHeader
             Divider()
-                .overlay(.primary.opacity(0.10))
 
             if let unavailableState {
                 SearchUnavailableView(
                     state: unavailableState
                 )
             } else {
-                VStack(alignment: .leading, spacing: 12) {
-                    searchInputBar
-                    searchFilterBar
-
-                    HStack {
-                        Text("Results")
-                            .font(.headline)
-
-                        Spacer()
-
-                        if selectedFilter != .all {
-                            Label(selectedFilter.displayName, systemImage: selectedFilter.systemImage)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-
-                    resultList
-                }
-                .padding(.horizontal, 18)
-                .padding(.vertical, 14)
+                resultContent
             }
 
             Divider()
-                .overlay(.primary.opacity(0.10))
             searchFooter
         }
-        .frame(width: 640, height: 460)
-        .background(.regularMaterial, in: .rect(cornerRadius: 12))
-        .overlay {
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(.primary.opacity(0.14), lineWidth: 1)
-        }
-        .shadow(color: .black.opacity(0.16), radius: 18, y: 10)
+        .frame(width: 620, height: 440)
+        .background(Color(nsColor: .windowBackgroundColor))
         .onAppear {
             onRefresh()
             searchIndex = SearchIndex(snapshots: liveStatus.scannedMenuBarItems)
@@ -127,37 +100,28 @@ struct SearchRootView: View {
     }
 
     private var searchHeader: some View {
-        HStack(spacing: 14) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 30, weight: .light))
-                .foregroundStyle(.primary)
-                .frame(width: 42)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                searchInputBar
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Find Icon")
-                    .font(.title2)
-                    .bold()
+                Button("Refresh", systemImage: "arrow.clockwise") {
+                    onRefresh()
+                }
+                .labelStyle(.iconOnly)
+                .buttonStyle(.bordered)
+                .help("Refresh Menu Bar Items")
+                .disabled(!searchIsAvailable)
 
-                Text("Search and reveal menu bar items instantly.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
+                ClearGlassBadge(style: .privacySafe)
             }
 
-            Spacer(minLength: 12)
-
-            ClearGlassBadge(style: .privacySafe)
-
-            Button("Refresh", systemImage: "arrow.clockwise") {
-                onRefresh()
+            if searchIsAvailable {
+                searchFilterBar
             }
-            .labelStyle(.iconOnly)
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-            .help("Refresh Menu Bar Items")
         }
+        .controlSize(.small)
         .padding(.horizontal, 18)
-        .padding(.top, 18)
-        .padding(.bottom, 14)
+        .padding(.vertical, 14)
     }
 
     private var searchInputBar: some View {
@@ -167,7 +131,7 @@ struct SearchRootView: View {
 
             TextField("Find menu bar icon", text: $query)
                 .textFieldStyle(.plain)
-                .font(.title3)
+                .font(.body)
                 .focused($searchFieldFocused)
                 .onSubmit(activateSelectedResult)
 
@@ -183,11 +147,12 @@ struct SearchRootView: View {
             }
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 9)
-        .background(.quaternary, in: .rect(cornerRadius: 8))
+        .padding(.vertical, 7)
+        .frame(maxWidth: .infinity)
+        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 7))
         .overlay {
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(.primary.opacity(0.10), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 7)
+                .stroke(searchFieldFocused ? Color.accentColor.opacity(0.45) : Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
         }
     }
 
@@ -204,6 +169,27 @@ struct SearchRootView: View {
 
             filterResetButton
         }
+    }
+
+    private var resultContent: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Results")
+                    .font(.headline)
+
+                Spacer()
+
+                if selectedFilter != .all {
+                    Label(selectedFilter.displayName, systemImage: selectedFilter.systemImage)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            resultList
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 12)
     }
 
     @ViewBuilder
@@ -313,12 +299,16 @@ struct SearchRootView: View {
 
     private var searchFooter: some View {
         HStack(spacing: 12) {
-            Text("\(results.count) results")
+            Text(searchIsAvailable ? "\(results.count) results" : "Unavailable")
                 .foregroundStyle(.secondary)
 
             Spacer()
 
-            if let activationMessage {
+            if !searchIsAvailable {
+                Text("Enable the requirements above to use local menu bar search.")
+                    .lineLimit(1)
+                    .foregroundStyle(.secondary)
+            } else if let activationMessage {
                 Text(activationMessage)
                     .lineLimit(1)
                     .foregroundStyle(.secondary)
@@ -626,12 +616,12 @@ private struct SearchUnavailableView: View {
     let state: SearchUnavailableState
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack(alignment: .top, spacing: 14) {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top, spacing: 12) {
                 Image(systemName: state.systemImage)
-                    .font(.system(size: 34, weight: .light))
+                    .font(.system(size: 28, weight: .regular))
                     .foregroundStyle(.orange)
-                    .frame(width: 46)
+                    .frame(width: 34)
 
                 VStack(alignment: .leading, spacing: 7) {
                     Text(state.title)
@@ -662,12 +652,12 @@ private struct SearchUnavailableView: View {
                 style: .success
             )
         }
-        .padding(28)
+        .padding(24)
         .frame(maxWidth: 440, alignment: .leading)
-        .background(.quaternary.opacity(0.6), in: .rect(cornerRadius: 10))
+        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
         .overlay {
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(.primary.opacity(0.12), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
