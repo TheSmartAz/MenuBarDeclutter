@@ -450,7 +450,7 @@ This checklist verifies the Phase 1 hiding MVP. Later-phase features such as glo
 
 - Enable Pro Mode, Accessibility Discovery, and grant Accessibility permission.
 - Choose "Refresh Menu Bar Items" from the status menu.
-- Choose "Show Second Bar"; confirm a floating panel appears near the menu bar.
+- Choose "Show Second Bar"; confirm a native utility panel appears near the menu bar with visible titlebar controls and no nested rounded-card shell.
 - Choose "Hide Second Bar"; confirm the panel closes.
 - Choose "Toggle Second Bar" twice; confirm it opens and closes.
 - Press Escape while the panel is key; confirm it closes.
@@ -459,7 +459,7 @@ This checklist verifies the Phase 1 hiding MVP. Later-phase features such as glo
 ### Content and selection
 
 - Position at least one item in the hidden zone and refresh the AX scan.
-- Open the Second Bar and confirm hidden items appear with app icons, app names, optional item titles, and zone badges.
+- Open the Second Bar and confirm hidden items appear with app icons, app names, optional item titles, zone badges, and restrained native selection styling.
 - Enable the always-hidden separator, place at least one item in that zone, refresh the AX scan, and confirm it appears when "Show always-hidden items" is enabled.
 - Select a hidden item; confirm the primary hidden zone is revealed and the highlight appears if highlighting is enabled.
 - Select an always-hidden item; confirm reveal-all is used and the highlight appears if enabled.
@@ -754,7 +754,7 @@ This checklist verifies the Phase 1 hiding MVP. Later-phase features such as glo
 
 - Complete the seven-step Onboarding flow; confirm the redesigned panels preserve step order, native cleanup copy, privacy copy, completion behavior, and window sizing.
 - Open Find Icon with Pro disabled, Pro enabled without Accessibility, and Pro enabled with a seeded scan; confirm native utility chrome, focus, debounce, keyboard selection, empty/unavailable states, and move context menu actions are intact.
-- Open Second Bar with Pro disabled, Pro enabled without Accessibility, and Pro enabled with icons available; confirm sizing, positioning, outside-click dismissal, keyboard handling, icon cache loading, and unavailable copy.
+- Open Second Bar with Pro disabled, Pro enabled without Accessibility, and Pro enabled with icons available; confirm native utility chrome, sizing, positioning, outside-click dismissal, keyboard handling, icon cache loading, and unavailable copy.
 - Show the drag hint from the status menu; confirm it anchors to the separator/control item, uses the compact instructional popover, and closes transiently.
 
 ### Native status menu

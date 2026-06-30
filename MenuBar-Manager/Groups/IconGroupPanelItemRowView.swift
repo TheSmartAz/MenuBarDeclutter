@@ -7,8 +7,8 @@ struct IconGroupPanelItemRowView: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 12) {
-                AppIconView(snapshot: snapshot, size: 28)
+            HStack(spacing: 10) {
+                AppIconView(snapshot: snapshot, size: 30, cornerRadius: 7)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(displayTitle)
@@ -22,15 +22,38 @@ struct IconGroupPanelItemRowView: View {
 
                 Spacer()
 
-                Text(snapshot.zone.displayName)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                ZoneTextBadge(title: snapshot.zone.displayName, color: zoneColor)
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
-            .background(isSelected ? Color.accentColor.opacity(0.16) : Color.clear, in: .rect(cornerRadius: 7))
+            .background(rowBackground, in: .rect(cornerRadius: 7))
+            .overlay {
+                RoundedRectangle(cornerRadius: 7)
+                    .stroke(rowStroke, lineWidth: 0.5)
+            }
         }
         .buttonStyle(.plain)
+    }
+
+    private var rowBackground: Color {
+        isSelected ? Color.accentColor.opacity(0.16) : Color(nsColor: .controlBackgroundColor).opacity(0.45)
+    }
+
+    private var rowStroke: Color {
+        isSelected ? Color.accentColor.opacity(0.55) : Color(nsColor: .separatorColor).opacity(0.24)
+    }
+
+    private var zoneColor: Color {
+        switch snapshot.zone {
+        case .visible:
+            .green
+        case .hidden:
+            .orange
+        case .alwaysHidden:
+            .red
+        case .unknown:
+            .secondary
+        }
     }
 
     private var displayTitle: String {
@@ -39,5 +62,24 @@ struct IconGroupPanelItemRowView: View {
             snapshot.title,
             snapshot.bundleIdentifier
         ]) ?? "Menu Bar Item"
+    }
+}
+
+private struct ZoneTextBadge: View {
+    let title: String
+    let color: Color
+
+    var body: some View {
+        Text(title)
+            .font(.caption)
+            .bold()
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .foregroundStyle(color)
+            .background(color.opacity(0.12), in: .capsule)
+            .overlay {
+                Capsule()
+                    .stroke(color.opacity(0.24), lineWidth: 0.5)
+            }
     }
 }

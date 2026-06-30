@@ -88,7 +88,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else if launchArguments.contains("--ui-testing-show-search") {
             environment.showSearch()
         } else if launchArguments.contains("--ui-testing-show-second-bar") {
+            environment.settingsStore.secondBarCloseOnOutsideClick = false
             environment.showSecondBar()
+        } else if launchArguments.contains("--ui-testing-show-group-panel") {
+            seedMenuBarItemsUITestingSnapshot(environment)
+            environment.showGroupPanel(makeUITestingIconGroup())
         } else if launchArguments.contains("--ui-testing-show-settings") {
             environment.showSettings()
         }
@@ -200,6 +204,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         environment.liveStatus.searchIndexItemCount = result.snapshots.count
         environment.diagnosticsLogger.log(
             "Seeded UI testing menu bar item snapshot with \(result.snapshots.count) items."
+        )
+    }
+
+    private func makeUITestingIconGroup() -> IconGroup {
+        IconGroup(
+            id: UUID(uuidString: "8C5B7B19-9E0A-46C9-A1A7-E7B4D9E8A114") ?? UUID(),
+            name: "Focus Apps",
+            symbolName: "folder",
+            itemRefs: [
+                IconGroupItemRef(
+                    bundleIdentifier: "com.flexibits.fantastical2.mac",
+                    manualLabel: "Calendar"
+                ),
+                IconGroupItemRef(
+                    bundleIdentifier: "com.getdropbox.dropbox",
+                    manualLabel: "Sync"
+                ),
+                IconGroupItemRef(
+                    bundleIdentifier: "io.tailscale.ipn.macos",
+                    manualLabel: "VPN"
+                )
+            ]
         )
     }
 

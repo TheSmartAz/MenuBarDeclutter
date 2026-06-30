@@ -18,3 +18,5 @@
 - Duplicate or empty names are rejected.
 - Group status items disappear when disabled or in Safe Mode.
 - Import/export does not request extra permissions.
+- Group panel opens as a native utility panel with visible titlebar controls,
+  compact search, list-like item rows, and readable protected-state affordances.

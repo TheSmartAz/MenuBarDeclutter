@@ -4,6 +4,7 @@ import SwiftUI
 @MainActor
 final class SecondBarWindowController: NSWindowController, NSWindowDelegate {
     private let settingsStore: SettingsStore
+    private let permissionService: AccessibilityPermissionService
     private let liveStatus: LiveDiagnosticsStatus
     private let positioningService: SecondBarPositioningService
     private let diagnosticsLogger: DiagnosticsLogger
@@ -39,24 +40,37 @@ final class SecondBarWindowController: NSWindowController, NSWindowDelegate {
         onOpenPrivacySettings: @escaping () -> Void
     ) {
         self.settingsStore = settingsStore
+        self.permissionService = permissionService
         self.liveStatus = liveStatus
         self.positioningService = positioningService
         self.diagnosticsLogger = diagnosticsLogger
 
         let panel = SecondBarPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 640, height: 190),
-            styleMask: [.borderless, .nonactivatingPanel, .fullSizeContentView],
+            contentRect: NSRect(
+                origin: .zero,
+                size: Self.contentSize(
+                    showLabels: settingsStore.secondBarShowLabels,
+                    showsUnavailableState: Self.showsUnavailableState(
+                        settingsStore: settingsStore,
+                        permissionService: permissionService
+                    )
+                )
+            ),
+            styleMask: [.titled, .closable, .utilityWindow],
             backing: .buffered,
             defer: false
         )
         panel.title = "Second Bar"
+        panel.titleVisibility = .visible
+        panel.titlebarAppearsTransparent = false
         panel.isFloatingPanel = true
         panel.isReleasedWhenClosed = false
         panel.level = .floating
         panel.collectionBehavior = [.canJoinAllSpaces, .transient, .ignoresCycle]
-        panel.backgroundColor = .clear
-        panel.isOpaque = false
+        panel.backgroundColor = .windowBackgroundColor
+        panel.isOpaque = true
         panel.hasShadow = true
+        panel.minSize = NSSize(width: 620, height: 210)
         panel.animationBehavior = .utilityWindow
 
         super.init(window: panel)
@@ -203,10 +217,38 @@ final class SecondBarWindowController: NSWindowController, NSWindowDelegate {
     }
 
     private var targetPanelSize: CGSize {
-        CGSize(
-            width: 760,
-            height: settingsStore.secondBarShowLabels ? 274 : 228
-        )
+        guard let window else {
+            return Self.contentSize(
+                showLabels: settingsStore.secondBarShowLabels,
+                showsUnavailableState: Self.showsUnavailableState(
+                    settingsStore: settingsStore,
+                    permissionService: permissionService
+                )
+            )
+        }
+        let contentRect = NSRect(origin: .zero, size: Self.contentSize(
+            showLabels: settingsStore.secondBarShowLabels,
+            showsUnavailableState: Self.showsUnavailableState(
+                settingsStore: settingsStore,
+                permissionService: permissionService
+            )
+        ))
+        return window.frameRect(forContentRect: contentRect).size
+    }
+
+    private static func contentSize(showLabels: Bool, showsUnavailableState: Bool) -> CGSize {
+        let height: CGFloat = showsUnavailableState ? 274 : (showLabels ? 274 : 228)
+        return CGSize(width: 760, height: height)
+    }
+
+    private static func showsUnavailableState(
+        settingsStore: SettingsStore,
+        permissionService: AccessibilityPermissionService
+    ) -> Bool {
+        !settingsStore.secondBarEnabled
+            || !settingsStore.proModeEnabled
+            || !settingsStore.accessibilityDiscoveryEnabled
+            || permissionService.status != .granted
     }
 
     private func updatePanelBehaviorFromSettings() {
