@@ -22,6 +22,43 @@ struct DesignSystemSemanticsTests {
         #expect(StatusBadge.Style.actionNeeded.tone == .destructive)
     }
 
+    @Test func featureStatusesMapToReleaseSemantics() {
+        #expect(FeatureStatus.allCases.map(\.title) == [
+            "Stable",
+            "Preview",
+            "Labs",
+            "Experimental",
+            "Disabled",
+            "Unavailable",
+            "Deferred"
+        ])
+
+        #expect(FeatureStatus.stable.systemImage == "checkmark.seal")
+        #expect(FeatureStatus.stable.tone == .privacySafe)
+        #expect(FeatureStatus.stable.isReleaseCore)
+        #expect(!FeatureStatus.preview.isReleaseCore)
+
+        #expect(FeatureStatus.preview.tone == .diagnostics)
+        #expect(FeatureStatus.labs.tone == .experimental)
+        #expect(FeatureStatus.experimental.tone == .experimental)
+        #expect(FeatureStatus.unavailable.tone == .disabled)
+        #expect(FeatureStatus.deferred.tone == .disabled)
+
+        #expect(FeatureStatus.labs.requiresExplicitOptIn)
+        #expect(FeatureStatus.experimental.requiresExplicitOptIn)
+        #expect(!FeatureStatus.preview.requiresExplicitOptIn)
+    }
+
+    @Test func clearGlassBadgeStylesCanRepresentFeatureStatuses() {
+        #expect(ClearGlassBadgeStyle(featureStatus: .stable).title == "Stable")
+        #expect(ClearGlassBadgeStyle(featureStatus: .preview).systemImage == "sparkles")
+        #expect(ClearGlassBadgeStyle(featureStatus: .labs).title == "Labs")
+        #expect(ClearGlassBadgeStyle(featureStatus: .experimental).title == "Experimental")
+        #expect(ClearGlassBadgeStyle(featureStatus: .unavailable).title == "Unavailable")
+        #expect(ClearGlassBadgeStyle(featureStatus: .disabled).title == "Unavailable")
+        #expect(ClearGlassBadgeStyle(featureStatus: .deferred).title == "Deferred")
+    }
+
     @Test func requirementStatusModelsPermissionBoundaries() {
         #expect(RequirementRow.Status.permissionBoundary(isSatisfied: true, isRequired: true) == .satisfied)
         #expect(RequirementRow.Status.permissionBoundary(isSatisfied: false, isRequired: true) == .required)

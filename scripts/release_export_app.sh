@@ -9,6 +9,7 @@ APP_PATH="${APP_PATH:-$EXPORT_DIR/$APP_NAME}"
 LOG_DIR="${LOG_DIR:-$ROOT_DIR/build/Logs}"
 LOG_FILE="${LOG_FILE:-$LOG_DIR/release-export.log}"
 EXPORT_OPTIONS_PLIST="${EXPORT_OPTIONS_PLIST:-$ROOT_DIR/Config/ExportOptions.plist}"
+DRY_RUN="${DRY_RUN:-0}"
 
 mkdir -p "$EXPORT_DIR" "$LOG_DIR"
 
@@ -19,6 +20,7 @@ echo "Archive: $ARCHIVE_PATH"
 echo "Export directory: $EXPORT_DIR"
 echo "App path: $APP_PATH"
 echo "Log: $LOG_FILE"
+echo "Dry run: $DRY_RUN"
 echo
 
 if [[ ! -d "$ARCHIVE_PATH" ]]; then
@@ -27,8 +29,17 @@ if [[ ! -d "$ARCHIVE_PATH" ]]; then
 fi
 
 rm -rf "$APP_PATH"
+SOURCE_APP="$ARCHIVE_PATH/Products/Applications/$APP_NAME"
 
-if [[ -f "$EXPORT_OPTIONS_PLIST" ]]; then
+if [[ "$DRY_RUN" == "1" ]]; then
+  if [[ ! -d "$SOURCE_APP" ]]; then
+    echo "FAIL: archived app is missing: $SOURCE_APP" >&2
+    exit 1
+  fi
+  echo "INFO: dry-run export copies the archived app directly and does not require Developer ID credentials."
+  echo "+ ditto \"$SOURCE_APP\" \"$APP_PATH\""
+  ditto "$SOURCE_APP" "$APP_PATH" 2>&1 | tee "$LOG_FILE"
+elif [[ -f "$EXPORT_OPTIONS_PLIST" ]]; then
   echo "+ xcodebuild -exportArchive -archivePath \"$ARCHIVE_PATH\" -exportPath \"$EXPORT_DIR\" -exportOptionsPlist \"$EXPORT_OPTIONS_PLIST\""
   xcodebuild -exportArchive \
     -archivePath "$ARCHIVE_PATH" \
@@ -36,7 +47,6 @@ if [[ -f "$EXPORT_OPTIONS_PLIST" ]]; then
     -exportOptionsPlist "$EXPORT_OPTIONS_PLIST" \
     2>&1 | tee "$LOG_FILE"
 else
-  SOURCE_APP="$ARCHIVE_PATH/Products/Applications/$APP_NAME"
   if [[ ! -d "$SOURCE_APP" ]]; then
     echo "FAIL: archived app is missing: $SOURCE_APP" >&2
     exit 1

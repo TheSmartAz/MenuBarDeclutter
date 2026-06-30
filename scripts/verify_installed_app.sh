@@ -3,6 +3,9 @@ set -euo pipefail
 
 APP_PATH="${1:-${APP_PATH:-/Applications/MenuBarDeclutter.app}}"
 EXPECTED_BUNDLE_ID="${EXPECTED_BUNDLE_ID:-Yongjun-Zhang.MenuBarDeclutter}"
+EXPECTED_MARKETING_VERSION="${EXPECTED_MARKETING_VERSION:-0.1.1}"
+EXPECTED_BUILD_VERSION="${EXPECTED_BUILD_VERSION:-2}"
+EXPECTED_CATEGORY="${EXPECTED_CATEGORY:-public.app-category.utilities}"
 REQUIRE_NOTARIZED=0
 FAILED=0
 
@@ -44,6 +47,15 @@ if [[ -f "$INFO_PLIST" ]]; then
   BUNDLE_ID="$(plist_value CFBundleIdentifier)"
   [[ "$BUNDLE_ID" == "$EXPECTED_BUNDLE_ID" ]] && pass "Bundle identifier is $EXPECTED_BUNDLE_ID" || fail "Bundle identifier is $BUNDLE_ID"
 
+  MARKETING_VERSION="$(plist_value CFBundleShortVersionString)"
+  [[ "$MARKETING_VERSION" == "$EXPECTED_MARKETING_VERSION" ]] && pass "Marketing version is $EXPECTED_MARKETING_VERSION" || fail "Marketing version is $MARKETING_VERSION"
+
+  BUILD_VERSION="$(plist_value CFBundleVersion)"
+  [[ "$BUILD_VERSION" == "$EXPECTED_BUILD_VERSION" ]] && pass "Build version is $EXPECTED_BUILD_VERSION" || fail "Build version is $BUILD_VERSION"
+
+  CATEGORY="$(plist_value LSApplicationCategoryType)"
+  [[ "$CATEGORY" == "$EXPECTED_CATEGORY" ]] && pass "App category is $EXPECTED_CATEGORY" || fail "App category is $CATEGORY"
+
   if plist_value LSUIElement | rg -q "true|1|YES"; then
     pass "LSUIElement is enabled"
   else
@@ -76,6 +88,11 @@ if [[ -d "$APP_PATH" ]]; then
 
   if codesign -d --entitlements :- "$APP_PATH" >/tmp/menubardeclutter-installed-entitlements.plist 2>/dev/null; then
     pass "Entitlements are readable"
+    if rg -q "com\\.apple\\.security\\.app-sandbox" /tmp/menubardeclutter-installed-entitlements.plist; then
+      pass "Sandbox entitlement present"
+    else
+      fail "Sandbox entitlement missing"
+    fi
     if rg -q "com\\.apple\\.security\\.network\\.(client|server)" /tmp/menubardeclutter-installed-entitlements.plist; then
       fail "Network entitlement present"
     else
@@ -83,6 +100,13 @@ if [[ -d "$APP_PATH" ]]; then
     fi
   else
     warn "Could not read entitlements; unsigned/ad-hoc builds may omit them."
+  fi
+
+  if codesign -dvv "$APP_PATH" >/tmp/menubardeclutter-installed-codesign-detail.txt 2>&1 &&
+     rg -q "Runtime Version|flags=.*runtime" /tmp/menubardeclutter-installed-codesign-detail.txt; then
+    pass "Hardened runtime metadata is present"
+  else
+    fail "Hardened runtime metadata was not confirmed"
   fi
 
   EXECUTABLE_NAME="$(plist_value CFBundleExecutable)"

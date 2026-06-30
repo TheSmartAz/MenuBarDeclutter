@@ -10,9 +10,16 @@ struct SearchSettingsView: View {
         ClearGlassSettingsPage(
             "Search",
             subtitle: "Find Icon controls for locating menu bar items from the local discovery index.",
-            badges: [.proMode, .accessibilityRequired]
+            badges: [.stable, .proMode, .accessibilityRequired]
         ) {
             ClearGlassSection("Find Icon", subtitle: "Enable the floating search surface and selection behavior.") {
+                FeatureGateNotice(
+                    .stable,
+                    text: "Stable in v0.1.1 when Pro Mode, discovery, and Accessibility permission are enabled."
+                )
+
+                ClearGlassDivider()
+
                 ClearGlassControlRow(
                     systemImage: "magnifyingglass",
                     title: "Enable Find Icon",

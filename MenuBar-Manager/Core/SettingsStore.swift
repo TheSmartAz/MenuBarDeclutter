@@ -281,7 +281,12 @@ final class SettingsStore {
     }
 
     var showPrimarySeparator: Bool {
-        didSet { persist(showPrimarySeparator, for: .showPrimarySeparator) }
+        didSet {
+            if !showPrimarySeparator {
+                showPrimarySeparator = true
+            }
+            persist(true, for: .showPrimarySeparator)
+        }
     }
 
     // MARK: Phase 4 Pro discovery settings
@@ -816,11 +821,15 @@ final class SettingsStore {
             in: defaults
         )
         self.hasSeenDragHint = Self.bool(for: .hasSeenDragHint, in: defaults)
-        self.showPrimarySeparator = Self.value(
+        let storedShowPrimarySeparator: Bool = Self.value(
             for: .showPrimarySeparator,
             default: Self.registeredDefault(.showPrimarySeparator),
             in: defaults
         )
+        self.showPrimarySeparator = true
+        if storedShowPrimarySeparator != true {
+            defaults.set(true, forKey: Key.showPrimarySeparator.rawValue)
+        }
         self.proModeEnabled = Self.bool(for: .proModeEnabled, in: defaults)
         self.accessibilityDiscoveryEnabled = Self.bool(for: .accessibilityDiscoveryEnabled, in: defaults)
         self.lastAccessibilityPermissionStatus = Self.optionalString(

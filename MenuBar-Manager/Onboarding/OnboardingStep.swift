@@ -31,6 +31,12 @@ extension OnboardingStep {
             body: "\(AppConstants.displayName) cleans up your menu bar by hiding icons you don't need right now. It works using only public macOS behavior — no Accessibility, Screen Recording, or other sensitive permissions."
         ),
         OnboardingStep(
+            id: "nativeCleanup",
+            title: "Start with Apple's Menu Bar settings",
+            symbol: "switch.2",
+            body: "Move rarely-used system controls into Control Center first. Then use \(AppConstants.displayName) for third-party icons and crowded menu bar workflows; it complements Apple's settings rather than replacing them."
+        ),
+        OnboardingStep(
             id: "commandDrag",
             title: "Command-drag the separator",
             symbol: "hand.point.up.left",

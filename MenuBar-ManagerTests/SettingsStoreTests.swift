@@ -73,7 +73,22 @@ struct SettingsStoreTests {
         #expect(reloaded.expandedSeparatorLength == 30)
         #expect(reloaded.collapsedSeparatorLengthOverride == 5000)
         #expect(reloaded.hasSeenDragHint == true)
-        #expect(reloaded.showPrimarySeparator == false)
+        #expect(reloaded.showPrimarySeparator == true)
+        #expect(defaults.bool(forKey: SettingsStore.Key.showPrimarySeparator.rawValue) == true)
+    }
+
+    @Test func legacyHiddenPrimarySeparatorPreferenceIsRepaired() {
+        let suiteName = "SettingsStoreTests.primarySeparatorRepair.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        defaults.set(false, forKey: SettingsStore.Key.showPrimarySeparator.rawValue)
+
+        let store = SettingsStore(defaults: defaults)
+
+        #expect(store.showPrimarySeparator == true)
+        #expect(defaults.bool(forKey: SettingsStore.Key.showPrimarySeparator.rawValue) == true)
     }
 
     @Test func collapsedSeparatorOverrideCanBeCleared() {

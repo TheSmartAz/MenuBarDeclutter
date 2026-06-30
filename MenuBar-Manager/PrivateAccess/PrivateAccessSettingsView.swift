@@ -11,9 +11,16 @@ struct PrivateAccessSettingsView: View {
         ClearGlassSettingsPage(
             "Private Access",
             subtitle: "Use LocalAuthentication to gate sensitive app actions. No biometric data is stored.",
-            badges: [.privacySafe]
+            badges: [.preview, .privacySafe]
         ) {
             ClearGlassSection("Lock") {
+                FeatureGateNotice(
+                    .preview,
+                    text: "Preview in v0.1.1. Gates app actions only; not encryption or system icon hiding."
+                )
+
+                ClearGlassDivider()
+
                 ClearGlassControlRow(
                     systemImage: "lock.fill",
                     title: "Enable Private Access",

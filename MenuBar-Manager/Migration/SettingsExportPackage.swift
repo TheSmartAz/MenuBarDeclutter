@@ -5,8 +5,11 @@ import Foundation
 nonisolated struct SettingsExportPackage: Codable, Equatable, Sendable {
     let packageVersion: Int
     let appVersion: String
+    let exportKind: SettingsExportKind
     let createdAt: Date
+    let redactionMode: SettingsExportRedactionMode
     let settings: [String: String]
+    let omittedSettings: [String]
     let profiles: [ProfileExportEntry]
     let groups: [IconGroup]
     let hotkeyBindings: [HotkeyBinding]
@@ -17,8 +20,11 @@ nonisolated struct SettingsExportPackage: Codable, Equatable, Sendable {
     init(
         packageVersion: Int = 1,
         appVersion: String,
+        exportKind: SettingsExportKind = .fullSettings,
         createdAt: Date = Date(),
+        redactionMode: SettingsExportRedactionMode = .privacySafe,
         settings: [String: String],
+        omittedSettings: [String] = [],
         profiles: [ProfileExportEntry] = [],
         groups: [IconGroup] = [],
         hotkeyBindings: [HotkeyBinding] = [],
@@ -28,8 +34,11 @@ nonisolated struct SettingsExportPackage: Codable, Equatable, Sendable {
     ) {
         self.packageVersion = packageVersion
         self.appVersion = appVersion
+        self.exportKind = exportKind
         self.createdAt = createdAt
+        self.redactionMode = redactionMode
         self.settings = settings
+        self.omittedSettings = omittedSettings
         self.profiles = profiles
         self.groups = groups
         self.hotkeyBindings = hotkeyBindings
@@ -37,6 +46,47 @@ nonisolated struct SettingsExportPackage: Codable, Equatable, Sendable {
         self.privateAccessPolicy = privateAccessPolicy
         self.includeAXSnapshots = includeAXSnapshots
     }
+
+    private enum CodingKeys: String, CodingKey {
+        case packageVersion
+        case appVersion
+        case exportKind
+        case createdAt
+        case redactionMode
+        case settings
+        case omittedSettings
+        case profiles
+        case groups
+        case hotkeyBindings
+        case spacerItems
+        case privateAccessPolicy
+        case includeAXSnapshots
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.packageVersion = try container.decode(Int.self, forKey: .packageVersion)
+        self.appVersion = try container.decode(String.self, forKey: .appVersion)
+        self.exportKind = try container.decodeIfPresent(SettingsExportKind.self, forKey: .exportKind) ?? .fullSettings
+        self.createdAt = try container.decode(Date.self, forKey: .createdAt)
+        self.redactionMode = try container.decodeIfPresent(SettingsExportRedactionMode.self, forKey: .redactionMode) ?? .privacySafe
+        self.settings = try container.decode([String: String].self, forKey: .settings)
+        self.omittedSettings = try container.decodeIfPresent([String].self, forKey: .omittedSettings) ?? []
+        self.profiles = try container.decodeIfPresent([ProfileExportEntry].self, forKey: .profiles) ?? []
+        self.groups = try container.decodeIfPresent([IconGroup].self, forKey: .groups) ?? []
+        self.hotkeyBindings = try container.decodeIfPresent([HotkeyBinding].self, forKey: .hotkeyBindings) ?? []
+        self.spacerItems = try container.decodeIfPresent([SpacerItemModel].self, forKey: .spacerItems) ?? []
+        self.privateAccessPolicy = try container.decodeIfPresent(PrivateAccessPolicyExport.self, forKey: .privateAccessPolicy)
+        self.includeAXSnapshots = try container.decodeIfPresent(Bool.self, forKey: .includeAXSnapshots) ?? false
+    }
+}
+
+nonisolated enum SettingsExportKind: String, Codable, Equatable, Sendable {
+    case fullSettings
+}
+
+nonisolated enum SettingsExportRedactionMode: String, Codable, Equatable, Sendable {
+    case privacySafe
 }
 
 /// Profile export entry.

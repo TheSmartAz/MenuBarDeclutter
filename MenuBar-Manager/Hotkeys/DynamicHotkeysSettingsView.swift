@@ -29,9 +29,16 @@ struct DynamicHotkeysSettingsView: View {
         ClearGlassSettingsPage(
             "Hotkeys",
             subtitle: "Create optional per-action hotkeys. Existing Basic and Find Icon hotkeys keep working.",
-            badges: [.privacySafe, .experimental]
+            badges: [.preview, .privacySafe]
         ) {
             ClearGlassSection("Dynamic Hotkeys") {
+                FeatureGateNotice(
+                    .preview,
+                    text: "Preview in v0.1.1. Conflicts fail closed and do not replace the stable Basic hotkey."
+                )
+
+                ClearGlassDivider()
+
                 ClearGlassControlRow(
                     systemImage: "keyboard",
                     title: "Enable Dynamic Hotkeys",

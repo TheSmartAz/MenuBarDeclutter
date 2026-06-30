@@ -71,9 +71,8 @@ final class SeparatorController {
         return window.convertToScreen(windowFrame)
     }
 
-    /// Installs the status item. When `enableItem` is `false`, the controller
-    /// skips installation entirely (used by `SettingsStore.showPrimarySeparator`
-    /// for the primary separator).
+    /// Installs the status item. `enableItem` remains available for optional
+    /// separators; the primary separator is required for Basic Mode recovery.
     func install(enableItem: Bool = true) {
         guard statusItem == nil else { return }
         guard enableItem else {

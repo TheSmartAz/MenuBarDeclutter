@@ -30,13 +30,20 @@ struct MigrationAssistantRootView: View {
         ClearGlassSettingsPage(
             "Import / Export",
             subtitle: "Move local MenuBarDeclutter configuration explicitly and safely.",
-            badges: [.privacySafe]
+            badges: [.preview, .privacySafe]
         ) {
             ClearGlassSection("Export") {
+                FeatureGateNotice(
+                    .preview,
+                    text: "Preview in v0.1.1. Export writes local JSON; import is dry-run first."
+                )
+
+                ClearGlassDivider()
+
                 ClearGlassControlRow(
                     systemImage: "square.and.arrow.up",
-                    title: "Export Full Settings",
-                    subtitle: "Exports settings, groups, hotkeys, spacer items, and Private Access policy. Active unlock sessions are excluded."
+                    title: "Export Settings Package",
+                    subtitle: "Exports user settings, groups, hotkeys, spacers, and Private Access policy. Volatile state is excluded."
                 ) {
                     Button("Export", systemImage: "square.and.arrow.up") {
                         exportPackage()
@@ -44,7 +51,7 @@ struct MigrationAssistantRootView: View {
                 }
 
                 ClearGlassInlineMessage(
-                    text: "Diagnostics logs, screenshots, screen contents, and Accessibility snapshots are not included by default.",
+                    text: "Diagnostics logs, screenshots, screen contents, and Accessibility snapshots are excluded.",
                     systemImage: "checkmark.shield",
                     style: .success
                 )
@@ -54,7 +61,7 @@ struct MigrationAssistantRootView: View {
                 ClearGlassControlRow(
                     systemImage: "square.and.arrow.down",
                     title: "Import Package",
-                    subtitle: "Choose a package manually. Import is dry-run first and never silently enables experimental flags."
+                    subtitle: "Dry-runs a selected package and creates a backup. No apply path exists in v0.1.1."
                 ) {
                     Button("Choose File", systemImage: "doc.badge.plus") {
                         importPackage()

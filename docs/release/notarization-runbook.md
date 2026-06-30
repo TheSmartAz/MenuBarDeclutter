@@ -24,11 +24,11 @@ Run from the repository root.
    ```
 6. Submit notarization:
    ```sh
-   scripts/release_notarize.sh build/Dist/MenuBarDeclutter-alpha.zip
+   scripts/release_notarize.sh build/Dist/MenuBarDeclutter-v0.1.1.zip
    ```
    If credentials are unavailable:
    ```sh
-   scripts/release_notarize.sh --dry-run build/Dist/MenuBarDeclutter-alpha.zip
+   scripts/release_notarize.sh --dry-run build/Dist/MenuBarDeclutter-v0.1.1-alpha.zip
    ```
 7. Staple after a successful notarization:
    ```sh

@@ -159,7 +159,8 @@ This checklist verifies the Phase 1 hiding MVP. Later-phase features such as glo
 ### First-launch onboarding
 
 - Launch the app on a clean install (delete `~/Library/Preferences/<bundle-id>.plist` if needed) and confirm the Onboarding window appears centered.
-- Step through all six onboarding pages: intro, Command-drag, hidden vs always-hidden, hotkey & auto-rehide, privacy, macOS 26 note.
+- Step through all seven onboarding pages: intro, native cleanup, Command-drag, hidden vs always-hidden, hotkey & auto-rehide, privacy, macOS 26 note.
+- On the native cleanup page, click "Open Menu Bar Settings"; confirm System Settings opens best-effort and no permission prompt appears.
 - Confirm the macOS 26 note page shows the "Transparent menu bar visible." callout.
 - Click "Get Started"; confirm the window closes and Diagnostics logs "Onboarding completed.".
 - Quit and relaunch; confirm onboarding does NOT reappear (`hasCompletedOnboarding` persisted).
@@ -751,7 +752,7 @@ This checklist verifies the Phase 1 hiding MVP. Later-phase features such as glo
 
 ### Floating surfaces
 
-- Complete the six-step Onboarding flow; confirm the redesigned panels preserve step order, privacy copy, completion behavior, and window sizing.
+- Complete the seven-step Onboarding flow; confirm the redesigned panels preserve step order, native cleanup copy, privacy copy, completion behavior, and window sizing.
 - Open Find Icon with Pro disabled, Pro enabled without Accessibility, and Pro enabled with a seeded scan; confirm focus, debounce, keyboard selection, empty/unavailable states, and move context menu actions are intact.
 - Open Second Bar with Pro disabled, Pro enabled without Accessibility, and Pro enabled with icons available; confirm sizing, positioning, outside-click dismissal, keyboard handling, icon cache loading, and unavailable copy.
 - Show the drag hint from the status menu; confirm it anchors to the separator/control item, uses the compact instructional popover, and closes transiently.

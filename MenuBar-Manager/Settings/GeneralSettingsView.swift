@@ -20,7 +20,7 @@ struct GeneralSettingsView: View {
         ClearGlassSettingsPage(
             "General",
             subtitle: "Startup, layout, onboarding, and app identity.",
-            badges: [.basicMode, .privacySafe]
+            badges: [.stable, .basicMode, .privacySafe]
         ) {
             if settingsStore.v01SafeDefaultsNoticePending {
                 ClearGlassInlineMessage(

@@ -71,6 +71,8 @@ struct ProfileListView: View {
                 .padding(.vertical, 4)
                 .background(.quaternary, in: .capsule)
 
+            FeatureStatusBadge(.stable)
+
             Spacer()
 
             Button("Create", systemImage: "plus") {
@@ -218,6 +220,11 @@ struct ProfileListView: View {
     private var triggerSection: some View {
         ProfileGlassPanel("Smart Triggers", systemImage: "bolt") {
             VStack(alignment: .leading, spacing: 10) {
+                FeatureGateNotice(
+                    .preview,
+                    text: "Preview in v0.1.1. Triggers stay paused when automation is paused."
+                )
+
                 VStack(alignment: .leading, spacing: 8) {
                     triggerToggles
                 }

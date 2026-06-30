@@ -640,7 +640,6 @@ struct DiagnosticsExporter {
         SettingsField(key: "automationPaused", label: "Automation Paused") { .bool($0.automationPaused) },
         SettingsField(key: "dogfoodModeEnabled", label: "Dogfood Mode Enabled") { .bool($0.dogfoodModeEnabled) },
         SettingsField(key: "dogfoodNotesEnabled", label: "Dogfood Notes Enabled") { .bool($0.dogfoodNotesEnabled) },
-        SettingsField(key: "showPrimarySeparator", label: "Show Primary Separator") { .bool($0.showPrimarySeparator) },
         SettingsField(key: "showSeparators", label: "Show Separators") { .bool($0.showSeparators) },
         SettingsField(key: "autoRehideEnabled", label: "Auto-Rehide Enabled") { .bool($0.autoRehideEnabled) },
         SettingsField(key: "autoRehideDelaySeconds", label: "Auto-Rehide Delay (s)") { .double($0.autoRehideDelaySeconds) },

@@ -54,7 +54,7 @@ final class RehideController {
     var onStatusChange: (() -> Void)?
 
     private let diagnosticsLogger: DiagnosticsLogger
-    private var pollTimer: Timer?
+    private var pollTask: Task<Void, Never>?
     private var fireDeadline: Date?
     private var isFiringAutoRehide = false
     private(set) var isScheduled = false
@@ -90,8 +90,8 @@ final class RehideController {
         if hadActiveCountdown {
             diagnosticsLogger.log("Auto-rehide cancelled.", level: .debug)
         }
-        pollTimer?.invalidate()
-        pollTimer = nil
+        pollTask?.cancel()
+        pollTask = nil
         fireDeadline = nil
         isScheduled = false
         if hadActiveCountdown {
@@ -170,8 +170,10 @@ final class RehideController {
     // MARK: Internal
 
     private func startTimer() {
-        pollTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated {
+        pollTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(250))
+                guard !Task.isCancelled else { return }
                 self?.tick()
             }
         }
@@ -187,7 +189,7 @@ final class RehideController {
     }
 
     private var hasActiveCountdown: Bool {
-        pollTimer != nil || isScheduled || fireDeadline != nil
+        pollTask != nil || isScheduled || fireDeadline != nil
     }
 
     private func fireRehide() {
@@ -201,8 +203,8 @@ final class RehideController {
     }
 
     private func clearCountdown() {
-        pollTimer?.invalidate()
-        pollTimer = nil
+        pollTask?.cancel()
+        pollTask = nil
         fireDeadline = nil
         isScheduled = false
     }
