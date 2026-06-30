@@ -132,29 +132,30 @@ struct DiagnosticsSettingsView: View {
         panel.nameFieldStringValue = suggestedName
         panel.directoryURL = directory
 
-        let response = panel.runModal()
-        guard response == .OK, let url = panel.url else { return }
+        presentSavePanel(panel) { url in
+            guard let url else { return }
 
-        let snapshot = exporter.makeSnapshot(
-            settingsStore: settingsStore,
-            logger: diagnosticsLogger,
-            events: filteredEvents
-        )
-        do {
-            let data = try exporter.serialize(
-                snapshot,
-                format: exportFormat,
-                includeAppSupportPath: false,
-                appSupportPath: nil
+            let snapshot = exporter.makeSnapshot(
+                settingsStore: settingsStore,
+                logger: diagnosticsLogger,
+                events: filteredEvents
             )
-            try data.write(to: url, options: .atomic)
-            lastExportedURL = url
-            exportError = nil
-            diagnosticsLogger.log("Diagnostics exported to \(url.lastPathComponent).", level: .info)
-        } catch {
-            exportError = error.localizedDescription
-            lastExportedURL = nil
-            diagnosticsLogger.log("Diagnostics export failed: \(error.localizedDescription)", level: .error)
+            do {
+                let data = try exporter.serialize(
+                    snapshot,
+                    format: exportFormat,
+                    includeAppSupportPath: false,
+                    appSupportPath: nil
+                )
+                try data.write(to: url, options: .atomic)
+                lastExportedURL = url
+                exportError = nil
+                diagnosticsLogger.log("Diagnostics exported to \(url.lastPathComponent).", level: .info)
+            } catch {
+                exportError = error.localizedDescription
+                lastExportedURL = nil
+                diagnosticsLogger.log("Diagnostics export failed: \(error.localizedDescription)", level: .error)
+            }
         }
     }
 
@@ -189,18 +190,33 @@ struct DiagnosticsSettingsView: View {
         panel.nameFieldStringValue = suggestedName
         panel.directoryURL = directory
 
-        let response = panel.runModal()
-        guard response == .OK, let url = panel.url else { return }
+        presentSavePanel(panel) { url in
+            guard let url else { return }
 
-        do {
-            try Data(report.plainText().utf8).write(to: url, options: .atomic)
-            lastExportedURL = url
-            exportError = nil
-            diagnosticsLogger.log("Health report exported to \(url.lastPathComponent).", level: .info)
-        } catch {
-            exportError = error.localizedDescription
-            lastExportedURL = nil
-            diagnosticsLogger.log("Health report export failed: \(error.localizedDescription)", level: .error)
+            do {
+                try Data(report.plainText().utf8).write(to: url, options: .atomic)
+                lastExportedURL = url
+                exportError = nil
+                diagnosticsLogger.log("Health report exported to \(url.lastPathComponent).", level: .info)
+            } catch {
+                exportError = error.localizedDescription
+                lastExportedURL = nil
+                diagnosticsLogger.log("Health report export failed: \(error.localizedDescription)", level: .error)
+            }
+        }
+    }
+
+    private func presentSavePanel(_ panel: NSSavePanel, completion: @escaping (URL?) -> Void) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(150)) {
+            let handler: (NSApplication.ModalResponse) -> Void = { response in
+                completion(response == .OK ? panel.url : nil)
+            }
+
+            if let window = NSApplication.shared.keyWindow ?? NSApplication.shared.mainWindow {
+                panel.beginSheetModal(for: window, completionHandler: handler)
+            } else {
+                panel.begin(completionHandler: handler)
+            }
         }
     }
 
