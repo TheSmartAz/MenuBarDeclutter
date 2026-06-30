@@ -3,7 +3,7 @@
 Date: 2026-06-30
 Tester: Codex
 Build: `0.1.1 (2)`
-Source commit before this pass: `ca20f3e`
+Source commits covered: `ca20f3e` through `4de5517`
 Artifact type: dry-run local release archive/export, Apple Development signed, not notarized
 Installed app: `/Applications/MenuBarDeclutter.app`
 macOS: `26.1 (25B78)`
@@ -22,6 +22,9 @@ This run covers the installed-app acceptance pass after the native macOS Setting
 | URL scheme smoke | PASS | `menubardeclutter://expand` did not launch a stale duplicate; process remained `/Applications/MenuBarDeclutter.app`. Automation stayed paused and Diagnostics remained healthy. |
 | Network watch | PASS | `scripts/qa_network_watch.sh --installed` observed no sockets for the installed process. |
 | Clean crash-marker recovery | PASS | Clean quit removed `running.marker`; relaunch returned Diagnostics to `Health: OK` without previous-crash badge. |
+| Launch at Login toggle | PASS | Enabled from the installed app, observed `Login Item Enabled`, then disabled and refreshed back to `Not Registered`; app defaults restored to `launchAtLoginEnabled = 0`. |
+| Developer ID export | BLOCKED | Real export probe failed with `No signing certificate "Developer ID Application" found`; only an Apple Development identity is installed. |
+| Gatekeeper notarization validation | EXPECTED FAIL | Dry-run app passes strict codesign verification, but `spctl` rejects it and `stapler` reports no ticket until Developer ID notarization is available. |
 
 ## Installed UI Pass
 
@@ -84,15 +87,37 @@ Privacy scan of the exported report found no screenshot text, screen-content tex
 | `/usr/bin/open -b Yongjun-Zhang.MenuBarDeclutter 'menubardeclutter://expand'` | PASS, single installed process stayed active |
 | `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS'` | PASS, 410 Swift tests and 11 UI tests |
 | `git diff --check` | PASS |
+| `for key in launchAtLoginEnabled appMode startCollapsed proModeEnabled accessibilityDiscoveryEnabled automationPaused; do printf '%s=' "$key"; defaults read Yongjun-Zhang.MenuBarDeclutter "$key" 2>/dev/null || printf '<unset>\n'; done` | PASS, restored state was Launch at Login off, `appMode = basic`, Pro Mode off, Accessibility Discovery off, automation paused |
+| `lsof -Pan -p 1082 -i` | PASS, no network sockets for the running installed app |
+| `sudo -n nettop -P -L 1 -p 1082` | BLOCKED, passwordless sudo is unavailable in this session |
+| `security find-identity -v -p codesigning` | BLOCKED for release signing, only `Apple Development: emailyongjunzhang@gmail.com (834922P6J6)` is installed |
+| `ARCHIVE_PATH="$PWD/build/Archives/MenuBarDeclutter.xcarchive" EXPORT_DIR="$PWD/build/ExportDeveloperIDProbe" APP_PATH="$PWD/build/ExportDeveloperIDProbe/MenuBarDeclutter.app" scripts/release_export_app.sh` | EXPECTED FAIL, `No signing certificate "Developer ID Application" found` |
+| `scripts/release_validate_gatekeeper.sh build/Export/MenuBarDeclutter.app` | EXPECTED FAIL for dry-run build: codesign strict verification PASS; `spctl` rejected; stapler ticket missing |
+
+## Follow-Up System-State Gates
+
+Launch at Login was exercised through the installed app after the initial non-mutating pass:
+
+1. Started with General showing `Launch at Login` off, status `Not Registered`, installed path `/Applications/MenuBarDeclutter.app`, and Basic Mode privacy copy.
+2. Enabled `Launch at Login`; the UI reported `Login Item Enabled`, `Login Item Status Enabled`, and `Last Login Item Action Registered`.
+3. Disabled `Launch at Login` again; after refresh, the UI reported `Login Item Not Registered`, `Login Item Status Not Registered`, and `Last Login Item Action Unregistered`.
+4. Verified persisted app state from defaults: `launchAtLoginEnabled = 0`, `appMode = basic`, `startCollapsed = 0`, `proModeEnabled = 0`, `accessibilityDiscoveryEnabled = 0`, and `automationPaused = 1`.
+
+Developer ID release gates were also probed without disturbing the verified dry-run export:
+
+1. Codesigning identities contain only an Apple Development certificate.
+2. Real `xcodebuild -exportArchive` to `build/ExportDeveloperIDProbe` failed because no Developer ID Application certificate is installed.
+3. Gatekeeper validation against the dry-run exported app passed strict codesign verification and failed `spctl`/stapler as expected for a non-notarized local artifact.
 
 ## Deferred System-State Checks
 
-These remain intentionally untested in this non-mutating pass:
+These remain intentionally untested because they require disruptive OS changes, external credentials, hardware, or user-login session control:
 
-- Enabling/disabling Launch at Login and validating logout/login or restart behavior.
-- Changing macOS Privacy & Security grants, including Accessibility grant/revoke behavior.
-- Interactive `sudo nettop` observation.
+- Logout/login or restart validation of Launch at Login behavior.
+- Changing macOS Privacy & Security grants, including Accessibility grant/revoke behavior. Accessibility is currently granted on this Mac, but Pro Mode and Accessibility Discovery were restored off.
+- Interactive `sudo nettop` observation with an administrator password.
 - Restart/logout/login acceptance.
+- Real Developer ID notarization/stapling with external Apple credentials.
 
 ## Notes
 
