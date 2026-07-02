@@ -129,17 +129,14 @@ struct TriggerServiceTests {
         #expect(harness.liveStatus.triggerEvaluationLog == "Matched Loop guard but skipped (loop unit test).")
     }
 
-    @Test func startCoalescesBurstScreenEventsIntoSingleEvaluation() async throws {
+    @Test func scheduleCoalescesBurstScreenEventsIntoSingleEvaluation() async throws {
         let saveCounter = SaveCounter()
         let clock = EvaluationClock(date: Date(timeIntervalSince1970: 3_000))
-        let notificationCenter = NotificationCenter()
         let harness = makeHarness(
             now: { clock.now() },
             saveCounter: saveCounter,
-            notificationCenter: notificationCenter,
             workspaceNotificationCenter: NotificationCenter(),
-            notificationDeliveryQueue: nil,
-            evaluationDebounceInterval: .milliseconds(25),
+            evaluationDebounceInterval: .milliseconds(1),
             currentContextProvider: {
                 TriggerEvaluationContext(displayCount: 1)
             }
@@ -160,12 +157,8 @@ struct TriggerServiceTests {
             )
         ]
 
-        harness.service.start()
         for _ in 0..<5 {
-            notificationCenter.post(
-                name: NSApplication.didChangeScreenParametersNotification,
-                object: NSApp
-            )
+            harness.service.scheduleEvaluationForTesting(reason: "screen change")
         }
 
         await waitUntil {
@@ -184,7 +177,6 @@ struct TriggerServiceTests {
         saveCounter: SaveCounter,
         notificationCenter: NotificationCenter = NotificationCenter(),
         workspaceNotificationCenter: NotificationCenter = NotificationCenter(),
-        notificationDeliveryQueue: OperationQueue? = .main,
         evaluationDebounceInterval: Duration = .milliseconds(250),
         currentContextProvider: (() -> TriggerEvaluationContext)? = nil
     ) -> Harness {
@@ -223,7 +215,6 @@ struct TriggerServiceTests {
             now: now,
             notificationCenter: notificationCenter,
             workspaceNotificationCenter: workspaceNotificationCenter,
-            notificationDeliveryQueue: notificationDeliveryQueue,
             evaluationDebounceInterval: evaluationDebounceInterval,
             batteryPercentProvider: { nil },
             currentContextProvider: currentContextProvider,
