@@ -24,6 +24,7 @@ struct LayoutSettingsDefaultsTests {
         #expect(store.fullMenuBarModeSuspendsAutoRehide)
         #expect(store.fullMenuBarModeShowsSpacerMarkers)
         #expect(store.crowdedRevealAutoOpenSecondBar)
+        #expect(!store.crowdedRevealAskBeforeSwitching)
         #expect(store.crowdedRevealThresholdRatio == 0.85)
         #expect(!store.crowdedRevealRequireProEstimate)
         #expect(store.spacerItemsEnabled)
@@ -105,6 +106,7 @@ struct LayoutSettingsDefaultsTests {
         store.menuBarSpacingLabsEnabled = true
         store.menuBarSpacingPreset = "compact"
         store.fullMenuBarModeAutoExitSeconds = 60
+        store.crowdedRevealAskBeforeSwitching = true
         store.crowdedRevealThresholdRatio = 0.7
 
         // Reset
@@ -115,6 +117,7 @@ struct LayoutSettingsDefaultsTests {
         #expect(!store.menuBarSpacingLabsEnabled)
         #expect(store.menuBarSpacingPreset == "system")
         #expect(store.fullMenuBarModeAutoExitSeconds == 30)
+        #expect(!store.crowdedRevealAskBeforeSwitching)
         #expect(store.crowdedRevealThresholdRatio == 0.85)
     }
 
@@ -126,12 +129,14 @@ struct LayoutSettingsDefaultsTests {
         let store = SettingsStore(defaults: defaults)
         store.layoutFeaturesEnabled = false
         store.fullMenuBarModeAutoExitSeconds = 120
+        store.crowdedRevealAskBeforeSwitching = true
         store.menuBarSpacingPreset = "dense"
         store.menuBarSpacingLastApplyStatus = "applied"
 
         let reloaded = SettingsStore(defaults: defaults)
         #expect(reloaded.layoutFeaturesEnabled == false)
         #expect(reloaded.fullMenuBarModeAutoExitSeconds == 120)
+        #expect(reloaded.crowdedRevealAskBeforeSwitching)
         #expect(reloaded.menuBarSpacingPreset == "dense")
         #expect(reloaded.menuBarSpacingLastApplyStatus == "applied")
     }

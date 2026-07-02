@@ -77,6 +77,39 @@ struct SecondBarViewModelTests {
         #expect(results.map(\.owningApplicationName) == ["First", "Second"])
     }
 
+    @Test func itemActionPlannerRoutesFindIconThroughCommandCenter() {
+        let snapshot = makeSnapshot(appName: "Calendar", zone: .hidden)
+
+        let command = SecondBarItemActionPlanner.command(
+            for: .showInFindIcon,
+            snapshot: snapshot
+        )
+
+        #expect(command.action == .showFindIcon)
+        #expect(command.target == .menuBarItem(id: snapshot.id))
+        #expect(command.source == .secondBar)
+    }
+
+    @Test func itemActionPlannerRoutesAssistedMoveActionsThroughCommandCenter() {
+        let snapshot = makeSnapshot(appName: "Mover", zone: .hidden)
+
+        let dryRun = SecondBarItemActionPlanner.command(
+            for: .dryRunAssistedMove,
+            snapshot: snapshot
+        )
+        let attempt = SecondBarItemActionPlanner.command(
+            for: .tryAssistedMove,
+            snapshot: snapshot
+        )
+
+        #expect(dryRun.action == .dryRunMoveItem)
+        #expect(dryRun.target == .menuBarItem(id: snapshot.id))
+        #expect(dryRun.source == .secondBar)
+        #expect(attempt.action == .tryAssistedMoveItem)
+        #expect(attempt.target == .menuBarItem(id: snapshot.id))
+        #expect(attempt.source == .secondBar)
+    }
+
     private func makeSnapshot(
         appName: String,
         title: String? = nil,

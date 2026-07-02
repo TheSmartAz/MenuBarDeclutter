@@ -128,6 +128,11 @@ final class SpacerItemStore {
         save()
     }
 
+    func replaceAll(_ replacementItems: [SpacerItemModel]) {
+        items = replacementItems.sorted { $0.sortOrder < $1.sortOrder }
+        save()
+    }
+
     /// Hide all spacer markers.
     func hideAllMarkers() {
         for index in items.indices {

@@ -37,7 +37,7 @@ struct IconGroupsSettingsView: View {
             ClearGlassSection("Groups") {
                 FeatureGateNotice(
                     .preview,
-                    text: "Preview in v0.1.1. Manual groups are local; group status items stay off unless enabled."
+                    text: "Preview in v0.1.3. Manual groups are local; group status items stay off unless enabled."
                 )
 
                 ClearGlassDivider()

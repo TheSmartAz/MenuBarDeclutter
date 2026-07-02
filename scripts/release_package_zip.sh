@@ -14,7 +14,7 @@ if [[ -z "$VERSION" ]]; then
 fi
 
 if [[ "$VERSION" == "0.2" || "$VERSION" == "0.2.0" || "$VERSION" == v0.2* ]]; then
-  echo "FAIL: Phase 12 release tooling must not package a v0.2 artifact." >&2
+  echo "FAIL: v0.1.x release tooling must not package a v0.2 artifact." >&2
   exit 1
 fi
 

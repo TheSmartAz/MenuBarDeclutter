@@ -16,7 +16,7 @@ Health and recovery features keep the Basic Mode control reachable and provide t
 
 ## User Flow
 
-1. Open Settings -> Diagnostics.
+1. Open Settings -> Recovery.
 2. Review Health status and issue rows.
 3. Click Fix Automatically for targeted repair.
 4. Use Reset Basic Mode or Disable Pro Mode if a broader recovery is needed.
@@ -44,7 +44,7 @@ Health reports, Safe Mode flags, and crash markers are local files. Health check
 - `MenuBar-ManagerTests/HealthReportTests.swift`
 - `MenuBar-ManagerTests/RecoveryServiceTests.swift`
 - `MenuBar-ManagerTests/SafeModeServiceTests.swift`
-- Manual QA: `docs/testing/manual-qa.md`
+- Manual QA: `docs/testing/manual-v0.1.3-system-qa.md`
 
 ## Known Limitations
 

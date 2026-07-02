@@ -40,7 +40,7 @@ URL automation is local and command-limited. It does not add a scripting diction
 
 - `MenuBar-ManagerTests/AutomationURLHandlerTests.swift`
 - Release verification checks the URL scheme.
-- Manual QA: `docs/testing/manual-qa.md`
+- Manual QA: `docs/testing/manual-v0.1.3-system-qa.md`
 
 ## Known Limitations
 

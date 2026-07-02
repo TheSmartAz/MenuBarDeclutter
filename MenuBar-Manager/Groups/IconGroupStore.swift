@@ -137,6 +137,11 @@ final class IconGroupStore {
         save()
     }
 
+    func replaceAll(_ replacementGroups: [IconGroup]) {
+        groups = IconGroupSort.sort(replacementGroups)
+        save()
+    }
+
     /// Reset all groups.
     func reset() {
         groups.removeAll()

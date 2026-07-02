@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 
 /// Result of a crowded reveal rescue evaluation.
@@ -34,6 +35,7 @@ final class CrowdedRevealRescueService {
     private(set) var lastRevealIntercepted = false
     private(set) var lastResult: CrowdedRevealRescueResult?
     private(set) var lastDecision: CrowdedRevealDecision?
+    private(set) var lastExplanation: String?
     private var rescueCount = 0
     private var lastRescueAt: Date?
 
@@ -57,24 +59,6 @@ final class CrowdedRevealRescueService {
         self.decisionEngine = decisionEngine
     }
 
-    /// Evaluate whether to intercept a reveal based on the capacity estimate.
-    /// Returns the rescue action to take.
-    func evaluate(
-        estimate: LayoutCapacityEstimate,
-        secondBarAvailable: Bool,
-        fullMenuBarModeAvailable: Bool
-    ) -> CrowdedRevealRescueResult {
-        evaluate(
-            intent: .revealAll,
-            currentVisibility: .collapsed,
-            estimate: estimate,
-            secondBarAvailable: secondBarAvailable,
-            fullMenuBarModeAvailable: fullMenuBarModeAvailable,
-            layoutSuggestionsAvailable: settingsStore.layoutSuggestionsEnabled,
-            safeModeActive: false
-        )
-    }
-
     /// Evaluate whether to intercept a reveal based on capacity and the caller's
     /// reveal intent.
     func evaluate(
@@ -84,19 +68,26 @@ final class CrowdedRevealRescueService {
         secondBarAvailable: Bool,
         fullMenuBarModeAvailable: Bool,
         layoutSuggestionsAvailable: Bool,
-        safeModeActive: Bool
+        safeModeActive: Bool,
+        activeDisplayID: String? = nil,
+        activeAppMenuPressure: CrowdedRevealMenuPressure = .unknown
     ) -> CrowdedRevealRescueResult {
+        let proDiscoveryAvailable = settingsStore.proModeEnabled && settingsStore.accessibilityDiscoveryEnabled
         let decision = decisionEngine.decide(CrowdedRevealDecisionInput(
             intent: intent,
             currentVisibility: currentVisibility,
             estimate: estimate,
             rescueEnabled: settingsStore.crowdedRevealRescueEnabled,
             autoOpenSecondBar: settingsStore.crowdedRevealAutoOpenSecondBar,
+            askBeforeSwitching: settingsStore.crowdedRevealAskBeforeSwitching,
             requireProEstimate: settingsStore.crowdedRevealRequireProEstimate,
+            proDiscoveryAvailable: proDiscoveryAvailable,
             secondBarAvailable: secondBarAvailable,
             fullMenuBarModeAvailable: fullMenuBarModeAvailable,
             layoutSuggestionsAvailable: layoutSuggestionsAvailable,
-            safeModeActive: safeModeActive
+            safeModeActive: safeModeActive,
+            activeDisplayID: activeDisplayID ?? estimate.screenID,
+            activeAppMenuPressure: activeAppMenuPressure
         ))
         lastDecision = decision
 
@@ -104,10 +95,12 @@ final class CrowdedRevealRescueService {
         case .inlineReveal:
             lastRevealIntercepted = false
             lastResult = .proceedInline
+            lastExplanation = nil
             return .proceedInline
         case .noOp:
             lastRevealIntercepted = false
             lastResult = .noOp
+            lastExplanation = nil
             return .noOp
         case .secondBar, .fullMenuBarMode, .showLayoutSuggestion:
             lastRevealIntercepted = true
@@ -117,10 +110,18 @@ final class CrowdedRevealRescueService {
 
         if decision == .secondBar {
             openSecondBar()
+            lastExplanation = "Opened Second Bar because inline reveal may not fit."
             diagnosticsLogger.log(
-                "Opened Second Bar because the menu bar appears crowded.",
+                lastExplanation ?? "Opened Second Bar for crowded reveal rescue.",
                 category: .layout,
-                metadata: decisionMetadata(for: estimate, intent: intent, fallback: "secondBar")
+                metadata: decisionMetadata(
+                    for: estimate,
+                    intent: intent,
+                    fallback: "secondBar",
+                    proDiscoveryAvailable: proDiscoveryAvailable,
+                    activeDisplayID: activeDisplayID,
+                    activeAppMenuPressure: activeAppMenuPressure
+                )
             )
             lastResult = .openedSecondBar
             return .openedSecondBar
@@ -128,21 +129,37 @@ final class CrowdedRevealRescueService {
 
         if decision == .fullMenuBarMode {
             enterFullMenuBarMode()
+            lastExplanation = "Full Menu Bar Mode temporarily reveals items because inline reveal may not fit."
             diagnosticsLogger.log(
-                "Entered Full Menu Bar Mode because the menu bar appears crowded and Second Bar is unavailable.",
+                lastExplanation ?? "Entered Full Menu Bar Mode for crowded reveal rescue.",
                 category: .layout,
-                metadata: decisionMetadata(for: estimate, intent: intent, fallback: "fullMenuBarMode")
+                metadata: decisionMetadata(
+                    for: estimate,
+                    intent: intent,
+                    fallback: "fullMenuBarMode",
+                    proDiscoveryAvailable: proDiscoveryAvailable,
+                    activeDisplayID: activeDisplayID,
+                    activeAppMenuPressure: activeAppMenuPressure
+                )
             )
             lastResult = .enteredFullMenuBarMode
             return .enteredFullMenuBarMode
         }
 
         showLayoutSuggestions()
+        lastExplanation = "Inline reveal may not fit. Try Apple menu bar settings to reduce system items, or use Arrange to move items manually."
         diagnosticsLogger.log(
-            "Menu bar appears crowded but no rescue available; showing suggestion only.",
+            lastExplanation ?? "Showing crowded reveal suggestion only.",
             level: .warning,
             category: .layout,
-            metadata: decisionMetadata(for: estimate, intent: intent, fallback: "layoutSuggestion")
+            metadata: decisionMetadata(
+                for: estimate,
+                intent: intent,
+                fallback: "layoutSuggestion",
+                proDiscoveryAvailable: proDiscoveryAvailable,
+                activeDisplayID: activeDisplayID,
+                activeAppMenuPressure: activeAppMenuPressure
+            )
         )
         lastResult = .suggestedOnly
         return .suggestedOnly
@@ -154,6 +171,7 @@ final class CrowdedRevealRescueService {
         diagnosticsLogger.log("User chose to reveal inline anyway, overriding crowded rescue.", category: .layout)
         lastResult = .inlineOverride
         lastDecision = .inlineReveal
+        lastExplanation = nil
         return .inlineOverride
     }
 
@@ -162,6 +180,7 @@ final class CrowdedRevealRescueService {
         lastRevealIntercepted = false
         lastResult = nil
         lastDecision = nil
+        lastExplanation = nil
         rescueCount = 0
         lastRescueAt = nil
     }
@@ -172,13 +191,23 @@ final class CrowdedRevealRescueService {
     private func decisionMetadata(
         for estimate: LayoutCapacityEstimate,
         intent: CrowdedRevealIntent,
-        fallback: String
+        fallback: String,
+        proDiscoveryAvailable: Bool,
+        activeDisplayID: String?,
+        activeAppMenuPressure: CrowdedRevealMenuPressure
     ) -> [String: String] {
         [
             "intent": intent.rawValue,
             "fallback": fallback,
             "ratio": estimate.usedCapacityRatio.formatted(.number.precision(.fractionLength(2))),
-            "source": estimate.source.rawValue
+            "source": estimate.source.rawValue,
+            "hiddenCount": "\(estimate.knownHiddenItemCount)",
+            "alwaysHiddenCount": "\(estimate.knownAlwaysHiddenItemCount)",
+            "notchRisk": "\(estimate.isLikelyNotchConstrained)",
+            "displayWidth": Double(estimate.screenFrame.width).formatted(.number.precision(.fractionLength(0))),
+            "estimateDisplayMatchesActiveDisplay": "\(activeDisplayID == nil || activeDisplayID == estimate.screenID)",
+            "proDiscoveryAvailable": "\(proDiscoveryAvailable)",
+            "appMenuPressure": activeAppMenuPressure.rawValue
         ]
     }
 }

@@ -12,11 +12,11 @@ Smart Triggers are optional local automation rules that apply profiles from loca
 - Uses first-match trigger precedence.
 - Avoids profile loops.
 - Applies profiles through Command Center so profile gates, Safe Mode, and Private Access outcomes stay consistent with other profile automation paths.
-- Exposes Pause All Automation in Profiles, Advanced, and the status menu.
+- Exposes Pause All Automation in Advanced and the status menu.
 
 ## User Flow
 
-1. Open Settings -> Profiles.
+1. Open Settings -> Advanced -> Profiles.
 2. Create at least one profile.
 3. Add a trigger for the selected profile.
 4. Enable smart triggers.
@@ -40,7 +40,7 @@ Smart Triggers use local public system signals. They do not use network access, 
 - `MenuBar-ManagerTests/TriggerRuleEvaluatorTests.swift`
 - `MenuBar-ManagerTests/TriggerServiceTests.swift`
 - `MenuBar-ManagerTests/TriggerServicePersistenceTests.swift`
-- Manual QA: `docs/testing/manual-qa.md`
+- Manual QA: `docs/testing/manual-v0.1.3-system-qa.md`
 
 ## Known Limitations
 

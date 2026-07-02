@@ -39,8 +39,9 @@ final class MenuBarItemSurfaceCoordinator {
 
     private let settingsStore: SettingsStore
     private let diagnosticsLogger: DiagnosticsLogger
-    private let appSupportPaths: AppSupportPaths
     private let liveStatus: LiveDiagnosticsStatus
+    private let menuBarItemMemoryStore: MenuBarItemMemoryStore
+    private let newItemInboxStore: NewMenuBarItemInboxStore?
     private let groupStore: IconGroupStore
     private let safeModeLaunchState: SafeModeLaunchState
     private let hidingService: HidingService
@@ -53,9 +54,6 @@ final class MenuBarItemSurfaceCoordinator {
     private let isHoverRevealSuppressed: () -> Bool
 
     private lazy var searchService = SearchService()
-    private lazy var menuBarItemMemoryStore = MenuBarItemMemoryStore(
-        fileURL: appSupportPaths.menuBarItemMemoryFileURL
-    )
 
     private lazy var searchWindowController = SearchWindowController(
         settingsStore: settingsStore,
@@ -64,6 +62,9 @@ final class MenuBarItemSurfaceCoordinator {
         searchService: searchService,
         itemMemoryStore: menuBarItemMemoryStore,
         diagnosticsLogger: diagnosticsLogger,
+        newItemStorageKeysProvider: { [weak self] in
+            Set(self?.newItemInboxStore?.inbox.items.map(\.id) ?? [])
+        },
         onRefresh: { [weak self] in
             self?.refreshMenuBarItems()
         },
@@ -127,8 +128,9 @@ final class MenuBarItemSurfaceCoordinator {
     init(
         settingsStore: SettingsStore,
         diagnosticsLogger: DiagnosticsLogger,
-        appSupportPaths: AppSupportPaths,
         liveStatus: LiveDiagnosticsStatus,
+        itemMemoryStore: MenuBarItemMemoryStore,
+        newItemInboxStore: NewMenuBarItemInboxStore? = nil,
         groupStore: IconGroupStore,
         safeModeLaunchState: SafeModeLaunchState,
         hidingService: HidingService,
@@ -148,8 +150,9 @@ final class MenuBarItemSurfaceCoordinator {
     ) {
         self.settingsStore = settingsStore
         self.diagnosticsLogger = diagnosticsLogger
-        self.appSupportPaths = appSupportPaths
         self.liveStatus = liveStatus
+        self.menuBarItemMemoryStore = itemMemoryStore
+        self.newItemInboxStore = newItemInboxStore
         self.groupStore = groupStore
         self.safeModeLaunchState = safeModeLaunchState
         self.hidingService = hidingService
@@ -208,6 +211,20 @@ final class MenuBarItemSurfaceCoordinator {
 
     func resetMovingWarnings() {
         iconMoveService.resetWarnings()
+    }
+
+    func performAssistedMove(
+        _ snapshot: MenuBarItemSnapshot,
+        command: IconMoveCommand
+    ) async -> IconMoveResult {
+        guard !safeModeLaunchState.isSafeModeActive else {
+            return IconMoveResult.skipped(
+                command: command,
+                itemName: snapshot.owningApplicationName ?? snapshot.title ?? "Menu Bar Item",
+                error: .disabled
+            )
+        }
+        return await iconMoveService.moveAfterExternalConfirmation(snapshot, command: command)
     }
 
     private func availableGroups() -> [IconGroup] {

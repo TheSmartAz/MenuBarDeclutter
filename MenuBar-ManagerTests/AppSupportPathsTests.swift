@@ -15,7 +15,14 @@ struct AppSupportPathsTests {
         #expect(paths.dogfoodDirectory.path.hasSuffix("/\(AppConstants.displayName)/Dogfood"))
         #expect(paths.dogfoodRunsDirectory.path.hasSuffix("/\(AppConstants.displayName)/Dogfood/runs"))
         #expect(paths.dogfoodExportsDirectory.path.hasSuffix("/\(AppConstants.displayName)/Dogfood/exports"))
+        #expect(paths.supportDirectory.path.hasSuffix("/\(AppConstants.displayName)/support"))
+        #expect(paths.workspacesDirectory.path.hasSuffix("/\(AppConstants.displayName)/workspaces"))
+        #expect(paths.workspaceBackupsDirectory.path.hasSuffix("/\(AppConstants.displayName)/workspaces/backups"))
+        #expect(paths.workspaceStoreFileURL.path.hasSuffix("/\(AppConstants.displayName)/workspaces/workspaces.json"))
+        #expect(paths.localLostIconsGuideURL.path.hasSuffix("/\(AppConstants.displayName)/support/i-cant-find-my-icons.md"))
         #expect(paths.menuBarItemMemoryFileURL.path.hasSuffix("/\(AppConstants.displayName)/menu-bar-item-memory.json"))
+        #expect(paths.newMenuBarItemInboxFileURL.path.hasSuffix("/\(AppConstants.displayName)/new-menu-bar-item-inbox.json"))
+        #expect(paths.placementItemPreferencesFileURL.path.hasSuffix("/\(AppConstants.displayName)/placement-item-preferences.json"))
     }
 
     @Test func ensureDirectoriesExistCreatesAllKnownSubdirectories() throws {
@@ -28,7 +35,7 @@ struct AppSupportPathsTests {
 
         let created = try paths.ensureDirectoriesExist()
 
-        #expect(created.count == 7)
+        #expect(created.count == 10)
         for url in created {
             #expect(FileManager.default.fileExists(atPath: url.path))
         }
@@ -39,6 +46,9 @@ struct AppSupportPathsTests {
         #expect(FileManager.default.fileExists(atPath: paths.dogfoodDirectory.path))
         #expect(FileManager.default.fileExists(atPath: paths.dogfoodRunsDirectory.path))
         #expect(FileManager.default.fileExists(atPath: paths.dogfoodExportsDirectory.path))
+        #expect(FileManager.default.fileExists(atPath: paths.supportDirectory.path))
+        #expect(FileManager.default.fileExists(atPath: paths.workspacesDirectory.path))
+        #expect(FileManager.default.fileExists(atPath: paths.workspaceBackupsDirectory.path))
         #expect(FileManager.default.fileExists(atPath: paths.applicationSupportDirectory.path))
     }
 
@@ -53,7 +63,7 @@ struct AppSupportPathsTests {
         let first = try paths.ensureDirectoriesExist()
         let second = try paths.ensureDirectoriesExist()
 
-        #expect(first.count == 7)
+        #expect(first.count == 10)
         #expect(second.isEmpty)
     }
 

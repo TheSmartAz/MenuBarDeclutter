@@ -1,3 +1,4 @@
+import ApplicationServices
 import CoreGraphics
 import Foundation
 import Testing
@@ -210,6 +211,30 @@ struct AccessibilityDiscoveryLogicTests {
                 subrole: nil
             )
         )
+    }
+
+    @Test func scannerReadsApplicationExtrasForThirdPartyStatusItemOwners() {
+        let attributes = AXMenuBarScanner.applicationCandidateRootAttributes(
+            for: RunningApplicationSnapshot(
+                processIdentifier: 42,
+                bundleIdentifier: "local.MenuBarFixtureApp",
+                localizedName: "MenuBarFixtureApp"
+            )
+        )
+
+        #expect(attributes == ["AXExtrasMenuBar"])
+    }
+
+    @Test func scannerKeepsFallbackMenuBarRootForSystemUIServer() {
+        let attributes = AXMenuBarScanner.applicationCandidateRootAttributes(
+            for: RunningApplicationSnapshot(
+                processIdentifier: 43,
+                bundleIdentifier: "com.apple.systemuiserver",
+                localizedName: "SystemUIServer"
+            )
+        )
+
+        #expect(attributes == ["AXExtrasMenuBar", kAXMenuBarAttribute as String])
     }
 
     @Test func permissionStatusMappingDoesNotRequireAccessibilityPermission() {

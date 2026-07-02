@@ -12,7 +12,7 @@ scripts/build_release.sh --dry-run --install --verify-installed
 
 ## Basic control is missing
 
-Open MenuBarDeclutter again from Applications. If the status item still does not appear, hold Option while launching to enter Safe Mode, then use Settings or the status menu to reset layout.
+Open MenuBarDeclutter again from Applications. If the status item still does not appear and you can reach Recovery, request Safe Mode next launch there. Option-launch Safe Mode is intended as a fallback, but its v0.1.3 physical QA pass is still pending.
 
 If the app opens but the menu bar layout still looks wrong:
 
@@ -26,7 +26,19 @@ If the app opens but the menu bar layout still looks wrong:
 
 Use Command-drag to position the MenuBarDeclutter control and separators. Basic Mode uses public macOS status item behavior and does not use private menu bar APIs.
 
-If a crowded menu bar still pushes items offscreen, use the Layout and Second Bar guidance in Settings. Second Bar is a metadata/icon browser when Pro gates are satisfied; it does not capture menu bar pixels.
+If a crowded menu bar still pushes items offscreen, use Arrange and Find & Rescue in Settings. Second Bar is a metadata/icon browser when Pro gates are satisfied; it does not capture menu bar pixels.
+
+## Arrange feels confusing
+
+Open Settings -> Arrange and use the placement test:
+
+1. Expand.
+2. Hold Command and drag the control item and separator.
+3. Collapse.
+4. Reveal All.
+5. Reset Layout if the control or separator is hard to find.
+
+Manual Arrange is the intended stable path for `v0.1.3` and does not require Pro Mode or Accessibility. Final release completion still requires the physical Command-drag QA pass recorded in `docs/testing/manual-v0.1.3-results.md`.
 
 ## Pro features are unavailable
 
@@ -40,11 +52,11 @@ Basic Mode should continue to work even when all Pro gates are off.
 
 ## Import or export looks limited
 
-Import/Export is Preview in `v0.1.1`.
+Import/Export is Preview in `v0.1.3`.
 
 - Export writes a real local JSON settings package.
 - Export intentionally omits volatile/private local state.
-- Import dry-runs first, creates a local backup, then offers an explicit safe apply action.
+- Import dry-runs first without mutating settings, then creates a local backup immediately before an explicit safe apply action.
 - Safe apply merges package objects by ID, skips conflicting dynamic hotkeys, leaves Launch at Login/Login Items system state unchanged, and does not enable Icon Moving, Smart Triggers, or Menu Bar Spacing Labs from an imported package.
 
 ## Release artifact warnings

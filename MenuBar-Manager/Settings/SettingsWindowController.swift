@@ -11,6 +11,9 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private let appSupportPaths: AppSupportPaths
     private let diagnosticsExporter: DiagnosticsExporter
     private let dogfoodStore: DogfoodStore
+    private let newItemInboxStore: NewMenuBarItemInboxStore?
+    private let itemMemoryStore: MenuBarItemMemoryStore?
+    private let placementPreferenceStore: PlacementItemPreferenceStore?
     private let accessibilityPermissionService: AccessibilityPermissionService?
     private let menuBarScanCoordinator: MenuBarScanCoordinator?
     private let profileStore: ProfileStore?
@@ -19,6 +22,10 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private let groupStore: IconGroupStore?
     private let hotkeyBindingStore: HotkeyBindingStore?
     private let privateAccessCoordinator: PrivateAccessCoordinator?
+    private let workspaceSwitchingService: WorkspaceSwitchingService?
+    private let setBuilderViewModel: SetBuilderViewModel?
+    private let functionBarController: FunctionBarController?
+    private let infoStripController: InfoStripController?
     private let actions: SettingsActions
 
     init(
@@ -29,6 +36,9 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         appSupportPaths: AppSupportPaths = AppSupportPaths(),
         diagnosticsExporter: DiagnosticsExporter = DiagnosticsExporter(),
         dogfoodStore: DogfoodStore? = nil,
+        newItemInboxStore: NewMenuBarItemInboxStore? = nil,
+        itemMemoryStore: MenuBarItemMemoryStore? = nil,
+        placementPreferenceStore: PlacementItemPreferenceStore? = nil,
         accessibilityPermissionService: AccessibilityPermissionService? = nil,
         menuBarScanCoordinator: MenuBarScanCoordinator? = nil,
         profileStore: ProfileStore? = nil,
@@ -37,6 +47,10 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         groupStore: IconGroupStore? = nil,
         hotkeyBindingStore: HotkeyBindingStore? = nil,
         privateAccessCoordinator: PrivateAccessCoordinator? = nil,
+        workspaceSwitchingService: WorkspaceSwitchingService? = nil,
+        setBuilderViewModel: SetBuilderViewModel? = nil,
+        functionBarController: FunctionBarController? = nil,
+        infoStripController: InfoStripController? = nil,
         actions: SettingsActions = .empty
     ) {
         self.settingsStore = settingsStore
@@ -46,6 +60,9 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         self.appSupportPaths = appSupportPaths
         self.diagnosticsExporter = diagnosticsExporter
         self.dogfoodStore = dogfoodStore ?? DogfoodStore(appSupportPaths: appSupportPaths)
+        self.newItemInboxStore = newItemInboxStore
+        self.itemMemoryStore = itemMemoryStore
+        self.placementPreferenceStore = placementPreferenceStore
         self.accessibilityPermissionService = accessibilityPermissionService
         self.menuBarScanCoordinator = menuBarScanCoordinator
         self.profileStore = profileStore
@@ -54,6 +71,10 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         self.groupStore = groupStore
         self.hotkeyBindingStore = hotkeyBindingStore
         self.privateAccessCoordinator = privateAccessCoordinator
+        self.workspaceSwitchingService = workspaceSwitchingService
+        self.setBuilderViewModel = setBuilderViewModel
+        self.functionBarController = functionBarController
+        self.infoStripController = infoStripController
         self.actions = actions
 
         let contentView = SettingsRootView(
@@ -65,6 +86,9 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             appSupportPaths: appSupportPaths,
             diagnosticsExporter: diagnosticsExporter,
             dogfoodStore: self.dogfoodStore,
+            newItemInboxStore: newItemInboxStore,
+            itemMemoryStore: itemMemoryStore,
+            placementPreferenceStore: placementPreferenceStore,
             accessibilityPermissionService: accessibilityPermissionService,
             menuBarScanCoordinator: menuBarScanCoordinator,
             profileStore: profileStore,
@@ -73,11 +97,15 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             groupStore: groupStore,
             hotkeyBindingStore: hotkeyBindingStore,
             privateAccessCoordinator: privateAccessCoordinator,
+            workspaceSwitchingService: workspaceSwitchingService,
+            setBuilderViewModel: setBuilderViewModel,
+            functionBarController: functionBarController,
+            infoStripController: infoStripController,
             actions: actions
         )
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 1020, height: 660),
+            contentRect: NSRect(x: 0, y: 0, width: 820, height: 660),
             styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -91,7 +119,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         window.backgroundColor = .windowBackgroundColor
         window.isOpaque = true
         window.isReleasedWhenClosed = false
-        window.minSize = NSSize(width: 980, height: 620)
+        window.minSize = NSSize(width: 820, height: 620)
 
         super.init(window: window)
 

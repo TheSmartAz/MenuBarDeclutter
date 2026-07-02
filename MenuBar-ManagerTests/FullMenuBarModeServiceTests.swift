@@ -9,14 +9,13 @@ struct FullMenuBarModeServiceTests {
         let store = SettingsStore(defaults: UserDefaults(suiteName: "fmbm-tests-\(UUID().uuidString)")!)
         let logger = DiagnosticsLogger()
         var revealAllCalled = false
-        var restoredState: HidingVisibilityState?
 
         let service = FullMenuBarModeService(
             diagnosticsLogger: logger,
             settingsStore: store,
             now: { Date(timeIntervalSince1970: 1000) },
             revealAll: { revealAllCalled = true },
-            restoreVisibility: { state in restoredState = state },
+            restoreVisibility: { _ in },
             suspendAutoRehide: {},
             resumeAutoRehide: {},
             showSpacerMarkers: { _ in }

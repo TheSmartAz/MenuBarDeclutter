@@ -117,6 +117,7 @@ struct SearchService {
         query: String,
         filter: MenuBarItemCollectionFilter = .all,
         memoryStore: MenuBarItemMemoryStore? = nil,
+        rankingContext: SearchRankingContext = .init(),
         limit: Int = 20
     ) -> [MenuBarSearchResult] {
         return results(
@@ -124,6 +125,7 @@ struct SearchService {
             query: query,
             filter: filter,
             memoryStore: memoryStore,
+            rankingContext: rankingContext,
             limit: limit
         )
     }
@@ -133,6 +135,7 @@ struct SearchService {
         query: String,
         filter: MenuBarItemCollectionFilter = .all,
         memoryStore: MenuBarItemMemoryStore? = nil,
+        rankingContext: SearchRankingContext = .init(),
         limit: Int = 20
     ) -> [MenuBarSearchResult] {
         let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -146,7 +149,7 @@ struct SearchService {
             if normalizedQuery.isEmpty {
                 return MenuBarSearchResult(
                     snapshot: entry.snapshot,
-                    score: 100 + zoneBoost(for: entry.snapshot.zone),
+                    score: 100 + rankingBoost(for: entry.snapshot, memoryStore: memoryStore, context: rankingContext),
                     matchReason: .recent
                 )
             }
@@ -160,7 +163,7 @@ struct SearchService {
 
             return MenuBarSearchResult(
                 snapshot: entry.snapshot,
-                score: match.score + zoneBoost(for: entry.snapshot.zone),
+                score: match.score + rankingBoost(for: entry.snapshot, memoryStore: memoryStore, context: rankingContext),
                 matchReason: match.reason
             )
         }
@@ -282,5 +285,91 @@ struct SearchService {
         case .unknown:
             -10
         }
+    }
+
+    private func rankingBoost(
+        for snapshot: MenuBarItemSnapshot,
+        memoryStore: MenuBarItemMemoryStore?,
+        context: SearchRankingContext
+    ) -> Int {
+        var boost = zoneBoost(for: snapshot.zone)
+
+        if memoryStore?.isFavorite(snapshot) == true {
+            boost += 90
+        }
+
+        if let recentRank = memoryStore?.recentRank(for: snapshot) {
+            boost += max(20, 75 - min(recentRank, 10) * 5)
+        }
+
+        if context.isNewItem(snapshot) {
+            boost += 70
+        }
+
+        if context.isStale(snapshot) {
+            boost -= 160
+        }
+
+        return boost
+    }
+}
+
+nonisolated struct SearchRankingContext: Equatable, Sendable {
+    var newItemStorageKeys: Set<String>
+    var staleBefore: Date?
+
+    init(
+        newItemStorageKeys: Set<String> = [],
+        staleBefore: Date? = nil
+    ) {
+        self.newItemStorageKeys = newItemStorageKeys
+        self.staleBefore = staleBefore
+    }
+
+    func isNewItem(_ snapshot: MenuBarItemSnapshot) -> Bool {
+        newItemStorageKeys.contains(snapshot.id)
+            || newItemStorageKeys.contains(NewMenuBarItemInboxDetector.storageKey(for: snapshot))
+    }
+
+    func isStale(_ snapshot: MenuBarItemSnapshot) -> Bool {
+        guard let staleBefore else { return false }
+        return snapshot.scanTimestamp < staleBefore
+    }
+}
+
+nonisolated enum SearchKeyboardAction: Equatable, Sendable {
+    case revealSelected
+    case showSelectedInSecondBar
+    case openOwningApp
+    case revealRelevantZone
+}
+
+nonisolated struct SearchKeyboardModifiers: OptionSet, Equatable, Sendable {
+    let rawValue: Int
+
+    static let command = SearchKeyboardModifiers(rawValue: 1 << 0)
+    static let option = SearchKeyboardModifiers(rawValue: 1 << 1)
+    static let shift = SearchKeyboardModifiers(rawValue: 1 << 2)
+
+    init(rawValue: Int) {
+        self.rawValue = rawValue
+    }
+}
+
+nonisolated struct SearchKeyboardActionRouter: Sendable {
+    func returnAction(for modifiers: SearchKeyboardModifiers) -> SearchKeyboardAction {
+        if modifiers.contains(.command) {
+            return .showSelectedInSecondBar
+        }
+
+        if modifiers.contains(.option) {
+            return .openOwningApp
+        }
+
+        if modifiers.contains(.shift) {
+            return .revealRelevantZone
+        }
+
+        return .revealSelected
     }
 }

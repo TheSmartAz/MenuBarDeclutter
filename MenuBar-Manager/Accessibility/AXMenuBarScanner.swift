@@ -135,7 +135,8 @@ actor AXMenuBarScanner: MenuBarScanning {
         let result = MenuBarScanResult(
             snapshots: snapshots,
             scanTimestamp: timestamp,
-            axFailuresCount: reader.failureCount
+            axFailuresCount: reader.failureCount,
+            axFailureSummary: reader.failureSummary
         )
         var logs = reader.logMessages.map {
             ScannerLogEntry(message: $0, level: .debug)
@@ -161,7 +162,7 @@ actor AXMenuBarScanner: MenuBarScanning {
         var roots: [AXUIElement] = []
 
         for attribute in ["AXExtrasMenuBar", kAXMenuBarAttribute as String] {
-            if let root = reader.readElement(systemWide, attribute: attribute) {
+            if let root = reader.readOptionalElement(systemWide, attribute: attribute) {
                 roots.append(root)
                 roots.append(contentsOf: reader.readChildren(root))
             }
@@ -174,25 +175,35 @@ actor AXMenuBarScanner: MenuBarScanning {
         let appElement = AXUIElementCreateApplication(app.processIdentifier)
         var roots: [AXUIElement] = []
 
-        // Each running application exposes its menu bar via `kAXMenuBarAttribute`;
-        // for `systemuiserver`, the `AXExtrasMenuBar` attribute additionally surfaces
-        // the system status items. The generic loop covers both cases, so the
-        // previously-duplicated special-case block has been consolidated into the
-        // per-app reads below.
-        if let menuBar = reader.readElement(appElement, attribute: kAXMenuBarAttribute as String) {
-            roots.append(menuBar)
-            roots.append(contentsOf: reader.readChildren(menuBar))
-        }
-
-        if app.bundleIdentifier == "com.apple.systemuiserver"
-            || app.localizedName == "SystemUIServer" {
-            if let extras = reader.readElement(appElement, attribute: "AXExtrasMenuBar") {
-                roots.append(extras)
-                roots.append(contentsOf: reader.readChildren(extras))
+        for attribute in Self.applicationCandidateRootAttributes(for: app) {
+            if let root = reader.readOptionalElement(appElement, attribute: attribute) {
+                roots.append(root)
+                roots.append(contentsOf: reader.readChildren(root))
             }
         }
 
         return roots
+    }
+
+    nonisolated static func applicationCandidateRootAttributes(
+        for app: RunningApplicationSnapshot
+    ) -> [String] {
+        // Third-party and fixture NSStatusItem owners expose their status items
+        // through app-level `AXExtrasMenuBar` on current macOS builds. Regular
+        // application `AXMenuBar` roots describe app menus rather than status items,
+        // so only SystemUIServer gets that fallback.
+        if shouldReadFallbackMenuBar(for: app) {
+            return ["AXExtrasMenuBar", kAXMenuBarAttribute as String]
+        }
+
+        return ["AXExtrasMenuBar"]
+    }
+
+    private nonisolated static func shouldReadFallbackMenuBar(
+        for app: RunningApplicationSnapshot
+    ) -> Bool {
+        app.bundleIdentifier == "com.apple.systemuiserver"
+            || app.localizedName == "SystemUIServer"
     }
 
     private func collectSnapshots(
@@ -214,11 +225,11 @@ actor AXMenuBarScanner: MenuBarScanning {
 
         let pid = reader.readProcessIdentifier(element) ?? inheritedProcessIdentifier
         let role = reader.readString(element, attribute: kAXRoleAttribute as String)
-        let subrole = reader.readString(element, attribute: kAXSubroleAttribute as String)
+        let subrole = reader.readOptionalString(element, attribute: kAXSubroleAttribute as String)
         let title = DisplayString.firstNonEmpty([
-            reader.readString(element, attribute: kAXTitleAttribute as String),
-            reader.readString(element, attribute: kAXDescriptionAttribute as String),
-            reader.readString(element, attribute: "AXIdentifier")
+            reader.readOptionalString(element, attribute: kAXTitleAttribute as String),
+            reader.readOptionalString(element, attribute: kAXDescriptionAttribute as String),
+            reader.readOptionalString(element, attribute: "AXIdentifier")
         ])
         let frame = reader.readFrame(element)
 

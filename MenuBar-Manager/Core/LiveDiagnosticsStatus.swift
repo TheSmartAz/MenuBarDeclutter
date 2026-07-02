@@ -1,6 +1,14 @@
 import Foundation
 import Observation
 
+enum MenuBarScanLifecycleState: String {
+    case idle = "Idle"
+    case requested = "Requested"
+    case running = "Running"
+    case completed = "Completed"
+    case skipped = "Skipped"
+}
+
 /// Live snapshot of state surfaced in the Diagnostics view. Owned by
 /// `AppEnvironment` and updated by the relevant services so the Settings UI
 /// can show runtime state without reaching into each service directly.
@@ -17,6 +25,9 @@ final class LiveDiagnosticsStatus {
     var autoRehideScheduled: Bool = false
     var lastRehideReason: String? = nil
     var accessibilityPermissionStatus: AccessibilityPermissionStatus = .notRequested
+    var menuBarScanLifecycleState: MenuBarScanLifecycleState = .idle
+    var menuBarScanLastReason: String? = nil
+    var menuBarScanLastSkipReason: String? = nil
     var scannedMenuBarItems: [MenuBarItemSnapshot] = []
     var lastMenuBarScanTime: Date? = nil
     var menuBarScanFailuresCount: Int = 0
@@ -24,15 +35,19 @@ final class LiveDiagnosticsStatus {
     var menuBarScanHiddenCount: Int = 0
     var menuBarScanAlwaysHiddenCount: Int = 0
     var menuBarScanUnknownCount: Int = 0
+    var menuBarScanFailureSummary: String? = nil
+    var newMenuBarItemReviewCount: Int = 0
     var searchIndexItemCount: Int = 0
-    var lastSearchQuery: String = ""
-    var lastSearchSelectedItem: String? = nil
+    var searchLastResultCount: Int = 0
+    var searchIndexRebuildDurationMilliseconds: Double? = nil
+    var searchRankingDurationMilliseconds: Double? = nil
+    var searchPanelOpenDurationMilliseconds: Double? = nil
+    var searchLatestScanAgeSeconds: Double? = nil
     var lastSearchActivationOutcome: String? = nil
     var secondBarVisible: Bool = false
     var secondBarItemCount: Int = 0
     var secondBarCurrentScreen: String? = nil
     var secondBarLastPosition: String? = nil
-    var lastSecondBarSelectedItem: String? = nil
     var iconMoveInProgress: Bool = false
     var lastIconMoveResult: String? = nil
     var lastIconMoveError: String? = nil
@@ -69,6 +84,22 @@ final class LiveDiagnosticsStatus {
         setIfChanged(\.searchIndexItemCount, to: count)
     }
 
+    func updateSearchPerformance(_ performance: SearchPerformanceDiagnostics) {
+        setIfChanged(\.searchIndexItemCount, to: performance.indexItemCount)
+        setIfChanged(\.searchLastResultCount, to: performance.resultCount)
+        setIfChanged(\.searchIndexRebuildDurationMilliseconds, to: performance.indexRebuildDurationMilliseconds)
+        setIfChanged(\.searchRankingDurationMilliseconds, to: performance.rankingDurationMilliseconds)
+        setIfChanged(\.searchLatestScanAgeSeconds, to: performance.latestScanAgeSeconds)
+    }
+
+    func updateSearchPanelOpenDuration(milliseconds: Double) {
+        setIfChanged(\.searchPanelOpenDurationMilliseconds, to: milliseconds)
+    }
+
+    func updateNewMenuBarItemReviewCount(_ count: Int) {
+        setIfChanged(\.newMenuBarItemReviewCount, to: count)
+    }
+
     func updateSecondBarItemCount(_ count: Int) {
         setIfChanged(\.secondBarItemCount, to: count)
     }
@@ -97,6 +128,14 @@ final class LiveDiagnosticsStatus {
         guard self[keyPath: keyPath] != value else { return }
         self[keyPath: keyPath] = value
     }
+}
+
+nonisolated struct SearchPerformanceDiagnostics: Equatable, Sendable {
+    let indexItemCount: Int
+    let resultCount: Int
+    let indexRebuildDurationMilliseconds: Double?
+    let rankingDurationMilliseconds: Double?
+    let latestScanAgeSeconds: Double?
 }
 
 struct LiveDiagnosticsRuntimeState: Equatable {

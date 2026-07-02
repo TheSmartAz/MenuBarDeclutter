@@ -144,6 +144,113 @@ struct DiagnosticsExportTests {
         #expect(try #require(log["metadata"] as? [String: String]) == ["reason": "coverage"])
     }
 
+    @Test func jsonExportCanIncludeWorkspacePreviewDiagnostics() throws {
+        let exporter = makeExporter()
+        let store = makeStore()
+        let logger = DiagnosticsLogger()
+        let preview = DiagnosticsExporter.WorkspacePreviewDiagnosticsSnapshot(
+            workspaces: WorkspaceDiagnosticsSnapshot(
+                workspaceFeatureEnabled: true,
+                workspaceCount: 3,
+                archivedWorkspaceCount: 1,
+                activeWorkspacePresent: true,
+                activeWorkspaceIDHash: "workspace-123",
+                validationIssueCount: 2,
+                groupReferenceCount: 3,
+                linkedGroupReferenceCount: 1,
+                detachedGroupReferenceCount: 1,
+                missingGroupReferenceCount: 1,
+                detachedSourceGroupMissingCount: 1,
+                protectedGroupReferenceCount: 1,
+                missingProfileBindingCount: 0,
+                commandItemCount: 4,
+                menuBarItemReferenceCount: 5,
+                unresolvedMenuBarItemReferenceCount: 2,
+                infoTileReferenceCount: 6,
+                lastLoadStatus: .repaired
+            ),
+            functionBar: FunctionBarDiagnosticsSnapshot(
+                previewEnabled: true,
+                isVisible: true,
+                displayState: "visible",
+                activeWorkspacePresent: true,
+                activeWorkspaceIDHash: "workspace-123",
+                visibleItemCount: 8,
+                commandItemCount: 4,
+                proxyItemCount: 2,
+                groupItemCount: 1,
+                missingReferenceCount: 1,
+                unavailableItemCount: 1,
+                lastPlacementMode: "belowMenuBarIcon",
+                lastPlacementClamped: false,
+                lastShowResult: "shown"
+            ),
+            setBuilder: SetBuilderDiagnosticsSnapshot(
+                previewEnabled: true,
+                workspaceCount: 3,
+                workspaceWithItemsCount: 2,
+                totalWorkspaceItemCount: 8,
+                linkedGroupReferenceCount: 1,
+                detachedGroupReferenceCount: 1,
+                missingGroupReferenceCount: 1,
+                detachedSourceGroupMissingCount: 1,
+                menuBarProxyReferenceCount: 2,
+                unresolvedMenuBarProxyReferenceCount: 1,
+                commandItemCount: 4,
+                spacerDividerCount: 1,
+                lastCommitResult: "success",
+                lastValidationIssueCount: 2
+            ),
+            infoStrip: InfoStripDiagnosticsSnapshot(
+                previewEnabled: true,
+                autoShowEnabled: true,
+                isVisible: false,
+                displayState: "closed",
+                activeWorkspacePresent: true,
+                activeWorkspaceIDHash: "workspace-123",
+                selectedTileProviderCount: 3,
+                availableTileProviderCount: 2,
+                unavailableTileProviderCount: 1,
+                currentTileProviderID: "health",
+                rotationIntervalSeconds: 10,
+                idleDelaySeconds: 5,
+                lastRotationResult: "rotated",
+                lastPlacementMode: "belowFunctionBar",
+                lastPlacementClamped: true,
+                lastShowResult: "hidden"
+            )
+        )
+
+        let snapshot = exporter.makeSnapshot(
+            settingsStore: store,
+            logger: logger,
+            workspacePreview: preview
+        )
+        let data = try exporter.serialize(snapshot, format: .json)
+        let object = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let workspacePreview = try #require(object["workspacePreview"] as? [String: Any])
+        let workspaces = try #require(workspacePreview["workspaces"] as? [String: Any])
+        let functionBar = try #require(workspacePreview["functionBar"] as? [String: Any])
+        let setBuilder = try #require(workspacePreview["setBuilder"] as? [String: Any])
+        let infoStrip = try #require(workspacePreview["infoStrip"] as? [String: Any])
+
+        #expect(try #require(workspaces["workspaceCount"] as? Int) == 3)
+        #expect(try #require(workspaces["activeWorkspaceIDHash"] as? String) == "workspace-123")
+        #expect(try #require(workspaces["detachedSourceGroupMissingCount"] as? Int) == 1)
+        #expect(try #require(workspaces["unresolvedMenuBarItemReferenceCount"] as? Int) == 2)
+        #expect(try #require(functionBar["visibleItemCount"] as? Int) == 8)
+        #expect(try #require(setBuilder["menuBarProxyReferenceCount"] as? Int) == 2)
+        #expect(try #require(setBuilder["unresolvedMenuBarProxyReferenceCount"] as? Int) == 1)
+        #expect(try #require(infoStrip["currentTileProviderID"] as? String) == "health")
+
+        let text = String(data: try exporter.serialize(snapshot, format: .txt), encoding: .utf8) ?? ""
+        #expect(text.contains("Workspace Preview Diagnostics"))
+        #expect(text.contains("Workspaces: 3"))
+        #expect(text.contains("Set Builder Missing Groups: 1"))
+        #expect(text.contains("Unresolved Menu Bar Proxy References: 2"))
+        #expect(text.contains("Set Builder Unresolved Proxies: 1"))
+    }
+
     @Test func txtExportIsHumanReadableAndExcludesByDesign() throws {
         let exporter = makeExporter()
         let store = makeStore()
@@ -166,6 +273,57 @@ struct DiagnosticsExportTests {
         #expect(text.contains("warm up"))
         #expect(text.contains("Excluded by design"))
         #expect(text.contains("Screenshots, screen contents, live search text, selected item identity, personal file paths, network data"))
+    }
+
+    @Test func exportRedactsSensitiveLogMessageText() throws {
+        let exporter = makeExporter()
+        let store = makeStore()
+        let logger = DiagnosticsLogger()
+        logger.log(
+            "Applied profile Weekend Focus: wrote /Users/alex/Documents/profile.json for alex@example.com.",
+            level: .info,
+            category: .profile,
+            metadata: [
+                "path": "/Users/alex/Desktop/export.json",
+                "url": "menubardeclutter://apply-profile?id=secret-token",
+                "owner": "alex@example.com"
+            ]
+        )
+        logger.log(
+            "Smart trigger fired: Work Hours -> Deep Work.",
+            level: .info,
+            category: .trigger
+        )
+
+        let snapshot = exporter.makeSnapshot(settingsStore: store, logger: logger)
+        let data = try exporter.serialize(snapshot, format: .json)
+        let object = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let logs = try #require(object["logs"] as? [[String: Any]])
+        let profileLog = try #require(logs.first)
+        let triggerLog = try #require(logs.last)
+        let profileMessage = try #require(profileLog["message"] as? String)
+        let profileMetadata = try #require(profileLog["metadata"] as? [String: String])
+        let triggerMessage = try #require(triggerLog["message"] as? String)
+
+        #expect(profileMessage.contains("Applied profile [redacted-profile]:"))
+        #expect(profileMessage.contains("[redacted-path]"))
+        #expect(profileMessage.contains("[redacted-email]"))
+        #expect(!profileMessage.contains("Weekend Focus"))
+        #expect(!profileMessage.contains("/Users/alex"))
+        #expect(!profileMessage.contains("alex@example.com"))
+        #expect(profileMetadata["path"] == "[redacted-path]")
+        #expect(profileMetadata["owner"] == "[redacted-email]")
+        #expect(profileMetadata["url"] == "menubardeclutter://apply-profile?[redacted-query]")
+        #expect(triggerMessage == "Smart trigger fired: [redacted-trigger] -> [redacted-profile].")
+
+        let text = String(data: try exporter.serialize(snapshot, format: .txt), encoding: .utf8) ?? ""
+        #expect(text.contains("Applied profile [redacted-profile]:"))
+        #expect(text.contains("Smart trigger fired: [redacted-trigger] -> [redacted-profile]."))
+        #expect(!text.contains("Weekend Focus"))
+        #expect(!text.contains("Work Hours"))
+        #expect(!text.contains("Deep Work"))
+        #expect(!text.contains("/Users/alex"))
+        #expect(!text.contains("alex@example.com"))
     }
 
     @Test func neverIncludesAppSupportPathByDefault() throws {
@@ -216,6 +374,7 @@ struct DiagnosticsExportTests {
         store.globalHotkeyModifiersRaw = 0x0900
         store.layoutFeaturesEnabled = true
         store.fullMenuBarModeEnabled = false
+        store.crowdedRevealAskBeforeSwitching = true
         store.crowdedRevealThresholdRatio = 0.75
         store.spacerItemsJSONVersion = 2
         store.menuBarSpacingLabsEnabled = true
@@ -230,6 +389,14 @@ struct DiagnosticsExportTests {
         store.appIntentsEnabled = false
         store.dynamicHotkeysEnabled = true
         store.maxDynamicHotkeys = 12
+        store.workspacesPreviewEnabled = true
+        store.functionBarPreviewEnabled = true
+        store.functionBarDensity = "compact"
+        store.setBuilderPreviewEnabled = true
+        store.setBuilderWarnBeforeLinkedGroupEdits = false
+        store.infoStripPreviewEnabled = true
+        store.infoStripAutoShowEnabled = true
+        store.infoStripShowPreviewBadge = false
 
         let logger = DiagnosticsLogger()
         let snapshot = exporter.makeSnapshot(settingsStore: store, logger: logger)
@@ -242,6 +409,7 @@ struct DiagnosticsExportTests {
         #expect(snapshot.settings.automationPaused == true)
         #expect(snapshot.settings.layoutFeaturesEnabled == true)
         #expect(snapshot.settings.fullMenuBarModeEnabled == false)
+        #expect(snapshot.settings.crowdedRevealAskBeforeSwitching == true)
         #expect(snapshot.settings.crowdedRevealThresholdRatio == 0.75)
         #expect(snapshot.settings.spacerItemsJSONVersion == 2)
         #expect(snapshot.settings.menuBarSpacingLabsEnabled == true)
@@ -256,6 +424,14 @@ struct DiagnosticsExportTests {
         #expect(snapshot.settings.appIntentsEnabled == false)
         #expect(snapshot.settings.dynamicHotkeysEnabled == true)
         #expect(snapshot.settings.maxDynamicHotkeys == 12)
+        #expect(snapshot.settings.workspacesPreviewEnabled == true)
+        #expect(snapshot.settings.functionBarPreviewEnabled == true)
+        #expect(snapshot.settings.functionBarDensity == "compact")
+        #expect(snapshot.settings.setBuilderPreviewEnabled == true)
+        #expect(snapshot.settings.setBuilderWarnBeforeLinkedGroupEdits == false)
+        #expect(snapshot.settings.infoStripPreviewEnabled == true)
+        #expect(snapshot.settings.infoStripAutoShowEnabled == true)
+        #expect(snapshot.settings.infoStripShowPreviewBadge == false)
     }
 
     @Test func excludesNetworkDataAndScreenshotsFromSettings() {
@@ -291,6 +467,7 @@ struct DiagnosticsExportTests {
         "autoRehideEnabled",
         "automationPaused",
         "collapsedSeparatorLengthOverride",
+        "crowdedRevealAskBeforeSwitching",
         "crowdedRevealAutoOpenSecondBar",
         "crowdedRevealRequireProEstimate",
         "crowdedRevealRescueEnabled",
@@ -305,6 +482,14 @@ struct DiagnosticsExportTests {
         "fullMenuBarModeShowsSecondBar",
         "fullMenuBarModeShowsSpacerMarkers",
         "fullMenuBarModeSuspendsAutoRehide",
+        "functionBarCloseOnOutsideClick",
+        "functionBarDensity",
+        "functionBarKeyboardNavigationEnabled",
+        "functionBarPlacementPreference",
+        "functionBarPreviewEnabled",
+        "functionBarPrimaryClickEnabled",
+        "functionBarShowLabels",
+        "functionBarShowSetSwitcher",
         "globalHotkeyDisplayName",
         "globalHotkeyEnabled",
         "groupStatusItemsEnabled",
@@ -318,6 +503,13 @@ struct DiagnosticsExportTests {
         "iconMovingEnabled",
         "iconMovingMaxRetries",
         "iconMovingRequireConfirmation",
+        "infoStripAutoShowEnabled",
+        "infoStripCloseOnOutsideClick",
+        "infoStripHoverToFunctionBarEnabled",
+        "infoStripKeyboardNavigationEnabled",
+        "infoStripPauseWhenFunctionBarPinned",
+        "infoStripPreviewEnabled",
+        "infoStripShowPreviewBadge",
         "isCollapsed",
         "lastAccessibilityPermissionStatus",
         "launchAtLoginEnabled",
@@ -360,11 +552,19 @@ struct DiagnosticsExportTests {
         "secondBarShowAlwaysHiddenItems",
         "secondBarShowHiddenItems",
         "secondBarShowLabels",
+        "setBuilderAutosaveDrafts",
+        "setBuilderDefaultGroupReferenceMode",
+        "setBuilderDragDropEnabled",
+        "setBuilderPreviewEnabled",
+        "setBuilderShowAdvancedLibraryItems",
+        "setBuilderShowFunctionBarPreview",
+        "setBuilderWarnBeforeLinkedGroupEdits",
         "showCapacityWarnings",
         "showSeparators",
         "showSpacerMarkers",
         "smartTriggersEnabled",
         "spacerItemsEnabled",
-        "spacerItemsJSONVersion"
+        "spacerItemsJSONVersion",
+        "workspacesPreviewEnabled"
     ]
 }

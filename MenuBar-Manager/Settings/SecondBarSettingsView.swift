@@ -12,12 +12,12 @@ struct SecondBarSettingsView: View {
         ClearGlassSettingsPage(
             "Second Bar",
             subtitle: "Configure the optional secondary bar for hidden menu bar items.",
-            badges: [.stable, .proMode, .accessibilityRequired]
+            badges: [.preview, .proMode, .accessibilityRequired]
         ) {
             ClearGlassSection("Second Bar", subtitle: "Feature controls for the secondary item surface.") {
                 FeatureGateNotice(
-                    .stable,
-                    text: "Second Bar metadata and icon browsing are supported in v0.1.1 when Pro discovery requirements are satisfied."
+                    .preview,
+                    text: "Second Bar metadata and icon browsing are supported in v0.1.3 when Pro discovery requirements are satisfied."
                 )
 
                 ClearGlassDivider()
@@ -85,7 +85,7 @@ struct SecondBarSettingsView: View {
             }
 
             if commandAvailability != nil || iconPanelAvailability != nil {
-                ClearGlassSection("Command Center", subtitle: "Shared routing status for Second Bar and the deferred Icon Panel mode.") {
+                ClearGlassSection("Panel Action Status", subtitle: "Checks whether Second Bar actions are available from the current gates.") {
                     if let commandAvailability {
                         CommandAvailabilityRow(summary: commandAvailability)
                     }

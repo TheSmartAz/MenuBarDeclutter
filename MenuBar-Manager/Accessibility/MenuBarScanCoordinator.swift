@@ -39,7 +39,11 @@ final class MenuBarScanCoordinator {
     @ObservationIgnored private let scanner: any MenuBarScanning
     @ObservationIgnored private let diagnosticsLogger: DiagnosticsLogger
     @ObservationIgnored private let liveStatus: LiveDiagnosticsStatus
+    @ObservationIgnored private let newItemInboxStore: NewMenuBarItemInboxStore?
     @ObservationIgnored private let separatorFramesProvider: () -> MenuBarSeparatorFrames
+    @ObservationIgnored private let runningApplicationsProvider: () -> [RunningApplicationSnapshot]
+    @ObservationIgnored private let screenFramesProvider: () -> [CGRect]
+    @ObservationIgnored private let currentProcessIdentifier: pid_t
     @ObservationIgnored private let notificationCenter: NotificationCenter
     @ObservationIgnored private let workspaceNotificationCenter: NotificationCenter
     @ObservationIgnored private let visibilityScanDebounceNanoseconds: UInt64
@@ -62,7 +66,23 @@ final class MenuBarScanCoordinator {
         scanner: any MenuBarScanning,
         diagnosticsLogger: DiagnosticsLogger,
         liveStatus: LiveDiagnosticsStatus,
+        newItemInboxStore: NewMenuBarItemInboxStore? = nil,
         separatorFramesProvider: @escaping () -> MenuBarSeparatorFrames,
+        runningApplicationsProvider: @escaping () -> [RunningApplicationSnapshot] = {
+            NSWorkspace.shared.runningApplications
+                .filter { $0.isTerminated == false }
+                .map {
+                    RunningApplicationSnapshot(
+                        processIdentifier: $0.processIdentifier,
+                        bundleIdentifier: $0.bundleIdentifier,
+                        localizedName: $0.localizedName
+                    )
+                }
+        },
+        screenFramesProvider: @escaping () -> [CGRect] = {
+            NSScreen.screens.map(\.frame)
+        },
+        currentProcessIdentifier: pid_t = ProcessInfo.processInfo.processIdentifier,
         notificationCenter: NotificationCenter = .default,
         workspaceNotificationCenter: NotificationCenter = NSWorkspace.shared.notificationCenter,
         visibilityScanDebounceNanoseconds: UInt64 = 250_000_000,
@@ -73,7 +93,11 @@ final class MenuBarScanCoordinator {
         self.scanner = scanner
         self.diagnosticsLogger = diagnosticsLogger
         self.liveStatus = liveStatus
+        self.newItemInboxStore = newItemInboxStore
         self.separatorFramesProvider = separatorFramesProvider
+        self.runningApplicationsProvider = runningApplicationsProvider
+        self.screenFramesProvider = screenFramesProvider
+        self.currentProcessIdentifier = currentProcessIdentifier
         self.notificationCenter = notificationCenter
         self.workspaceNotificationCenter = workspaceNotificationCenter
         self.visibilityScanDebounceNanoseconds = visibilityScanDebounceNanoseconds
@@ -122,6 +146,15 @@ final class MenuBarScanCoordinator {
     func scanIfAllowed(reason: String, force: Bool = false) -> MenuBarScanResult? {
         let status = permissionService.refreshStatus()
         setLiveStatus(\.accessibilityPermissionStatus, to: status)
+        setLiveStatus(\.menuBarScanLifecycleState, to: .requested)
+        setLiveStatus(\.menuBarScanLastReason, to: reason)
+        setLiveStatus(\.menuBarScanLastSkipReason, to: nil)
+
+        diagnosticsLogger.log(
+            "AX scan requested for \(reason): pro=\(settingsStore.proModeEnabled), discovery=\(settingsStore.accessibilityDiscoveryEnabled), permission=\(status.rawValue), force=\(force).",
+            level: .debug,
+            category: .scan
+        )
 
         guard settingsStore.proModeEnabled else {
             clearScanState(skipReason: "Pro Mode disabled")
@@ -143,6 +176,8 @@ final class MenuBarScanCoordinator {
            let lastScanDate,
            currentDate.timeIntervalSince(lastScanDate) < settingsStore.menuBarScanIntervalSeconds {
             lastSkipReason = "Throttled"
+            setLiveStatus(\.menuBarScanLifecycleState, to: .skipped)
+            setLiveStatus(\.menuBarScanLastSkipReason, to: "Throttled")
             diagnosticsLogger.log("AX scan skipped for \(reason): throttled.", level: .debug)
             return lastResult
         }
@@ -160,6 +195,12 @@ final class MenuBarScanCoordinator {
         let scanner = scanner
 
         pendingScanTask?.cancel()
+        setLiveStatus(\.menuBarScanLifecycleState, to: .running)
+        diagnosticsLogger.log(
+            "AX scan started for \(reason): apps=\(context.runningApplications.count), screens=\(context.screenFrames.count).",
+            level: .debug,
+            category: .scan
+        )
         pendingScanTask = Task { @MainActor [weak self] in
             let result = await scanner.scan(context: context)
             self?.completeScan(result: result, requestID: requestID, reason: reason)
@@ -175,6 +216,8 @@ final class MenuBarScanCoordinator {
 
         lastResult = result
         lastSkipReason = nil
+        setLiveStatus(\.menuBarScanLifecycleState, to: .completed)
+        setLiveStatus(\.menuBarScanLastSkipReason, to: nil)
         apply(result: result)
 
         diagnosticsLogger.log(
@@ -185,20 +228,15 @@ final class MenuBarScanCoordinator {
 
     private func makeScanContext() -> MenuBarScanContext {
         let frames = separatorFramesProvider()
-        let runningApplications = NSWorkspace.shared.runningApplications
-            .filter { $0.isTerminated == false }
-            .map {
-                RunningApplicationSnapshot(
-                    processIdentifier: $0.processIdentifier,
-                    bundleIdentifier: $0.bundleIdentifier,
-                    localizedName: $0.localizedName
-                )
-            }
+        // System-wide roots still cover menu extras. Skip our own app process so
+        // AX scanning never asks AppKit to service its main menu off-main.
+        let runningApplications = runningApplicationsProvider()
+            .filter { $0.processIdentifier != currentProcessIdentifier }
 
         return MenuBarScanContext(
             primarySeparatorFrame: frames.primary,
             alwaysHiddenSeparatorFrame: frames.alwaysHidden,
-            screenFrames: NSScreen.screens.map(\.frame),
+            screenFrames: screenFramesProvider(),
             runningApplications: runningApplications
         )
     }
@@ -214,6 +252,8 @@ final class MenuBarScanCoordinator {
         lastSkipReason = skipReason
         lastResult = nil
         lastScanDate = nil
+        setLiveStatus(\.menuBarScanLifecycleState, to: .skipped)
+        setLiveStatus(\.menuBarScanLastSkipReason, to: skipReason)
         setLiveStatus(\.scannedMenuBarItems, to: [])
         setLiveStatus(\.lastMenuBarScanTime, to: nil)
         setLiveStatus(\.menuBarScanFailuresCount, to: 0)
@@ -221,11 +261,14 @@ final class MenuBarScanCoordinator {
         setLiveStatus(\.menuBarScanHiddenCount, to: 0)
         setLiveStatus(\.menuBarScanAlwaysHiddenCount, to: 0)
         setLiveStatus(\.menuBarScanUnknownCount, to: 0)
+        setLiveStatus(\.menuBarScanFailureSummary, to: nil)
         setLiveStatus(\.searchIndexItemCount, to: 0)
+        setLiveStatus(\.newMenuBarItemReviewCount, to: newItemInboxStore?.inbox.reviewCount ?? 0)
         diagnosticsLogger.log("AX scan unavailable: \(skipReason).", level: .debug)
     }
 
     private func apply(result: MenuBarScanResult) {
+        updateNewItemInbox(result: result)
         setLiveStatus(\.scannedMenuBarItems, to: result.snapshots)
         setLiveStatus(\.lastMenuBarScanTime, to: result.scanTimestamp)
         setLiveStatus(\.menuBarScanFailuresCount, to: result.axFailuresCount)
@@ -233,7 +276,32 @@ final class MenuBarScanCoordinator {
         setLiveStatus(\.menuBarScanHiddenCount, to: result.hiddenCount)
         setLiveStatus(\.menuBarScanAlwaysHiddenCount, to: result.alwaysHiddenCount)
         setLiveStatus(\.menuBarScanUnknownCount, to: result.unknownCount)
+        setLiveStatus(\.menuBarScanFailureSummary, to: result.axFailureSummary)
         setLiveStatus(\.searchIndexItemCount, to: result.snapshots.count)
+    }
+
+    private func updateNewItemInbox(result: MenuBarScanResult) {
+        guard let newItemInboxStore else {
+            setLiveStatus(\.newMenuBarItemReviewCount, to: 0)
+            return
+        }
+
+        let update = NewMenuBarItemInboxDetector().update(
+            inbox: newItemInboxStore.inbox,
+            snapshots: result.snapshots,
+            now: result.scanTimestamp,
+            isScanningAllowed: true
+        )
+        let inbox = newItemInboxStore.apply(update: update)
+        setLiveStatus(\.newMenuBarItemReviewCount, to: inbox.reviewCount)
+
+        if !update.addedItemIDs.isEmpty {
+            diagnosticsLogger.log(
+                "New menu bar item inbox added \(update.addedItemIDs.count) item(s).",
+                level: .debug,
+                metadata: NewMenuBarItemInboxDiagnostics.metadata(update: update, inbox: inbox)
+            )
+        }
     }
 
     private func setLiveStatus<Value: Equatable>(

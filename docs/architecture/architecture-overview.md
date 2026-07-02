@@ -111,7 +111,7 @@ The split keeps `AppEnvironment` as the dependency graph owner while avoiding a 
 - **Visibility state machine**: `HidingVisibilityState` adds a `revealAll` state. Both separators can be expanded, only the primary, or both collapsed.
 - **Auto-rehide**: when the user expands or reveals all, `RehideController` starts a one-shot countdown; conditions (mouse in band, Settings key, menu open) postpone the deadline. Manual collapse cancels the countdown.
 - **Hover reveal**: `HoverRevealController` polls `NSEvent.mouseLocation` and expands the hidden items when the cursor enters any menu bar band. Leaving the band re-arms auto-rehide if it is enabled.
-- **Global hotkey**: `GlobalHotkeyManager` registers a Carbon hotkey (default `Option+Command+B`) and dispatches it back to `HidingService.toggle()`. Disabled by default, enabled in Settings → Behavior.
+- **Global hotkey**: `GlobalHotkeyManager` registers a Carbon hotkey (default `Option+Command+B`) and dispatches it back to `HidingService.toggle()`. Disabled by default, enabled in Settings → Hide & Reveal.
 - **Always-hidden separator**: an optional second `SeparatorController` of kind `.alwaysHiddenSeparator` collapses independently to provide the always-hidden zone.
 - **Option-click**: `StatusBarCommandTarget.controlItemClicked` differentiates Option-click from normal click. With `revealAllOnOptionClick` enabled, Option-click cycles between `revealAll`/`collapsed`.
 - **Separator visuals**: `showSeparators` toggles only the separator button's image/title; the underlying `NSStatusItem` length is preserved.

@@ -4,6 +4,7 @@ nonisolated struct MenuBarScanResult: Equatable, Sendable {
     let snapshots: [MenuBarItemSnapshot]
     let scanTimestamp: Date
     let axFailuresCount: Int
+    let axFailureSummary: String?
 
     /// Per-zone counts computed once at construction time. Previously each
     /// `visibleCount` / `hiddenCount` / `alwaysHiddenCount` / `unknownCount` accessor
@@ -16,12 +17,14 @@ nonisolated struct MenuBarScanResult: Equatable, Sendable {
     init(
         snapshots: [MenuBarItemSnapshot],
         scanTimestamp: Date,
-        axFailuresCount: Int
+        axFailuresCount: Int,
+        axFailureSummary: String? = nil
     ) {
         let deduplicated = Self.deduplicated(snapshots)
         self.snapshots = deduplicated
         self.scanTimestamp = scanTimestamp
         self.axFailuresCount = max(0, axFailuresCount)
+        self.axFailureSummary = axFailureSummary
 
         var counts: [MenuBarZone: Int] = [:]
         for snapshot in deduplicated {
@@ -47,7 +50,8 @@ nonisolated struct MenuBarScanResult: Equatable, Sendable {
         return MenuBarScanResult(
             snapshots: previous.snapshots + current.snapshots,
             scanTimestamp: current.scanTimestamp,
-            axFailuresCount: current.axFailuresCount
+            axFailuresCount: current.axFailuresCount,
+            axFailureSummary: current.axFailureSummary
         )
     }
 

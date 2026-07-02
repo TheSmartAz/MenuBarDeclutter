@@ -126,6 +126,87 @@ struct HealthServiceTests {
         #expect(report.issues.contains { $0.code == "pro.ax-scan-stale" })
     }
 
+    @Test func workspacePreviewRuntimeIssuesAreRecoverable() {
+        let service = HealthService(now: { Date(timeIntervalSince1970: 10) })
+        var snapshot = Self.healthySnapshot()
+        snapshot.functionBarVisible = true
+        snapshot.functionBarPreviewEnabled = false
+        snapshot.infoStripVisible = true
+        snapshot.infoStripPreviewEnabled = false
+
+        var report = service.makeReport(snapshot: snapshot)
+
+        #expect(report.issues.first { $0.code == "workspace.function-bar.visible-while-disabled" }?.recoveryAction == .disableFunctionBarPreview)
+        #expect(report.issues.first { $0.code == "workspace.info-strip.visible-while-disabled" }?.recoveryAction == .hideInfoStrip)
+
+        snapshot.functionBarPreviewEnabled = true
+        snapshot.infoStripPreviewEnabled = true
+        snapshot.safeModeActive = true
+        report = service.makeReport(snapshot: snapshot)
+
+        #expect(report.issues.first { $0.code == "workspace.function-bar.visible-in-safe-mode" }?.recoveryAction == .hideFunctionBar)
+        #expect(report.issues.first { $0.code == "workspace.info-strip.visible-in-safe-mode" }?.recoveryAction == .hideInfoStrip)
+    }
+
+    @Test func infoStripHealthIssuesUseTargetedRecovery() {
+        let service = HealthService(now: { Date(timeIntervalSince1970: 10) })
+        var snapshot = Self.healthySnapshot()
+        snapshot.infoStripPreviewEnabled = true
+        snapshot.infoStripSelectedTileProviderCount = 2
+        snapshot.infoStripAvailableSelectedTileProviderCount = 0
+        snapshot.infoStripInvalidProviderIDCount = 1
+        snapshot.infoStripPlacementFailed = true
+        snapshot.infoStripTimingInvalid = true
+
+        var report = service.makeReport(snapshot: snapshot)
+
+        #expect(report.issues.first { $0.code == "workspace.info-strip.invalid-provider-ids" }?.recoveryAction == .clearInvalidInfoStripProviders)
+        #expect(report.issues.first { $0.code == "workspace.info-strip.no-available-selected-providers" }?.recoveryAction == .resetInfoStripSettings)
+        #expect(report.issues.first { $0.code == "workspace.info-strip.placement-failing" }?.recoveryAction == .resetInfoStripPlacement)
+        #expect(report.issues.first { $0.code == "workspace.info-strip.timing-invalid" }?.recoveryAction == .resetInfoStripSettings)
+
+        snapshot.infoStripAvailableSelectedTileProviderCount = 1
+        snapshot.infoStripInvalidProviderIDCount = 0
+        snapshot.infoStripPlacementFailed = false
+        snapshot.infoStripTimingInvalid = false
+        snapshot.infoStripRotationResult = "empty"
+        report = service.makeReport(snapshot: snapshot)
+
+        #expect(report.issues.first { $0.code == "workspace.info-strip.rotation-failing" }?.recoveryAction == .resetInfoStripSettings)
+    }
+
+    @Test func workspaceStoreIssuesAreWarningsAndKeepBasicModeRecoverable() {
+        let service = HealthService(now: { Date(timeIntervalSince1970: 10) })
+        var snapshot = Self.healthySnapshot()
+        snapshot.workspaceStoreLoadStatus = .corruptedBackupCreated
+        snapshot.workspaceValidationIssueCount = 2
+        snapshot.workspaceMissingGroupReferenceCount = 1
+        snapshot.workspaceMissingProfileBindingCount = 1
+
+        let report = service.makeReport(snapshot: snapshot)
+
+        #expect(report.status == .warning)
+        #expect(report.issues.first { $0.code == "workspace.store.corrupted-reset" }?.recoveryAction == .resetWorkspacesToDefaults)
+        #expect(report.issues.contains { $0.code == "workspace.validation.issues" })
+        #expect(report.issues.first { $0.code == "workspace.references.missing-groups" }?.recoveryAction == .removeMissingWorkspaceGroupReferences)
+        #expect(report.issues.contains { $0.code == "workspace.references.missing-profiles" })
+        #expect(!report.issues.contains { $0.severity == .critical })
+    }
+
+    @Test func workspaceReferenceIssuesIncludeDetachedSourcesAndUnresolvedProxies() {
+        let service = HealthService(now: { Date(timeIntervalSince1970: 10) })
+        var snapshot = Self.healthySnapshot()
+        snapshot.workspaceDetachedSourceGroupMissingCount = 1
+        snapshot.workspaceUnresolvedMenuBarProxyReferenceCount = 2
+
+        let report = service.makeReport(snapshot: snapshot)
+
+        #expect(report.status == .warning)
+        #expect(report.issues.first { $0.code == "workspace.references.detached-source-missing" }?.recoveryAction == nil)
+        #expect(report.issues.first { $0.code == "workspace.references.unresolved-menu-bar-proxies" }?.recoveryAction == .resetCurrentWorkspaceLayout)
+        #expect(!report.issues.contains { $0.severity == .critical })
+    }
+
     private static func healthySnapshot() -> HealthCheckSnapshot {
         HealthCheckSnapshot(
             controlItemExists: true,

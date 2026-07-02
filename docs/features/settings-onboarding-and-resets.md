@@ -5,7 +5,8 @@ The Settings and onboarding surfaces are the main SwiftUI user interface for con
 ## What It Does
 
 - Presents Settings in a SwiftUI `NavigationSplitView`.
-- Provides General, Behavior, Search, Second Bar, Profiles, Privacy, Diagnostics, and Advanced sections.
+- Provides the current seven visible sections: General, Hide & Reveal, Arrange, Find & Rescue, Privacy, Recovery, and Advanced.
+- Keeps legacy or power-user detail pages reachable from Advanced or contextual page actions instead of top-level sidebar entries.
 - Runs first-launch onboarding until `hasCompletedOnboarding` is true.
 - Lets users replay onboarding from Settings -> General.
 - Shows app name, marketing version, build number, app version, and bundle identifier.
@@ -21,6 +22,7 @@ The Settings and onboarding surfaces are the main SwiftUI user interface for con
 3. Complete first-run onboarding or replay it later from General.
 4. Use Reset App Layout when separator placement or lengths look wrong.
 5. Use Reset All Settings when the app should return to v0.1 safe defaults.
+6. Use Recovery when icons look missing, status items need repair, or Safe Mode is needed.
 
 ## Storage
 
@@ -57,7 +59,7 @@ Settings, onboarding, resets, migration, and Application Support directory creat
 - `MenuBar-ManagerTests/OnboardingStepTests.swift`
 - `MenuBar-ManagerTests/AppSupportPathsTests.swift`
 - UI tests in `MenuBar-ManagerUITests/`
-- Manual QA: `docs/testing/manual-qa.md`
+- Manual QA: `docs/testing/manual-v0.1.3-system-qa.md`
 
 ## Known Limitations
 

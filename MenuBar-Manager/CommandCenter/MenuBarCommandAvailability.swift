@@ -67,7 +67,7 @@ nonisolated struct MenuBarCommandAvailabilitySummary: Equatable, Sendable {
         command: MenuBarCommand,
         availability: MenuBarCommandAvailability
     ) {
-        self.title = "Command Center: \(command.action.displayTitle)"
+        self.title = command.action.displayTitle
         self.statusText = availability.status.displayTitle
         self.detail = availability.detailText
         self.systemImage = availability.status.systemImage
@@ -151,8 +151,38 @@ private extension MenuBarCommandAction {
             "Spacing Preset Preview"
         case .spacingPresetApply:
             "Spacing Preset Apply"
+        case .dryRunMoveItem:
+            "Dry Run Assisted Move"
+        case .tryAssistedMoveItem:
+            "Try Assisted Move"
+        case .cancelAssistedMove:
+            "Cancel Assisted Move"
+        case .showAssistedMoveGuide:
+            "Assisted Move Guide"
         case .experimentalActivateItem:
             "Activate Item"
+        case .showWorkspacePreview:
+            "Workspace Preview"
+        case .switchWorkspace:
+            "Switch Workspace"
+        case .showFunctionBar:
+            "Show Function Bar"
+        case .hideFunctionBar:
+            "Hide Function Bar"
+        case .toggleFunctionBar:
+            "Toggle Function Bar"
+        case .showInfoStrip:
+            "Show Info Strip"
+        case .hideInfoStrip:
+            "Hide Info Strip"
+        case .toggleInfoStrip:
+            "Toggle Info Strip"
+        case .nextInfoStripTile:
+            "Next Info Strip Tile"
+        case .openInfoStripSettings:
+            "Info Strip Settings"
+        case .showFunctionBarFromInfoStrip:
+            "Show Function Bar from Info Strip"
         }
     }
 }

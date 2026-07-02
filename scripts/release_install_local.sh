@@ -42,6 +42,21 @@ APP_PATH="${APP_PATH:-$ROOT_DIR/build/Export/MenuBarDeclutter.app}"
 
 cd "$ROOT_DIR"
 
+clear_intentional_termination_marker() {
+  local marker_paths=(
+    "$HOME/Library/Application Support/MenuBarDeclutter/running.marker"
+    "$HOME/Library/Containers/Yongjun-Zhang.MenuBarDeclutter/Data/Library/Application Support/MenuBarDeclutter/running.marker"
+  )
+
+  local marker
+  for marker in "${marker_paths[@]}"; do
+    if [[ -f "$marker" ]]; then
+      rm -f "$marker"
+      echo "INFO: Cleared script-controlled termination marker: $marker"
+    fi
+  done
+}
+
 echo "MenuBarDeclutter local install"
 echo "Source: $APP_PATH"
 echo "Destination: $DESTINATION"
@@ -54,6 +69,8 @@ fi
 
 echo "+ pkill -x MenuBarDeclutter || true"
 pkill -x MenuBarDeclutter 2>/dev/null || true
+sleep 1
+clear_intentional_termination_marker
 
 echo "+ rm -rf \"$DESTINATION\""
 if ! rm -rf "$DESTINATION" 2>/tmp/menubardeclutter-install-rm.err; then

@@ -10,6 +10,7 @@ struct AdvancedSettingsView: View {
     var onChange: (() -> Void)? = nil
     var onAutomationChanged: (() -> Void)? = nil
     var onResetMovingWarnings: (() -> Void)? = nil
+    var onOpenSection: ((SettingsSection) -> Void)? = nil
 
     @State private var showCollapsedOverride: Bool
     @State private var showIconMovingConfirmation = false
@@ -19,13 +20,15 @@ struct AdvancedSettingsView: View {
         appSupportPaths: AppSupportPaths,
         onChange: (() -> Void)? = nil,
         onAutomationChanged: (() -> Void)? = nil,
-        onResetMovingWarnings: (() -> Void)? = nil
+        onResetMovingWarnings: (() -> Void)? = nil,
+        onOpenSection: ((SettingsSection) -> Void)? = nil
     ) {
         self.settingsStore = settingsStore
         self.appSupportPaths = appSupportPaths
         self.onChange = onChange
         self.onAutomationChanged = onAutomationChanged
         self.onResetMovingWarnings = onResetMovingWarnings
+        self.onOpenSection = onOpenSection
         _showCollapsedOverride = State(initialValue: settingsStore.collapsedSeparatorLengthOverride != nil)
     }
 
@@ -36,6 +39,11 @@ struct AdvancedSettingsView: View {
             badges: [.privacySafe, .diagnostics, .labs, .experimental]
         ) {
             AdvancedOverviewStrip(settingsStore: settingsStore)
+
+            AdvancedFeatureDirectorySection(
+                showDogfood: showsDogfoodDirectoryEntry,
+                onOpenSection: onOpenSection
+            )
 
             SeparatorGeometrySection(
                 settingsStore: settingsStore,
@@ -87,12 +95,225 @@ struct AdvancedSettingsView: View {
         )
     }
 
+    private var showsDogfoodDirectoryEntry: Bool {
+        settingsStore.dogfoodModeEnabled || settingsStore.dogfoodRunID != nil
+    }
+
     private func revealDiagnosticsFolder() {
         do {
             try appSupportPaths.ensureDirectoriesExist()
             NSWorkspace.shared.activateFileViewerSelecting([appSupportPaths.diagnosticsDirectory])
         } catch {
             NSWorkspace.shared.open(appSupportPaths.diagnosticsDirectory.deletingLastPathComponent())
+        }
+    }
+}
+
+enum AdvancedFeatureDirectory {
+    static let entries: [AdvancedFeatureDirectoryEntry] = [
+        AdvancedFeatureDirectoryEntry(
+            title: "Workspaces Preview",
+            subtitle: "Local Workspaces, Function Bar, Set Builder, and Info Strip previews.",
+            status: .experimental,
+            systemImage: "rectangle.3.group",
+            destination: .workspacesPreview
+        ),
+        AdvancedFeatureDirectoryEntry(
+            title: "Profiles",
+            subtitle: "Saved configurations and manual profile application.",
+            status: .preview,
+            systemImage: "person.crop.rectangle.stack",
+            destination: .profiles
+        ),
+        AdvancedFeatureDirectoryEntry(
+            title: "Smart Triggers",
+            subtitle: "Optional automation that can apply profiles.",
+            status: .preview,
+            systemImage: "link",
+            destination: .profiles
+        ),
+        AdvancedFeatureDirectoryEntry(
+            title: "Dynamic Hotkeys",
+            subtitle: "Advanced command, group, and profile shortcuts.",
+            status: .preview,
+            systemImage: "keyboard",
+            destination: .hotkeys
+        ),
+        AdvancedFeatureDirectoryEntry(
+            title: "Private Access",
+            subtitle: "Local authentication for protected surfaces.",
+            status: .preview,
+            systemImage: "lock.fill",
+            destination: .privateAccess
+        ),
+        AdvancedFeatureDirectoryEntry(
+            title: "Groups",
+            subtitle: "Lightweight collections and protected group actions.",
+            status: .preview,
+            systemImage: "person.2",
+            destination: .groups
+        ),
+        AdvancedFeatureDirectoryEntry(
+            title: "Automation",
+            subtitle: "App Shortcuts and URL command controls.",
+            status: .preview,
+            systemImage: "app.connected.to.app.below.fill",
+            destination: .automation
+        ),
+        AdvancedFeatureDirectoryEntry(
+            title: "Import / Export",
+            subtitle: "Backups, migration, and privacy-safe transfer.",
+            status: .preview,
+            systemImage: "arrow.up.arrow.down",
+            destination: .importExport
+        ),
+        AdvancedFeatureDirectoryEntry(
+            title: "Diagnostics",
+            subtitle: "Health checks, logs, and local support export.",
+            status: .stable,
+            systemImage: "waveform.path.ecg",
+            destination: .diagnostics
+        ),
+        AdvancedFeatureDirectoryEntry(
+            title: "Dogfood",
+            subtitle: "Internal QA notes and local dogfood bundles.",
+            status: .internal,
+            systemImage: "checklist",
+            destination: .diagnostics
+        ),
+        AdvancedFeatureDirectoryEntry(
+            title: "Spacing Labs",
+            subtitle: "Separator geometry, spacer previews, and spacing experiments.",
+            status: .labs,
+            systemImage: "ruler",
+            destination: .layout
+        ),
+        AdvancedFeatureDirectoryEntry(
+            title: "Icon Moving",
+            subtitle: "Explicit, confirmed experimental assisted movement.",
+            status: .experimental,
+            systemImage: "arrow.up.left.and.arrow.down.right",
+            destination: nil
+        )
+    ]
+
+    static func visibleEntries(showDogfood: Bool) -> [AdvancedFeatureDirectoryEntry] {
+        entries.filter { showDogfood || $0.title != "Dogfood" }
+    }
+}
+
+struct AdvancedFeatureDirectoryEntry: Identifiable {
+    let title: String
+    let subtitle: String
+    let status: ProductFeatureStatus
+    let systemImage: String
+    let destination: SettingsSection?
+
+    var id: String { title }
+}
+
+private struct AdvancedFeatureDirectorySection: View {
+    let showDogfood: Bool
+    var onOpenSection: ((SettingsSection) -> Void)?
+
+    private let columns = [
+        GridItem(.adaptive(minimum: 230), spacing: 10)
+    ]
+
+    var body: some View {
+        ClearGlassSection(
+            "Advanced Feature Directory",
+            subtitle: "Power-user and experimental surfaces stay available without crowding the main settings flow."
+        ) {
+            LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
+                ForEach(AdvancedFeatureDirectory.visibleEntries(showDogfood: showDogfood)) { entry in
+                    AdvancedFeatureDirectoryCard(entry: entry) {
+                        if let destination = entry.destination {
+                            onOpenSection?(destination)
+                        }
+                    }
+                }
+            }
+            .padding(.vertical, 8)
+        }
+        .accessibilityIdentifier("advanced.featureDirectory")
+    }
+}
+
+private struct AdvancedFeatureDirectoryCard: View {
+    let entry: AdvancedFeatureDirectoryEntry
+    let onOpen: () -> Void
+
+    var body: some View {
+        Button(action: onOpen) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: entry.systemImage)
+                        .font(.system(size: 16, weight: .regular))
+                        .foregroundStyle(statusTint)
+                        .frame(width: 22, height: 22)
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Text(entry.title)
+                                .font(.subheadline)
+                                .foregroundStyle(.primary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.82)
+
+                            Text(entry.status.title)
+                                .font(.caption2)
+                                .foregroundStyle(statusTint)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(statusTint.opacity(0.12), in: .capsule)
+                        }
+
+                        Text(entry.subtitle)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+
+                HStack(spacing: 6) {
+                    Text(entry.destination == nil ? "Current Page" : "Open")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Image(systemName: entry.destination == nil ? "checkmark.circle" : "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, minHeight: 118, alignment: .topLeading)
+            .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 8))
+            .overlay {
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color(nsColor: .separatorColor).opacity(0.46), lineWidth: 0.5)
+            }
+        }
+        .buttonStyle(.plain)
+        .disabled(entry.destination == nil)
+        .accessibilityLabel(entry.title)
+    }
+
+    private var statusTint: Color {
+        switch entry.status {
+        case .stable:
+            .green
+        case .preview:
+            .blue
+        case .labs:
+            .purple
+        case .experimental:
+            .orange
+        case .deferred:
+            .secondary
+        case .internal:
+            .gray
         }
     }
 }
@@ -217,6 +438,7 @@ private struct SeparatorGeometrySection: View {
                 .padding(.vertical, 8)
             }
         }
+        .accessibilityIdentifier("advanced.separatorGeometry")
     }
 }
 
@@ -487,7 +709,7 @@ private struct IconMovingLabsSection: View {
             VStack(spacing: 0) {
                 FeatureGateNotice(
                     .experimental,
-                    text: "Icon Moving is Experimental in v0.1.1. It is disabled by default and only runs from explicit user action after confirmation."
+                    text: "Icon Moving is Experimental in v0.1.3. It is disabled by default and only runs from explicit user action after confirmation."
                 )
 
                 ClearGlassDivider()
@@ -531,6 +753,7 @@ private struct IconMovingLabsSection: View {
                 .padding(.bottom, 8)
             }
         }
+        .accessibilityIdentifier("advanced.labs")
     }
 }
 
@@ -681,6 +904,7 @@ private struct DeveloperNotesSection: View {
                 style: .warning
             )
         }
+        .accessibilityIdentifier("advanced.developerNotes")
     }
 }
 

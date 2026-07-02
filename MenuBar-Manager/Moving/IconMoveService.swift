@@ -19,6 +19,7 @@ final class IconMoveService {
     private let suspendRuntimeBehaviors: () -> Void
     private let resumeRuntimeBehaviors: () -> Void
     private let confirmationHandler: (MenuBarItemSnapshot, IconMoveCommand) -> IconMoveConfirmationDecision
+    private let now: () -> Date
 
     private var isMoving = false
 
@@ -42,7 +43,8 @@ final class IconMoveService {
         refreshSnapshots: @escaping () -> [MenuBarItemSnapshot],
         suspendRuntimeBehaviors: @escaping () -> Void,
         resumeRuntimeBehaviors: @escaping () -> Void,
-        confirmationHandler: ((MenuBarItemSnapshot, IconMoveCommand) -> IconMoveConfirmationDecision)? = nil
+        confirmationHandler: ((MenuBarItemSnapshot, IconMoveCommand) -> IconMoveConfirmationDecision)? = nil,
+        now: @escaping () -> Date = { Date() }
     ) {
         self.settingsStore = settingsStore
         self.permissionService = permissionService
@@ -62,12 +64,25 @@ final class IconMoveService {
         self.confirmationHandler = confirmationHandler ?? { snapshot, command in
             IconMoveService.defaultConfirmation(snapshot: snapshot, command: command)
         }
+        self.now = now
     }
 
     func move(_ snapshot: MenuBarItemSnapshot, command: IconMoveCommand) async -> IconMoveResult {
         switch preflight(snapshot: snapshot, command: command) {
         case .ready(let context):
-            return await move(snapshot, command: command, context: context)
+            return await move(snapshot, command: command, context: context, requiresInternalConfirmation: true)
+        case .finished(let result):
+            return result
+        }
+    }
+
+    func moveAfterExternalConfirmation(
+        _ snapshot: MenuBarItemSnapshot,
+        command: IconMoveCommand
+    ) async -> IconMoveResult {
+        switch preflight(snapshot: snapshot, command: command) {
+        case .ready(let context):
+            return await move(snapshot, command: command, context: context, requiresInternalConfirmation: false)
         case .finished(let result):
             return result
         }
@@ -76,23 +91,41 @@ final class IconMoveService {
     private func move(
         _ snapshot: MenuBarItemSnapshot,
         command: IconMoveCommand,
-        context: IconMovePreflightContext
+        context: IconMovePreflightContext,
+        requiresInternalConfirmation: Bool
     ) async -> IconMoveResult {
         isMoving = true
         defer {
             isMoving = false
         }
 
-        if let cancellation = confirmIfNeeded(
+        if requiresInternalConfirmation,
+           let cancellation = confirmIfNeeded(
             snapshot: snapshot,
             command: command,
-            itemName: context.itemName
+            itemName: context.itemName,
+            dogfoodContext: IconMoveDogfoodContext(
+                sourceZone: context.sourceZone,
+                targetZone: context.targetZone,
+                startedAt: context.startedAt,
+                moveAttempted: false
+            )
         ) {
             return cancellation
         }
 
         guard !Task.isCancelled else {
-            return cancelled(command: command, itemName: context.itemName, error: .moveCancelled)
+            return cancelled(
+                command: command,
+                itemName: context.itemName,
+                error: .moveCancelled,
+                dogfoodContext: IconMoveDogfoodContext(
+                    sourceZone: context.sourceZone,
+                    targetZone: context.targetZone,
+                    startedAt: context.startedAt,
+                    moveAttempted: false
+                )
+            )
         }
 
         let session = beginMoveSession(sourceZone: snapshot.zone, targetZone: context.targetZone)
@@ -105,7 +138,13 @@ final class IconMoveService {
             originalSnapshot: snapshot,
             command: command,
             itemName: context.itemName,
-            preMoveVisibility: session.preMoveVisibility
+            preMoveVisibility: session.preMoveVisibility,
+            dogfoodContext: IconMoveDogfoodContext(
+                sourceZone: context.sourceZone,
+                targetZone: context.targetZone,
+                startedAt: context.startedAt,
+                moveAttempted: true
+            )
         )
     }
 
@@ -121,55 +160,94 @@ final class IconMoveService {
 
     private struct IconMovePreflightContext {
         let itemName: String
+        let sourceZone: MenuBarZone
         let targetZone: MenuBarZone
+        let startedAt: Date
     }
 
     private struct IconMoveSession {
         let preMoveVisibility: HidingVisibilityState
     }
 
+    private struct IconMoveDogfoodContext {
+        let sourceZone: MenuBarZone
+        let targetZone: MenuBarZone
+        let startedAt: Date
+        let moveAttempted: Bool
+    }
+
     private func preflight(
         snapshot: MenuBarItemSnapshot,
         command: IconMoveCommand
     ) -> IconMovePreflightResult {
+        let startedAt = now()
         let itemName = displayName(for: snapshot)
         let targetZone = command.targetZone(currentZone: snapshot.zone)
+        let dogfoodContext = IconMoveDogfoodContext(
+            sourceZone: snapshot.zone,
+            targetZone: targetZone,
+            startedAt: startedAt,
+            moveAttempted: false
+        )
 
         if isMoving {
-            return .finished(record(.skipped(command: command, itemName: itemName, error: .moveAlreadyInProgress)))
+            return .finished(record(
+                .skipped(command: command, itemName: itemName, error: .moveAlreadyInProgress),
+                dogfoodContext: dogfoodContext
+            ))
         }
         guard settingsStore.iconMovingEnabled else {
-            return .finished(record(.skipped(command: command, itemName: itemName, error: .disabled)))
+            return .finished(record(
+                .skipped(command: command, itemName: itemName, error: .disabled),
+                dogfoodContext: dogfoodContext
+            ))
         }
         guard settingsStore.proModeEnabled else {
-            return .finished(record(.skipped(command: command, itemName: itemName, error: .proModeRequired)))
+            return .finished(record(
+                .skipped(command: command, itemName: itemName, error: .proModeRequired),
+                dogfoodContext: dogfoodContext
+            ))
         }
         guard permissionService.refreshStatus() == .granted else {
             return .finished(record(.skipped(
                 command: command,
                 itemName: itemName,
                 error: .accessibilityPermissionRequired
-            )))
+            ), dogfoodContext: dogfoodContext))
         }
         if let error = safetyRules.validate(
             snapshot: snapshot,
             allowSystemItems: settingsStore.iconMovingAllowSystemItems,
             appBundleIdentifier: AppConstants.bundleIdentifier
         ) {
-            return .finished(record(.skipped(command: command, itemName: itemName, error: error)))
+            return .finished(record(
+                .skipped(command: command, itemName: itemName, error: error),
+                dogfoodContext: dogfoodContext
+            ))
         }
 
         guard !Task.isCancelled else {
-            return .finished(cancelled(command: command, itemName: itemName, error: .moveCancelled))
+            return .finished(cancelled(
+                command: command,
+                itemName: itemName,
+                error: .moveCancelled,
+                dogfoodContext: dogfoodContext
+            ))
         }
 
-        return .ready(IconMovePreflightContext(itemName: itemName, targetZone: targetZone))
+        return .ready(IconMovePreflightContext(
+            itemName: itemName,
+            sourceZone: snapshot.zone,
+            targetZone: targetZone,
+            startedAt: startedAt
+        ))
     }
 
     private func confirmIfNeeded(
         snapshot: MenuBarItemSnapshot,
         command: IconMoveCommand,
-        itemName: String
+        itemName: String,
+        dogfoodContext: IconMoveDogfoodContext
     ) -> IconMoveResult? {
         guard settingsStore.iconMovingRequireConfirmation && !settingsStore.iconMovingConfirmationSuppressed else {
             return nil
@@ -181,7 +259,12 @@ final class IconMoveService {
         }
 
         guard decision.confirmed else {
-            return cancelled(command: command, itemName: itemName, error: .confirmationCancelled)
+            return cancelled(
+                command: command,
+                itemName: itemName,
+                error: .confirmationCancelled,
+                dogfoodContext: dogfoodContext
+            )
         }
 
         return nil
@@ -206,7 +289,8 @@ final class IconMoveService {
         originalSnapshot: MenuBarItemSnapshot,
         command: IconMoveCommand,
         itemName: String,
-        preMoveVisibility: HidingVisibilityState
+        preMoveVisibility: HidingVisibilityState,
+        dogfoodContext: IconMoveDogfoodContext
     ) async -> IconMoveResult {
         var currentSnapshot = originalSnapshot
         var lastPlan: DragPlan?
@@ -222,7 +306,8 @@ final class IconMoveService {
                     plan: lastPlan,
                     verification: lastVerification,
                     retries: attempt,
-                    restoreVisibility: preMoveVisibility
+                    restoreVisibility: preMoveVisibility,
+                    dogfoodContext: dogfoodContext
                 )
             }
 
@@ -246,7 +331,8 @@ final class IconMoveService {
                             plan: lastPlan,
                             verification: lastVerification,
                             retries: attempt,
-                            restoreVisibility: preMoveVisibility
+                            restoreVisibility: preMoveVisibility,
+                            dogfoodContext: dogfoodContext
                         )
                     }
 
@@ -257,7 +343,8 @@ final class IconMoveService {
                         plan: lastPlan,
                         verification: lastVerification,
                         retries: attempt,
-                        restoreVisibility: preMoveVisibility
+                        restoreVisibility: preMoveVisibility,
+                        dogfoodContext: dogfoodContext
                     )
                 }
 
@@ -269,7 +356,8 @@ final class IconMoveService {
                         plan: lastPlan,
                         verification: lastVerification,
                         retries: attempt,
-                        restoreVisibility: preMoveVisibility
+                        restoreVisibility: preMoveVisibility,
+                        dogfoodContext: dogfoodContext
                     )
                 }
 
@@ -294,7 +382,7 @@ final class IconMoveService {
                         verificationSummary: verification.summary,
                         retries: attempt
                     )
-                    return record(result)
+                    return record(result, dogfoodContext: dogfoodContext)
                 }
 
                 if let updated = verification.matchedSnapshot {
@@ -308,7 +396,8 @@ final class IconMoveService {
                     plan: lastPlan,
                     verification: lastVerification,
                     retries: attempt,
-                    restoreVisibility: preMoveVisibility
+                    restoreVisibility: preMoveVisibility,
+                    dogfoodContext: dogfoodContext
                 )
             } catch {
                 return fail(
@@ -318,7 +407,8 @@ final class IconMoveService {
                     plan: lastPlan,
                     verification: lastVerification,
                     retries: attempt,
-                    restoreVisibility: preMoveVisibility
+                    restoreVisibility: preMoveVisibility,
+                    dogfoodContext: dogfoodContext
                 )
             }
         }
@@ -330,7 +420,8 @@ final class IconMoveService {
             plan: lastPlan,
             verification: lastVerification,
             retries: maxRetries,
-            restoreVisibility: preMoveVisibility
+            restoreVisibility: preMoveVisibility,
+            dogfoodContext: dogfoodContext
         )
     }
 
@@ -374,7 +465,8 @@ final class IconMoveService {
         plan: DragPlan?,
         verification: DragVerificationResult?,
         retries: Int,
-        restoreVisibility: HidingVisibilityState
+        restoreVisibility: HidingVisibilityState,
+        dogfoodContext: IconMoveDogfoodContext
     ) -> IconMoveResult {
         setVisibility(restoreVisibility)
         return record(IconMoveResult(
@@ -385,7 +477,7 @@ final class IconMoveService {
             dragPlanSummary: plan?.summary,
             verificationSummary: verification?.summary,
             retries: retries
-        ))
+        ), dogfoodContext: dogfoodContext)
     }
 
     private func cancelled(
@@ -395,7 +487,8 @@ final class IconMoveService {
         plan: DragPlan? = nil,
         verification: DragVerificationResult? = nil,
         retries: Int = 0,
-        restoreVisibility: HidingVisibilityState? = nil
+        restoreVisibility: HidingVisibilityState? = nil,
+        dogfoodContext: IconMoveDogfoodContext
     ) -> IconMoveResult {
         if let restoreVisibility {
             setVisibility(restoreVisibility)
@@ -409,16 +502,37 @@ final class IconMoveService {
             dragPlanSummary: plan?.summary,
             verificationSummary: verification?.summary,
             retries: retries
-        ))
+        ), dogfoodContext: dogfoodContext)
     }
 
-    private func record(_ result: IconMoveResult) -> IconMoveResult {
+    private func record(
+        _ result: IconMoveResult,
+        dogfoodContext: IconMoveDogfoodContext? = nil
+    ) -> IconMoveResult {
         liveStatus.lastIconMoveResult = result.outcome.rawValue
         liveStatus.lastIconMoveError = result.error?.displayName
         liveStatus.lastIconMoveDragPlanSummary = result.dragPlanSummary
         liveStatus.lastIconMoveVerificationSummary = result.verificationSummary
         liveStatus.lastIconMoveRetriesCount = result.retries
         diagnosticsLogger.log(result.summary, level: result.outcome == .succeeded ? .info : .warning)
+
+        if let dogfoodContext {
+            let event = AssistedMoveDogfoodLogEvent(
+                moveAttempted: dogfoodContext.moveAttempted,
+                sourceZone: dogfoodContext.sourceZone,
+                targetZone: dogfoodContext.targetZone,
+                result: result.outcome,
+                failureReason: result.error,
+                durationBucket: .bucket(for: now().timeIntervalSince(dogfoodContext.startedAt))
+            )
+            diagnosticsLogger.log(
+                "Assisted Move dogfood event recorded.",
+                level: result.outcome == .succeeded ? .info : .warning,
+                category: .dogfood,
+                metadata: event.metadata
+            )
+        }
+
         return result
     }
 

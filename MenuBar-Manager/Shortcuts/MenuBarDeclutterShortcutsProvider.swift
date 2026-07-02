@@ -32,6 +32,15 @@ struct MenuBarDeclutterShortcutsProvider: AppShortcutsProvider {
             systemImageName: "rectangle.expand.vertical"
         )
         AppShortcut(
+            intent: ShowFindIconIntent(),
+            phrases: [
+                "Show Find Icon in \(.applicationName)",
+                "Find menu bar items in \(.applicationName)"
+            ],
+            shortTitle: "Show Find Icon",
+            systemImageName: "magnifyingglass"
+        )
+        AppShortcut(
             intent: ShowSecondBarIntent(),
             phrases: [
                 "Show second bar in \(.applicationName)"
@@ -104,6 +113,19 @@ struct RevealAllMenuBarItemsIntent: AppIntent {
             return appIntentDialogResult(message: "MenuBarDeclutter is not ready.")
         }
         return appIntentDialogResult(for: service.revealAllMenuBarItems())
+    }
+}
+
+struct ShowFindIconIntent: AppIntent {
+    static let title: LocalizedStringResource = "Show Find Icon"
+    static let description = IntentDescription("Open Find Icon for discovered menu bar items.")
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        guard let service = AppEnvironment.shared?.intentExecutionService else {
+            return appIntentDialogResult(message: "MenuBarDeclutter is not ready.")
+        }
+        return appIntentDialogResult(for: service.showFindIcon())
     }
 }
 

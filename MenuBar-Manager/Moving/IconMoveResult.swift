@@ -1,6 +1,6 @@
 import Foundation
 
-enum IconMoveCommand: Equatable, Sendable {
+nonisolated enum IconMoveCommand: Equatable, Sendable {
     case moveToZone(MenuBarZone)
     case moveLeft
     case moveRight
@@ -26,14 +26,14 @@ enum IconMoveCommand: Equatable, Sendable {
     }
 }
 
-enum IconMoveOutcome: String, Sendable {
+nonisolated enum IconMoveOutcome: String, Sendable {
     case succeeded
     case failed
     case skipped
     case cancelled
 }
 
-struct IconMoveResult: Equatable, Sendable {
+nonisolated struct IconMoveResult: Equatable, Sendable {
     let outcome: IconMoveOutcome
     let command: IconMoveCommand
     let itemName: String

@@ -13,7 +13,7 @@ Basic behavior controls are optional enhancements layered on top of Basic Mode h
 
 ## User Flow
 
-1. Open Settings -> Behavior.
+1. Open Settings -> Hide & Reveal.
 2. Enable only the controls desired for the current layout.
 3. Adjust auto-rehide delay or hover polling interval if those controls are enabled.
 4. Use Option-click on the control item to reveal all when that setting is enabled.
@@ -40,7 +40,7 @@ These controls do not use event taps and do not require Input Monitoring. Hover 
 - `MenuBar-ManagerTests/HotkeyModelTests.swift`
 - `MenuBar-ManagerTests/HotkeyCallbackResolverTests.swift`
 - `MenuBar-ManagerTests/HidingVisibilityStateTests.swift`
-- Manual QA: `docs/testing/manual-qa.md`
+- Manual QA: `docs/testing/manual-v0.1.3-system-qa.md`
 
 ## Known Limitations
 

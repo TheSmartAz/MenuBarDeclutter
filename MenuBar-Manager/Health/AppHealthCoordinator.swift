@@ -22,6 +22,15 @@ struct AppHealthCoordinatorDependencies {
     let hotkeyBindingStore: HotkeyBindingStore
     let dynamicHotkeyRegistrationService: DynamicHotkeyRegistrationService
     let privateAccessCoordinator: PrivateAccessCoordinator
+    var workspaceDiagnostics: () -> WorkspaceDiagnosticsSnapshot? = { nil }
+    var functionBarVisible: () -> Bool = { false }
+    var infoStripVisible: () -> Bool = { false }
+    var infoStripSelectedTileProviderCount: () -> Int = { 0 }
+    var infoStripAvailableSelectedTileProviderCount: () -> Int = { 0 }
+    var infoStripInvalidProviderIDCount: () -> Int = { 0 }
+    var infoStripRotationResult: () -> String? = { nil }
+    var infoStripPlacementFailed: () -> Bool = { false }
+    var infoStripTimingInvalid: () -> Bool = { false }
 }
 
 @MainActor
@@ -30,17 +39,59 @@ struct AppHealthCoordinatorActions {
     let revealAllHiddenItems: () -> Void
     let resetAllSettings: () -> Void
     let refreshTriggerSettings: () -> Void
+    let resetWorkspacesToDefaults: () -> Void
+    let resetCurrentWorkspaceLayout: () -> Void
+    let removeMissingWorkspaceGroupReferences: () -> Void
+    let discardSetBuilderDraft: () -> Void
+    let hideFunctionBar: () -> Void
+    let disableFunctionBarPreview: () -> Void
+    let disableSetBuilderPreview: () -> Void
+    let hideInfoStrip: () -> Void
+    let showFunctionBar: () -> Void
+    let disableInfoStripPreview: () -> Void
+    let resetInfoStripSettings: () -> Void
+    let resetInfoStripPlacement: () -> Void
+    let clearInvalidInfoStripProviders: () -> Void
+    let showFunctionBarInstead: () -> Void
 
     init(
         synchronizeLiveStatus: @escaping () -> Void = {},
         revealAllHiddenItems: @escaping () -> Void = {},
         resetAllSettings: @escaping () -> Void = {},
-        refreshTriggerSettings: @escaping () -> Void = {}
+        refreshTriggerSettings: @escaping () -> Void = {},
+        resetWorkspacesToDefaults: @escaping () -> Void = {},
+        resetCurrentWorkspaceLayout: @escaping () -> Void = {},
+        removeMissingWorkspaceGroupReferences: @escaping () -> Void = {},
+        discardSetBuilderDraft: @escaping () -> Void = {},
+        hideFunctionBar: @escaping () -> Void = {},
+        disableFunctionBarPreview: @escaping () -> Void = {},
+        disableSetBuilderPreview: @escaping () -> Void = {},
+        hideInfoStrip: @escaping () -> Void = {},
+        showFunctionBar: @escaping () -> Void = {},
+        disableInfoStripPreview: @escaping () -> Void = {},
+        resetInfoStripSettings: @escaping () -> Void = {},
+        resetInfoStripPlacement: @escaping () -> Void = {},
+        clearInvalidInfoStripProviders: @escaping () -> Void = {},
+        showFunctionBarInstead: @escaping () -> Void = {}
     ) {
         self.synchronizeLiveStatus = synchronizeLiveStatus
         self.revealAllHiddenItems = revealAllHiddenItems
         self.resetAllSettings = resetAllSettings
         self.refreshTriggerSettings = refreshTriggerSettings
+        self.resetWorkspacesToDefaults = resetWorkspacesToDefaults
+        self.resetCurrentWorkspaceLayout = resetCurrentWorkspaceLayout
+        self.removeMissingWorkspaceGroupReferences = removeMissingWorkspaceGroupReferences
+        self.discardSetBuilderDraft = discardSetBuilderDraft
+        self.hideFunctionBar = hideFunctionBar
+        self.disableFunctionBarPreview = disableFunctionBarPreview
+        self.disableSetBuilderPreview = disableSetBuilderPreview
+        self.hideInfoStrip = hideInfoStrip
+        self.showFunctionBar = showFunctionBar
+        self.disableInfoStripPreview = disableInfoStripPreview
+        self.resetInfoStripSettings = resetInfoStripSettings
+        self.resetInfoStripPlacement = resetInfoStripPlacement
+        self.clearInvalidInfoStripProviders = clearInvalidInfoStripProviders
+        self.showFunctionBarInstead = showFunctionBarInstead
     }
 }
 
@@ -106,6 +157,45 @@ final class AppHealthCoordinator {
             },
             clearPrivateAccessUnlock: { [weak self] in
                 self?.dependencies.privateAccessCoordinator.clearUnlock()
+            },
+            resetWorkspacesToDefaults: { [weak self] in
+                self?.externalActions.resetWorkspacesToDefaults()
+            },
+            resetCurrentWorkspaceLayout: { [weak self] in
+                self?.externalActions.resetCurrentWorkspaceLayout()
+            },
+            removeMissingWorkspaceGroupReferences: { [weak self] in
+                self?.externalActions.removeMissingWorkspaceGroupReferences()
+            },
+            discardSetBuilderDraft: { [weak self] in
+                self?.externalActions.discardSetBuilderDraft()
+            },
+            hideFunctionBar: { [weak self] in
+                self?.externalActions.hideFunctionBar()
+            },
+            disableFunctionBarPreview: { [weak self] in
+                self?.externalActions.disableFunctionBarPreview()
+            },
+            disableSetBuilderPreview: { [weak self] in
+                self?.externalActions.disableSetBuilderPreview()
+            },
+            hideInfoStrip: { [weak self] in
+                self?.externalActions.hideInfoStrip()
+            },
+            disableInfoStripPreview: { [weak self] in
+                self?.externalActions.disableInfoStripPreview()
+            },
+            resetInfoStripSettings: { [weak self] in
+                self?.externalActions.resetInfoStripSettings()
+            },
+            resetInfoStripPlacement: { [weak self] in
+                self?.externalActions.resetInfoStripPlacement()
+            },
+            clearInvalidInfoStripProviders: { [weak self] in
+                self?.externalActions.clearInvalidInfoStripProviders()
+            },
+            showFunctionBarInstead: { [weak self] in
+                self?.externalActions.showFunctionBarInstead()
             }
         ),
         log: { [weak self] message in
@@ -155,6 +245,10 @@ final class AppHealthCoordinator {
         recoveryService.recover(report: report)
     }
 
+    func performRecoveryAction(_ action: HealthRecoveryAction) {
+        recoveryService.perform(action)
+    }
+
     func disableProMode() {
         dependencies.settingsStore.proModeEnabled = false
         dependencies.settingsStore.accessibilityDiscoveryEnabled = false
@@ -177,7 +271,8 @@ final class AppHealthCoordinator {
     }
 
     private func makeHealthSnapshot() -> HealthCheckSnapshot {
-        HealthCheckSnapshot(
+        let workspaceDiagnostics = dependencies.workspaceDiagnostics()
+        return HealthCheckSnapshot(
             controlItemExists: dependencies.statusBarController.isControlItemInstalled,
             primarySeparatorExpected: true,
             primarySeparatorExists: dependencies.statusBarController.isPrimarySeparatorInstalled,
@@ -225,7 +320,26 @@ final class AppHealthCoordinator {
             dynamicHotkeyConflictCount: HotkeyConflictDetector.conflictCount(in: dependencies.hotkeyBindingStore.bindings),
             privateAccessEnabled: dependencies.settingsStore.privateAccessEnabled,
             privateAccessUnlockActive: dependencies.privateAccessCoordinator.isUnlocked,
-            appIntentsEnabled: dependencies.settingsStore.appIntentsEnabled
+            appIntentsEnabled: dependencies.settingsStore.appIntentsEnabled,
+            safeModeActive: dependencies.safeModeLaunchState.isSafeModeActive,
+            functionBarPreviewEnabled: dependencies.settingsStore.workspacesPreviewEnabled
+                && dependencies.settingsStore.functionBarPreviewEnabled,
+            functionBarVisible: dependencies.functionBarVisible(),
+            infoStripPreviewEnabled: dependencies.settingsStore.workspacesPreviewEnabled
+                && dependencies.settingsStore.infoStripPreviewEnabled,
+            infoStripVisible: dependencies.infoStripVisible(),
+            infoStripSelectedTileProviderCount: dependencies.infoStripSelectedTileProviderCount(),
+            infoStripAvailableSelectedTileProviderCount: dependencies.infoStripAvailableSelectedTileProviderCount(),
+            infoStripInvalidProviderIDCount: dependencies.infoStripInvalidProviderIDCount(),
+            infoStripRotationResult: dependencies.infoStripRotationResult(),
+            infoStripPlacementFailed: dependencies.infoStripPlacementFailed(),
+            infoStripTimingInvalid: dependencies.infoStripTimingInvalid(),
+            workspaceStoreLoadStatus: workspaceDiagnostics?.lastLoadStatus ?? .notLoaded,
+            workspaceValidationIssueCount: workspaceDiagnostics?.validationIssueCount ?? 0,
+            workspaceMissingGroupReferenceCount: workspaceDiagnostics?.missingGroupReferenceCount ?? 0,
+            workspaceDetachedSourceGroupMissingCount: workspaceDiagnostics?.detachedSourceGroupMissingCount ?? 0,
+            workspaceUnresolvedMenuBarProxyReferenceCount: workspaceDiagnostics?.unresolvedMenuBarItemReferenceCount ?? 0,
+            workspaceMissingProfileBindingCount: workspaceDiagnostics?.missingProfileBindingCount ?? 0
         )
     }
 

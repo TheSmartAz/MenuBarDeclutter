@@ -528,7 +528,7 @@ private struct CrowdedRevealPanel: View {
         ) {
             FeatureGateNotice(
                 .preview,
-                text: "Preview in v0.1.1. Fails closed when capacity or Pro estimates are unavailable."
+                text: "Preview in v0.1.3. Fails closed when capacity or Pro estimates are unavailable."
             )
 
             LayoutInspectorDivider()
@@ -664,7 +664,7 @@ private struct MenuBarSpacingLabsSection: View {
             VStack(spacing: 0) {
                 FeatureGateNotice(
                     .labs,
-                    text: "Labs in v0.1.1. Off by default and never restarts system processes automatically."
+                    text: "Labs in v0.1.3. Off by default and never restarts system processes automatically."
                 )
 
                 ClearGlassDivider()

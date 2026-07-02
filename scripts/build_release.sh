@@ -30,12 +30,16 @@ Modes:
                     Verify the installed app after install.
   --version VERSION Override MARKETING_VERSION-derived release version.
 
-This release line is v0.1.1. The script refuses v0.2 artifact names.
+This release line is v0.1.7. The script refuses future-release artifact names.
 EOF
 }
 
 version_from_config() {
   awk '/^MARKETING_VERSION[[:space:]]*=/{ print $3; exit }' "$ROOT_DIR/Config/Shared.xcconfig"
+}
+
+build_from_config() {
+  awk '/^CURRENT_PROJECT_VERSION[[:space:]]*=/{ print $3; exit }' "$ROOT_DIR/Config/Shared.xcconfig"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -91,7 +95,13 @@ if [[ -z "$VERSION" ]]; then
 fi
 
 if [[ "$VERSION" == "0.2" || "$VERSION" == "0.2.0" || "$VERSION" == v0.2* ]]; then
-  echo "FAIL: Phase 12 release tooling must not build a v0.2 artifact." >&2
+  echo "FAIL: v0.1.x release tooling must not build a v0.2 artifact." >&2
+  exit 1
+fi
+
+EXPECTED_BUILD_VERSION="${EXPECTED_BUILD_VERSION:-$(build_from_config)}"
+if [[ -z "$EXPECTED_BUILD_VERSION" ]]; then
+  echo "FAIL: could not derive CURRENT_PROJECT_VERSION from Config/Shared.xcconfig" >&2
   exit 1
 fi
 
@@ -112,16 +122,16 @@ echo "Exported app: $APP_PATH"
 echo "Zip: $ZIP_PATH"
 echo
 
-SCHEME="$scheme" ARCHIVE_PATH="$ARCHIVE_PATH" scripts/release_archive.sh
-DRY_RUN="$DRY_RUN" ARCHIVE_PATH="$ARCHIVE_PATH" EXPORT_DIR="$EXPORT_DIR" APP_PATH="$APP_PATH" scripts/release_export_app.sh
-VERSION="$VERSION" APP_PATH="$APP_PATH" ZIP_PATH="$ZIP_PATH" scripts/release_package_zip.sh
-APP_PATH="$APP_PATH" EXPECTED_MARKETING_VERSION="$VERSION" EXPECTED_BUILD_VERSION="${EXPECTED_BUILD_VERSION:-2}" scripts/verify_release_artifact.sh
+SCHEME="$scheme" ARCHIVE_PATH="$ARCHIVE_PATH" bash scripts/release_archive.sh
+DRY_RUN="$DRY_RUN" ARCHIVE_PATH="$ARCHIVE_PATH" EXPORT_DIR="$EXPORT_DIR" APP_PATH="$APP_PATH" bash scripts/release_export_app.sh
+VERSION="$VERSION" APP_PATH="$APP_PATH" ZIP_PATH="$ZIP_PATH" bash scripts/release_package_zip.sh
+APP_PATH="$APP_PATH" EXPECTED_MARKETING_VERSION="$VERSION" EXPECTED_BUILD_VERSION="$EXPECTED_BUILD_VERSION" bash scripts/verify_release_artifact.sh
 
 if [[ "$NOTARIZE" -eq 1 ]]; then
   if [[ "$DRY_RUN" -eq 1 ]]; then
-    VERSION="$VERSION" scripts/release_notarize.sh --dry-run "$ZIP_PATH"
+    VERSION="$VERSION" bash scripts/release_notarize.sh --dry-run "$ZIP_PATH"
   else
-    VERSION="$VERSION" scripts/release_notarize.sh "$ZIP_PATH"
+    VERSION="$VERSION" bash scripts/release_notarize.sh "$ZIP_PATH"
   fi
 else
   echo "INFO: notarization skipped. Pass --notarize to submit with notarytool."
@@ -131,16 +141,16 @@ if [[ "$STAPLE" -eq 1 ]]; then
   if [[ "$DRY_RUN" -eq 1 ]]; then
     echo "INFO: stapling skipped in dry-run mode. Real stapling requires successful notarization."
   else
-    scripts/release_staple.sh "$APP_PATH"
+    bash scripts/release_staple.sh "$APP_PATH"
   fi
 fi
 
 if [[ "$INSTALL" -eq 1 ]]; then
-  scripts/release_install_local.sh "$APP_PATH" --destination "$INSTALL_DESTINATION"
+  bash scripts/release_install_local.sh "$APP_PATH" --destination "$INSTALL_DESTINATION"
 fi
 
 if [[ "$VERIFY_INSTALLED" -eq 1 ]]; then
-  EXPECTED_MARKETING_VERSION="$VERSION" EXPECTED_BUILD_VERSION="${EXPECTED_BUILD_VERSION:-2}" scripts/verify_installed_app.sh "$INSTALL_DESTINATION"
+  EXPECTED_MARKETING_VERSION="$VERSION" EXPECTED_BUILD_VERSION="$EXPECTED_BUILD_VERSION" bash scripts/verify_installed_app.sh "$INSTALL_DESTINATION"
 fi
 
 echo "PASS: release build flow completed."

@@ -296,6 +296,9 @@ struct SecondBarRootView: View {
         if !secondBarIsAvailable {
             return "Enable the requirements above to use the optional secondary bar."
         }
+        if let scanWarning {
+            return scanWarning
+        }
         if liveStatus.iconMoveInProgress {
             return "Icon move in progress..."
         }
@@ -354,6 +357,18 @@ struct SecondBarRootView: View {
             )
         }
 
+        if liveStatus.safeModeActive {
+            return SecondBarUnavailableState(
+                title: "Safe Mode Active",
+                systemImage: "exclamationmark.triangle",
+                message: "Second Bar item actions are paused while Safe Mode is active. Reason: \(liveStatus.safeModeReasonSummary).",
+                primaryButtonTitle: "Refresh Status",
+                primaryAction: onRefresh,
+                secondaryButtonTitle: nil,
+                secondaryAction: nil
+            )
+        }
+
         if !settingsStore.proModeEnabled {
             return SecondBarUnavailableState(
                 title: "Pro Mode Required",
@@ -361,8 +376,10 @@ struct SecondBarRootView: View {
                 message: "Second Bar uses the optional Accessibility discovery index. Basic Mode still works without permissions.",
                 primaryButtonTitle: "Enable Pro Mode",
                 primaryAction: {
-                    settingsStore.proModeEnabled = true
-                    settingsStore.accessibilityDiscoveryEnabled = true
+                    PrivacyProSetupActions.enableProMode(
+                        settingsStore: settingsStore,
+                        permissionService: permissionService
+                    )
                     onSettingsChanged()
                 },
                 secondaryButtonTitle: "Open Privacy Settings",
@@ -405,6 +422,16 @@ struct SecondBarRootView: View {
         return nil
     }
 
+    private var scanWarning: String? {
+        guard let lastMenuBarScanTime = liveStatus.lastMenuBarScanTime else {
+            return "No menu bar scan yet. Refresh after enabling Pro discovery."
+        }
+
+        let age = Date().timeIntervalSince(lastMenuBarScanTime)
+        guard age > 300 else { return nil }
+        return "Menu bar scan may be stale. Refresh before using item actions."
+    }
+
     private func itemButton(_ snapshot: MenuBarItemSnapshot) -> some View {
         Button {
             viewModel.selectedID = snapshot.id
@@ -422,10 +449,13 @@ struct SecondBarRootView: View {
         .disabled(liveStatus.iconMoveInProgress)
         .contextMenu {
             Button("Reveal", systemImage: "eye") {
-                route(.revealItem, snapshot: snapshot)
+                route(.reveal, snapshot: snapshot)
             }
             Button("Highlight", systemImage: "scope") {
-                route(.highlightItem, snapshot: snapshot)
+                route(.highlight, snapshot: snapshot)
+            }
+            Button("Show in Find Icon", systemImage: "magnifyingglass") {
+                route(.showInFindIcon, snapshot: snapshot)
             }
             Button("Open Owning App", systemImage: "app.badge") {
                 route(.openOwningApp, snapshot: snapshot)
@@ -436,21 +466,30 @@ struct SecondBarRootView: View {
             }
             groupContextMenu(for: snapshot)
             Divider()
-            Button("Move to Visible", systemImage: "arrow.right.to.line") {
-                move(snapshot, command: .moveToZone(.visible))
-            }
-            Button("Move to Hidden", systemImage: "arrow.left.and.right") {
-                move(snapshot, command: .moveToZone(.hidden))
-            }
-            Button("Move to Always Hidden", systemImage: "eye.slash") {
-                move(snapshot, command: .moveToZone(.alwaysHidden))
-            }
-            Divider()
-            Button("Move Left", systemImage: "arrow.left") {
-                move(snapshot, command: .moveLeft)
-            }
-            Button("Move Right", systemImage: "arrow.right") {
-                move(snapshot, command: .moveRight)
+            if settingsStore.iconMovingEnabled {
+                Button("Dry Run Assisted Move", systemImage: "doc.text.magnifyingglass") {
+                    route(.dryRunAssistedMove, snapshot: snapshot)
+                }
+                Divider()
+                Button("Experimental: Move to Visible", systemImage: "arrow.right.to.line") {
+                    move(snapshot, command: .moveToZone(.visible))
+                }
+                Button("Experimental: Move to Hidden", systemImage: "arrow.left.and.right") {
+                    move(snapshot, command: .moveToZone(.hidden))
+                }
+                Button("Experimental: Move to Always Hidden", systemImage: "eye.slash") {
+                    move(snapshot, command: .moveToZone(.alwaysHidden))
+                }
+                Divider()
+                Button("Experimental: Move Left", systemImage: "arrow.left") {
+                    move(snapshot, command: .moveLeft)
+                }
+                Button("Experimental: Move Right", systemImage: "arrow.right") {
+                    move(snapshot, command: .moveRight)
+                }
+            } else {
+                Button("Experimental Move Disabled", systemImage: "exclamationmark.triangle") {}
+                    .disabled(true)
             }
         }
     }
@@ -464,8 +503,7 @@ struct SecondBarRootView: View {
     }
 
     private func activate(_ snapshot: MenuBarItemSnapshot) {
-        let result = route(.revealItem, snapshot: snapshot)
-        liveStatus.lastSecondBarSelectedItem = displayTitle(for: snapshot)
+        let result = route(.reveal, snapshot: snapshot)
 
         if settingsStore.secondBarActivateOwningAppOnSelection {
             let openResult = route(.openOwningApp, snapshot: snapshot)
@@ -481,15 +519,22 @@ struct SecondBarRootView: View {
 
     @discardableResult
     private func route(
-        _ action: MenuBarCommandAction,
+        _ action: SecondBarItemCommandAction,
+        snapshot: MenuBarItemSnapshot
+    ) -> MenuBarCommandResult {
+        route(
+            SecondBarItemActionPlanner.command(for: action, snapshot: snapshot),
+            snapshot: snapshot
+        )
+    }
+
+    @discardableResult
+    private func route(
+        _ command: MenuBarCommand,
         snapshot: MenuBarItemSnapshot
     ) -> MenuBarCommandResult {
         viewModel.selectedID = snapshot.id
-        let result = onCommand(MenuBarCommand(
-            action: action,
-            target: .menuBarItem(id: snapshot.id),
-            source: .secondBar
-        ))
+        let result = onCommand(command)
         statusMessage = result.message
         remember(snapshot)
         return result
@@ -497,6 +542,9 @@ struct SecondBarRootView: View {
 
     private func move(_ snapshot: MenuBarItemSnapshot, command: IconMoveCommand) {
         guard let onMove else { return }
+        let gateResult = route(.tryAssistedMove, snapshot: snapshot)
+        guard gateResult.didRun else { return }
+
         viewModel.selectedID = snapshot.id
         remember(snapshot)
         statusMessage = "\(command.displayName) in progress..."

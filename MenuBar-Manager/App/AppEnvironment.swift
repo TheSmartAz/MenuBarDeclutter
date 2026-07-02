@@ -34,12 +34,25 @@ final class AppEnvironment {
         diagnosticsLogger: diagnosticsLogger
     )
 
+    private lazy var newMenuBarItemInboxStore = NewMenuBarItemInboxStore(
+        fileURL: appSupportPaths.newMenuBarItemInboxFileURL
+    )
+
+    private lazy var menuBarItemMemoryStore = MenuBarItemMemoryStore(
+        fileURL: appSupportPaths.menuBarItemMemoryFileURL
+    )
+
+    private lazy var placementItemPreferenceStore = PlacementItemPreferenceStore(
+        fileURL: appSupportPaths.placementItemPreferencesFileURL
+    )
+
     lazy var menuBarScanCoordinator = MenuBarScanCoordinator(
         settingsStore: settingsStore,
         permissionService: accessibilityPermissionService,
         scanner: axMenuBarScanner,
         diagnosticsLogger: diagnosticsLogger,
         liveStatus: liveStatus,
+        newItemInboxStore: newMenuBarItemInboxStore,
         separatorFramesProvider: { [weak self] in
             self?.currentSeparatorFrames() ?? AppEnvironment.emptySeparatorFrames
         }
@@ -93,6 +106,9 @@ final class AppEnvironment {
         appSupportPaths: appSupportPaths,
         diagnosticsExporter: diagnosticsExporter,
         dogfoodStore: dogfoodStore,
+        newItemInboxStore: newMenuBarItemInboxStore,
+        itemMemoryStore: menuBarItemMemoryStore,
+        placementPreferenceStore: placementItemPreferenceStore,
         accessibilityPermissionService: accessibilityPermissionService,
         menuBarScanCoordinator: menuBarScanCoordinator,
         profileStore: profileAutomationCoordinator.profileStore,
@@ -101,6 +117,10 @@ final class AppEnvironment {
         groupStore: groupStore,
         hotkeyBindingStore: hotkeyBindingStore,
         privateAccessCoordinator: privateAccessCoordinator,
+        workspaceSwitchingService: workspaceSwitchingService,
+        setBuilderViewModel: setBuilderViewModel,
+        functionBarController: functionBarController,
+        infoStripController: infoStripController,
         actions: SettingsActions(
             behaviorChanged: { [weak self] in
                 self?.refreshBehaviorSettings()
@@ -143,6 +163,16 @@ final class AppEnvironment {
                 }
                 return self.commandRouter.route(command)
             },
+            executeAssistedMove: { [weak self] snapshot, command in
+                guard let self else {
+                    return IconMoveResult.skipped(
+                        command: command,
+                        itemName: snapshot.owningApplicationName ?? snapshot.title ?? "Menu Bar Item",
+                        error: .disabled
+                    )
+                }
+                return await self.executeAssistedMoveFromSettings(snapshot, command: command)
+            },
             profile: SettingsProfileActions(
                 dryRun: { [weak self] profile in
                     self?.dryRunProfile(profile) ?? ProfileApplicationDryRun(
@@ -176,11 +206,44 @@ final class AppEnvironment {
             showOnboarding: { [weak self] in
                 self?.showOnboarding()
             },
+            showDragHint: { [weak self] in
+                self?.showDragHint()
+            },
             runHealthCheck: { [weak self] in
                 _ = self?.runHealthCheck(reason: "manual diagnostics refresh")
             },
             fixHealthIssues: { [weak self] in
                 self?.fixHealthIssues()
+            },
+            expand: { [weak self] in
+                self?.expandHiddenItems()
+            },
+            revealAll: { [weak self] in
+                self?.revealAllHiddenItems()
+            },
+            recreateStatusItems: { [weak self] in
+                self?.performRecoveryAction(.recreateStatusItems)
+            },
+            disableAutoRehideTemporarily: { [weak self] in
+                self?.performRecoveryAction(.disableAutoRehideTemporarily)
+            },
+            disableHoverRevealTemporarily: { [weak self] in
+                self?.performRecoveryAction(.disableHoverRevealTemporarily)
+            },
+            resetCurrentWorkspaceLayout: { [weak self] in
+                self?.performRecoveryAction(.resetCurrentWorkspaceLayout)
+            },
+            removeMissingWorkspaceGroupReferences: { [weak self] in
+                self?.performRecoveryAction(.removeMissingWorkspaceGroupReferences)
+            },
+            discardSetBuilderDraft: { [weak self] in
+                self?.performRecoveryAction(.discardSetBuilderDraft)
+            },
+            disableFunctionBarPreview: { [weak self] in
+                self?.performRecoveryAction(.disableFunctionBarPreview)
+            },
+            disableSetBuilderPreview: { [weak self] in
+                self?.performRecoveryAction(.disableSetBuilderPreview)
             },
             resetBasicMode: { [weak self] in
                 self?.resetAllSettings()
@@ -190,6 +253,9 @@ final class AppEnvironment {
             },
             enterSafeModeNextLaunch: { [weak self] in
                 self?.requestSafeModeNextLaunchForDiagnostics()
+            },
+            openTroubleshootingGuide: { [weak self] in
+                self?.openTroubleshootingGuide()
             }
         )
     )
@@ -247,18 +313,57 @@ final class AppEnvironment {
             secondBarVisible: { [weak self] in
                 self?.liveStatus.secondBarVisible == true
             },
+            safeModeActive: { [weak self] in
+                self?.safeModeLaunchState.isSafeModeActive == true
+            },
+            advancedMenuRelevant: { [weak self] in
+                guard let self else { return false }
+                return StatusMenuAdvancedVisibility(
+                    proModeEnabled: self.settingsStore.proModeEnabled,
+                    automationPaused: self.settingsStore.automationPaused,
+                    iconMovingEnabled: self.settingsStore.iconMovingEnabled,
+                    menuBarSpacingLabsEnabled: self.settingsStore.menuBarSpacingLabsEnabled,
+                    dogfoodModeEnabled: self.settingsStore.dogfoodModeEnabled,
+                    workspacesPreviewEnabled: self.settingsStore.workspacesPreviewEnabled,
+                    functionBarPreviewEnabled: self.settingsStore.functionBarPreviewEnabled,
+                    infoStripPreviewEnabled: self.settingsStore.infoStripPreviewEnabled
+                ).isRelevant
+            },
+            canShowNewMenuBarItems: { [weak self] in
+                self?.canShowNewMenuBarItems == true
+            },
+            newMenuBarItemReviewCount: { [weak self] in
+                self?.liveStatus.newMenuBarItemReviewCount ?? 0
+            },
+            commandAvailability: { [weak self] command in
+                self?.commandRouter.availability(for: command)
+                    ?? MenuBarCommandAvailability.unavailable(
+                        status: .failed,
+                        message: "Command router is unavailable.",
+                        diagnosticReason: "routerUnavailable",
+                        failedGate: .targetAvailable
+                    )
+            },
             routeCommand: { [weak self] command in
                 self?.routeStatusMenuCommand(command)
+            },
+            dogfoodModeEnabled: { [weak self] in
+                self?.settingsStore.dogfoodModeEnabled == true
             },
             canRefreshMenuBarItems: { [weak self] in
                 self?.menuBarScanCoordinator.isManualRefreshAvailable == true
             },
             resetSeparatorLength: { [weak self] in self?.resetSeparatorLength() },
+            resetLayout: { [weak self] in self?.resetAppLayout() },
             showDragHint: { [weak self] in self?.showDragHint() },
+            openArrangeSettings: { [weak self] in self?.showSettings(section: .arrange) },
+            openNewMenuBarItems: { [weak self] in self?.showSettings(section: .findRescue) },
+            openRecoverySettings: { [weak self] in self?.showSettings(section: .recovery) },
             openSettings: { [weak self] in self?.showSettings() },
             showDiagnostics: { [weak self] in self?.showDiagnostics() },
             showAbout: { [weak self] in self?.showAbout() },
             quit: { [weak self] in self?.quit() },
+            openProfilesSettings: { [weak self] in self?.showSettings(section: .profiles) },
             enterFullMenuBarMode: { [weak self] in self?.enterFullMenuBarMode() },
             exitFullMenuBarMode: { [weak self] in self?.exitFullMenuBarMode() },
             fullMenuBarModeIsActive: { [weak self] in
@@ -266,6 +371,41 @@ final class AppEnvironment {
             },
             showLayoutSuggestions: { [weak self] in self?.showLayoutSuggestions() },
             openLayoutSettings: { [weak self] in self?.showSettings(section: .layout) },
+            openAdvancedSettings: { [weak self] in self?.showSettings(section: .advanced) },
+            openWorkspacesPreview: { [weak self] in self?.showWorkspacePreview() },
+            workspacesPreviewEnabled: { [weak self] in
+                self?.settingsStore.workspacesPreviewEnabled == true
+            },
+            functionBarPreviewEnabled: { [weak self] in
+                self?.settingsStore.functionBarPreviewEnabled == true
+            },
+            infoStripPreviewEnabled: { [weak self] in
+                self?.settingsStore.infoStripPreviewEnabled == true
+            },
+            functionBarVisible: { [weak self] in
+                self?.functionBarController.displayState.isVisible == true
+            },
+            infoStripVisible: { [weak self] in
+                if let state = self?.infoStripController.displayState,
+                   case .visible = state {
+                    return true
+                }
+                return false
+            },
+            showFunctionBarPreview: { [weak self] in
+                _ = self?.commandRouter.route(MenuBarCommand(action: .showFunctionBar, target: .functionBar, source: .statusMenu))
+            },
+            hideFunctionBarPreview: { [weak self] in
+                _ = self?.commandRouter.route(MenuBarCommand(action: .hideFunctionBar, target: .functionBar, source: .statusMenu))
+            },
+            showInfoStripPreview: { [weak self] in
+                _ = self?.commandRouter.route(MenuBarCommand(action: .showInfoStrip, target: .infoStrip, source: .statusMenu))
+            },
+            hideInfoStripPreview: { [weak self] in
+                _ = self?.commandRouter.route(MenuBarCommand(action: .hideInfoStrip, target: .infoStrip, source: .statusMenu))
+            },
+            previewSpacingPreset: { [weak self] in self?.showSettings(section: .layout) },
+            showAssistedMoveGuide: { [weak self] in self?.showSettings(section: .arrange) },
             addSpacerDivider: { [weak self] in
                 self?.layoutCoordinator.spacerController.add(type: .divider)
             },
@@ -307,6 +447,10 @@ final class AppEnvironment {
         },
         hoverRevealSuppressionProvider: { [weak self] in
             self?.isHoverRevealCurrentlySuppressed() == true
+        },
+        primaryClickPreviewAction: { [weak self] in
+            guard let self else { return false }
+            return self.showFunctionBarFromPrimaryClick()
         }
     )
 
@@ -325,8 +469,9 @@ final class AppEnvironment {
     private lazy var menuBarItemSurfaceCoordinator = MenuBarItemSurfaceCoordinator(
         settingsStore: settingsStore,
         diagnosticsLogger: diagnosticsLogger,
-        appSupportPaths: appSupportPaths,
         liveStatus: liveStatus,
+        itemMemoryStore: menuBarItemMemoryStore,
+        newItemInboxStore: newMenuBarItemInboxStore,
         groupStore: groupStore,
         safeModeLaunchState: safeModeLaunchState,
         hidingService: hidingService,
@@ -383,7 +528,46 @@ final class AppEnvironment {
             groupStatusItemController: groupStatusItemController,
             hotkeyBindingStore: hotkeyBindingStore,
             dynamicHotkeyRegistrationService: dynamicHotkeyRegistrationService,
-            privateAccessCoordinator: privateAccessCoordinator
+            privateAccessCoordinator: privateAccessCoordinator,
+            workspaceDiagnostics: { [weak self] in
+                guard let self else { return nil }
+                return WorkspaceDiagnosticsSnapshot.make(
+                    settingsStore: self.settingsStore,
+                    snapshot: self.workspaceSwitchingService.currentSnapshot(),
+                    validationIssues: self.workspaceStore.lastValidationIssues,
+                    lastLoadStatus: self.workspaceStore.lastLoadStatus,
+                    knownGroupIDs: Set(self.groupStore.groups.map(\.id)),
+                    protectedGroupIDs: Set(self.groupStore.groups.filter(\.isProtected).map(\.id)),
+                    knownProfileIDs: Set(self.profileAutomationCoordinator.profileStore.profiles.map(\.id)),
+                    availableMenuBarItemHashes: self.availableMenuBarItemHashesForWorkspaceDiagnostics()
+                )
+            },
+            functionBarVisible: { [weak self] in
+                self?.functionBarController.activeState().isVisible == true
+            },
+            infoStripVisible: { [weak self] in
+                guard let state = self?.infoStripController.displayState else { return false }
+                if case .visible = state { return true }
+                return false
+            },
+            infoStripSelectedTileProviderCount: { [weak self] in
+                self?.activeInfoStripConfigForHealth().selectedTileProviderIDs.count ?? 0
+            },
+            infoStripAvailableSelectedTileProviderCount: { [weak self] in
+                self?.availableSelectedInfoTileProviderCountForHealth() ?? 0
+            },
+            infoStripInvalidProviderIDCount: { [weak self] in
+                self?.invalidInfoTileProviderIDCountForHealth() ?? 0
+            },
+            infoStripRotationResult: { [weak self] in
+                self?.infoStripController.lastRotationResult
+            },
+            infoStripPlacementFailed: { [weak self] in
+                self?.infoStripController.lastPlacementFailed == true
+            },
+            infoStripTimingInvalid: { [weak self] in
+                self?.infoStripTimingInvalidForHealth() == true
+            }
         ),
         actions: AppHealthCoordinatorActions(
             synchronizeLiveStatus: { [weak self] in
@@ -397,6 +581,49 @@ final class AppEnvironment {
             },
             refreshTriggerSettings: { [weak self] in
                 self?.refreshTriggerSettings()
+            },
+            resetWorkspacesToDefaults: { [weak self] in
+                _ = self?.workspaceSwitchingService.resetWorkspacesToDefaults()
+                self?.refreshWorkspacePreviewRuntime()
+            },
+            resetCurrentWorkspaceLayout: { [weak self] in
+                self?.resetCurrentWorkspaceLayoutForRecovery()
+            },
+            removeMissingWorkspaceGroupReferences: { [weak self] in
+                self?.removeMissingWorkspaceGroupReferencesForRecovery()
+            },
+            discardSetBuilderDraft: { [weak self] in
+                self?.discardSetBuilderDraftForRecovery()
+            },
+            hideFunctionBar: { [weak self] in
+                self?.hideFunctionBarPreview(source: .settings)
+            },
+            disableFunctionBarPreview: { [weak self] in
+                self?.disableFunctionBarPreviewForRecovery()
+            },
+            disableSetBuilderPreview: { [weak self] in
+                self?.disableSetBuilderPreviewForRecovery()
+            },
+            hideInfoStrip: { [weak self] in
+                self?.hideInfoStripPreview()
+            },
+            showFunctionBar: { [weak self] in
+                self?.showFunctionBarPreview(source: .settings)
+            },
+            disableInfoStripPreview: { [weak self] in
+                self?.disableInfoStripPreviewForRecovery()
+            },
+            resetInfoStripSettings: { [weak self] in
+                self?.resetInfoStripSettingsForRecovery()
+            },
+            resetInfoStripPlacement: { [weak self] in
+                self?.resetInfoStripPlacementForRecovery()
+            },
+            clearInvalidInfoStripProviders: { [weak self] in
+                self?.clearInvalidInfoStripProvidersForRecovery()
+            },
+            showFunctionBarInstead: { [weak self] in
+                self?.showFunctionBarInsteadForRecovery()
             }
         )
     )
@@ -468,6 +695,127 @@ final class AppEnvironment {
         backupsDirectory: appSupportPaths.backupsDirectory,
         diagnosticsLogger: diagnosticsLogger
     )
+
+    private lazy var workspaceStore = WorkspaceStore(
+        fileURL: appSupportPaths.workspaceStoreFileURL,
+        backupsDirectory: appSupportPaths.workspaceBackupsDirectory,
+        diagnosticsLogger: diagnosticsLogger
+    )
+
+    private lazy var initialWorkspaceSnapshot: WorkspaceStoreSnapshot = {
+        do {
+            return try workspaceStore.load()
+        } catch {
+            diagnosticsLogger.log(
+                "Workspace store failed to load; using in-memory defaults: \(error.localizedDescription)",
+                level: .warning,
+                category: .recovery
+            )
+            return WorkspaceStoreSnapshot.defaults()
+        }
+    }()
+
+    private lazy var workspaceSwitchingService = WorkspaceSwitchingService(
+        store: workspaceStore,
+        initialSnapshot: initialWorkspaceSnapshot,
+        safeModeActive: { [weak self] in
+            self?.safeModeLaunchState.isSafeModeActive == true
+        }
+    )
+
+    private lazy var functionBarItemResolver = FunctionBarItemResolver(
+        groupsProvider: { [weak self] in
+            self?.groupStore.groups ?? []
+        },
+        snapshotsProvider: { [weak self] in
+            self?.liveStatus.scannedMenuBarItems ?? []
+        },
+        proDiscoveryAvailable: { [weak self] in
+            guard let self else { return false }
+            return self.settingsStore.proModeEnabled && self.settingsStore.accessibilityDiscoveryEnabled
+        },
+        accessibilityAvailable: { [weak self] in
+            self?.accessibilityPermissionService.status == .granted
+        }
+    )
+
+    private lazy var functionBarActionDispatcher = FunctionBarActionDispatcher(
+        routeCommand: { [weak self] command in
+            self?.commandRouter.route(command)
+                ?? MenuBarCommandResult.stopped(
+                    command,
+                    status: .failed,
+                    message: "Command router is unavailable.",
+                    diagnosticReason: "routerUnavailable"
+                )
+        },
+        openSettings: { [weak self] in self?.showSettings() },
+        openRecovery: { [weak self] in self?.showSettings(section: .recovery) },
+        openWorkspacePreview: { [weak self] in self?.showSettings(section: .workspacesPreview) },
+        showFunctionBar: { [weak self] in self?.showFunctionBarPreview(source: .commandCenter) },
+        hideFunctionBar: { [weak self] in self?.hideFunctionBarPreview(source: .commandCenter) },
+        showInfoStrip: { [weak self] in self?.showInfoStripPreview() },
+        hideInfoStrip: { [weak self] in self?.hideInfoStripPreview() }
+    )
+
+    private lazy var functionBarController = FunctionBarController(
+        settingsStore: settingsStore,
+        switchingService: workspaceSwitchingService,
+        resolver: functionBarItemResolver,
+        dispatcher: functionBarActionDispatcher,
+        safeModeActive: { [weak self] in
+            self?.safeModeLaunchState.isSafeModeActive == true
+        },
+        diagnosticsLogger: diagnosticsLogger
+    )
+
+    private lazy var infoStripController = InfoStripController(
+        settingsStore: settingsStore,
+        switchingService: workspaceSwitchingService,
+        safeModeActive: { [weak self] in
+            self?.safeModeLaunchState.isSafeModeActive == true
+        },
+        contextBuilder: { [weak self] in
+            self?.currentInfoTileContext() ?? InfoTileContext.empty
+        },
+        actionDispatcher: { [weak self] action in
+            self?.dispatchInfoTileAction(action)
+        },
+        showFunctionBar: { [weak self] in
+            self?.showFunctionBarPreview(source: .workspaceDisplay)
+        },
+        diagnosticsLogger: diagnosticsLogger
+    )
+
+    private lazy var workspaceDisplayCoordinator = WorkspaceDisplayCoordinator(
+        functionBarController: functionBarController,
+        infoStripController: infoStripController,
+        switchingService: workspaceSwitchingService,
+        safeModeActive: { [weak self] in
+            self?.safeModeLaunchState.isSafeModeActive == true
+        },
+        infoStripAutoShowEnabled: { [weak self] in
+            self?.settingsStore.infoStripAutoShowEnabled == true
+        }
+    )
+
+    private lazy var setBuilderViewModel: SetBuilderViewModel = {
+        let model = SetBuilderViewModel(
+            switchingService: workspaceSwitchingService,
+            groupStore: groupStore,
+            snapshotsProvider: { [weak self] in
+                self?.liveStatus.scannedMenuBarItems ?? []
+            },
+            settingsStore: settingsStore
+        )
+        model.onCommitted = { [weak self] in
+            self?.refreshWorkspacePreviewRuntime()
+        }
+        model.onPreviewFunctionBar = { [weak self] in
+            self?.showFunctionBarPreview(source: .settings)
+        }
+        return model
+    }()
 
     private lazy var privateAccessCoordinator = PrivateAccessCoordinator(
         settingsStore: settingsStore,
@@ -705,6 +1053,7 @@ final class AppEnvironment {
         profileAutomationCoordinator.start()
 
         settingsStore.lastKnownAppVersion = AppConstants.appVersion
+        liveStatus.updateNewMenuBarItemReviewCount(newMenuBarItemInboxStore.inbox.reviewCount)
         statusBarController.installStatusItem()
         updateLiveStatusFromServices()
         applyInitialBehaviorSettings()
@@ -714,6 +1063,9 @@ final class AppEnvironment {
         layoutCoordinator.start()
         groupStore.load()
         hotkeyBindingStore.load()
+        _ = workspaceSwitchingService.currentSnapshot()
+        functionBarController.start()
+        setBuilderViewModel.refresh()
         if safeModeLaunchState.isSafeModeActive {
             layoutCoordinator.enterSafeMode()
             groupStatusItemController.enterSafeMode()
@@ -791,6 +1143,8 @@ final class AppEnvironment {
     }
 
     func stop() {
+        infoStripController.hide()
+        functionBarController.stop()
         dynamicHotkeyRegistrationService.unregisterAll()
         groupStatusItemController.removeAll()
         layoutCoordinator.stop()
@@ -965,7 +1319,14 @@ final class AppEnvironment {
     }
 
     func showLayoutSuggestions() {
-        showSettings(section: .layout)
+        showSettings(section: .arrange)
+    }
+
+    private var canShowNewMenuBarItems: Bool {
+        settingsStore.proModeEnabled
+            && settingsStore.accessibilityDiscoveryEnabled
+            && accessibilityPermissionService.status == .granted
+            && !safeModeLaunchState.isSafeModeActive
     }
 
     private func performCrowdedReveal(
@@ -1155,6 +1516,69 @@ final class AppEnvironment {
         healthCoordinator.requestSafeModeNextLaunch()
     }
 
+    private func performRecoveryAction(_ action: HealthRecoveryAction) {
+        healthCoordinator.performRecoveryAction(action)
+        updateLiveStatusFromServices()
+    }
+
+    private func openTroubleshootingGuide() {
+        if let guideURL = recoveryGuideURL() {
+            NSWorkspace.shared.open(guideURL)
+            return
+        }
+
+        do {
+            let generatedURL = try writeLocalRecoveryGuide()
+            NSWorkspace.shared.open(generatedURL)
+        } catch {
+            diagnosticsLogger.log("Failed to open recovery guide: \(error.localizedDescription)", level: .error)
+        }
+    }
+
+    private func recoveryGuideURL() -> URL? {
+        let fileManager = FileManager.default
+        let candidates = [
+            Bundle.main.url(
+                forResource: "i-cant-find-my-icons",
+                withExtension: "md",
+                subdirectory: "docs/support"
+            ),
+            sourceCheckoutRecoveryGuideURL()
+        ]
+
+        return candidates.compactMap(\.self).first { fileManager.fileExists(atPath: $0.path) }
+    }
+
+    private func sourceCheckoutRecoveryGuideURL() -> URL {
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("docs/support/i-cant-find-my-icons.md")
+    }
+
+    private func writeLocalRecoveryGuide() throws -> URL {
+        let guideURL = appSupportPaths.localLostIconsGuideURL
+        try FileManager.default.createDirectory(
+            at: appSupportPaths.supportDirectory,
+            withIntermediateDirectories: true
+        )
+
+        try Self.localRecoveryGuideText.write(to: guideURL, atomically: true, encoding: .utf8)
+        return guideURL
+    }
+
+    private static let localRecoveryGuideText = """
+    # I can't find my icons
+
+    1. Choose Reveal All from the MenuBarDeclutter status menu.
+    2. Open Settings > Recovery and use Expand or Reveal All.
+    3. Use Reset Layout if separators or hidden zones look wrong.
+    4. Use Safe Mode on next launch if optional behavior is getting in the way.
+
+    Safe Mode starts expanded and disables optional behaviors. Basic Mode does not require Accessibility, Screen Recording, Apple Events, Input Monitoring, or network access.
+    """
+
     private var isAutoRehideSuppressed: Bool {
         healthCoordinator.isAutoRehideSuppressed
     }
@@ -1291,6 +1715,248 @@ final class AppEnvironment {
         menuBarItemSurfaceCoordinator.showSecondBar()
     }
 
+    func showWorkspacePreview() {
+        showSettings(section: .workspacesPreview)
+    }
+
+    @discardableResult
+    func switchWorkspace(id: UUID) -> Bool {
+        let result = workspaceSwitchingService.switchWorkspace(id: id, source: .settings)
+        setBuilderViewModel.refresh()
+        refreshWorkspacePreviewRuntime()
+        diagnosticsLogger.log(
+            "Workspace switch result: \(result.status.rawValue).",
+            level: result.status == .success || result.status == .noChange ? .info : .warning,
+            category: .layout
+        )
+        return result.status == .success || result.status == .noChange
+    }
+
+    func showFunctionBarPreview(source: FunctionBarShowSource) {
+        _ = source
+        workspaceDisplayCoordinator.showFunctionBar()
+    }
+
+    func hideFunctionBarPreview(source: FunctionBarHideSource) {
+        _ = source
+        workspaceDisplayCoordinator.hideFunctionBar()
+    }
+
+    func toggleFunctionBarPreview(source: FunctionBarShowSource) {
+        _ = source
+        workspaceDisplayCoordinator.toggleFunctionBar()
+    }
+
+    @discardableResult
+    private func showFunctionBarFromPrimaryClick() -> Bool {
+        let result = commandRouter.route(MenuBarCommand(
+            action: .showFunctionBar,
+            target: .functionBar,
+            source: .statusMenu
+        ))
+        return result.didRun
+    }
+
+    func showInfoStripPreview() {
+        workspaceDisplayCoordinator.showInfoStrip()
+    }
+
+    func hideInfoStripPreview() {
+        workspaceDisplayCoordinator.hideInfoStrip()
+    }
+
+    func toggleInfoStripPreview() {
+        workspaceDisplayCoordinator.toggleInfoStrip()
+    }
+
+    func advanceInfoStripTile() {
+        infoStripController.advanceTile()
+    }
+
+    private func resetCurrentWorkspaceLayoutForRecovery() {
+        let result = workspaceSwitchingService.resetActiveWorkspaceLayoutToDefaults()
+        setBuilderViewModel.refresh()
+        refreshWorkspacePreviewRuntime()
+        diagnosticsLogger.log(
+            "Current Workspace layout reset by health recovery: \(result.status.rawValue).",
+            level: result.status == .success ? .warning : .error,
+            category: .layout
+        )
+    }
+
+    private func removeMissingWorkspaceGroupReferencesForRecovery() {
+        let knownGroupIDs = Set(groupStore.groups.map(\.id))
+        let result = workspaceSwitchingService.removeMissingGroupReferences(knownGroupIDs: knownGroupIDs)
+        setBuilderViewModel.refresh()
+        refreshWorkspacePreviewRuntime()
+        diagnosticsLogger.log(
+            "Missing Workspace group references removed by health recovery: \(result.status.rawValue).",
+            level: result.status == .success ? .warning : .info,
+            category: .layout
+        )
+    }
+
+    private func discardSetBuilderDraftForRecovery() {
+        setBuilderViewModel.revertDraft()
+        setBuilderViewModel.refresh()
+        diagnosticsLogger.log("Set Builder draft discarded by health recovery.", level: .warning, category: .layout)
+    }
+
+    private func disableFunctionBarPreviewForRecovery() {
+        settingsStore.functionBarPreviewEnabled = false
+        settingsStore.functionBarPrimaryClickEnabled = false
+        hideFunctionBarPreview(source: .settings)
+        diagnosticsLogger.log("Function Bar Preview disabled by health recovery.", level: .warning, category: .layout)
+    }
+
+    private func disableSetBuilderPreviewForRecovery() {
+        settingsStore.setBuilderPreviewEnabled = false
+        discardSetBuilderDraftForRecovery()
+        diagnosticsLogger.log("Set Builder Preview disabled by health recovery.", level: .warning, category: .layout)
+    }
+
+    private func disableInfoStripPreviewForRecovery() {
+        settingsStore.infoStripPreviewEnabled = false
+        settingsStore.infoStripAutoShowEnabled = false
+        hideInfoStripPreview()
+        diagnosticsLogger.log("Info Strip Preview disabled by health recovery.", level: .warning, category: .layout)
+    }
+
+    private func resetInfoStripSettingsForRecovery() {
+        var workspace = workspaceSwitchingService.activeWorkspace()
+        workspace.infoStripConfig = .default
+        let result = workspaceSwitchingService.updateWorkspace(workspace)
+        setBuilderViewModel.refresh()
+        hideInfoStripPreview()
+        refreshWorkspacePreviewRuntime()
+        diagnosticsLogger.log(
+            "Info Strip settings reset by health recovery: \(result.status.rawValue).",
+            level: result.status == .success ? .warning : .error,
+            category: .layout
+        )
+    }
+
+    private func resetInfoStripPlacementForRecovery() {
+        infoStripController.resetPlacement()
+        diagnosticsLogger.log("Info Strip placement reset by health recovery.", level: .warning, category: .layout)
+    }
+
+    private func clearInvalidInfoStripProvidersForRecovery() {
+        var workspace = workspaceSwitchingService.activeWorkspace()
+        let originalProviderIDs = workspace.infoStripConfig.selectedTileProviderIDs
+        let registry = InfoTileProviderRegistry()
+        var validProviderIDs = originalProviderIDs.filter { registry.provider(id: $0) != nil }
+
+        if validProviderIDs.isEmpty, !originalProviderIDs.isEmpty {
+            validProviderIDs = WorkspaceInfoStripConfig.defaultTileProviderIDs
+        }
+
+        guard validProviderIDs != originalProviderIDs else {
+            diagnosticsLogger.log("Info Strip provider cleanup skipped; no invalid providers found.", level: .info, category: .layout)
+            return
+        }
+
+        workspace.infoStripConfig.selectedTileProviderIDs = validProviderIDs
+        let result = workspaceSwitchingService.updateWorkspace(workspace)
+        setBuilderViewModel.refresh()
+        infoStripController.refresh()
+        diagnosticsLogger.log(
+            "Invalid Info Strip providers cleared by health recovery: \(result.status.rawValue).",
+            level: result.status == .success ? .warning : .error,
+            category: .layout
+        )
+    }
+
+    private func showFunctionBarInsteadForRecovery() {
+        hideInfoStripPreview()
+        settingsStore.workspacesPreviewEnabled = true
+        settingsStore.functionBarPreviewEnabled = true
+        showFunctionBarPreview(source: .settings)
+        diagnosticsLogger.log("Function Bar shown instead of Info Strip by health recovery.", level: .warning, category: .layout)
+    }
+
+    private func activeInfoStripConfigForHealth() -> WorkspaceInfoStripConfig {
+        workspaceSwitchingService.activeWorkspace().infoStripConfig
+    }
+
+    private func availableSelectedInfoTileProviderCountForHealth() -> Int {
+        let config = activeInfoStripConfigForHealth()
+        return InfoTileProviderRegistry()
+            .snapshots(for: config.selectedTileProviderIDs, context: currentInfoTileContext())
+            .count
+    }
+
+    private func invalidInfoTileProviderIDCountForHealth() -> Int {
+        let registry = InfoTileProviderRegistry()
+        return activeInfoStripConfigForHealth().selectedTileProviderIDs
+            .filter { registry.provider(id: $0) == nil }
+            .count
+    }
+
+    private func availableMenuBarItemHashesForWorkspaceDiagnostics() -> Set<String>? {
+        guard settingsStore.proModeEnabled,
+              settingsStore.accessibilityDiscoveryEnabled,
+              accessibilityPermissionService.status == .granted,
+              liveStatus.lastMenuBarScanTime != nil else {
+            return nil
+        }
+        return Set(liveStatus.scannedMenuBarItems.map(\.id))
+    }
+
+    private func infoStripTimingInvalidForHealth() -> Bool {
+        let config = activeInfoStripConfigForHealth()
+        return config.idleDelaySeconds < WorkspaceValidationConstants.minIdleDelaySeconds
+            || config.idleDelaySeconds > WorkspaceValidationConstants.maxIdleDelaySeconds
+            || config.rotationIntervalSeconds < WorkspaceValidationConstants.minRotationIntervalSeconds
+            || config.rotationIntervalSeconds > WorkspaceValidationConstants.maxRotationIntervalSeconds
+    }
+
+    private func refreshWorkspacePreviewRuntime() {
+        functionBarController.refresh(reason: .workspaceChanged)
+        if settingsStore.infoStripAutoShowEnabled {
+            infoStripController.refresh()
+        }
+    }
+
+    private func currentInfoTileContext() -> InfoTileContext {
+        let latestScanAge = liveStatus.lastMenuBarScanTime.map {
+            max(0, Int(Date().timeIntervalSince($0)))
+        }
+        return InfoTileContext(
+            activeWorkspace: workspaceSwitchingService.activeWorkspace(),
+            functionBarVisible: functionBarController.displayState.isVisible,
+            hiddenItemCount: liveStatus.menuBarScanHiddenCount,
+            alwaysHiddenItemCount: liveStatus.menuBarScanAlwaysHiddenCount,
+            newItemCount: liveStatus.newMenuBarItemReviewCount,
+            healthWarningCount: liveStatus.healthReport?.issues.count ?? 0,
+            latestScanAgeSeconds: latestScanAge,
+            proDiscoveryAvailable: settingsStore.proModeEnabled && settingsStore.accessibilityDiscoveryEnabled,
+            safeModeActive: safeModeLaunchState.isSafeModeActive,
+            currentDate: Date()
+        )
+    }
+
+    private func dispatchInfoTileAction(_ action: InfoTileAction) {
+        switch action.commandID {
+        case WorkspaceCommandReference.showWorkspacePreview.actionID:
+            _ = commandRouter.route(MenuBarCommand(action: .showWorkspacePreview, source: .settings))
+        case WorkspaceCommandReference.openRecovery.actionID:
+            showSettings(section: .recovery)
+        case WorkspaceCommandReference.revealAll.actionID:
+            _ = commandRouter.route(MenuBarCommand(action: .revealAll, source: .settings))
+        case WorkspaceCommandReference.showFunctionBar.actionID:
+            _ = commandRouter.route(MenuBarCommand(action: .showFunctionBar, target: .functionBar, source: .settings))
+        case WorkspaceCommandReference.nextInfoStripTile.actionID:
+            _ = commandRouter.route(MenuBarCommand(action: .nextInfoStripTile, target: .infoStrip, source: .settings))
+        case WorkspaceCommandReference.openInfoStripSettings.actionID:
+            _ = commandRouter.route(MenuBarCommand(action: .openInfoStripSettings, target: .infoStrip, source: .settings))
+        case WorkspaceCommandReference.showFunctionBarFromInfoStrip.actionID:
+            _ = commandRouter.route(MenuBarCommand(action: .showFunctionBarFromInfoStrip, target: .infoStrip, source: .settings))
+        default:
+            diagnosticsLogger.log("Info Strip action is unavailable: \(action.commandID)", level: .warning, category: .layout)
+        }
+    }
+
     func showGroupPanel(_ group: IconGroup) {
         let snapshots = liveStatus.scannedMenuBarItems
         let openPanel = { [weak self] in
@@ -1327,6 +1993,13 @@ final class AppEnvironment {
         menuBarItemSurfaceCoordinator.resetMovingWarnings()
     }
 
+    func executeAssistedMoveFromSettings(
+        _ snapshot: MenuBarItemSnapshot,
+        command: IconMoveCommand
+    ) async -> IconMoveResult {
+        await menuBarItemSurfaceCoordinator.performAssistedMove(snapshot, command: command)
+    }
+
     func toggleProMode() {
         settingsRuntimeCoordinator.toggleProMode()
     }
@@ -1341,6 +2014,19 @@ final class AppEnvironment {
         handlers.showSecondBar = { [weak self] in self?.showSecondBar() }
         handlers.hideSecondBar = { [weak self] in self?.hideSecondBar() }
         handlers.showIconPanel = { [weak self] in self?.showSecondBar() }
+        handlers.showWorkspacePreview = { [weak self] in self?.showWorkspacePreview() }
+        handlers.switchWorkspace = { [weak self] id in
+            self?.switchWorkspace(id: id) == true
+        }
+        handlers.showFunctionBar = { [weak self] in self?.showFunctionBarPreview(source: .commandCenter) }
+        handlers.hideFunctionBar = { [weak self] in self?.hideFunctionBarPreview(source: .commandCenter) }
+        handlers.toggleFunctionBar = { [weak self] in self?.toggleFunctionBarPreview(source: .commandCenter) }
+        handlers.showInfoStrip = { [weak self] in self?.showInfoStripPreview() }
+        handlers.hideInfoStrip = { [weak self] in self?.hideInfoStripPreview() }
+        handlers.toggleInfoStrip = { [weak self] in self?.toggleInfoStripPreview() }
+        handlers.nextInfoStripTile = { [weak self] in self?.advanceInfoStripTile() }
+        handlers.openInfoStripSettings = { [weak self] in self?.showSettings(section: .workspacesPreview) }
+        handlers.showFunctionBarFromInfoStrip = { [weak self] in self?.showFunctionBarPreview(source: .workspaceDisplay) }
         handlers.showLayoutSuggestions = { [weak self] in self?.showLayoutSuggestions() }
         handlers.enterFullMenuBarMode = { [weak self] in self?.enterFullMenuBarMode() }
         handlers.exitFullMenuBarMode = { [weak self] in self?.exitFullMenuBarMode() }

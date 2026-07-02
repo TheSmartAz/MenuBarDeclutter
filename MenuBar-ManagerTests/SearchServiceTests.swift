@@ -132,6 +132,91 @@ struct SearchServiceTests {
         #expect(results.map(\.id) == ["first", "second"])
     }
 
+    @Test func favoriteBoostCanLiftDailyItemAboveZoneBoost() {
+        let favorite = makeSnapshot(id: "favorite", appName: "Sync", title: "Status", zone: .visible)
+        let hidden = makeSnapshot(id: "hidden", appName: "Sync", title: "Status", zone: .hidden)
+        let memoryStore = MenuBarItemMemoryStore(fileURL: nil)
+        memoryStore.toggleFavorite(favorite)
+
+        let results = service.results(
+            from: [hidden, favorite],
+            query: "Sync",
+            memoryStore: memoryStore
+        )
+
+        #expect(results.first?.id == "favorite")
+    }
+
+    @Test func recentBoostCanLiftDailyItemAboveZoneBoost() {
+        let recent = makeSnapshot(id: "recent", appName: "Sync", title: "Status", zone: .visible)
+        let hidden = makeSnapshot(id: "hidden", appName: "Sync", title: "Status", zone: .hidden)
+        let memoryStore = MenuBarItemMemoryStore(fileURL: nil)
+        memoryStore.recordSelection(recent)
+
+        let results = service.results(
+            from: [hidden, recent],
+            query: "Sync",
+            memoryStore: memoryStore
+        )
+
+        #expect(results.first?.id == "recent")
+    }
+
+    @Test func newItemBoostCanLiftReviewItemAboveHiddenZoneBoost() {
+        let newItem = makeSnapshot(id: "new", appName: "Sync", title: "Status", zone: .visible)
+        let hidden = makeSnapshot(id: "hidden", appName: "Sync", title: "Status", zone: .hidden)
+        let context = SearchRankingContext(
+            newItemStorageKeys: [NewMenuBarItemInboxDetector.storageKey(for: newItem)]
+        )
+
+        let results = service.results(
+            from: [hidden, newItem],
+            query: "Sync",
+            rankingContext: context
+        )
+
+        #expect(results.first?.id == "new")
+    }
+
+    @Test func stalePenaltyCanPushOldFavoriteBelowFreshMatch() {
+        let oldFavorite = makeSnapshot(
+            id: "old-favorite",
+            appName: "Sync",
+            title: "Status",
+            zone: .alwaysHidden,
+            timestamp: Date(timeIntervalSince1970: 100)
+        )
+        let fresh = makeSnapshot(
+            id: "fresh",
+            appName: "Sync",
+            title: "Status",
+            zone: .visible,
+            timestamp: Date(timeIntervalSince1970: 1_000)
+        )
+        let memoryStore = MenuBarItemMemoryStore(fileURL: nil)
+        memoryStore.toggleFavorite(oldFavorite)
+        let context = SearchRankingContext(staleBefore: Date(timeIntervalSince1970: 500))
+
+        let results = service.results(
+            from: [oldFavorite, fresh],
+            query: "Sync",
+            memoryStore: memoryStore,
+            rankingContext: context
+        )
+
+        #expect(results.first?.id == "fresh")
+    }
+
+    @Test func returnShortcutRouterMapsModifiersToActions() {
+        let router = SearchKeyboardActionRouter()
+
+        #expect(router.returnAction(for: []) == .revealSelected)
+        #expect(router.returnAction(for: [.command]) == .showSelectedInSecondBar)
+        #expect(router.returnAction(for: [.option]) == .openOwningApp)
+        #expect(router.returnAction(for: [.shift]) == .revealRelevantZone)
+        #expect(router.returnAction(for: [.command, .option]) == .showSelectedInSecondBar)
+    }
+
     private func makeSnapshot(
         id: String,
         appName: String,

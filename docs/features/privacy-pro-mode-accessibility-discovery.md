@@ -42,7 +42,7 @@ Pro Mode requests only Accessibility and only after explicit opt-in plus explici
 - `MenuBar-ManagerTests/MenuBarScanCoordinatorTests.swift`
 - `MenuBar-ManagerTests/AXMenuBarCandidateCacheTests.swift`
 - Privacy QA: `docs/testing/privacy-qa.md`
-- Manual QA: `docs/testing/manual-qa.md`
+- Manual QA: `docs/testing/manual-v0.1.3-system-qa.md`
 
 ## Known Limitations
 

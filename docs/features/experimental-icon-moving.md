@@ -6,7 +6,7 @@ Icon Moving is an optional Pro/Labs feature for explicit user-triggered menu bar
 
 - Adds move commands to Find Icon and Second Bar context menus.
 - Supports Move to Visible, Move to Hidden, Move to Always Hidden, Move Left, and Move Right.
-- Requires Pro Mode, Accessibility permission, and the Icon Moving setting.
+- Requires Pro Mode, Accessibility Discovery, Accessibility permission, the Icon Moving setting, first-use confirmation, and per-move confirmation.
 - Shows a first-use warning before enabling.
 - Blocks MenuBarDeclutter's own items.
 - Blocks likely system items by default.
@@ -15,7 +15,7 @@ Icon Moving is an optional Pro/Labs feature for explicit user-triggered menu bar
 
 ## User Flow
 
-1. Open Settings -> Advanced -> Labs / Experimental.
+1. Open Settings -> Advanced.
 2. Enable Icon Moving and accept the warning.
 3. Open Find Icon or Second Bar.
 4. Right-click a result/item.
@@ -24,7 +24,7 @@ Icon Moving is an optional Pro/Labs feature for explicit user-triggered menu bar
 
 ## Privacy And Permissions
 
-Icon Moving is explicit user action only. It requires Pro Mode and Accessibility because verification depends on the Accessibility snapshot. It uses public event APIs for simulated Command-drag behavior and does not use private APIs, Screen Recording, ScreenCaptureKit, pixel capture, network access, or background automation.
+Icon Moving is explicit user action only. It requires Pro Mode, Accessibility Discovery, and Accessibility because planning and verification depend on the local Accessibility snapshot. It uses public event APIs for simulated Command-drag behavior and does not use private APIs, Screen Recording, ScreenCaptureKit, pixel capture, network access, or background automation.
 
 ## Implementation
 
@@ -40,7 +40,7 @@ Icon Moving is explicit user action only. It requires Pro Mode and Accessibility
 ## Verification
 
 - `MenuBar-ManagerTests/IconMovePlanningTests.swift`
-- Manual QA: `docs/testing/manual-qa.md`
+- Manual QA: `docs/testing/manual-v0.1.3-system-qa.md`
 - Dogfood fixture QA: `docs/testing/dogfood/icon-moving-experimental-gate.md`
 
 ## Known Limitations

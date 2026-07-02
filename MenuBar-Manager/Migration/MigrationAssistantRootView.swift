@@ -10,6 +10,7 @@ struct MigrationAssistantRootView: View {
     let groupStore: IconGroupStore?
     let hotkeyBindingStore: HotkeyBindingStore?
     let spacerItemStore: SpacerItemStore?
+    let workspaceSwitchingService: WorkspaceSwitchingService?
     var onImportApplied: (() -> Void)?
 
     @State private var selectedWorkflow: MigrationWorkflow = .importReview
@@ -36,7 +37,8 @@ struct MigrationAssistantRootView: View {
             profiles: profileStore?.profiles.count ?? 0,
             groups: groupStore?.groups.count ?? 0,
             hotkeys: hotkeyBindingStore?.bindings.count ?? 0,
-            spacers: spacerItemStore?.items.count ?? 0
+            spacers: spacerItemStore?.items.count ?? 0,
+            workspaces: workspaceSwitchingService?.currentSnapshot().workspaces.count ?? 0
         )
     }
 
@@ -92,7 +94,8 @@ struct MigrationAssistantRootView: View {
                 profiles: profileStore?.profiles ?? [],
                 groups: groupStore?.groups ?? [],
                 hotkeyBindings: hotkeyBindingStore?.bindings ?? [],
-                spacerItems: spacerItemStore?.items ?? []
+                spacerItems: spacerItemStore?.items ?? [],
+                workspaceSnapshot: workspaceSwitchingService?.currentSnapshot()
             )
             let data = try exportService.encode(package)
             try data.write(to: url, options: .atomic)
@@ -120,15 +123,9 @@ struct MigrationAssistantRootView: View {
                 existingHotkeyBindings: hotkeyBindingStore?.bindings ?? [],
                 importExperimentalSettings: false
             )
-            _ = try backupService.createBackup(data: exportService.encode(exportService.createExportPackage(
-                profiles: profileStore?.profiles ?? [],
-                groups: groupStore?.groups ?? [],
-                hotkeyBindings: hotkeyBindingStore?.bindings ?? [],
-                spacerItems: spacerItemStore?.items ?? []
-            )))
             selectedWorkflow = .importReview
             refreshBackups()
-            statusMessage = "Dry-run complete. Backup created; review and apply safe import when ready."
+            statusMessage = "Dry-run complete. Review the package; a backup will be created before apply."
         } catch {
             statusMessage = "Import dry-run failed: \(error.localizedDescription)"
         }
@@ -141,19 +138,29 @@ struct MigrationAssistantRootView: View {
         }
 
         do {
-            let result = try importService.apply(
+            let result = try importService.applyWithBackup(
                 package: pendingPackage,
+                currentPackage: currentExportPackage(),
+                backupService: backupService,
                 settingsStore: settingsStore,
                 profileStore: profileStore,
                 groupStore: groupStore,
                 hotkeyBindingStore: hotkeyBindingStore,
                 spacerItemStore: spacerItemStore,
-                importExperimentalSettings: false
+                workspaceImportHandler: { snapshot in
+                    if let workspaceSwitchingService {
+                        try workspaceSwitchingService.importSnapshot(snapshot)
+                    }
+                },
+                importExperimentalSettings: false,
+                selectedSections: SettingsExportSection.restorableSections,
+                backupLabel: "pre-import"
             )
             lastApplyResult = result
             self.pendingPackage = nil
             selectedWorkflow = .importReview
             onImportApplied?()
+            refreshBackups()
             statusMessage = "Safe import applied."
         } catch {
             statusMessage = "Import apply failed: \(error.localizedDescription)"
@@ -177,14 +184,23 @@ struct MigrationAssistantRootView: View {
         do {
             let data = try backupService.readBackup(at: backupURL)
             let package = try importService.decode(data: data)
-            let result = try importService.apply(
+            let result = try importService.applyWithBackup(
                 package: package,
+                currentPackage: currentExportPackage(),
+                backupService: backupService,
                 settingsStore: settingsStore,
                 profileStore: profileStore,
                 groupStore: groupStore,
                 hotkeyBindingStore: hotkeyBindingStore,
                 spacerItemStore: spacerItemStore,
-                importExperimentalSettings: true
+                workspaceImportHandler: { snapshot in
+                    if let workspaceSwitchingService {
+                        try workspaceSwitchingService.importSnapshot(snapshot)
+                    }
+                },
+                importExperimentalSettings: true,
+                selectedSections: SettingsExportSection.restorableSections,
+                backupLabel: "pre-restore"
             )
             pendingPackage = nil
             dryRun = nil
@@ -204,6 +220,16 @@ struct MigrationAssistantRootView: View {
 
     private func hasUnsupportedSchema(_ dryRun: SettingsImportDryRun) -> Bool {
         dryRun.conflicts.contains { $0.kind == .schemaMismatch }
+    }
+
+    private func currentExportPackage() -> SettingsExportPackage {
+        exportService.createExportPackage(
+            profiles: profileStore?.profiles ?? [],
+            groups: groupStore?.groups ?? [],
+            hotkeyBindings: hotkeyBindingStore?.bindings ?? [],
+            spacerItems: spacerItemStore?.items ?? [],
+            workspaceSnapshot: workspaceSwitchingService?.currentSnapshot()
+        )
     }
 }
 
@@ -242,9 +268,10 @@ private struct MigrationPackageCounts: Equatable {
     let groups: Int
     let hotkeys: Int
     let spacers: Int
+    let workspaces: Int
 
     var objectCount: Int {
-        profiles + groups + hotkeys + spacers
+        profiles + groups + hotkeys + spacers + workspaces
     }
 }
 
@@ -363,7 +390,7 @@ private struct MigrationAssistantPanel: View {
 
             FeatureGateNotice(
                 .preview,
-                text: "Preview in v0.1.1. Export writes local JSON; import dry-runs, backs up, then applies only after confirmation."
+                text: "Preview in v0.1.3. Export writes local JSON; import dry-runs first, then creates a backup immediately before confirmed apply."
             )
 
             switch selectedWorkflow {
@@ -455,7 +482,7 @@ private struct MigrationImportWorkflowView: View {
             MigrationGroupedBox("Package Review", subtitle: "Safe apply never enables experimental settings from an imported package.") {
                 MigrationRow(
                     title: "Choose Package",
-                    subtitle: "Select a local JSON package. A backup is created before safe apply becomes available.",
+                    subtitle: "Select a local JSON package. Dry-run does not mutate settings; a backup is created only when you apply.",
                     systemImage: "square.and.arrow.down",
                     style: .info
                 ) {
@@ -702,6 +729,7 @@ private struct MigrationPackageScopeGrid: View {
             MigrationMetricTile(value: "\(counts.groups)", label: "Groups")
             MigrationMetricTile(value: "\(counts.hotkeys)", label: "Hotkeys")
             MigrationMetricTile(value: "\(counts.spacers)", label: "Spacers")
+            MigrationMetricTile(value: "\(counts.workspaces)", label: "Workspaces")
         }
         .padding(.vertical, 8)
     }
@@ -721,6 +749,7 @@ private struct MigrationDryRunMetricGrid: View {
             MigrationMetricTile(value: "\(dryRun.addedGroups)", label: "Groups")
             MigrationMetricTile(value: "\(dryRun.addedHotkeys)", label: "Hotkeys")
             MigrationMetricTile(value: "\(dryRun.addedSpacers)", label: "Spacers")
+            MigrationMetricTile(value: "\(dryRun.addedWorkspaces)", label: "Workspaces")
         }
     }
 

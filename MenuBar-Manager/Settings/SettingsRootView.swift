@@ -4,6 +4,9 @@ import SwiftUI
 
 enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
     case general
+    case hideReveal
+    case arrange
+    case findRescue
     case menuBarItems
     case behavior
     case layout
@@ -16,15 +19,33 @@ enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
     case automation
     case importExport
     case privacy
+    case recovery
     case diagnostics
     case advanced
+    case workspacesPreview
 
     var id: String { rawValue }
+
+    static let visibleSidebarSections: [SettingsSection] = [
+        .general,
+        .hideReveal,
+        .arrange,
+        .findRescue,
+        .privacy,
+        .recovery,
+        .advanced
+    ]
 
     var title: String {
         switch self {
         case .general:
             "General"
+        case .hideReveal:
+            "Hide & Reveal"
+        case .arrange:
+            "Arrange"
+        case .findRescue:
+            "Find & Rescue"
         case .menuBarItems:
             "Menu Bar Items"
         case .behavior:
@@ -49,10 +70,14 @@ enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
             "Import / Export"
         case .privacy:
             "Privacy"
+        case .recovery:
+            "Recovery"
         case .diagnostics:
             "Diagnostics"
         case .advanced:
             "Advanced"
+        case .workspacesPreview:
+            "Workspaces Preview"
         }
     }
 
@@ -60,6 +85,12 @@ enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .general:
             "gearshape"
+        case .hideReveal:
+            "eye"
+        case .arrange:
+            "arrow.up.left.and.arrow.down.right"
+        case .findRescue:
+            "lifepreserver"
         case .menuBarItems:
             "list.bullet.rectangle"
         case .behavior:
@@ -84,10 +115,14 @@ enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
             "arrow.up.arrow.down"
         case .privacy:
             "shield.lefthalf.filled"
+        case .recovery:
+            "cross.case"
         case .diagnostics:
             "waveform.path.ecg"
         case .advanced:
             "chevron.left.forwardslash.chevron.right"
+        case .workspacesPreview:
+            "rectangle.3.group"
         }
     }
 }
@@ -99,10 +134,10 @@ private struct SettingsSidebarGroup: Identifiable {
     var id: String { title }
 
     static let all: [SettingsSidebarGroup] = [
-        SettingsSidebarGroup(title: "General", sections: [.general, .menuBarItems, .behavior, .layout]),
-        SettingsSidebarGroup(title: "Pro Features", sections: [.search, .secondBar, .groups, .hotkeys, .profiles, .automation]),
-        SettingsSidebarGroup(title: "Privacy", sections: [.privacy, .privateAccess]),
-        SettingsSidebarGroup(title: "System", sections: [.importExport, .diagnostics, .advanced])
+        SettingsSidebarGroup(
+            title: "MenuBarDeclutter",
+            sections: SettingsSection.visibleSidebarSections
+        )
     ]
 }
 
@@ -111,6 +146,12 @@ private extension SettingsSection {
         switch self {
         case .general:
             "Startup, onboarding, app mode, and app identity."
+        case .hideReveal:
+            "Collapse, expand, reveal all, auto-rehide, hover reveal, always-hidden zone, and the Basic hotkey."
+        case .arrange:
+            "Command-drag guide, control and separator placement, placement test, Planner Preview, and Assisted Move."
+        case .findRescue:
+            "Find Icon, Second Bar, crowded menu rescue, New Items, and lightweight collections."
         case .menuBarItems:
             "Inspect discovered menu bar items, owners, zones, and geometry."
         case .behavior:
@@ -135,10 +176,14 @@ private extension SettingsSection {
             "Privacy-safe import, export, backups, and migration."
         case .privacy:
             "Basic Mode, Pro Mode, permissions, and local data policy."
+        case .recovery:
+            "Safe Mode, reset layout, repair actions, diagnostics export, and health report."
         case .diagnostics:
             "Health checks, logs, live status, and diagnostics export."
         case .advanced:
             "Developer-oriented recovery and experimental controls."
+        case .workspacesPreview:
+            "Local-only Workspaces, Function Bar, Set Builder, and Info Strip previews."
         }
     }
 
@@ -162,6 +207,9 @@ struct SettingsRootView: View {
     var appSupportPaths: AppSupportPaths
     var diagnosticsExporter: DiagnosticsExporter
     @Bindable var dogfoodStore: DogfoodStore
+    var newItemInboxStore: NewMenuBarItemInboxStore? = nil
+    var itemMemoryStore: MenuBarItemMemoryStore? = nil
+    var placementPreferenceStore: PlacementItemPreferenceStore? = nil
     var accessibilityPermissionService: AccessibilityPermissionService?
     var menuBarScanCoordinator: MenuBarScanCoordinator?
     var profileStore: ProfileStore?
@@ -170,6 +218,10 @@ struct SettingsRootView: View {
     var groupStore: IconGroupStore?
     var hotkeyBindingStore: HotkeyBindingStore?
     var privateAccessCoordinator: PrivateAccessCoordinator?
+    var workspaceSwitchingService: WorkspaceSwitchingService?
+    var setBuilderViewModel: SetBuilderViewModel?
+    var functionBarController: FunctionBarController?
+    var infoStripController: InfoStripController?
     var actions: SettingsActions = .empty
     @State private var settingsSearchText = ""
 
@@ -190,13 +242,13 @@ struct SettingsRootView: View {
             .listStyle(.sidebar)
             .navigationTitle("Settings")
             .searchable(text: $settingsSearchText, prompt: "Search Settings")
-            .navigationSplitViewColumnWidth(min: 220, ideal: 246, max: 290)
+            .navigationSplitViewColumnWidth(min: 200, ideal: 226, max: 270)
         } detail: {
             detailView(for: selectedSection)
                 .accessibilityIdentifier(selectedSection.pageAccessibilityIdentifier)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(minWidth: 980, minHeight: 620)
+        .frame(minWidth: 820, minHeight: 620)
         .background(Color(nsColor: .windowBackgroundColor))
         .onAppear {
             navigationModel.selectedSection = navigationModel.selectedSection ?? .general
@@ -232,6 +284,91 @@ struct SettingsRootView: View {
                 onResetAllSettings: actions.resetAllSettings,
                 onShowOnboarding: actions.showOnboarding
             )
+        case .hideReveal, .behavior:
+            BehaviorSettingsView(settingsStore: settingsStore, onChange: actions.behaviorChanged)
+        case .arrange:
+            ArrangeSettingsView(
+                settingsStore: settingsStore,
+                liveStatus: liveStatus,
+                permissionService: accessibilityPermissionService,
+                newItemInboxStore: newItemInboxStore,
+                itemMemoryStore: itemMemoryStore,
+                placementPreferenceStore: placementPreferenceStore,
+                onExpand: {
+                    _ = routeSettingsCommand(MenuBarCommand(action: .expand, source: .settings))
+                },
+                onCollapse: {
+                    _ = routeSettingsCommand(MenuBarCommand(action: .collapse, source: .settings))
+                },
+                onRevealAll: {
+                    _ = routeSettingsCommand(MenuBarCommand(action: .revealAll, source: .settings))
+                },
+                onResetLayout: actions.resetLayout,
+                onShowDragHint: actions.showDragHint,
+                onOpenRecovery: {
+                    navigationModel.selectedSection = .recovery
+                },
+                onOpenAdvanced: {
+                    navigationModel.selectedSection = .advanced
+                },
+                onPlannerCommand: { action, itemID in
+                    routeSettingsCommand(MenuBarCommand(
+                        action: action,
+                        target: .menuBarItem(id: itemID),
+                        source: .settings
+                    ))
+                },
+                onExecuteAssistedMove: actions.executeAssistedMove
+            )
+        case .findRescue:
+            FindAndRescueSettingsView(
+                settingsStore: settingsStore,
+                permissionService: accessibilityPermissionService,
+                liveStatus: liveStatus,
+                findIconAvailability: commandSummary(for: MenuBarCommand(
+                    action: .showFindIcon,
+                    source: .settings
+                )),
+                secondBarAvailability: commandSummary(for: MenuBarCommand(
+                    action: .showSecondBar,
+                    target: .secondBar,
+                    source: .settings
+                )),
+                newItemCount: liveStatus?.newMenuBarItemReviewCount ?? 0,
+                newItemInboxStore: newItemInboxStore,
+                placementPreferenceStore: placementPreferenceStore,
+                onOpenFindIcon: {
+                    _ = routeSettingsCommand(MenuBarCommand(
+                        action: .showFindIcon,
+                        source: .settings
+                    ))
+                },
+                onOpenSecondBar: {
+                    _ = routeSettingsCommand(MenuBarCommand(
+                        action: .showSecondBar,
+                        target: .secondBar,
+                        source: .settings
+                    ))
+                },
+                onOpenSearchSettings: {
+                    navigationModel.selectedSection = .search
+                },
+                onOpenSecondBarSettings: {
+                    navigationModel.selectedSection = .secondBar
+                },
+                onOpenMenuBarItems: {
+                    navigationModel.selectedSection = .menuBarItems
+                },
+                onOpenGroups: {
+                    navigationModel.selectedSection = .advanced
+                },
+                onOpenArrange: {
+                    navigationModel.selectedSection = .arrange
+                },
+                onOpenPrivacy: {
+                    navigationModel.selectedSection = .privacy
+                }
+            )
         case .menuBarItems:
             MenuBarItemsSettingsView(
                 settingsStore: settingsStore,
@@ -241,8 +378,6 @@ struct SettingsRootView: View {
                     navigationModel.selectedSection = .privacy
                 }
             )
-        case .behavior:
-            BehaviorSettingsView(settingsStore: settingsStore, onChange: actions.behaviorChanged)
         case .layout:
             if let layoutCoordinator {
                 LayoutSettingsView(
@@ -398,6 +533,38 @@ struct SettingsRootView: View {
                 scanCoordinator: menuBarScanCoordinator,
                 onChange: actions.privacyChanged
             )
+        case .recovery:
+            RecoverySettingsView(
+                settingsStore: settingsStore,
+                diagnosticsLogger: diagnosticsLogger,
+                appSupportPaths: appSupportPaths,
+                diagnosticsExporter: diagnosticsExporter,
+                liveStatus: liveStatus,
+                onRunHealthCheck: actions.runHealthCheck,
+                onFixHealthIssues: actions.fixHealthIssues,
+                onExpand: actions.expand,
+                onRevealAll: actions.revealAll,
+                onRecreateStatusItems: actions.recreateStatusItems,
+                onDisableAutoRehideTemporarily: actions.disableAutoRehideTemporarily,
+                onDisableHoverRevealTemporarily: actions.disableHoverRevealTemporarily,
+                onResetCurrentWorkspaceLayout: actions.resetCurrentWorkspaceLayout,
+                onRemoveMissingWorkspaceGroupReferences: actions.removeMissingWorkspaceGroupReferences,
+                onDiscardSetBuilderDraft: actions.discardSetBuilderDraft,
+                onDisableFunctionBarPreview: actions.disableFunctionBarPreview,
+                onDisableSetBuilderPreview: actions.disableSetBuilderPreview,
+                onResetLayout: actions.resetLayout,
+                onResetAllSettings: actions.resetAllSettings,
+                onResetBasicMode: actions.resetBasicMode,
+                onDisableProMode: actions.disableProMode,
+                onEnterSafeModeNextLaunch: actions.enterSafeModeNextLaunch,
+                onOpenTroubleshootingGuide: actions.openTroubleshootingGuide,
+                onOpenDiagnostics: {
+                    navigationModel.selectedSection = .diagnostics
+                },
+                onOpenImportExport: {
+                    navigationModel.selectedSection = .importExport
+                }
+            )
         case .automation:
             AutomationSettingsView(
                 settingsStore: settingsStore,
@@ -412,6 +579,7 @@ struct SettingsRootView: View {
                 groupStore: groupStore,
                 hotkeyBindingStore: hotkeyBindingStore,
                 spacerItemStore: layoutCoordinator?.spacerStore,
+                workspaceSwitchingService: workspaceSwitchingService,
                 onImportApplied: refreshAfterSettingsImport
             )
         case .diagnostics:
@@ -428,7 +596,8 @@ struct SettingsRootView: View {
                 onFixHealthIssues: actions.fixHealthIssues,
                 onResetBasicMode: actions.resetBasicMode,
                 onDisableProMode: actions.disableProMode,
-                onEnterSafeModeNextLaunch: actions.enterSafeModeNextLaunch
+                onEnterSafeModeNextLaunch: actions.enterSafeModeNextLaunch,
+                workspacePreviewDiagnosticsProvider: makeWorkspacePreviewDiagnosticsSnapshot
             )
         case .advanced:
             AdvancedSettingsView(
@@ -436,8 +605,43 @@ struct SettingsRootView: View {
                 appSupportPaths: appSupportPaths,
                 onChange: actions.behaviorChanged,
                 onAutomationChanged: actions.triggersChanged,
-                onResetMovingWarnings: actions.resetMovingWarnings
+                onResetMovingWarnings: actions.resetMovingWarnings,
+                onOpenSection: { section in
+                    navigationModel.selectedSection = section
+                }
             )
+        case .workspacesPreview:
+            if let workspaceSwitchingService,
+               let setBuilderViewModel,
+               let functionBarController,
+               let infoStripController {
+                WorkspacePreviewSettingsView(
+                    settingsStore: settingsStore,
+                    liveStatus: liveStatus,
+                    switchingService: workspaceSwitchingService,
+                    setBuilderViewModel: setBuilderViewModel,
+                    functionBarController: functionBarController,
+                    infoStripController: infoStripController,
+                    knownGroupIDs: Set((groupStore?.groups ?? setBuilderViewModel.groups).map(\.id)),
+                    protectedGroupIDs: Set((groupStore?.groups ?? setBuilderViewModel.groups).filter(\.isProtected).map(\.id)),
+                    knownProfileIDs: Set(profileStore?.profiles.map(\.id) ?? []),
+                    routeCommand: actions.routeCommand,
+                    onOpenRecovery: {
+                        navigationModel.selectedSection = .recovery
+                    }
+                )
+            } else {
+                ClearGlassSettingsPage(
+                    "Workspaces Preview",
+                    subtitle: "Workspaces are available once preview services are attached.",
+                    badges: [.experimental, .privacySafe]
+                ) {
+                    ClearGlassSection("Preview Unavailable") {
+                        ContentUnavailableView("Preview Unavailable", systemImage: "rectangle.3.group")
+                            .frame(maxWidth: .infinity, minHeight: 220)
+                    }
+                }
+            }
         }
     }
 
@@ -448,6 +652,57 @@ struct SettingsRootView: View {
         return MenuBarCommandAvailabilitySummary(command: command, availability: availability)
     }
 
+    private func makeWorkspacePreviewDiagnosticsSnapshot() -> DiagnosticsExporter.WorkspacePreviewDiagnosticsSnapshot? {
+        guard let workspaceSwitchingService,
+              let setBuilderViewModel,
+              let functionBarController,
+              let infoStripController else {
+            return nil
+        }
+
+        let snapshot = workspaceSwitchingService.currentSnapshot()
+        let active = workspaceSwitchingService.activeWorkspace()
+        let knownGroups = groupStore?.groups ?? setBuilderViewModel.groups
+        let workspaceDiagnostics = WorkspaceDiagnosticsSnapshot.make(
+            settingsStore: settingsStore,
+            snapshot: snapshot,
+            validationIssues: [],
+            lastLoadStatus: .loaded,
+            knownGroupIDs: Set(knownGroups.map(\.id)),
+            protectedGroupIDs: Set(knownGroups.filter(\.isProtected).map(\.id)),
+            knownProfileIDs: Set(profileStore?.profiles.map(\.id) ?? []),
+            availableMenuBarItemHashes: availableMenuBarItemHashesForWorkspaceDiagnostics()
+        )
+        let functionDiagnostics = FunctionBarDiagnosticsSnapshot.make(
+            settingsStore: settingsStore,
+            controller: functionBarController
+        )
+        let infoDiagnostics = InfoStripDiagnosticsSnapshot.make(
+            settingsStore: settingsStore,
+            controller: infoStripController,
+            registry: InfoTileProviderRegistry(),
+            context: InfoTileContext(
+                activeWorkspace: active,
+                functionBarVisible: functionDiagnostics.isVisible,
+                hiddenItemCount: liveStatus?.menuBarScanHiddenCount,
+                alwaysHiddenItemCount: liveStatus?.menuBarScanAlwaysHiddenCount,
+                newItemCount: liveStatus?.newMenuBarItemReviewCount,
+                healthWarningCount: liveStatus?.healthReport?.issues.count ?? 0,
+                latestScanAgeSeconds: nil,
+                proDiscoveryAvailable: settingsStore.proModeEnabled && settingsStore.accessibilityDiscoveryEnabled,
+                safeModeActive: liveStatus?.safeModeActive ?? false,
+                currentDate: Date()
+            )
+        )
+
+        return DiagnosticsExporter.WorkspacePreviewDiagnosticsSnapshot(
+            workspaces: workspaceDiagnostics,
+            functionBar: functionDiagnostics,
+            setBuilder: setBuilderViewModel.diagnosticsSnapshot,
+            infoStrip: infoDiagnostics
+        )
+    }
+
     private func routeSettingsCommand(_ command: MenuBarCommand) -> MenuBarCommandResult {
         actions.routeCommand?(command)
             ?? MenuBarCommandResult.stopped(
@@ -456,6 +711,16 @@ struct SettingsRootView: View {
                 message: "Command router is unavailable.",
                 diagnosticReason: "routerUnavailable"
             )
+    }
+
+    private func availableMenuBarItemHashesForWorkspaceDiagnostics() -> Set<String>? {
+        guard settingsStore.proModeEnabled,
+              settingsStore.accessibilityDiscoveryEnabled,
+              settingsStore.lastAccessibilityPermissionStatus == AccessibilityPermissionStatus.granted.rawValue,
+              liveStatus?.lastMenuBarScanTime != nil else {
+            return nil
+        }
+        return Set(liveStatus?.scannedMenuBarItems.map(\.id) ?? [])
     }
 
     private func assignGroupHotkey(
@@ -656,27 +921,20 @@ struct ClearGlassControlRow<Accessory: View>: View {
     }
 
     var body: some View {
+        ViewThatFits(in: .horizontal) {
+            horizontalRow
+            verticalRow
+        }
+        .padding(.vertical, 9)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var horizontalRow: some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Image(systemName: systemImage)
-                .font(.system(size: 15, weight: .regular))
-                .foregroundStyle(iconTint)
-                .frame(width: 22)
+            iconView
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.body)
-                    .foregroundStyle(.primary)
-
-                if let subtitle {
-                    Text(subtitle)
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(3)
-                        .multilineTextAlignment(.leading)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            labelContent
+                .frame(maxWidth: .infinity, alignment: .leading)
 
             Spacer(minLength: 16)
 
@@ -684,8 +942,46 @@ struct ClearGlassControlRow<Accessory: View>: View {
                 .fixedSize()
                 .layoutPriority(1)
         }
-        .padding(.vertical, 9)
-        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var verticalRow: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 12) {
+                iconView
+
+                labelContent
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            accessory
+                .fixedSize()
+                .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+    }
+
+    private var iconView: some View {
+        Image(systemName: systemImage)
+            .font(.system(size: 15, weight: .regular))
+            .foregroundStyle(iconTint)
+            .frame(width: 22)
+    }
+
+    private var labelContent: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(.body)
+                .foregroundStyle(.primary)
+                .lineLimit(2)
+
+            if let subtitle {
+                Text(subtitle)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(3)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
     }
 }
 
@@ -723,18 +1019,17 @@ struct ClearGlassValueRow<ValueContent: View>: View {
     }
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 16) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.body)
-                    .foregroundStyle(.primary)
+        ViewThatFits(in: .horizontal) {
+            horizontalRow
+            verticalRow
+        }
+        .padding(.vertical, 9)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
 
-                if let subtitle {
-                    Text(subtitle)
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
-            }
+    private var horizontalRow: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 16) {
+            labelContent
 
             Spacer(minLength: 16)
 
@@ -742,8 +1037,32 @@ struct ClearGlassValueRow<ValueContent: View>: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.trailing)
         }
-        .padding(.vertical, 9)
-        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var verticalRow: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            labelContent
+
+            value
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private var labelContent: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(.body)
+                .foregroundStyle(.primary)
+
+            if let subtitle {
+                Text(subtitle)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
     }
 }
 

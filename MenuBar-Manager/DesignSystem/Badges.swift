@@ -214,7 +214,7 @@ enum FeatureStatus: String, CaseIterable, Hashable, Sendable {
     var summary: String {
         switch self {
         case .stable:
-            "Part of the v0.1.1 supported core."
+            "Part of the v0.1.3 supported core."
         case .preview:
             "Available for local testing, with conservative gates and fail-closed behavior."
         case .labs:

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Phase 2 "Behavior" section in Settings: auto-rehide, hover reveal,
+/// Phase 14 "Hide & Reveal" section in Settings: auto-rehide, hover reveal,
 /// always-hidden zone, separator visuals, global hotkey, and Option-click.
 struct BehaviorSettingsView: View {
     @Bindable var settingsStore: SettingsStore
@@ -10,7 +10,7 @@ struct BehaviorSettingsView: View {
 
     var body: some View {
         ClearGlassSettingsPage(
-            "Behavior",
+            "Hide & Reveal",
             subtitle: "Control how hidden menu bar items reveal, collapse, and respond to shortcuts.",
             badges: [.stable, .privacySafe, .basicMode]
         ) {

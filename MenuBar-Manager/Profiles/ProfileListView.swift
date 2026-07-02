@@ -33,7 +33,7 @@ struct ProfileListView: View {
         ClearGlassSettingsPage(
             "Profiles",
             subtitle: "Save, preview, and apply local menu bar layouts.",
-            badges: [.stable, .preview, .privacySafe]
+            badges: [.preview, .privacySafe]
         ) {
             ProfileOverviewStrip(
                 profileCount: profileStore.profiles.count,
@@ -214,7 +214,7 @@ struct ProfileListView: View {
         VStack(alignment: .leading, spacing: 12) {
             FeatureGateNotice(
                 .preview,
-                text: "Preview in v0.1.1. Triggers stay paused when automation is paused."
+                text: "Preview in v0.1.3. Triggers stay paused when automation is paused."
             )
 
             triggerControlPanel

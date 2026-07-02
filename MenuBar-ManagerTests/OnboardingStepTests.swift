@@ -7,7 +7,7 @@ import Testing
 struct OnboardingStepTests {
     @Test func allStepsAreUniqueAndOrdered() {
         let steps = OnboardingStep.allSteps
-        #expect(steps.count == 7)
+        #expect(steps.count == 8)
 
         let ids = steps.map(\.id)
         #expect(Set(ids).count == ids.count)
@@ -16,9 +16,10 @@ struct OnboardingStepTests {
         #expect(steps[1].id == "nativeCleanup")
         #expect(steps[2].id == "commandDrag")
         #expect(steps[3].id == "hiddenVsAlwaysHidden")
-        #expect(steps[4].id == "hotkeyAutoRehide")
-        #expect(steps[5].id == "privacy")
-        #expect(steps[6].id == "macOS26Note")
+        #expect(steps[4].id == "testArrange")
+        #expect(steps[5].id == "hotkeyAutoRehide")
+        #expect(steps[6].id == "privacy")
+        #expect(steps[7].id == "macOS26Note")
     }
 
     @Test func nativeCleanupStepExplainsAppleSettingsBoundary() throws {
@@ -41,6 +42,15 @@ struct OnboardingStepTests {
         #expect(step.body.contains("Screen Recording"))
         #expect(step.body.contains("network"))
         #expect(step.body.contains("Basic Mode usable"))
+    }
+
+    @Test func arrangeTestStepKeepsStableFlowPermissionFree() throws {
+        let step = try #require(OnboardingStep.allSteps.first { $0.id == "testArrange" })
+        #expect(step.body.contains("Collapse"))
+        #expect(step.body.contains("Reveal All"))
+        #expect(step.body.contains("Reset Layout"))
+        #expect(step.body.contains("Basic Mode"))
+        #expect(step.body.contains("does not request Pro permissions"))
     }
 
     @Test func behaviorStepMatchesCurrentDefaults() throws {

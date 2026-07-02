@@ -10,58 +10,80 @@ struct StatusBarMenuBuilderTests {
             actions: Self.makeActions(
                 proModeTitle: "Disable Pro Mode",
                 automationPausedTitle: "Resume Automation",
+                workspacesPreviewEnabled: true,
+                functionBarPreviewEnabled: true,
+                infoStripPreviewEnabled: true,
+                advancedMenuRelevant: true,
                 canRefreshMenuBarItems: false
             )
         )
 
         let menu = builder.makeMenu()
-        let headers = menu.items.filter { !$0.isSeparatorItem && $0.action == nil }
-        let commandItems = menu.items.filter { !$0.isSeparatorItem && $0.action != nil }
+        let headers = menu.items.filter { item in
+            !item.isSeparatorItem && item.action == nil && item.submenu == nil
+        }
+        let commandItems = actionItems(in: menu)
+        let advancedItems = try? #require(menu.items.first { $0.title == "Advanced" }?.submenu)
 
-        #expect(headers.map { $0.title } == [
-            "Visibility",
-            "Find & Bars",
-            "Pro Features",
-            "Layout",
-            "Recovery",
-            AppConstants.displayName
-        ])
+        #expect(headers.map { $0.title } == [])
 
         #expect(
             commandItems.map { $0.title } == [
-                "Expand Hidden Items",
-                "Collapse Hidden Items",
-                "Toggle Hidden Items",
-                "Reveal All Items",
-                "Toggle Reveal All",
+                "Hide Menu Bar Items",
+                "Show Menu Bar Items",
+                "Reveal All",
+                "Arrange Items…",
                 "Find Icon…",
                 "Show Second Bar",
+                "Full Menu Bar Mode",
                 "Refresh Menu Bar Items",
+                "Apply Profile…",
                 "Disable Pro Mode",
                 "Resume Automation",
-                "Enter Full Menu Bar Mode",
+                "Spacing Labs Settings…",
+                "Workspaces Preview…",
+                "Show Function Bar Preview",
+                "Show Info Strip Preview",
+                "Preview Spacing Preset",
+                "Assisted Move Guide…",
                 "Layout Suggestions…",
                 "Add Divider",
                 "Add Spacer",
                 "Toggle Spacer Markers",
-                "Layout Settings…",
-                "Show Drag Hint",
-                "Reset Separator Length",
-                "Reveal All and Reset Separators",
-                "Settings…",
-                "Diagnostics…",
+                "Advanced Settings…",
                 "About \(AppConstants.displayName)",
+                "Settings…",
+                "Recovery…",
+                "Diagnostics…",
                 "Quit"
             ]
         )
         #expect(
             commandItems.map { $0.keyEquivalent } == [
-                "", "", "h", "", "", "f", "s", "r", "", "", "", "", "", "", "", "", "", "", "", ",", "", "", "q"
+                "", "", "", "", "f", "s", "", "r", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ",", "", "", "q"
             ]
         )
         #expect(commandItems.allSatisfy { $0.image != nil })
         #expect(commandItems.map { $0.action }.allSatisfy { $0 == commandItems.first?.action })
-        #expect(commandItems.first { $0.title == "Refresh Menu Bar Items" }?.isEnabled == false)
+        #expect(advancedItems?.items.filter { !$0.isSeparatorItem }.map { $0.title } == [
+            "Refresh Menu Bar Items",
+            "Apply Profile…",
+            "Disable Pro Mode",
+            "Resume Automation",
+            "Spacing Labs Settings…",
+            "Workspaces Preview…",
+            "Show Function Bar Preview",
+            "Show Info Strip Preview",
+            "Preview Spacing Preset",
+            "Assisted Move Guide…",
+            "Layout Suggestions…",
+            "Add Divider",
+            "Add Spacer",
+            "Toggle Spacer Markers",
+            "Advanced Settings…",
+            "About \(AppConstants.displayName)"
+        ])
+        #expect(advancedItems?.items.first { $0.title == "Refresh Menu Bar Items" }?.isEnabled == false)
     }
 
     @Test func menuCommandsDispatchToMatchingActionClosures() throws {
@@ -69,13 +91,17 @@ struct StatusBarMenuBuilderTests {
         let builder = StatusBarMenuBuilder(
             actions: Self.makeActions(
                 recorder: recorder,
+                workspacesPreviewEnabled: true,
+                functionBarPreviewEnabled: true,
+                infoStripPreviewEnabled: true,
+                advancedMenuRelevant: true,
                 canRefreshMenuBarItems: true
             )
         )
 
-        let commandItems = builder.makeMenu().items.filter { !$0.isSeparatorItem }
+        let commandItems = actionItems(in: builder.makeMenu())
 
-        for (item, expectedCommand) in zip(commandItems.filter({ $0.action != nil }), MenuActionRecorder.menuCommands) {
+        for (item, expectedCommand) in zip(commandItems, MenuActionRecorder.menuCommands) {
             let action = try #require(item.action)
             let target = item.target
 
@@ -92,6 +118,10 @@ struct StatusBarMenuBuilderTests {
         let builder = StatusBarMenuBuilder(
             actions: Self.makeActions(
                 recorder: recorder,
+                workspacesPreviewEnabled: true,
+                functionBarPreviewEnabled: true,
+                infoStripPreviewEnabled: true,
+                advancedMenuRelevant: true,
                 routeCommands: true
             )
         )
@@ -117,7 +147,34 @@ struct StatusBarMenuBuilderTests {
             source: .statusMenu
         ))
 
-        try perform("Enter Full Menu Bar Mode", in: menu)
+        try perform("Preview Spacing Preset", in: menu)
+        #expect(recorder.routedCommands.last == MenuBarCommand(
+            action: .spacingPresetDryRun,
+            target: .spacingPreset("status-menu"),
+            source: .statusMenu
+        ))
+
+        try perform("Show Function Bar Preview", in: menu)
+        #expect(recorder.routedCommands.last == MenuBarCommand(
+            action: .showFunctionBar,
+            target: .functionBar,
+            source: .statusMenu
+        ))
+
+        try perform("Show Info Strip Preview", in: menu)
+        #expect(recorder.routedCommands.last == MenuBarCommand(
+            action: .showInfoStrip,
+            target: .infoStrip,
+            source: .statusMenu
+        ))
+
+        try perform("Assisted Move Guide…", in: menu)
+        #expect(recorder.routedCommands.last == MenuBarCommand(
+            action: .showAssistedMoveGuide,
+            source: .statusMenu
+        ))
+
+        try perform("Full Menu Bar Mode", in: menu)
         #expect(recorder.routedCommands.last == MenuBarCommand(
             action: .enterFullMenuBarMode,
             target: .fullMenuBarMode,
@@ -132,6 +189,256 @@ struct StatusBarMenuBuilderTests {
         ))
     }
 
+    @Test func openNewItemsAppearsOnlyWhenGatedInboxHasItems() throws {
+        let emptyMenu = StatusBarMenuBuilder(
+            actions: Self.makeActions(
+                canShowNewMenuBarItems: true,
+                newMenuBarItemReviewCount: 0
+            )
+        ).makeMenu()
+        #expect(actionItems(in: emptyMenu).allSatisfy { !$0.title.localizedStandardContains("New Item") })
+
+        let gatedOffMenu = StatusBarMenuBuilder(
+            actions: Self.makeActions(
+                canShowNewMenuBarItems: false,
+                newMenuBarItemReviewCount: 2
+            )
+        ).makeMenu()
+        #expect(actionItems(in: gatedOffMenu).allSatisfy { !$0.title.localizedStandardContains("New Item") })
+
+        let recorder = MenuActionRecorder()
+        let builder = StatusBarMenuBuilder(
+            actions: Self.makeActions(
+                recorder: recorder,
+                canShowNewMenuBarItems: true,
+                newMenuBarItemReviewCount: 2
+            )
+        )
+        let menu = builder.makeMenu()
+
+        try perform("Review 2 New Items…", in: menu)
+        #expect(recorder.commands == [.openNewMenuBarItems])
+    }
+
+    @Test func advancedSubmenuAppearsOnlyWhenRelevant() {
+        let defaultMenu = StatusBarMenuBuilder(actions: Self.makeActions()).makeMenu()
+        #expect(defaultMenu.items.allSatisfy { $0.title != "Advanced" })
+
+        let advancedMenu = StatusBarMenuBuilder(
+            actions: Self.makeActions(advancedMenuRelevant: true)
+        ).makeMenu()
+        #expect(advancedMenu.items.contains { $0.title == "Advanced" && $0.submenu != nil })
+    }
+
+    @Test func advancedVisibilityIgnoresDefaultLayoutFeatures() {
+        let defaultVisibility = StatusMenuAdvancedVisibility(
+            proModeEnabled: false,
+            automationPaused: true,
+            iconMovingEnabled: false,
+            menuBarSpacingLabsEnabled: false,
+            dogfoodModeEnabled: false
+        )
+        #expect(!defaultVisibility.isRelevant)
+
+        #expect(StatusMenuAdvancedVisibility(
+            proModeEnabled: true,
+            automationPaused: true,
+            iconMovingEnabled: false,
+            menuBarSpacingLabsEnabled: false,
+            dogfoodModeEnabled: false
+        ).isRelevant)
+        #expect(StatusMenuAdvancedVisibility(
+            proModeEnabled: false,
+            automationPaused: false,
+            iconMovingEnabled: false,
+            menuBarSpacingLabsEnabled: false,
+            dogfoodModeEnabled: false
+        ).isRelevant)
+        #expect(StatusMenuAdvancedVisibility(
+            proModeEnabled: false,
+            automationPaused: true,
+            iconMovingEnabled: true,
+            menuBarSpacingLabsEnabled: false,
+            dogfoodModeEnabled: false
+        ).isRelevant)
+        #expect(StatusMenuAdvancedVisibility(
+            proModeEnabled: false,
+            automationPaused: true,
+            iconMovingEnabled: false,
+            menuBarSpacingLabsEnabled: true,
+            dogfoodModeEnabled: false
+        ).isRelevant)
+        #expect(StatusMenuAdvancedVisibility(
+            proModeEnabled: false,
+            automationPaused: true,
+            iconMovingEnabled: false,
+            menuBarSpacingLabsEnabled: false,
+            dogfoodModeEnabled: true
+        ).isRelevant)
+        #expect(StatusMenuAdvancedVisibility(
+            proModeEnabled: false,
+            automationPaused: true,
+            iconMovingEnabled: false,
+            menuBarSpacingLabsEnabled: false,
+            dogfoodModeEnabled: false,
+            workspacesPreviewEnabled: true
+        ).isRelevant)
+        #expect(StatusMenuAdvancedVisibility(
+            proModeEnabled: false,
+            automationPaused: true,
+            iconMovingEnabled: false,
+            menuBarSpacingLabsEnabled: false,
+            dogfoodModeEnabled: false,
+            workspacesPreviewEnabled: true,
+            functionBarPreviewEnabled: true
+        ).isRelevant)
+        #expect(!StatusMenuAdvancedVisibility(
+            proModeEnabled: false,
+            automationPaused: true,
+            iconMovingEnabled: false,
+            menuBarSpacingLabsEnabled: false,
+            dogfoodModeEnabled: false,
+            functionBarPreviewEnabled: true
+        ).isRelevant)
+        #expect(StatusMenuAdvancedVisibility(
+            proModeEnabled: false,
+            automationPaused: true,
+            iconMovingEnabled: false,
+            menuBarSpacingLabsEnabled: false,
+            dogfoodModeEnabled: false,
+            workspacesPreviewEnabled: true,
+            infoStripPreviewEnabled: true
+        ).isRelevant)
+        #expect(!StatusMenuAdvancedVisibility(
+            proModeEnabled: false,
+            automationPaused: true,
+            iconMovingEnabled: false,
+            menuBarSpacingLabsEnabled: false,
+            dogfoodModeEnabled: false,
+            infoStripPreviewEnabled: true
+        ).isRelevant)
+    }
+
+    @Test func advancedMenuHidesPreviewPanelActionsUntilPreviewGatesAreEnabled() throws {
+        let menu = StatusBarMenuBuilder(
+            actions: Self.makeActions(
+                functionBarPreviewEnabled: false,
+                infoStripPreviewEnabled: false,
+                advancedMenuRelevant: true
+            )
+        ).makeMenu()
+        let advancedItems = try #require(menu.items.first { $0.title == "Advanced" }?.submenu?.items)
+        let titles = advancedItems.map { item in item.title }
+
+        #expect(!titles.contains("Show Function Bar Preview"))
+        #expect(!titles.contains("Show Info Strip Preview"))
+    }
+
+    @Test func advancedMenuRequiresWorkspacesGateBeforeShowingInfoStripAction() throws {
+        let inconsistentMenu = StatusBarMenuBuilder(
+            actions: Self.makeActions(
+                workspacesPreviewEnabled: false,
+                infoStripPreviewEnabled: true,
+                advancedMenuRelevant: true
+            )
+        ).makeMenu()
+        let inconsistentTitles = try #require(inconsistentMenu.items.first { $0.title == "Advanced" }?.submenu?.items.map(\.title))
+        #expect(!inconsistentTitles.contains("Show Info Strip Preview"))
+
+        let gatedMenu = StatusBarMenuBuilder(
+            actions: Self.makeActions(
+                workspacesPreviewEnabled: true,
+                infoStripPreviewEnabled: true,
+                advancedMenuRelevant: true
+            )
+        ).makeMenu()
+        let gatedTitles = try #require(gatedMenu.items.first { $0.title == "Advanced" }?.submenu?.items.map(\.title))
+        #expect(gatedTitles.contains("Show Info Strip Preview"))
+
+        let visibleMenu = StatusBarMenuBuilder(
+            actions: Self.makeActions(
+                workspacesPreviewEnabled: false,
+                infoStripPreviewEnabled: false,
+                infoStripVisible: true,
+                advancedMenuRelevant: true
+            )
+        ).makeMenu()
+        let visibleTitles = try #require(visibleMenu.items.first { $0.title == "Advanced" }?.submenu?.items.map(\.title))
+        #expect(visibleTitles.contains("Hide Info Strip Preview"))
+    }
+
+    @Test func routedMenuItemsExplainUnavailableCommandGates() throws {
+        let unavailableMessage = "Enable Pro Mode and Accessibility Discovery first."
+        let menu = StatusBarMenuBuilder(
+            actions: Self.makeActions(
+                advancedMenuRelevant: true,
+                commandAvailability: { command in
+                    switch command.action {
+                    case .showFindIcon, .showSecondBar, .enterFullMenuBarMode, .spacingPresetDryRun, .showAssistedMoveGuide:
+                        MenuBarCommandAvailability.unavailable(
+                            message: unavailableMessage,
+                            diagnosticReason: "testGate",
+                            failedGate: .proMode
+                        )
+                    default:
+                        .available
+                    }
+                }
+            )
+        ).makeMenu()
+
+        for title in ["Find Icon…", "Show Second Bar", "Full Menu Bar Mode", "Preview Spacing Preset", "Assisted Move Guide…"] {
+            let item = try #require(actionItems(in: menu).first { $0.title == title })
+            #expect(item.isEnabled == false)
+            #expect(item.toolTip == unavailableMessage)
+        }
+    }
+
+    @Test func dogfoodEntryAppearsOnlyWhenDogfoodModeIsEnabled() {
+        let hidden = StatusBarMenuBuilder(
+            actions: Self.makeActions(advancedMenuRelevant: true)
+        ).makeMenu()
+        #expect(actionItems(in: hidden).allSatisfy { $0.title != "Dogfood Diagnostics…" })
+
+        let visible = StatusBarMenuBuilder(
+            actions: Self.makeActions(
+                advancedMenuRelevant: true,
+                dogfoodModeEnabled: true
+            )
+        ).makeMenu()
+        #expect(actionItems(in: visible).contains { $0.title == "Dogfood Diagnostics…" })
+    }
+
+    @Test func dogfoodDiagnosticsEntryDispatchesToDiagnostics() throws {
+        let recorder = MenuActionRecorder()
+        let builder = StatusBarMenuBuilder(
+            actions: Self.makeActions(
+                recorder: recorder,
+                advancedMenuRelevant: true,
+                dogfoodModeEnabled: true
+            )
+        )
+        let menu = builder.makeMenu()
+
+        try perform("Dogfood Diagnostics…", in: menu)
+
+        #expect(recorder.commands == [.showDiagnostics])
+    }
+
+    @Test func safeModeMenuIsRecoveryFirst() {
+        let menu = StatusBarMenuBuilder(
+            actions: Self.makeActions(safeModeActive: true)
+        ).makeMenu()
+
+        #expect(actionItems(in: menu).map { $0.title } == [
+            "Show MenuBarDeclutter",
+            "Reset Layout",
+            "Open Settings",
+            "Export Diagnostics",
+            "Quit"
+        ])
+    }
+
     @Test func routedToggleCommandsRespectCurrentMenuState() throws {
         let recorder = MenuActionRecorder()
         let builder = StatusBarMenuBuilder(
@@ -141,6 +448,7 @@ struct StatusBarMenuBuilderTests {
                 automationPaused: true,
                 secondBarVisible: true,
                 fullMenuBarModeIsActive: true,
+                advancedMenuRelevant: true,
                 routeCommands: true
             )
         )
@@ -166,6 +474,32 @@ struct StatusBarMenuBuilderTests {
             target: .fullMenuBarMode,
             source: .statusMenu
         ))
+
+        let previewRecorder = MenuActionRecorder()
+        let previewBuilder = StatusBarMenuBuilder(
+            actions: Self.makeActions(
+                recorder: previewRecorder,
+                functionBarVisible: true,
+                infoStripVisible: true,
+                advancedMenuRelevant: true,
+                routeCommands: true
+            )
+        )
+        let previewMenu = previewBuilder.makeMenu()
+
+        try perform("Hide Function Bar Preview", in: previewMenu)
+        #expect(previewRecorder.routedCommands.last == MenuBarCommand(
+            action: .hideFunctionBar,
+            target: .functionBar,
+            source: .statusMenu
+        ))
+
+        try perform("Hide Info Strip Preview", in: previewMenu)
+        #expect(previewRecorder.routedCommands.last == MenuBarCommand(
+            action: .hideInfoStrip,
+            target: .infoStrip,
+            source: .statusMenu
+        ))
     }
 
     private static func makeActions(
@@ -174,8 +508,19 @@ struct StatusBarMenuBuilderTests {
         automationPausedTitle: String = "Pause Automation",
         automationPaused: Bool = false,
         secondBarVisible: Bool = false,
+        canShowNewMenuBarItems: Bool = false,
+        newMenuBarItemReviewCount: Int = 0,
         fullMenuBarModeIsActive: Bool = false,
+        workspacesPreviewEnabled: Bool = false,
+        functionBarPreviewEnabled: Bool = false,
+        infoStripPreviewEnabled: Bool = false,
+        functionBarVisible: Bool = false,
+        infoStripVisible: Bool = false,
+        safeModeActive: Bool = false,
+        advancedMenuRelevant: Bool = false,
+        dogfoodModeEnabled: Bool = false,
         canRefreshMenuBarItems: Bool = true,
+        commandAvailability: @escaping (MenuBarCommand) -> MenuBarCommandAvailability = { _ in .available },
         routeCommands: Bool = false
     ) -> StatusBarMenuBuilder.Actions {
         StatusBarMenuBuilder.Actions(
@@ -196,19 +541,43 @@ struct StatusBarMenuBuilderTests {
             automationPausedTitle: { automationPausedTitle },
             automationPaused: { automationPaused },
             secondBarVisible: { secondBarVisible },
+            safeModeActive: { safeModeActive },
+            advancedMenuRelevant: { advancedMenuRelevant },
+            canShowNewMenuBarItems: { canShowNewMenuBarItems },
+            newMenuBarItemReviewCount: { newMenuBarItemReviewCount },
+            commandAvailability: commandAvailability,
             routeCommand: routeCommands ? { recorder.route($0) } : nil,
+            dogfoodModeEnabled: { dogfoodModeEnabled },
             canRefreshMenuBarItems: { canRefreshMenuBarItems },
             resetSeparatorLength: { recorder.record(.resetSeparatorLength) },
+            resetLayout: { recorder.record(.resetLayout) },
             showDragHint: { recorder.record(.showDragHint) },
+            openArrangeSettings: { recorder.record(.openArrangeSettings) },
+            openNewMenuBarItems: { recorder.record(.openNewMenuBarItems) },
+            openRecoverySettings: { recorder.record(.openRecoverySettings) },
             openSettings: { recorder.record(.openSettings) },
             showDiagnostics: { recorder.record(.showDiagnostics) },
             showAbout: { recorder.record(.showAbout) },
             quit: { recorder.record(.quit) },
+            openProfilesSettings: { recorder.record(.openProfilesSettings) },
             enterFullMenuBarMode: { recorder.record(.enterFullMenuBarMode) },
             exitFullMenuBarMode: { recorder.record(.exitFullMenuBarMode) },
             fullMenuBarModeIsActive: { fullMenuBarModeIsActive },
             showLayoutSuggestions: { recorder.record(.showLayoutSuggestions) },
             openLayoutSettings: { recorder.record(.openLayoutSettings) },
+            openAdvancedSettings: { recorder.record(.openAdvancedSettings) },
+            openWorkspacesPreview: { recorder.record(.openWorkspacesPreview) },
+            workspacesPreviewEnabled: { workspacesPreviewEnabled },
+            functionBarPreviewEnabled: { functionBarPreviewEnabled },
+            infoStripPreviewEnabled: { infoStripPreviewEnabled },
+            functionBarVisible: { functionBarVisible },
+            infoStripVisible: { infoStripVisible },
+            showFunctionBarPreview: { recorder.record(.showFunctionBarPreview) },
+            hideFunctionBarPreview: { recorder.record(.hideFunctionBarPreview) },
+            showInfoStripPreview: { recorder.record(.showInfoStripPreview) },
+            hideInfoStripPreview: { recorder.record(.hideInfoStripPreview) },
+            previewSpacingPreset: { recorder.record(.previewSpacingPreset) },
+            showAssistedMoveGuide: { recorder.record(.showAssistedMoveGuide) },
             addSpacerDivider: { recorder.record(.addSpacerDivider) },
             addSpacer: { recorder.record(.addSpacer) },
             toggleSpacerMarkers: { recorder.record(.toggleSpacerMarkers) },
@@ -218,10 +587,22 @@ struct StatusBarMenuBuilderTests {
     }
 
     private func perform(_ title: String, in menu: NSMenu) throws {
-        let item = try #require(menu.items.first { $0.title == title })
+        let item = try #require(actionItems(in: menu).first { $0.title == title })
         let action = try #require(item.action)
         let didSendAction = NSApplication.shared.sendAction(action, to: item.target, from: item)
         #expect(didSendAction)
+    }
+
+    private func actionItems(in menu: NSMenu) -> [NSMenuItem] {
+        menu.items.flatMap { item -> [NSMenuItem] in
+            if item.isSeparatorItem {
+                return []
+            }
+            if let submenu = item.submenu {
+                return actionItems(in: submenu)
+            }
+            return item.action == nil ? [] : [item]
+        }
     }
 }
 
@@ -242,7 +623,11 @@ private final class MenuActionRecorder {
         case toggleProMode
         case toggleAutomationPaused
         case resetSeparatorLength
+        case resetLayout
         case showDragHint
+        case openArrangeSettings
+        case openNewMenuBarItems
+        case openRecoverySettings
         case enterFullMenuBarMode
         case showLayoutSuggestions
         case addSpacerDivider
@@ -253,33 +638,46 @@ private final class MenuActionRecorder {
         case showDiagnostics
         case showAbout
         case quit
+        case openProfilesSettings
         case exitFullMenuBarMode
+        case openAdvancedSettings
+        case openWorkspacesPreview
+        case showFunctionBarPreview
+        case hideFunctionBarPreview
+        case showInfoStripPreview
+        case hideInfoStripPreview
+        case previewSpacingPreset
+        case showAssistedMoveGuide
         case revealInlineAnyway
     }
 
     static let menuCommands: [Command] = [
-        .expand,
         .collapse,
-        .toggle,
+        .expand,
         .revealAll,
-        .toggleRevealAll,
+        .openArrangeSettings,
         .findIcon,
         .toggleSecondBar,
+        .enterFullMenuBarMode,
         .refreshMenuBarItems,
+        .openProfilesSettings,
         .toggleProMode,
         .toggleAutomationPaused,
-        .enterFullMenuBarMode,
+        .openLayoutSettings,
+        .openWorkspacesPreview,
+        .showFunctionBarPreview,
+        .showInfoStripPreview,
+        .previewSpacingPreset,
+        .showAssistedMoveGuide,
         .showLayoutSuggestions,
         .addSpacerDivider,
         .addSpacer,
         .toggleSpacerMarkers,
-        .openLayoutSettings,
-        .showDragHint,
-        .resetSeparatorLength,
-        .emergencyRevealAndResetSeparators,
-        .openSettings,
-        .showDiagnostics,
+        .openAdvancedSettings,
         .showAbout,
+        .openSettings,
+        .openRecoverySettings,
+        .showDiagnostics,
         .quit
     ]
 

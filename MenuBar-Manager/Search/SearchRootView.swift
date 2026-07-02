@@ -7,6 +7,8 @@ struct SearchRootView: View {
 
     let searchService: SearchService
     @Bindable var itemMemoryStore: MenuBarItemMemoryStore
+    let diagnosticsLogger: DiagnosticsLogger
+    let newItemStorageKeysProvider: () -> Set<String>
     let onRefresh: () -> Void
     let onCommand: (MenuBarCommand) -> MenuBarCommandResult
     let onMove: @MainActor (MenuBarSearchResult, IconMoveCommand) async -> IconMoveResult
@@ -37,6 +39,9 @@ struct SearchRootView: View {
     @State private var searchIndex: SearchIndex = .init()
 
     @State private var searchDebounceTask: Task<Void, Never>?
+    @State private var latestIndexRebuildDurationMilliseconds: Double?
+
+    private let keyboardRouter = SearchKeyboardActionRouter()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -58,7 +63,7 @@ struct SearchRootView: View {
         .background(Color(nsColor: .windowBackgroundColor))
         .onAppear {
             onRefresh()
-            searchIndex = SearchIndex(snapshots: liveStatus.scannedMenuBarItems)
+            rebuildSearchIndex(from: liveStatus.scannedMenuBarItems)
             refreshResults()
             searchFieldFocused = true
         }
@@ -75,7 +80,7 @@ struct SearchRootView: View {
             refreshResults()
         }
         .onChange(of: liveStatus.scannedMenuBarItems) { _, newSnapshots in
-            searchIndex = SearchIndex(snapshots: newSnapshots)
+            rebuildSearchIndex(from: newSnapshots)
             scheduleSearch()
         }
         .onKeyPress(.downArrow) {
@@ -86,8 +91,11 @@ struct SearchRootView: View {
             moveSelection(by: -1)
             return .handled
         }
-        .onKeyPress(.return) {
-            activateSelectedResult()
+        .onKeyPress { keyPress in
+            guard keyPress.key == .return else { return .ignored }
+            activateSelectedResult(
+                keyboardRouter.returnAction(for: searchKeyboardModifiers(from: keyPress.modifiers))
+            )
             return .handled
         }
         .onKeyPress(.escape) {
@@ -133,7 +141,9 @@ struct SearchRootView: View {
                 .textFieldStyle(.plain)
                 .font(.body)
                 .focused($searchFieldFocused)
-                .onSubmit(activateSelectedResult)
+                .onSubmit {
+                    activateSelectedResult()
+                }
 
             if !query.isEmpty {
                 Button("Clear Search", systemImage: "xmark.circle.fill") {
@@ -264,21 +274,26 @@ struct SearchRootView: View {
                                     }
                                     groupContextMenu(for: result)
                                     Divider()
-                                    Button("Move to Visible", systemImage: "arrow.right.to.line") {
-                                        move(result, command: .moveToZone(.visible))
-                                    }
-                                    Button("Move to Hidden", systemImage: "arrow.left.and.right") {
-                                        move(result, command: .moveToZone(.hidden))
-                                    }
-                                    Button("Move to Always Hidden", systemImage: "eye.slash") {
-                                        move(result, command: .moveToZone(.alwaysHidden))
-                                    }
-                                    Divider()
-                                    Button("Move Left", systemImage: "arrow.left") {
-                                        move(result, command: .moveLeft)
-                                    }
-                                    Button("Move Right", systemImage: "arrow.right") {
-                                        move(result, command: .moveRight)
+                                    if settingsStore.iconMovingEnabled {
+                                        Button("Experimental: Move to Visible", systemImage: "arrow.right.to.line") {
+                                            move(result, command: .moveToZone(.visible))
+                                        }
+                                        Button("Experimental: Move to Hidden", systemImage: "arrow.left.and.right") {
+                                            move(result, command: .moveToZone(.hidden))
+                                        }
+                                        Button("Experimental: Move to Always Hidden", systemImage: "eye.slash") {
+                                            move(result, command: .moveToZone(.alwaysHidden))
+                                        }
+                                        Divider()
+                                        Button("Experimental: Move Left", systemImage: "arrow.left") {
+                                            move(result, command: .moveLeft)
+                                        }
+                                        Button("Experimental: Move Right", systemImage: "arrow.right") {
+                                            move(result, command: .moveRight)
+                                        }
+                                    } else {
+                                        Button("Experimental Move Disabled", systemImage: "exclamationmark.triangle") {}
+                                            .disabled(true)
                                     }
                                 }
                             }
@@ -314,7 +329,7 @@ struct SearchRootView: View {
                     .foregroundStyle(.secondary)
             } else {
                 HStack(spacing: 4) {
-                    Text("Select an item to reveal and highlight it.")
+                    Text("Use arrows to choose, Return to reveal, Command-Return for Second Bar.")
                         .lineLimit(1)
                         .foregroundStyle(.secondary)
                     Text("No clicking is automated.")
@@ -392,8 +407,10 @@ struct SearchRootView: View {
                 message: "Find Icon uses the optional Accessibility discovery index. Basic Mode remains available without permissions.",
                 primaryButtonTitle: "Enable Pro Mode",
                 primaryAction: {
-                    settingsStore.proModeEnabled = true
-                    settingsStore.accessibilityDiscoveryEnabled = true
+                    PrivacyProSetupActions.enableProMode(
+                        settingsStore: settingsStore,
+                        permissionService: permissionService
+                    )
                     onSettingsChanged()
                 },
                 secondaryButtonTitle: "Open Privacy Settings",
@@ -454,19 +471,41 @@ struct SearchRootView: View {
         selectedID = resultIDs[clampedIndex]
     }
 
-    private func activateSelectedResult() {
+    private func activateSelectedResult(_ keyboardAction: SearchKeyboardAction = .revealSelected) {
         guard let selectedID,
               let result = results.first(where: { $0.id == selectedID }) else {
             return
         }
 
-        activate(result)
+        activate(result, keyboardAction: keyboardAction)
     }
 
-    private func activate(_ result: MenuBarSearchResult) {
-        let commandResult = route(.revealItem, result: result)
-        liveStatus.lastSearchSelectedItem = result.displayTitle
+    private func activate(_ result: MenuBarSearchResult, keyboardAction: SearchKeyboardAction = .revealSelected) {
+        let commandResult = route(commandAction(for: keyboardAction, result: result), result: result)
         liveStatus.lastSearchActivationOutcome = commandResult.status.displayName
+    }
+
+    private func commandAction(
+        for keyboardAction: SearchKeyboardAction,
+        result: MenuBarSearchResult
+    ) -> MenuBarCommandAction {
+        switch keyboardAction {
+        case .revealSelected:
+            return .revealItem
+        case .showSelectedInSecondBar:
+            return .showItemInSecondBar
+        case .openOwningApp:
+            return .openOwningApp
+        case .revealRelevantZone:
+            switch result.snapshot.zone {
+            case .hidden:
+                return .revealHiddenZone
+            case .alwaysHidden:
+                return .revealAlwaysHiddenZone
+            case .visible, .unknown:
+                return .revealItem
+            }
+        }
     }
 
     @discardableResult
@@ -579,6 +618,12 @@ struct SearchRootView: View {
         }
     }
 
+    private func rebuildSearchIndex(from snapshots: [MenuBarItemSnapshot]) {
+        let start = Date()
+        searchIndex = SearchIndex(snapshots: snapshots)
+        latestIndexRebuildDurationMilliseconds = Date().timeIntervalSince(start) * 1000
+    }
+
     /// Re-evaluates `results` against the current `searchIndex` and `query`, then
     /// propagates diagnostics state and reselects the first result as needed.
     private func refreshResults() {
@@ -586,19 +631,79 @@ struct SearchRootView: View {
             results = []
             return
         }
+        let start = Date()
         results = searchService.results(
             from: searchIndex,
             query: query,
             filter: selectedFilter,
-            memoryStore: itemMemoryStore
+            memoryStore: itemMemoryStore,
+            rankingContext: rankingContext()
         )
-        updateSearchDiagnostics()
+        let rankingDurationMilliseconds = Date().timeIntervalSince(start) * 1000
+        updateSearchDiagnostics(rankingDurationMilliseconds: rankingDurationMilliseconds)
         selectFirstResultIfNeeded()
     }
 
-    private func updateSearchDiagnostics() {
-        liveStatus.searchIndexItemCount = liveStatus.scannedMenuBarItems.count
-        liveStatus.lastSearchQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+    private func updateSearchDiagnostics(rankingDurationMilliseconds: Double) {
+        let latestScanAgeSeconds = liveStatus.lastMenuBarScanTime.map { Date().timeIntervalSince($0) }
+        liveStatus.updateSearchPerformance(SearchPerformanceDiagnostics(
+            indexItemCount: searchIndex.count,
+            resultCount: results.count,
+            indexRebuildDurationMilliseconds: latestIndexRebuildDurationMilliseconds,
+            rankingDurationMilliseconds: rankingDurationMilliseconds,
+            latestScanAgeSeconds: latestScanAgeSeconds
+        ))
+        diagnosticsLogger.log(
+            "Find Icon search refreshed.",
+            level: .debug,
+            metadata: [
+                "indexItemCount": "\(searchIndex.count)",
+                "resultCount": "\(results.count)",
+                "indexRebuildMilliseconds": formatMilliseconds(latestIndexRebuildDurationMilliseconds),
+                "rankingMilliseconds": formatMilliseconds(rankingDurationMilliseconds),
+                "latestScanAgeBucket": scanAgeBucket(latestScanAgeSeconds)
+            ]
+        )
+    }
+
+    private func rankingContext() -> SearchRankingContext {
+        SearchRankingContext(
+            newItemStorageKeys: newItemStorageKeysProvider(),
+            staleBefore: Date().addingTimeInterval(-300)
+        )
+    }
+
+    private func searchKeyboardModifiers(from modifiers: EventModifiers) -> SearchKeyboardModifiers {
+        var result: SearchKeyboardModifiers = []
+        if modifiers.contains(.command) {
+            result.insert(.command)
+        }
+        if modifiers.contains(.option) {
+            result.insert(.option)
+        }
+        if modifiers.contains(.shift) {
+            result.insert(.shift)
+        }
+        return result
+    }
+
+    private func formatMilliseconds(_ value: Double?) -> String {
+        guard let value else { return "unavailable" }
+        return value.formatted(.number.precision(.fractionLength(2)))
+    }
+
+    private func scanAgeBucket(_ age: TimeInterval?) -> String {
+        guard let age else { return "noScan" }
+        switch age {
+        case ..<60:
+            return "under1m"
+        case ..<300:
+            return "under5m"
+        case ..<900:
+            return "under15m"
+        default:
+            return "stale"
+        }
     }
 }
 
@@ -680,6 +785,8 @@ private struct SearchUnavailableView: View {
         liveStatus: live,
         searchService: SearchService(),
         itemMemoryStore: MenuBarItemMemoryStore(fileURL: nil),
+        diagnosticsLogger: logger,
+        newItemStorageKeysProvider: { [] },
         onRefresh: {},
         onCommand: { command in
             MenuBarCommandResult.success(command, message: "Preview command")

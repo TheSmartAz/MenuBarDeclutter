@@ -383,7 +383,7 @@ This checklist verifies the Phase 1 hiding MVP. Later-phase features such as glo
 - Press Return or click the row.
 - Confirm the item is not clicked automatically.
 - If "Highlight selected item" is enabled, confirm a rounded highlight appears around the approximate menu bar item frame and disappears after about two seconds.
-- Confirm Diagnostics shows Last Search Selection and Last Search Activation.
+- Confirm Diagnostics shows the last search activation outcome without showing the query text or selected item identity.
 
 ### Select hidden item
 
