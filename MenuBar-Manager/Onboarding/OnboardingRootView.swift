@@ -182,6 +182,8 @@ private struct OnboardingStepDetail: View {
             OnboardingCommandDragStrip()
         case "hiddenVsAlwaysHidden":
             OnboardingZoneSummary()
+        case "testArrange":
+            OnboardingArrangeTestSummary()
         case "hotkeyAutoRehide":
             OnboardingShortcutSummary()
         case "privacy":
@@ -288,6 +290,31 @@ private struct OnboardingZoneCard: View {
                     .stroke(tint.opacity(0.22), lineWidth: 1)
             }
             .foregroundStyle(tint)
+    }
+}
+
+private struct OnboardingArrangeTestSummary: View {
+    private let actions = [
+        ("Collapse", "eye.slash"),
+        ("Reveal All", "rectangle.expand.vertical"),
+        ("Reset Layout", "arrow.counterclockwise")
+    ]
+
+    var body: some View {
+        HStack(spacing: 10) {
+            ForEach(actions, id: \.0) { action in
+                Label(action.0, systemImage: action.1)
+                    .font(.callout)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 7))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 7)
+                            .stroke(.primary.opacity(0.10), lineWidth: 1)
+                    }
+            }
+        }
+        .accessibilityHidden(true)
     }
 }
 

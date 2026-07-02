@@ -16,7 +16,7 @@ Dogfood QA Mode is an internal, local-only feature for structured testing. It is
 ## User Flow
 
 1. Build and run `MenuBarFixtureApp` when fixture items are needed.
-2. Open Settings -> Diagnostics.
+2. Open Settings -> Recovery for diagnostics and support actions.
 3. Enable Dogfood Mode or start a dogfood run.
 4. Work through the gate checklist.
 5. Add local notes.

@@ -62,6 +62,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             environment.showDiagnostics()
         } else if launchArguments.contains("--ui-testing-show-general") {
             environment.showSettings(section: .general)
+        } else if launchArguments.contains("--ui-testing-show-hide-reveal") {
+            environment.showSettings(section: .hideReveal)
+        } else if launchArguments.contains("--ui-testing-show-arrange") {
+            environment.showSettings(section: .arrange)
+        } else if launchArguments.contains("--ui-testing-show-find-rescue") {
+            environment.showSettings(section: .findRescue)
+        } else if launchArguments.contains("--ui-testing-show-recovery") {
+            environment.showSettings(section: .recovery)
         } else if launchArguments.contains("--ui-testing-show-behavior") {
             environment.showSettings(section: .behavior)
         } else if launchArguments.contains("--ui-testing-show-layout") {

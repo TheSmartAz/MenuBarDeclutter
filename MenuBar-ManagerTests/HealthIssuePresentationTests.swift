@@ -32,7 +32,20 @@ struct HealthIssuePresentationTests {
             .hideOptionalSpacerItems: "Hide optional spacer items",
             .disableDynamicHotkeys: "Disable dynamic hotkeys",
             .disableGroupStatusItems: "Disable group status items",
-            .clearPrivateAccessUnlock: "Clear Private Access unlock"
+            .clearPrivateAccessUnlock: "Clear Private Access unlock",
+            .resetWorkspacesToDefaults: "Reset workspaces to defaults",
+            .resetCurrentWorkspaceLayout: "Reset current Workspace layout",
+            .removeMissingWorkspaceGroupReferences: "Remove missing Workspace group references",
+            .discardSetBuilderDraft: "Discard Set Builder draft",
+            .hideFunctionBar: "Hide Function Bar",
+            .disableFunctionBarPreview: "Disable Function Bar Preview",
+            .disableSetBuilderPreview: "Disable Set Builder Preview",
+            .hideInfoStrip: "Hide Info Strip",
+            .disableInfoStripPreview: "Disable Info Strip Preview",
+            .resetInfoStripSettings: "Reset Info Strip settings",
+            .resetInfoStripPlacement: "Reset Info Strip placement",
+            .clearInvalidInfoStripProviders: "Clear invalid Info Strip tiles",
+            .showFunctionBarInstead: "Show Function Bar instead"
         ]
 
         #expect(HealthRecoveryAction.allCases.count == expectedDisplayNames.count)

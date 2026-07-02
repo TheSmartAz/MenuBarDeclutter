@@ -66,6 +66,23 @@ struct HealthCheckSnapshot: Equatable, Sendable {
     var privateAccessEnabled: Bool = false
     var privateAccessUnlockActive: Bool = false
     var appIntentsEnabled: Bool = true
+    var safeModeActive: Bool = false
+    var functionBarPreviewEnabled: Bool = false
+    var functionBarVisible: Bool = false
+    var infoStripPreviewEnabled: Bool = false
+    var infoStripVisible: Bool = false
+    var infoStripSelectedTileProviderCount: Int = 0
+    var infoStripAvailableSelectedTileProviderCount: Int = 0
+    var infoStripInvalidProviderIDCount: Int = 0
+    var infoStripRotationResult: String? = nil
+    var infoStripPlacementFailed: Bool = false
+    var infoStripTimingInvalid: Bool = false
+    var workspaceStoreLoadStatus: WorkspaceStoreLoadStatus = .notLoaded
+    var workspaceValidationIssueCount: Int = 0
+    var workspaceMissingGroupReferenceCount: Int = 0
+    var workspaceDetachedSourceGroupMissingCount: Int = 0
+    var workspaceUnresolvedMenuBarProxyReferenceCount: Int = 0
+    var workspaceMissingProfileBindingCount: Int = 0
 }
 
 struct HealthService {
@@ -208,6 +225,7 @@ struct HealthService {
         appendProModeIssues(snapshot: snapshot, issues: &issues)
         appendLayoutIssues(snapshot: snapshot, issues: &issues)
         appendPhase11Issues(snapshot: snapshot, issues: &issues)
+        appendWorkspacePreviewIssues(snapshot: snapshot, issues: &issues)
 
         return HealthReport(generatedAt: now(), issues: issues, dogfoodRunID: dogfoodRunID)
     }
@@ -457,8 +475,218 @@ struct HealthService {
         }
     }
 
+    private func appendWorkspacePreviewIssues(snapshot: HealthCheckSnapshot, issues: inout [HealthIssue]) {
+        switch snapshot.workspaceStoreLoadStatus {
+        case .corruptedBackupCreated:
+            issues.append(
+                HealthIssue(
+                    code: "workspace.store.corrupted-reset",
+                    severity: .warning,
+                    title: "Workspace store was reset",
+                    detail: "The workspace store could not be decoded, so a backup was created and safe defaults were restored. Basic Mode remains available.",
+                    recoveryAction: .resetWorkspacesToDefaults
+                )
+            )
+        case .repaired:
+            issues.append(
+                HealthIssue(
+                    code: "workspace.store.repaired",
+                    severity: .warning,
+                    title: "Workspace store was repaired",
+                    detail: "Workspace data needed safe repairs before use. Basic Mode remains available.",
+                    recoveryAction: nil
+                )
+            )
+        case .failed:
+            issues.append(
+                HealthIssue(
+                    code: "workspace.store.failed",
+                    severity: .warning,
+                    title: "Workspace store failed to load",
+                    detail: "Workspace preview data is unavailable, but Basic Mode remains available.",
+                    recoveryAction: .resetWorkspacesToDefaults
+                )
+            )
+        case .notLoaded, .loaded, .createdDefaults:
+            break
+        }
+
+        if snapshot.workspaceValidationIssueCount > 0 {
+            issues.append(
+                HealthIssue(
+                    code: "workspace.validation.issues",
+                    severity: .warning,
+                    title: "Workspace data has validation repairs",
+                    detail: "\(snapshot.workspaceValidationIssueCount) workspace validation issue(s) were repaired or reported without exposing item names.",
+                    recoveryAction: nil
+                )
+            )
+        }
+
+        if snapshot.workspaceMissingGroupReferenceCount > 0 {
+            issues.append(
+                HealthIssue(
+                    code: "workspace.references.missing-groups",
+                    severity: .warning,
+                    title: "Workspace group references are missing",
+                    detail: "\(snapshot.workspaceMissingGroupReferenceCount) group reference(s) could not be resolved. The workspace remains usable.",
+                    recoveryAction: .removeMissingWorkspaceGroupReferences
+                )
+            )
+        }
+
+        if snapshot.workspaceDetachedSourceGroupMissingCount > 0 {
+            issues.append(
+                HealthIssue(
+                    code: "workspace.references.detached-source-missing",
+                    severity: .warning,
+                    title: "Detached group source is missing",
+                    detail: "\(snapshot.workspaceDetachedSourceGroupMissingCount) detached group source reference(s) could not be resolved. Detached copies remain usable.",
+                    recoveryAction: nil
+                )
+            )
+        }
+
+        if snapshot.workspaceUnresolvedMenuBarProxyReferenceCount > 0 {
+            issues.append(
+                HealthIssue(
+                    code: "workspace.references.unresolved-menu-bar-proxies",
+                    severity: .warning,
+                    title: "Workspace menu bar proxies are unresolved",
+                    detail: "\(snapshot.workspaceUnresolvedMenuBarProxyReferenceCount) menu bar proxy reference(s) did not match the latest local Accessibility snapshot.",
+                    recoveryAction: .resetCurrentWorkspaceLayout
+                )
+            )
+        }
+
+        if snapshot.workspaceMissingProfileBindingCount > 0 {
+            issues.append(
+                HealthIssue(
+                    code: "workspace.references.missing-profiles",
+                    severity: .warning,
+                    title: "Workspace profile bindings are missing",
+                    detail: "\(snapshot.workspaceMissingProfileBindingCount) profile binding(s) could not be resolved. No physical layout changes were applied.",
+                    recoveryAction: nil
+                )
+            )
+        }
+
+        if snapshot.functionBarVisible && snapshot.safeModeActive {
+            issues.append(
+                HealthIssue(
+                    code: "workspace.function-bar.visible-in-safe-mode",
+                    severity: .warning,
+                    title: "Function Bar is visible in Safe Mode",
+                    detail: "Safe Mode should suppress Function Bar runtime so recovery stays simple.",
+                    recoveryAction: .hideFunctionBar
+                )
+            )
+        } else if snapshot.functionBarVisible && !snapshot.functionBarPreviewEnabled {
+            issues.append(
+                HealthIssue(
+                    code: "workspace.function-bar.visible-while-disabled",
+                    severity: .warning,
+                    title: "Function Bar is visible while disabled",
+                    detail: "The Function Bar preview panel is visible even though its preview setting is disabled.",
+                    recoveryAction: .disableFunctionBarPreview
+                )
+            )
+        }
+
+        if snapshot.infoStripVisible && snapshot.safeModeActive {
+            issues.append(
+                HealthIssue(
+                    code: "workspace.info-strip.visible-in-safe-mode",
+                    severity: .warning,
+                    title: "Info Strip is visible in Safe Mode",
+                    detail: "Safe Mode should suppress Info Strip runtime so recovery stays simple.",
+                    recoveryAction: .hideInfoStrip
+                )
+            )
+        } else if snapshot.infoStripVisible && !snapshot.infoStripPreviewEnabled {
+            issues.append(
+                HealthIssue(
+                    code: "workspace.info-strip.visible-while-disabled",
+                    severity: .warning,
+                    title: "Info Strip is visible while disabled",
+                    detail: "The Info Strip preview panel is visible even though its preview setting is disabled.",
+                    recoveryAction: .hideInfoStrip
+                )
+            )
+        }
+
+        guard snapshot.infoStripPreviewEnabled else { return }
+
+        if snapshot.infoStripInvalidProviderIDCount > 0 {
+            issues.append(
+                HealthIssue(
+                    code: "workspace.info-strip.invalid-provider-ids",
+                    severity: .warning,
+                    title: "Info Strip has invalid tile IDs",
+                    detail: "\(snapshot.infoStripInvalidProviderIDCount) selected Info Strip tile ID(s) are no longer registered.",
+                    recoveryAction: .clearInvalidInfoStripProviders
+                )
+            )
+        }
+
+        if snapshot.infoStripSelectedTileProviderCount > 0
+            && snapshot.infoStripAvailableSelectedTileProviderCount == 0 {
+            issues.append(
+                HealthIssue(
+                    code: "workspace.info-strip.no-available-selected-providers",
+                    severity: .warning,
+                    title: "Info Strip has no available tiles",
+                    detail: "The active workspace has selected Info Strip tiles, but none can currently produce a tile.",
+                    recoveryAction: .resetInfoStripSettings
+                )
+            )
+        } else if isInfoStripRotationFailure(
+            snapshot.infoStripRotationResult,
+            safeModeActive: snapshot.safeModeActive
+        ) {
+            issues.append(
+                HealthIssue(
+                    code: "workspace.info-strip.rotation-failing",
+                    severity: .warning,
+                    title: "Info Strip rotation is not producing tiles",
+                    detail: "The Info Strip runtime reported \(snapshot.infoStripRotationResult ?? "an unknown result") while preview is enabled.",
+                    recoveryAction: .resetInfoStripSettings
+                )
+            )
+        }
+
+        if snapshot.infoStripPlacementFailed {
+            issues.append(
+                HealthIssue(
+                    code: "workspace.info-strip.placement-failing",
+                    severity: .warning,
+                    title: "Info Strip placement failed",
+                    detail: "The Info Strip could not find a valid display placement for its preview panel.",
+                    recoveryAction: .resetInfoStripPlacement
+                )
+            )
+        }
+
+        if snapshot.infoStripTimingInvalid {
+            issues.append(
+                HealthIssue(
+                    code: "workspace.info-strip.timing-invalid",
+                    severity: .warning,
+                    title: "Info Strip timing is invalid",
+                    detail: "The active workspace has Info Strip idle or rotation timing outside the supported range.",
+                    recoveryAction: .resetInfoStripSettings
+                )
+            )
+        }
+    }
+
     private func enabledText(_ value: Bool) -> String {
         value ? "enabled" : "disabled"
+    }
+
+    private func isInfoStripRotationFailure(_ result: String?, safeModeActive: Bool) -> Bool {
+        guard let result else { return false }
+        return result == "empty" || (result == "safeMode" && !safeModeActive)
     }
 
     private static func isSaneSeparatorLength(_ length: Double) -> Bool {

@@ -49,10 +49,16 @@ extension OnboardingStep {
             body: "Hidden icons come back when you expand the bar. Always-Hidden is optional: it adds a second separator for items that should stay tucked away even during a normal reveal."
         ),
         OnboardingStep(
+            id: "testArrange",
+            title: "Test collapse and reveal",
+            symbol: "checkmark.circle",
+            body: "After Command-dragging the control item and separator, test Collapse, Reveal All, and Reset Layout from Arrange. This stable flow stays in Basic Mode and does not request Pro permissions."
+        ),
+        OnboardingStep(
             id: "hotkeyAutoRehide",
             title: "Hotkey & Auto-Rehide",
             symbol: "rectangle.rightthird.inset.filled",
-            body: "You can enable a global hotkey, Option+Command+B by default, and optionally let the bar collapse itself again with Auto-Rehide. The hotkey is off by default; Auto-Rehide is off by default and adjustable in Settings → Behavior."
+            body: "You can enable a global hotkey, Option+Command+B by default, and optionally let the bar collapse itself again with Auto-Rehide. The hotkey is off by default; Auto-Rehide is off by default and adjustable in Settings → Hide & Reveal."
         ),
         OnboardingStep(
             id: "privacy",
@@ -65,7 +71,7 @@ extension OnboardingStep {
             title: "macOS 26 note",
             symbol: "rectangle.dashed",
             body: "The transparent menu bar in macOS 26 can make separators harder to see on some wallpapers. Separator visuals stay adjustable without changing the Basic Mode permission boundary.",
-            callout: "Use Settings → Behavior if a separator is too subtle on your wallpaper."
+            callout: "Use Settings → Hide & Reveal if a separator is too subtle on your wallpaper."
         )
     ]
 }

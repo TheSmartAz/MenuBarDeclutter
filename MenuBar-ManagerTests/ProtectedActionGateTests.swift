@@ -125,9 +125,7 @@ struct ProtectedActionGateTests {
         // Auth was called for the first action
         #expect(store.privateAccessLastAuthStatus == "success")
 
-        // Second action should use cached session
-        var authCallCount = 0
-        // We can't directly check call count, but the action should execute
+        // Second action should use cached session; the action should execute.
         var secondAction = false
         _ = await gate.execute(resource: .iconMoving, reason: "Test") {
             secondAction = true

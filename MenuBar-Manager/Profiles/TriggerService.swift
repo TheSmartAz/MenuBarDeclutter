@@ -34,6 +34,7 @@ final class TriggerService {
     private let now: () -> Date
     private let notificationCenter: NotificationCenter
     private let workspaceNotificationCenter: NotificationCenter
+    private let notificationDeliveryQueue: OperationQueue?
     private let evaluationDebounceInterval: Duration
     private let batteryPercentProvider: () -> Int?
     private let currentContextProvider: (() -> TriggerEvaluationContext)?
@@ -77,6 +78,7 @@ final class TriggerService {
         now: @escaping () -> Date = { Date() },
         notificationCenter: NotificationCenter = .default,
         workspaceNotificationCenter: NotificationCenter = NSWorkspace.shared.notificationCenter,
+        notificationDeliveryQueue: OperationQueue? = .main,
         evaluationDebounceInterval: Duration = TriggerService.evaluationDebounceInterval,
         batteryPercentProvider: @escaping () -> Int? = { TriggerService.currentBatteryPercent() },
         currentContextProvider: (() -> TriggerEvaluationContext)? = nil,
@@ -94,6 +96,7 @@ final class TriggerService {
         self.now = now
         self.notificationCenter = notificationCenter
         self.workspaceNotificationCenter = workspaceNotificationCenter
+        self.notificationDeliveryQueue = notificationDeliveryQueue
         self.evaluationDebounceInterval = evaluationDebounceInterval
         self.batteryPercentProvider = batteryPercentProvider
         self.currentContextProvider = currentContextProvider
@@ -152,7 +155,7 @@ final class TriggerService {
             observer: notificationCenter.addObserver(
                 forName: NSApplication.didChangeScreenParametersNotification,
                 object: NSApp,
-                queue: .main
+                queue: notificationDeliveryQueue
             ) { [weak self] _ in
                 MainActor.assumeIsolated {
                     self?.scheduleEvaluation(reason: "screen change")
@@ -165,7 +168,7 @@ final class TriggerService {
             observer: workspaceNotificationCenter.addObserver(
                 forName: NSWorkspace.didLaunchApplicationNotification,
                 object: nil,
-                queue: .main
+                queue: notificationDeliveryQueue
             ) { [weak self] _ in
                 MainActor.assumeIsolated {
                     self?.scheduleEvaluation(reason: "app launch")
@@ -178,7 +181,7 @@ final class TriggerService {
             observer: workspaceNotificationCenter.addObserver(
                 forName: NSWorkspace.didActivateApplicationNotification,
                 object: nil,
-                queue: .main
+                queue: notificationDeliveryQueue
             ) { [weak self] _ in
                 MainActor.assumeIsolated {
                     self?.scheduleEvaluation(reason: "frontmost app")

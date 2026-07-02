@@ -5,7 +5,7 @@ Profiles are local JSON records for saving and applying menu bar layout preferen
 ## What It Does
 
 - Stores profile name, timestamps, preferred visibility state, Second Bar visibility, auto-rehide, hover reveal, bundle-id target zones, and notes.
-- Lists profiles in Settings -> Profiles.
+- Lists profiles from Settings -> Advanced -> Profiles.
 - Supports create, duplicate, edit, delete, import, export, dry-run, and apply.
 - Applies Basic settings and visibility immediately.
 - Produces dry-run summaries for Pro zone moves.
@@ -13,7 +13,7 @@ Profiles are local JSON records for saving and applying menu bar layout preferen
 
 ## User Flow
 
-1. Open Settings -> Profiles.
+1. Open Settings -> Advanced -> Profiles.
 2. Create or import a profile.
 3. Edit visibility, behavior settings, Second Bar visibility, notes, and optional bundle target zones.
 4. Use Dry Run to see reveal actions, move previews, unavailable items, and requirements.
@@ -36,7 +36,7 @@ Profiles are stored locally under `Application Support/MenuBarDeclutter/profiles
 
 - `MenuBar-ManagerTests/ProfileStoreTests.swift`
 - `MenuBar-ManagerTests/ProfileApplicationDryRunTests.swift`
-- Manual QA: `docs/testing/manual-qa.md`
+- Manual QA: `docs/testing/manual-v0.1.3-system-qa.md`
 
 ## Known Limitations
 

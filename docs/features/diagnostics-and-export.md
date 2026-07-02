@@ -17,7 +17,7 @@ Diagnostics is the local supportability surface for runtime state, event logs, h
 
 ## User Flow
 
-1. Open Show Diagnostics from the status menu or Settings -> Diagnostics.
+1. Open Show Diagnostics from the status menu, or use Settings -> Recovery for health and export actions.
 2. Review Health first if the app looks unhealthy.
 3. Filter events by severity or category.
 4. Copy a selected event or export filtered diagnostics.
@@ -41,7 +41,7 @@ Diagnostics export is explicit user action only. Exports include app version, ma
 - `MenuBar-ManagerTests/DiagnosticsExportTests.swift`
 - `MenuBar-ManagerTests/LiveDiagnosticsStatusTests.swift`
 - `MenuBar-ManagerTests/HealthReportTests.swift`
-- Manual QA: `docs/testing/manual-qa.md`
+- Manual QA: `docs/testing/manual-v0.1.3-system-qa.md`
 - Privacy QA: `docs/testing/privacy-qa.md`
 
 ## Known Limitations

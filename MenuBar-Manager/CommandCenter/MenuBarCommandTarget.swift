@@ -10,6 +10,9 @@ nonisolated enum MenuBarCommandTarget: Equatable, Hashable, Sendable {
     case profileName(String)
     case secondBar
     case iconPanel
+    case workspace(UUID)
+    case functionBar
+    case infoStrip
     case fullMenuBarMode
     case layoutSuggestions
     case spacingPreset(String)
@@ -32,6 +35,12 @@ nonisolated enum MenuBarCommandTarget: Equatable, Hashable, Sendable {
             "secondBar"
         case .iconPanel:
             "iconPanel"
+        case .workspace:
+            "workspace"
+        case .functionBar:
+            "functionBar"
+        case .infoStrip:
+            "infoStrip"
         case .fullMenuBarMode:
             "fullMenuBarMode"
         case .layoutSuggestions:

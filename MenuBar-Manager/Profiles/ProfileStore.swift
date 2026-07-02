@@ -152,6 +152,27 @@ final class ProfileStore {
         profiles.sort { $0.updatedAt > $1.updatedAt }
     }
 
+    func replaceAll(_ replacementProfiles: [ProfileModel]) {
+        do {
+            try appSupportPaths.ensureDirectoriesExist()
+            let urls = try fileManager.contentsOfDirectory(
+                at: appSupportPaths.profilesDirectory,
+                includingPropertiesForKeys: nil
+            )
+            for url in profileURLs(from: urls) {
+                try fileManager.removeItem(at: url)
+            }
+            profiles = replacementProfiles.sorted { $0.updatedAt > $1.updatedAt }
+            for profile in profiles {
+                let data = try encoder.encode(profile)
+                try data.write(to: url(for: profile.id), options: .atomic)
+            }
+            lastError = nil
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
     private func save(_ profile: ProfileModel) {
         do {
             try appSupportPaths.ensureDirectoriesExist()

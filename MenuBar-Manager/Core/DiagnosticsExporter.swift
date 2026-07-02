@@ -96,8 +96,16 @@ struct DiagnosticsExporter {
         let architecture: String
         let screens: [ScreenSnapshot]
         let settings: SettingsSnapshot
+        let workspacePreview: WorkspacePreviewDiagnosticsSnapshot?
         let events: [DiagnosticEvent]
         let dogfood: DogfoodDiagnosticsMetadata?
+    }
+
+    struct WorkspacePreviewDiagnosticsSnapshot: Codable, Equatable, Sendable {
+        var workspaces: WorkspaceDiagnosticsSnapshot
+        var functionBar: FunctionBarDiagnosticsSnapshot
+        var setBuilder: SetBuilderDiagnosticsSnapshot
+        var infoStrip: InfoStripDiagnosticsSnapshot
     }
 
     /// A minimal, human-readable settings snapshot. Never embeds file paths or
@@ -157,6 +165,7 @@ struct DiagnosticsExporter {
         let fullMenuBarModeSuspendsAutoRehide: Bool
         let fullMenuBarModeShowsSpacerMarkers: Bool
         let crowdedRevealAutoOpenSecondBar: Bool
+        let crowdedRevealAskBeforeSwitching: Bool
         let crowdedRevealThresholdRatio: Double
         let crowdedRevealRequireProEstimate: Bool
         let spacerItemsEnabled: Bool
@@ -189,6 +198,29 @@ struct DiagnosticsExporter {
         let appIntentsCanAccessLabs: Bool
         let dynamicHotkeysEnabled: Bool
         let maxDynamicHotkeys: Int
+        let workspacesPreviewEnabled: Bool
+        let functionBarPreviewEnabled: Bool
+        let functionBarPrimaryClickEnabled: Bool
+        let functionBarPlacementPreference: String
+        let functionBarShowSetSwitcher: Bool
+        let functionBarShowLabels: Bool
+        let functionBarDensity: String
+        let functionBarCloseOnOutsideClick: Bool
+        let functionBarKeyboardNavigationEnabled: Bool
+        let setBuilderPreviewEnabled: Bool
+        let setBuilderDragDropEnabled: Bool
+        let setBuilderShowAdvancedLibraryItems: Bool
+        let setBuilderDefaultGroupReferenceMode: String
+        let setBuilderShowFunctionBarPreview: Bool
+        let setBuilderAutosaveDrafts: Bool
+        let setBuilderWarnBeforeLinkedGroupEdits: Bool
+        let infoStripPreviewEnabled: Bool
+        let infoStripAutoShowEnabled: Bool
+        let infoStripHoverToFunctionBarEnabled: Bool
+        let infoStripCloseOnOutsideClick: Bool
+        let infoStripPauseWhenFunctionBarPinned: Bool
+        let infoStripKeyboardNavigationEnabled: Bool
+        let infoStripShowPreviewBadge: Bool
 
         func encode(to encoder: Encoder) throws {
             var container = encoder.container(keyedBy: DynamicCodingKey.self)
@@ -201,6 +233,7 @@ struct DiagnosticsExporter {
     func makeSnapshot(
         settingsStore: SettingsStore,
         logger: DiagnosticsLogger,
+        workspacePreview: WorkspacePreviewDiagnosticsSnapshot? = nil,
         events: [DiagnosticEvent]? = nil
     ) -> Snapshot {
         Snapshot(
@@ -213,6 +246,7 @@ struct DiagnosticsExporter {
             architecture: architectureProvider(),
             screens: screensProvider(),
             settings: makeSettingsSnapshot(settingsStore),
+            workspacePreview: workspacePreview,
             events: events ?? logger.events,
             dogfood: makeDogfoodMetadata(settingsStore)
         )
@@ -274,6 +308,7 @@ struct DiagnosticsExporter {
             fullMenuBarModeSuspendsAutoRehide: store.fullMenuBarModeSuspendsAutoRehide,
             fullMenuBarModeShowsSpacerMarkers: store.fullMenuBarModeShowsSpacerMarkers,
             crowdedRevealAutoOpenSecondBar: store.crowdedRevealAutoOpenSecondBar,
+            crowdedRevealAskBeforeSwitching: store.crowdedRevealAskBeforeSwitching,
             crowdedRevealThresholdRatio: store.crowdedRevealThresholdRatio,
             crowdedRevealRequireProEstimate: store.crowdedRevealRequireProEstimate,
             spacerItemsEnabled: store.spacerItemsEnabled,
@@ -305,7 +340,30 @@ struct DiagnosticsExporter {
             appIntentsCanApplyProfiles: store.appIntentsCanApplyProfiles,
             appIntentsCanAccessLabs: store.appIntentsCanAccessLabs,
             dynamicHotkeysEnabled: store.dynamicHotkeysEnabled,
-            maxDynamicHotkeys: store.maxDynamicHotkeys
+            maxDynamicHotkeys: store.maxDynamicHotkeys,
+            workspacesPreviewEnabled: store.workspacesPreviewEnabled,
+            functionBarPreviewEnabled: store.functionBarPreviewEnabled,
+            functionBarPrimaryClickEnabled: store.functionBarPrimaryClickEnabled,
+            functionBarPlacementPreference: store.functionBarPlacementPreference,
+            functionBarShowSetSwitcher: store.functionBarShowSetSwitcher,
+            functionBarShowLabels: store.functionBarShowLabels,
+            functionBarDensity: store.functionBarDensity,
+            functionBarCloseOnOutsideClick: store.functionBarCloseOnOutsideClick,
+            functionBarKeyboardNavigationEnabled: store.functionBarKeyboardNavigationEnabled,
+            setBuilderPreviewEnabled: store.setBuilderPreviewEnabled,
+            setBuilderDragDropEnabled: store.setBuilderDragDropEnabled,
+            setBuilderShowAdvancedLibraryItems: store.setBuilderShowAdvancedLibraryItems,
+            setBuilderDefaultGroupReferenceMode: store.setBuilderDefaultGroupReferenceMode,
+            setBuilderShowFunctionBarPreview: store.setBuilderShowFunctionBarPreview,
+            setBuilderAutosaveDrafts: store.setBuilderAutosaveDrafts,
+            setBuilderWarnBeforeLinkedGroupEdits: store.setBuilderWarnBeforeLinkedGroupEdits,
+            infoStripPreviewEnabled: store.infoStripPreviewEnabled,
+            infoStripAutoShowEnabled: store.infoStripAutoShowEnabled,
+            infoStripHoverToFunctionBarEnabled: store.infoStripHoverToFunctionBarEnabled,
+            infoStripCloseOnOutsideClick: store.infoStripCloseOnOutsideClick,
+            infoStripPauseWhenFunctionBarPinned: store.infoStripPauseWhenFunctionBarPinned,
+            infoStripKeyboardNavigationEnabled: store.infoStripKeyboardNavigationEnabled,
+            infoStripShowPreviewBadge: store.infoStripShowPreviewBadge
         )
     }
 
@@ -375,6 +433,27 @@ struct DiagnosticsExporter {
         lines.append("== Settings ==")
         lines.append(contentsOf: Self.settingsPlainTextLines(for: snapshot.settings))
         lines.append("")
+        if let workspacePreview = snapshot.workspacePreview {
+            lines.append("== Workspace Preview Diagnostics ==")
+            lines.append("Workspaces: \(workspacePreview.workspaces.workspaceCount)")
+            lines.append("Archived Workspaces: \(workspacePreview.workspaces.archivedWorkspaceCount)")
+            lines.append("Workspace Validation Issues: \(workspacePreview.workspaces.validationIssueCount)")
+            lines.append("Group References: \(workspacePreview.workspaces.groupReferenceCount)")
+            lines.append("Linked Group References: \(workspacePreview.workspaces.linkedGroupReferenceCount)")
+            lines.append("Detached Group References: \(workspacePreview.workspaces.detachedGroupReferenceCount)")
+            lines.append("Missing Group References: \(workspacePreview.workspaces.missingGroupReferenceCount)")
+            lines.append("Detached Source Missing References: \(workspacePreview.workspaces.detachedSourceGroupMissingCount)")
+            lines.append("Protected Group References: \(workspacePreview.workspaces.protectedGroupReferenceCount)")
+            lines.append("Unresolved Menu Bar Proxy References: \(workspacePreview.workspaces.unresolvedMenuBarItemReferenceCount)")
+            lines.append("Function Bar State: \(workspacePreview.functionBar.displayState)")
+            lines.append("Function Bar Items: \(workspacePreview.functionBar.visibleItemCount)")
+            lines.append("Set Builder Items: \(workspacePreview.setBuilder.totalWorkspaceItemCount)")
+            lines.append("Set Builder Missing Groups: \(workspacePreview.setBuilder.missingGroupReferenceCount)")
+            lines.append("Set Builder Unresolved Proxies: \(workspacePreview.setBuilder.unresolvedMenuBarProxyReferenceCount)")
+            lines.append("Info Strip State: \(workspacePreview.infoStrip.displayState)")
+            lines.append("Info Strip Providers: \(workspacePreview.infoStrip.availableTileProviderCount) available")
+            lines.append("")
+        }
         if includeAppSupportPath, let path = appSupportPath {
             lines.append("== App Support ==")
             lines.append("Diagnostics Directory: \(path.path)")
@@ -385,9 +464,10 @@ struct DiagnosticsExporter {
             lines.append("(none)")
         } else {
             for event in snapshot.events {
-                let metadata = event.metadata.isEmpty ? "" : " metadata=\(event.metadata)"
+                let metadata = Self.sanitizedLogMetadata(event.metadata)
+                let metadataText = metadata.isEmpty ? "" : " metadata=\(metadata)"
                 lines.append(
-                    "[\(event.level.rawValue.uppercased())] [\(event.category.displayName)] \(formatter.string(from: event.timestamp)) - \(event.message)\(metadata)"
+                    "[\(event.level.rawValue.uppercased())] [\(event.category.displayName)] \(formatter.string(from: event.timestamp)) - \(Self.sanitizedLogMessage(event.message))\(metadataText)"
                 )
             }
         }
@@ -419,12 +499,80 @@ struct DiagnosticsExporter {
         }
     }
 
+    private static func sanitizedLogMessage(_ message: String) -> String {
+        var output = message
+        output = replacingMatches(
+            in: output,
+            pattern: "Smart trigger fired: .+? -> .+?\\.",
+            with: "Smart trigger fired: [redacted-trigger] -> [redacted-profile]."
+        )
+        output = replacingMatches(
+            in: output,
+            pattern: "Applied profile [^:]+:",
+            with: "Applied profile [redacted-profile]:"
+        )
+        output = replacingMatches(
+            in: output,
+            pattern: "Trigger .+? skipped",
+            with: "Trigger [redacted-trigger] skipped"
+        )
+        output = replacingMatches(
+            in: output,
+            pattern: "\\b([a-z][a-z0-9+.-]*://[^\\s?]+)\\?[^\\s]+",
+            options: [.caseInsensitive],
+            with: "$1?[redacted-query]"
+        )
+        output = replacingMatches(
+            in: output,
+            pattern: "file://[^\\s]+",
+            options: [.caseInsensitive],
+            with: "[redacted-file-url]"
+        )
+        output = replacingMatches(
+            in: output,
+            pattern: "/Users/[^\\s,;:)\\]]+",
+            with: "[redacted-path]"
+        )
+        output = replacingMatches(
+            in: output,
+            pattern: "~/[^\\s,;:)\\]]+",
+            with: "[redacted-path]"
+        )
+        output = replacingMatches(
+            in: output,
+            pattern: "\\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}\\b",
+            options: [.caseInsensitive],
+            with: "[redacted-email]"
+        )
+        return output
+    }
+
+    private static func sanitizedLogMetadata(_ metadata: [String: String]) -> [String: String] {
+        metadata.reduce(into: [:]) { result, pair in
+            result[pair.key] = sanitizedLogMessage(pair.value)
+        }
+    }
+
+    private static func replacingMatches(
+        in text: String,
+        pattern: String,
+        options: NSRegularExpression.Options = [],
+        with template: String
+    ) -> String {
+        guard let expression = try? NSRegularExpression(pattern: pattern, options: options) else {
+            return text
+        }
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        return expression.stringByReplacingMatches(in: text, options: [], range: range, withTemplate: template)
+    }
+
     private struct ExportDocument: Encodable {
         let generatedAt: String
         let application: Application
         let system: System
         let screens: [ScreenSnapshot]
         let settings: SettingsSnapshot
+        let workspacePreview: WorkspacePreviewDiagnosticsSnapshot?
         let logs: [Log]
         let excludedByDesign: [String]
         let appSupport: AppSupport?
@@ -436,6 +584,7 @@ struct DiagnosticsExporter {
             self.system = System(snapshot: snapshot)
             self.screens = snapshot.screens
             self.settings = snapshot.settings
+            self.workspacePreview = snapshot.workspacePreview
             self.logs = snapshot.events.map(Log.init(event:))
             self.excludedByDesign = DiagnosticsExporter.excludedByDesign
             self.appSupport = includeAppSupportPath
@@ -450,6 +599,7 @@ struct DiagnosticsExporter {
             case system
             case screens
             case settings
+            case workspacePreview
             case logs
             case excludedByDesign
             case appSupport
@@ -463,6 +613,7 @@ struct DiagnosticsExporter {
             try container.encode(system, forKey: .system)
             try container.encode(screens, forKey: .screens)
             try container.encode(settings, forKey: .settings)
+            try container.encodeIfPresent(workspacePreview, forKey: .workspacePreview)
             try container.encode(logs, forKey: .logs)
             try container.encode(excludedByDesign, forKey: .excludedByDesign)
             try container.encodeIfPresent(appSupport, forKey: .appSupport)
@@ -510,8 +661,8 @@ struct DiagnosticsExporter {
                 self.level = event.level.rawValue
                 self.severity = event.level.rawValue
                 self.timestamp = DiagnosticsExporter.iso(event.timestamp)
-                self.message = event.message
-                self.metadata = event.metadata
+                self.message = DiagnosticsExporter.sanitizedLogMessage(event.message)
+                self.metadata = DiagnosticsExporter.sanitizedLogMetadata(event.metadata)
             }
         }
 
@@ -682,6 +833,9 @@ struct DiagnosticsExporter {
         SettingsField(key: "crowdedRevealAutoOpenSecondBar", label: "Crowded Reveal Opens Second Bar") {
             .bool($0.crowdedRevealAutoOpenSecondBar)
         },
+        SettingsField(key: "crowdedRevealAskBeforeSwitching", label: "Crowded Reveal Asks Before Switching") {
+            .bool($0.crowdedRevealAskBeforeSwitching)
+        },
         SettingsField(key: "crowdedRevealThresholdRatio", label: "Crowded Reveal Threshold Ratio") {
             .double($0.crowdedRevealThresholdRatio)
         },
@@ -753,7 +907,74 @@ struct DiagnosticsExporter {
             .bool($0.appIntentsCanAccessLabs)
         },
         SettingsField(key: "dynamicHotkeysEnabled", label: "Dynamic Hotkeys Enabled") { .bool($0.dynamicHotkeysEnabled) },
-        SettingsField(key: "maxDynamicHotkeys", label: "Max Dynamic Hotkeys") { .int($0.maxDynamicHotkeys) }
+        SettingsField(key: "maxDynamicHotkeys", label: "Max Dynamic Hotkeys") { .int($0.maxDynamicHotkeys) },
+        SettingsField(key: "workspacesPreviewEnabled", label: "Workspaces Preview Enabled") {
+            .bool($0.workspacesPreviewEnabled)
+        },
+        SettingsField(key: "functionBarPreviewEnabled", label: "Function Bar Preview Enabled") {
+            .bool($0.functionBarPreviewEnabled)
+        },
+        SettingsField(key: "functionBarPrimaryClickEnabled", label: "Function Bar Primary Click Enabled") {
+            .bool($0.functionBarPrimaryClickEnabled)
+        },
+        SettingsField(key: "functionBarPlacementPreference", label: "Function Bar Placement Preference") {
+            .string($0.functionBarPlacementPreference)
+        },
+        SettingsField(key: "functionBarShowSetSwitcher", label: "Function Bar Shows Set Switcher") {
+            .bool($0.functionBarShowSetSwitcher)
+        },
+        SettingsField(key: "functionBarShowLabels", label: "Function Bar Shows Labels") {
+            .bool($0.functionBarShowLabels)
+        },
+        SettingsField(key: "functionBarDensity", label: "Function Bar Density") { .string($0.functionBarDensity) },
+        SettingsField(key: "functionBarCloseOnOutsideClick", label: "Function Bar Close Outside") {
+            .bool($0.functionBarCloseOnOutsideClick)
+        },
+        SettingsField(key: "functionBarKeyboardNavigationEnabled", label: "Function Bar Keyboard Navigation") {
+            .bool($0.functionBarKeyboardNavigationEnabled)
+        },
+        SettingsField(key: "setBuilderPreviewEnabled", label: "Set Builder Preview Enabled") {
+            .bool($0.setBuilderPreviewEnabled)
+        },
+        SettingsField(key: "setBuilderDragDropEnabled", label: "Set Builder Drag and Drop Enabled") {
+            .bool($0.setBuilderDragDropEnabled)
+        },
+        SettingsField(key: "setBuilderShowAdvancedLibraryItems", label: "Set Builder Advanced Library Items") {
+            .bool($0.setBuilderShowAdvancedLibraryItems)
+        },
+        SettingsField(key: "setBuilderDefaultGroupReferenceMode", label: "Set Builder Default Group Reference") {
+            .string($0.setBuilderDefaultGroupReferenceMode)
+        },
+        SettingsField(key: "setBuilderShowFunctionBarPreview", label: "Set Builder Shows Function Bar Preview") {
+            .bool($0.setBuilderShowFunctionBarPreview)
+        },
+        SettingsField(key: "setBuilderAutosaveDrafts", label: "Set Builder Autosaves Drafts") {
+            .bool($0.setBuilderAutosaveDrafts)
+        },
+        SettingsField(key: "setBuilderWarnBeforeLinkedGroupEdits", label: "Set Builder Warns Before Linked Group Edits") {
+            .bool($0.setBuilderWarnBeforeLinkedGroupEdits)
+        },
+        SettingsField(key: "infoStripPreviewEnabled", label: "Info Strip Preview Enabled") {
+            .bool($0.infoStripPreviewEnabled)
+        },
+        SettingsField(key: "infoStripAutoShowEnabled", label: "Info Strip Auto-show Enabled") {
+            .bool($0.infoStripAutoShowEnabled)
+        },
+        SettingsField(key: "infoStripHoverToFunctionBarEnabled", label: "Info Strip Hover to Function Bar") {
+            .bool($0.infoStripHoverToFunctionBarEnabled)
+        },
+        SettingsField(key: "infoStripCloseOnOutsideClick", label: "Info Strip Close Outside") {
+            .bool($0.infoStripCloseOnOutsideClick)
+        },
+        SettingsField(key: "infoStripPauseWhenFunctionBarPinned", label: "Info Strip Pauses When Function Bar Pinned") {
+            .bool($0.infoStripPauseWhenFunctionBarPinned)
+        },
+        SettingsField(key: "infoStripKeyboardNavigationEnabled", label: "Info Strip Keyboard Navigation") {
+            .bool($0.infoStripKeyboardNavigationEnabled)
+        },
+        SettingsField(key: "infoStripShowPreviewBadge", label: "Info Strip Shows Preview Badge") {
+            .bool($0.infoStripShowPreviewBadge)
+        }
     ]
 
     private static let excludedByDesign = [

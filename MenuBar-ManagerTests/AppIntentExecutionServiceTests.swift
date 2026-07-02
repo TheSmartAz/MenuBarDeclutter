@@ -10,6 +10,7 @@ struct AppIntentExecutionServiceTests {
         automationPaused: Bool = false,
         proModeEnabled: Bool = false,
         accessibilityDiscoveryEnabled: Bool = false,
+        searchEnabled: Bool = false,
         appIntentsCanApplyProfiles: Bool = false,
         appIntentsCanAccessLabs: Bool = false,
         menuBarSpacingLabsEnabled: Bool = false
@@ -22,37 +23,29 @@ struct AppIntentExecutionServiceTests {
         store.automationPaused = automationPaused
         store.proModeEnabled = proModeEnabled
         store.accessibilityDiscoveryEnabled = accessibilityDiscoveryEnabled
+        store.searchEnabled = searchEnabled
         store.appIntentsCanApplyProfiles = appIntentsCanApplyProfiles
         store.appIntentsCanAccessLabs = appIntentsCanAccessLabs
         store.menuBarSpacingLabsEnabled = menuBarSpacingLabsEnabled
 
         let logger = DiagnosticsLogger()
-        var expandCalled = false
-        var collapseCalled = false
-        var revealAllCalled = false
-        var showSecondBarCalled = false
-        var hideSecondBarCalled = false
-        var enterFullCalled = false
-        var exitFullCalled = false
-        var pauseCalled = false
-        var resumeCalled = false
-
         let service = AppIntentExecutionService(
             settingsStore: store,
             diagnosticsLogger: logger,
             safeModeActive: { safeMode },
-            expand: { expandCalled = true },
-            collapse: { collapseCalled = true },
-            revealAll: { revealAllCalled = true },
-            showSecondBar: { showSecondBarCalled = true },
-            hideSecondBar: { hideSecondBarCalled = true },
-            enterFullMenuBarMode: { enterFullCalled = true },
-            exitFullMenuBarMode: { exitFullCalled = true },
+            expand: {},
+            collapse: {},
+            revealAll: {},
+            showFindIcon: {},
+            showSecondBar: {},
+            hideSecondBar: {},
+            enterFullMenuBarMode: {},
+            exitFullMenuBarMode: {},
             applyProfileNamed: { _ in true },
             showGroupPanel: { _ in true },
             revealGroup: { _ in true },
-            pauseAutomation: { pauseCalled = true },
-            resumeAutomation: { resumeCalled = true }
+            pauseAutomation: {},
+            resumeAutomation: {}
         )
 
         return (service, store)
@@ -109,6 +102,25 @@ struct AppIntentExecutionServiceTests {
         #expect(result == .success)
     }
 
+    @Test func showFindIconUsesProDiscoveryAndFeatureGates() {
+        let (blockedService, _) = makeService()
+        #expect(blockedService.showFindIcon() == .requiresProMode)
+
+        let (featureBlockedService, _) = makeService(
+            proModeEnabled: true,
+            accessibilityDiscoveryEnabled: true,
+            searchEnabled: false
+        )
+        #expect(featureBlockedService.showFindIcon() == .blocked("Find Icon is disabled."))
+
+        let (readyService, _) = makeService(
+            proModeEnabled: true,
+            accessibilityDiscoveryEnabled: true,
+            searchEnabled: true
+        )
+        #expect(readyService.showFindIcon() == .success)
+    }
+
     @Test func spacingPresetRequiresLabs() {
         let (service, _) = makeService(appIntentsCanAccessLabs: true, menuBarSpacingLabsEnabled: false)
         let result = service.previewLayoutSpacingPreset("compact")
@@ -149,6 +161,8 @@ struct AppIntentExecutionServiceTests {
 
     @Test func shortcutActionStatusesReflectSettingsGates() throws {
         let basicAction = try #require(AutomationShortcutAction.allActions.first { $0.title == "Expand Menu Bar Items" })
+        let findAction = try #require(AutomationShortcutAction.allActions.first { $0.title == "Show Find Icon" })
+        let secondBarAction = try #require(AutomationShortcutAction.allActions.first { $0.title == "Show Second Bar" })
         let profileAction = try #require(AutomationShortcutAction.allActions.first { $0.title == "Apply Profile" })
         let labsAction = try #require(AutomationShortcutAction.allActions.first { $0.title == "Preview Layout Spacing Preset" })
 
@@ -164,6 +178,60 @@ struct AppIntentExecutionServiceTests {
             canAccessLabs: false,
             spacingLabsEnabled: false
         ) == .profileGated)
+        #expect(findAction.status(
+            appIntentsEnabled: true,
+            proModeEnabled: false,
+            accessibilityDiscoveryEnabled: true,
+            searchEnabled: true,
+            canApplyProfiles: false,
+            canAccessLabs: false,
+            spacingLabsEnabled: false
+        ) == .proGated)
+        #expect(findAction.status(
+            appIntentsEnabled: true,
+            proModeEnabled: true,
+            accessibilityDiscoveryEnabled: false,
+            searchEnabled: true,
+            canApplyProfiles: false,
+            canAccessLabs: false,
+            spacingLabsEnabled: false
+        ) == .discoveryGated)
+        #expect(findAction.status(
+            appIntentsEnabled: true,
+            proModeEnabled: true,
+            accessibilityDiscoveryEnabled: true,
+            searchEnabled: false,
+            canApplyProfiles: false,
+            canAccessLabs: false,
+            spacingLabsEnabled: false
+        ) == .featureGated)
+        #expect(findAction.status(
+            appIntentsEnabled: true,
+            proModeEnabled: true,
+            accessibilityDiscoveryEnabled: true,
+            searchEnabled: true,
+            canApplyProfiles: false,
+            canAccessLabs: false,
+            spacingLabsEnabled: false
+        ) == .ready)
+        #expect(secondBarAction.status(
+            appIntentsEnabled: true,
+            proModeEnabled: true,
+            accessibilityDiscoveryEnabled: false,
+            searchEnabled: true,
+            canApplyProfiles: false,
+            canAccessLabs: false,
+            spacingLabsEnabled: false
+        ) == .discoveryGated)
+        #expect(secondBarAction.status(
+            appIntentsEnabled: true,
+            proModeEnabled: true,
+            accessibilityDiscoveryEnabled: true,
+            searchEnabled: true,
+            canApplyProfiles: false,
+            canAccessLabs: false,
+            spacingLabsEnabled: false
+        ) == .ready)
         #expect(profileAction.status(
             appIntentsEnabled: true,
             canApplyProfiles: true,

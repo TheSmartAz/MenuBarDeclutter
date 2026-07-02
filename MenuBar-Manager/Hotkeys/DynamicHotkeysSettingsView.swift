@@ -179,7 +179,7 @@ struct DynamicHotkeysSettingsView: View {
             ClearGlassSection("Dynamic Hotkeys", subtitle: "Registration limits and the global enable switch.") {
                 FeatureGateNotice(
                     .preview,
-                    text: "Preview in v0.1.1. Conflicts fail closed and do not replace the stable Basic hotkey."
+                    text: "Preview in v0.1.3. Conflicts fail closed and do not replace the stable Basic hotkey."
                 )
 
                 ClearGlassDivider()
@@ -894,7 +894,9 @@ private struct DynamicHotkeyBindingRow: View {
 
             Toggle("Enabled", isOn: Binding(
                 get: { binding.isEnabled },
-                set: onEnabledChanged
+                set: { isEnabled in
+                    onEnabledChanged(isEnabled)
+                }
             ))
             .labelsHidden()
             .frame(width: 42)

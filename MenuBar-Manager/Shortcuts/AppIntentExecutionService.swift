@@ -33,6 +33,7 @@ final class AppIntentExecutionService {
         expand: @escaping () -> Void,
         collapse: @escaping () -> Void,
         revealAll: @escaping () -> Void,
+        showFindIcon: @escaping () -> Void = {},
         showSecondBar: @escaping () -> Void,
         hideSecondBar: @escaping () -> Void,
         enterFullMenuBarMode: @escaping () -> Void,
@@ -47,6 +48,7 @@ final class AppIntentExecutionService {
         handlers.expand = expand
         handlers.collapse = collapse
         handlers.revealAll = revealAll
+        handlers.showFindIcon = showFindIcon
         handlers.showSecondBar = showSecondBar
         handlers.hideSecondBar = hideSecondBar
         handlers.enterFullMenuBarMode = enterFullMenuBarMode
@@ -77,6 +79,10 @@ final class AppIntentExecutionService {
 
     func revealAllMenuBarItems() -> Result {
         route(.revealAll, target: .globalVisibility)
+    }
+
+    func showFindIcon() -> Result {
+        route(.showFindIcon, target: .none)
     }
 
     func showSecondBar() -> Result {

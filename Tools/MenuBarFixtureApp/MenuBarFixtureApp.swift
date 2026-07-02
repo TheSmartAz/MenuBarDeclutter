@@ -1,6 +1,19 @@
 import AppKit
 
 @main
+struct MenuBarFixtureAppMain {
+    @MainActor
+    static func main() {
+        let app = NSApplication.shared
+        let delegate = MenuBarFixtureAppDelegate()
+        app.delegate = delegate
+        withExtendedLifetime(delegate) {
+            app.run()
+        }
+    }
+}
+
+@MainActor
 final class MenuBarFixtureAppDelegate: NSObject, NSApplicationDelegate {
     private let controller = MenuBarFixtureController()
 

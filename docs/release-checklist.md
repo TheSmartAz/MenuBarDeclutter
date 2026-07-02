@@ -50,7 +50,7 @@ Phases covered by this checklist:
 
 ## Distribution
 
-- Revisit App Sandbox entitlements before distribution. Note: App Sandbox is currently enabled; SMAppService works sandboxed, so no change is required to ship Launch at Login.
+- Revisit App Sandbox entitlements before distribution. Current local-alpha builds are intentionally non-sandboxed for opt-in Pro Accessibility Discovery; keep hardened runtime, no-network entitlements, and sensitive usage-string absence verified.
 - Confirm hardened runtime for Release.
 - Confirm signing identity (Developer ID Application), notarization via `scripts/notarize_template.sh`, and `stapler validate`.
 - Re-zip the stapled `.app` (or produce a DMG placeholder) for distribution.

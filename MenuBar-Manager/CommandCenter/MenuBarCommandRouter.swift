@@ -17,6 +17,17 @@ struct MenuBarCommandHandlers {
     var showSecondBar: () -> Void = {}
     var hideSecondBar: () -> Void = {}
     var showIconPanel: () -> Void = {}
+    var showWorkspacePreview: () -> Void = {}
+    var switchWorkspace: (UUID) -> Bool = { _ in false }
+    var showFunctionBar: () -> Void = {}
+    var hideFunctionBar: () -> Void = {}
+    var toggleFunctionBar: () -> Void = {}
+    var showInfoStrip: () -> Void = {}
+    var hideInfoStrip: () -> Void = {}
+    var toggleInfoStrip: () -> Void = {}
+    var nextInfoStripTile: () -> Void = {}
+    var openInfoStripSettings: () -> Void = {}
+    var showFunctionBarFromInfoStrip: () -> Void = {}
     var showLayoutSuggestions: () -> Void = {}
     var enterFullMenuBarMode: () -> Void = {}
     var exitFullMenuBarMode: () -> Void = {}
@@ -247,6 +258,38 @@ final class MenuBarCommandRouter {
         case .showIconPanel:
             handlers.showIconPanel()
             return .success(command, message: "Icon Panel opened.")
+        case .showWorkspacePreview:
+            handlers.showWorkspacePreview()
+            return .success(command, message: "Workspace Preview opened.")
+        case .switchWorkspace:
+            return executeWorkspace(command)
+        case .showFunctionBar:
+            handlers.showFunctionBar()
+            return .success(command, message: "Function Bar shown.")
+        case .hideFunctionBar:
+            handlers.hideFunctionBar()
+            return .success(command, message: "Function Bar hidden.")
+        case .toggleFunctionBar:
+            handlers.toggleFunctionBar()
+            return .success(command, message: "Function Bar toggled.")
+        case .showInfoStrip:
+            handlers.showInfoStrip()
+            return .success(command, message: "Info Strip shown.")
+        case .hideInfoStrip:
+            handlers.hideInfoStrip()
+            return .success(command, message: "Info Strip hidden.")
+        case .toggleInfoStrip:
+            handlers.toggleInfoStrip()
+            return .success(command, message: "Info Strip toggled.")
+        case .nextInfoStripTile:
+            handlers.nextInfoStripTile()
+            return .success(command, message: "Info Strip advanced to the next tile.")
+        case .openInfoStripSettings:
+            handlers.openInfoStripSettings()
+            return .success(command, message: "Info Strip settings opened.")
+        case .showFunctionBarFromInfoStrip:
+            handlers.showFunctionBarFromInfoStrip()
+            return .success(command, message: "Function Bar shown from Info Strip.")
         case .showLayoutSuggestions:
             handlers.showLayoutSuggestions()
             return .success(command, message: "Layout suggestions opened.")
@@ -274,6 +317,33 @@ final class MenuBarCommandRouter {
                 status: .dryRunOnly,
                 message: "Spacing preset apply is deferred; preview only.",
                 diagnosticReason: "spacingApplyDeferred"
+            )
+        case .dryRunMoveItem:
+            return .success(
+                command,
+                message: "Assisted Move dry-run generated without moving the item.",
+                diagnosticReason: "dryRun"
+            )
+        case .tryAssistedMoveItem:
+            return .stopped(
+                command,
+                status: .dryRunOnly,
+                message: "Assisted Move execution is experimental and handled by the Arrange flow.",
+                diagnosticReason: "assistedMoveExecutorPending"
+            )
+        case .cancelAssistedMove:
+            return .stopped(
+                command,
+                status: .noOp,
+                message: "Assisted Move cancelled.",
+                diagnosticReason: "cancelled"
+            )
+        case .showAssistedMoveGuide:
+            return .stopped(
+                command,
+                status: .noOp,
+                message: "Open Arrange for the Assisted Move guide.",
+                diagnosticReason: "guide"
             )
         case .revealItem:
             return executeItem(command, message: "Menu bar item revealed.") { id in
@@ -395,6 +465,19 @@ final class MenuBarCommandRouter {
         )
     }
 
+    private func executeWorkspace(_ command: MenuBarCommand) -> MenuBarCommandResult {
+        guard case .workspace(let id) = command.target,
+              handlers.switchWorkspace(id) else {
+            return .stopped(
+                command,
+                status: .unavailable,
+                message: "Workspace target is unavailable.",
+                diagnosticReason: "workspaceUnavailable"
+            )
+        }
+        return .success(command, message: "Workspace switched.")
+    }
+
     private func isFeatureEnabled(_ feature: MenuBarCommandFeature, for command: MenuBarCommand) -> Bool {
         switch feature {
         case .findIcon:
@@ -417,6 +500,20 @@ final class MenuBarCommandRouter {
             return settingsStore.layoutFeaturesEnabled && settingsStore.layoutSuggestionsEnabled
         case .spacingLabs:
             return settingsStore.menuBarSpacingLabsEnabled
+        case .assistedMove:
+            return settingsStore.iconMovingEnabled
+        case .workspaces:
+            return settingsStore.workspacesPreviewEnabled || command.action == .showWorkspacePreview
+        case .functionBar:
+            if command.action == .hideFunctionBar {
+                return true
+            }
+            return settingsStore.workspacesPreviewEnabled && settingsStore.functionBarPreviewEnabled
+        case .infoStrip:
+            if command.action == .hideInfoStrip {
+                return true
+            }
+            return settingsStore.workspacesPreviewEnabled && settingsStore.infoStripPreviewEnabled
         }
     }
 
@@ -442,6 +539,14 @@ final class MenuBarCommandRouter {
             "Layout suggestions are disabled."
         case .spacingLabs:
             "Menu Bar Spacing Labs is disabled."
+        case .assistedMove:
+            "Experimental Icon Moving is disabled."
+        case .workspaces:
+            "Workspace Preview is disabled."
+        case .functionBar:
+            "Function Bar Preview is disabled."
+        case .infoStrip:
+            "Info Strip Preview is disabled."
         }
     }
 
@@ -451,6 +556,15 @@ final class MenuBarCommandRouter {
             if case .profileName = command.target { return true }
             if case .profileID = command.target { return true }
             return false
+        case .switchWorkspace:
+            if case .workspace = command.target { return true }
+            return false
+        case .showFunctionBar, .hideFunctionBar, .toggleFunctionBar:
+            return command.target == .functionBar || command.target == .none
+        case .showInfoStrip, .hideInfoStrip, .toggleInfoStrip,
+             .nextInfoStripTile, .openInfoStripSettings,
+             .showFunctionBarFromInfoStrip:
+            return command.target == .infoStrip || command.target == .none
         case .spacingPresetDryRun, .spacingPresetApply:
             if case .spacingPreset = command.target { return true }
             return false
@@ -463,7 +577,8 @@ final class MenuBarCommandRouter {
         case .createGroupFromItem:
             if case .menuBarItem = command.target { return true }
             return false
-        case .revealItem, .highlightItem, .openOwningApp, .showItemInSecondBar, .experimentalActivateItem:
+        case .revealItem, .highlightItem, .openOwningApp, .showItemInSecondBar,
+             .dryRunMoveItem, .tryAssistedMoveItem, .experimentalActivateItem:
             if case .menuBarItem = command.target { return true }
             return false
         default:

@@ -55,6 +55,58 @@ struct SecondBarPositioningServiceTests {
         #expect(placement.frame.width == 400)
     }
 
+    @Test func lastPositionModeUsesDisplayContainingLastPosition() {
+        let service = SecondBarPositioningService()
+        let main = makeScreen(
+            id: "main",
+            frame: CGRect(x: 0, y: 0, width: 800, height: 600),
+            visibleFrame: CGRect(x: 0, y: 0, width: 800, height: 575),
+            isMain: true
+        )
+        let external = makeScreen(
+            id: "external",
+            frame: CGRect(x: 800, y: 0, width: 1200, height: 900),
+            visibleFrame: CGRect(x: 800, y: 0, width: 1200, height: 875)
+        )
+
+        let placement = service.placement(
+            panelSize: CGSize(width: 420, height: 160),
+            mode: .lastPosition,
+            mouseLocation: CGPoint(x: 200, y: 500),
+            lastPosition: CGPoint(x: 1100, y: 700),
+            screens: [main, external]
+        )
+
+        #expect(placement.screenID == "external")
+        #expect(external.visibleFrame.contains(placement.frame.origin))
+    }
+
+    @Test func invalidLastPositionFallsBackToMouseDisplay() {
+        let service = SecondBarPositioningService()
+        let main = makeScreen(
+            id: "main",
+            frame: CGRect(x: 0, y: 0, width: 800, height: 600),
+            visibleFrame: CGRect(x: 0, y: 0, width: 800, height: 575),
+            isMain: true
+        )
+        let external = makeScreen(
+            id: "external",
+            frame: CGRect(x: 800, y: 0, width: 1200, height: 900),
+            visibleFrame: CGRect(x: 800, y: 0, width: 1200, height: 875)
+        )
+
+        let placement = service.placement(
+            panelSize: CGSize(width: 420, height: 160),
+            mode: .lastPosition,
+            mouseLocation: CGPoint(x: 1200, y: 500),
+            lastPosition: CGPoint(x: -4000, y: -4000),
+            screens: [main, external]
+        )
+
+        #expect(placement.screenID == "external")
+        #expect(external.visibleFrame.contains(placement.frame.origin))
+    }
+
     @Test func notchAvoidanceMovesPanelOutOfModeledNotch() {
         let service = SecondBarPositioningService()
         let notch = CGRect(x: 600, y: 780, width: 240, height: 120)
@@ -105,15 +157,17 @@ struct SecondBarPositioningServiceTests {
     }
 
     private func makeScreen(
+        id: String = "test",
         frame: CGRect = CGRect(x: 0, y: 0, width: 800, height: 600),
         visibleFrame: CGRect = CGRect(x: 0, y: 0, width: 800, height: 575),
+        isMain: Bool = true,
         notchAvoidanceRect: CGRect? = nil
     ) -> SecondBarScreenSnapshot {
         SecondBarScreenSnapshot(
-            id: "test",
+            id: id,
             frame: frame,
             visibleFrame: visibleFrame,
-            isMain: true,
+            isMain: isMain,
             notchAvoidanceRect: notchAvoidanceRect
         )
     }

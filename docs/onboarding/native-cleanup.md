@@ -1,11 +1,11 @@
 # Native Cleanup Onboarding
 
-`v0.1.1` teaches users that Apple's Menu Bar and Control Center settings are complementary to MenuBarDeclutter.
+`v0.1.3` teaches users that Apple's Menu Bar and Control Center settings are complementary to MenuBarDeclutter.
 
 Implemented onboarding copy:
 
-- Title: Start with Apple's Menu Bar settings
-- Body: Move rarely-used system controls into Control Center first. MenuBarDeclutter then helps with third-party and crowded menu bar workflows.
+- Title: Use Control Center first
+- Body: Move rarely used system controls into Control Center first. Then use MenuBarDeclutter for third-party icons, separators, and crowded menu bar workflows. It complements Apple's settings rather than replacing them.
 - Button: Open Menu Bar Settings
 
 Implementation behavior:

@@ -15,12 +15,13 @@ Find Icon is an optional Pro surface for locating menu bar items by app name, ti
 
 ## User Flow
 
-1. Enable Find Icon in Settings -> Search.
-2. Enable Pro Mode, Accessibility Discovery, and Accessibility permission if not already configured.
-3. Open Find Icon from the status menu or optional hotkey.
-4. Search by app name, item title, or bundle identifier.
-5. Press Return or click a result to reveal and highlight the item.
-6. Click the original menu bar item manually if an action is needed.
+1. Open Settings -> Find & Rescue.
+2. Use Open Find Icon, or open its detailed settings from the Find Icon card.
+3. Enable Pro Mode, Accessibility Discovery, and Accessibility permission if not already configured.
+4. Open Find Icon from the status menu or optional hotkey.
+5. Search by app name, item title, or bundle identifier.
+6. Press Return or click a result to reveal and highlight the item.
+7. Click the original menu bar item manually if an action is needed.
 
 ## Privacy And Permissions
 
@@ -41,7 +42,7 @@ Find Icon requires the Pro Accessibility discovery index. It does not click, dra
 - `MenuBar-ManagerTests/SearchServiceTests.swift`
 - `MenuBar-ManagerTests/HotkeyModelTests.swift`
 - UI tests for unavailable states
-- Manual QA: `docs/testing/manual-qa.md`
+- Manual QA: `docs/testing/manual-v0.1.3-system-qa.md`
 
 ## Known Limitations
 

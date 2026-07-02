@@ -12,6 +12,7 @@ import Foundation
 /// - `Application Support/MenuBarDeclutter/Dogfood/`
 /// - `Application Support/MenuBarDeclutter/Dogfood/runs/`
 /// - `Application Support/MenuBarDeclutter/Dogfood/exports/`
+/// - `Application Support/MenuBarDeclutter/workspaces/`
 ///
 /// No personal file paths, network data, or screen contents are written here.
 struct AppSupportPaths {
@@ -63,9 +64,42 @@ struct AppSupportPaths {
         dogfoodDirectory.appendingPathComponent("exports", isDirectory: true)
     }
 
+    /// Local user-facing support files generated when bundled docs are not
+    /// available from an installed dry-run app.
+    var supportDirectory: URL {
+        applicationSupportDirectory.appendingPathComponent("support", isDirectory: true)
+    }
+
+    /// Local-only Workspaces preview store and per-write backups.
+    var workspacesDirectory: URL {
+        applicationSupportDirectory.appendingPathComponent("workspaces", isDirectory: true)
+    }
+
+    var workspaceStoreFileURL: URL {
+        workspacesDirectory.appendingPathComponent("workspaces.json")
+    }
+
+    var workspaceBackupsDirectory: URL {
+        workspacesDirectory.appendingPathComponent("backups", isDirectory: true)
+    }
+
+    var localLostIconsGuideURL: URL {
+        supportDirectory.appendingPathComponent("i-cant-find-my-icons.md")
+    }
+
     /// Local-only hashed recents/favorites state for Find Icon and Second Bar.
     var menuBarItemMemoryFileURL: URL {
         applicationSupportDirectory.appendingPathComponent("menu-bar-item-memory.json")
+    }
+
+    /// Local-only hashed review state for newly discovered menu bar items.
+    var newMenuBarItemInboxFileURL: URL {
+        applicationSupportDirectory.appendingPathComponent("new-menu-bar-item-inbox.json")
+    }
+
+    /// Local-only hashed placement preferences used by Placement Planner.
+    var placementItemPreferencesFileURL: URL {
+        applicationSupportDirectory.appendingPathComponent("placement-item-preferences.json")
     }
 
     // MARK: Directory creation
@@ -82,7 +116,10 @@ struct AppSupportPaths {
             backupsDirectory,
             dogfoodDirectory,
             dogfoodRunsDirectory,
-            dogfoodExportsDirectory
+            dogfoodExportsDirectory,
+            supportDirectory,
+            workspacesDirectory,
+            workspaceBackupsDirectory
         ]
 
         var created: [URL] = []

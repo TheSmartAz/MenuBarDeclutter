@@ -71,12 +71,76 @@ struct CrowdedRevealDecisionEngineTests {
         #expect(decision == .inlineReveal)
     }
 
+    @Test func notchConstrainedBacklogUsesSecondBarBeforeCrowdedThreshold() {
+        let decision = engine.decide(input(
+            crowded: false,
+            source: .proAXSnapshot,
+            secondBarAvailable: true,
+            fullMenuBarModeAvailable: true,
+            notchConstrained: true,
+            hiddenCount: 3,
+            alwaysHiddenCount: 1
+        ))
+
+        #expect(decision == .secondBar)
+    }
+
+    @Test func proDiscoveryOffSkipsSecondBarAndUsesBasicFallback() {
+        let decision = engine.decide(input(
+            crowded: true,
+            source: .basicGeometryOnly,
+            proDiscoveryAvailable: false,
+            secondBarAvailable: true,
+            fullMenuBarModeAvailable: true
+        ))
+
+        #expect(decision == .fullMenuBarMode)
+    }
+
+    @Test func activeDisplayMismatchShowsSuggestionInsteadOfOpeningFallback() {
+        let decision = engine.decide(input(
+            crowded: true,
+            source: .proAXSnapshot,
+            secondBarAvailable: true,
+            fullMenuBarModeAvailable: true,
+            layoutSuggestionsAvailable: true,
+            activeDisplayID: "external"
+        ))
+
+        #expect(decision == .showLayoutSuggestion)
+    }
+
+    @Test func highActiveAppMenuPressureCanTriggerRescue() {
+        let decision = engine.decide(input(
+            crowded: false,
+            source: .proAXSnapshot,
+            secondBarAvailable: true,
+            fullMenuBarModeAvailable: true,
+            activeAppMenuPressure: .high
+        ))
+
+        #expect(decision == .secondBar)
+    }
+
     @Test func noFallbackShowsLayoutSuggestionWhenAvailable() {
         let decision = engine.decide(input(
             crowded: true,
             source: .proAXSnapshot,
             secondBarAvailable: false,
             fullMenuBarModeAvailable: false,
+            layoutSuggestionsAvailable: true
+        ))
+
+        #expect(decision == .showLayoutSuggestion)
+    }
+
+    @Test func askBeforeSwitchingShowsSuggestionInsteadOfOpeningFallback() {
+        let decision = engine.decide(input(
+            crowded: true,
+            source: .proAXSnapshot,
+            askBeforeSwitching: true,
+            secondBarAvailable: true,
+            fullMenuBarModeAvailable: true,
             layoutSuggestionsAvailable: true
         ))
 
@@ -101,29 +165,49 @@ struct CrowdedRevealDecisionEngineTests {
         source: LayoutCapacitySource = .proAXSnapshot,
         rescueEnabled: Bool = true,
         autoOpenSecondBar: Bool = true,
+        askBeforeSwitching: Bool = false,
         requireProEstimate: Bool = false,
+        proDiscoveryAvailable: Bool = true,
         secondBarAvailable: Bool = false,
         fullMenuBarModeAvailable: Bool = false,
         layoutSuggestionsAvailable: Bool = false,
-        safeModeActive: Bool = false
+        safeModeActive: Bool = false,
+        activeDisplayID: String? = "primary",
+        activeAppMenuPressure: CrowdedRevealMenuPressure = .unknown,
+        notchConstrained: Bool = false,
+        hiddenCount: Int = 4,
+        alwaysHiddenCount: Int = 2
     ) -> CrowdedRevealDecisionInput {
         CrowdedRevealDecisionInput(
             intent: intent,
             currentVisibility: currentVisibility,
-            estimate: estimate(crowded: crowded, source: source),
+            estimate: estimate(
+                crowded: crowded,
+                source: source,
+                notchConstrained: notchConstrained,
+                hiddenCount: hiddenCount,
+                alwaysHiddenCount: alwaysHiddenCount
+            ),
             rescueEnabled: rescueEnabled,
             autoOpenSecondBar: autoOpenSecondBar,
+            askBeforeSwitching: askBeforeSwitching,
             requireProEstimate: requireProEstimate,
+            proDiscoveryAvailable: proDiscoveryAvailable,
             secondBarAvailable: secondBarAvailable,
             fullMenuBarModeAvailable: fullMenuBarModeAvailable,
             layoutSuggestionsAvailable: layoutSuggestionsAvailable,
-            safeModeActive: safeModeActive
+            safeModeActive: safeModeActive,
+            activeDisplayID: activeDisplayID,
+            activeAppMenuPressure: activeAppMenuPressure
         )
     }
 
     private func estimate(
         crowded: Bool,
-        source: LayoutCapacitySource
+        source: LayoutCapacitySource,
+        notchConstrained: Bool,
+        hiddenCount: Int,
+        alwaysHiddenCount: Int
     ) -> LayoutCapacityEstimate {
         LayoutCapacityEstimate(
             screenID: "primary",
@@ -133,16 +217,27 @@ struct CrowdedRevealDecisionEngineTests {
             estimatedUsableRightSideWidth: 720,
             knownItemCount: 18,
             knownVisibleItemCount: 12,
-            knownHiddenItemCount: 4,
-            knownAlwaysHiddenItemCount: 2,
+            knownHiddenItemCount: hiddenCount,
+            knownAlwaysHiddenItemCount: alwaysHiddenCount,
             estimatedItemSlots: 20,
             estimatedUsedSlots: crowded ? 19 : 8,
             usedCapacityRatio: crowded ? 0.95 : 0.4,
             isLikelyCrowded: crowded,
-            isLikelyNotchConstrained: false,
+            isLikelyNotchConstrained: notchConstrained,
             source: source,
-            warnings: crowded ? [.extremelyCrowded] : [],
+            warnings: estimateWarnings(crowded: crowded, notchConstrained: notchConstrained),
             generatedAt: Date(timeIntervalSince1970: 1)
         )
+    }
+
+    private func estimateWarnings(crowded: Bool, notchConstrained: Bool) -> [LayoutCapacityWarning] {
+        var warnings: [LayoutCapacityWarning] = []
+        if crowded {
+            warnings.append(.extremelyCrowded)
+        }
+        if notchConstrained {
+            warnings.append(.notchConstrained)
+        }
+        return warnings
     }
 }

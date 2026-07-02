@@ -32,7 +32,7 @@ struct PrivateAccessSettingsView: View {
         ClearGlassSection("Lock", subtitle: "Authentication policy, unlock session, and test controls.") {
             FeatureGateNotice(
                 .preview,
-                text: "Preview in v0.1.1. Gates app actions only; not encryption or system icon hiding."
+                text: "Preview in v0.1.3. Gates app actions only; not encryption or system icon hiding."
             )
 
             ClearGlassDivider()
@@ -180,7 +180,7 @@ struct PrivateAccessSettingsView: View {
     @ViewBuilder
     private var commandCenterSection: some View {
         if !commandAvailabilities.isEmpty {
-            ClearGlassSection("Command Center", subtitle: "Shared routing status for protected app actions.") {
+            ClearGlassSection("Protected Action Status", subtitle: "Checks whether protected app actions can run from the current gates.") {
                 ForEach(Array(commandAvailabilities.enumerated()), id: \.offset) { index, summary in
                     CommandAvailabilityRow(summary: summary)
 

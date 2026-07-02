@@ -70,13 +70,26 @@ if [[ "$PURGE_USER_DATA" -eq 1 ]]; then
   SUPPORT="$HOME/Library/Application Support/MenuBarDeclutter"
   PREFS="$HOME/Library/Preferences/Yongjun-Zhang.MenuBarDeclutter.plist"
   CACHES="$HOME/Library/Caches/Yongjun-Zhang.MenuBarDeclutter"
+  CONTAINER="$HOME/Library/Containers/Yongjun-Zhang.MenuBarDeclutter"
+  CONTAINER_SUPPORT="$CONTAINER/Data/Library/Application Support/MenuBarDeclutter"
+  CONTAINER_PREFS="$CONTAINER/Data/Library/Preferences/Yongjun-Zhang.MenuBarDeclutter.plist"
+  CONTAINER_CACHES="$CONTAINER/Data/Library/Caches/Yongjun-Zhang.MenuBarDeclutter"
+  DATA_PATHS=(
+    "$SUPPORT"
+    "$PREFS"
+    "$CACHES"
+    "$CONTAINER_SUPPORT"
+    "$CONTAINER_PREFS"
+    "$CONTAINER_CACHES"
+    "$CONTAINER"
+  )
   echo "User data paths selected for purge:"
-  echo "- $SUPPORT"
-  echo "- $PREFS"
-  echo "- $CACHES"
+  for path in "${DATA_PATHS[@]}"; do
+    echo "- $path"
+  done
   if confirm "Remove these MenuBarDeclutter user data paths?"; then
-    echo "+ rm -rf \"$SUPPORT\" \"$PREFS\" \"$CACHES\""
-    rm -rf "$SUPPORT" "$PREFS" "$CACHES"
+    echo "+ rm -rf selected MenuBarDeclutter data paths"
+    rm -rf "${DATA_PATHS[@]}"
   else
     echo "Skipped user data purge."
   fi

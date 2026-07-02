@@ -20,12 +20,25 @@ echo "Log: $LOG_FILE"
 echo
 
 echo "+ xcodebuild archive -scheme \"$SCHEME\" -configuration \"$CONFIGURATION\" -destination \"generic/platform=macOS\" -archivePath \"$ARCHIVE_PATH\""
+set +e
 xcodebuild archive \
   -scheme "$SCHEME" \
   -configuration "$CONFIGURATION" \
   -destination "generic/platform=macOS" \
-  -archivePath "$ARCHIVE_PATH" \
-  2>&1 | tee "$LOG_FILE"
+  -archivePath "$ARCHIVE_PATH" > "$LOG_FILE" 2>&1
+archive_rc="$?"
+set -e
+
+if [[ "$archive_rc" -ne 0 ]]; then
+  echo "FAIL: archive command failed. Showing the last 120 log lines from $LOG_FILE" >&2
+  tail -120 "$LOG_FILE" >&2
+  exit "$archive_rc"
+fi
+
+if rg -q "warning:" "$LOG_FILE"; then
+  echo "WARN: archive completed with warnings. First warning lines from $LOG_FILE:"
+  rg -n "warning:" "$LOG_FILE" | head -20
+fi
 
 if [[ ! -d "$ARCHIVE_PATH" ]]; then
   echo "FAIL: archive was not created at $ARCHIVE_PATH" >&2

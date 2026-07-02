@@ -15,17 +15,27 @@ nonisolated enum CrowdedRevealDecision: Equatable, Sendable {
     case noOp
 }
 
+nonisolated enum CrowdedRevealMenuPressure: String, Equatable, Sendable {
+    case unknown
+    case normal
+    case high
+}
+
 nonisolated struct CrowdedRevealDecisionInput: Equatable, Sendable {
     let intent: CrowdedRevealIntent
     let currentVisibility: HidingVisibilityState
     let estimate: LayoutCapacityEstimate
     let rescueEnabled: Bool
     let autoOpenSecondBar: Bool
+    let askBeforeSwitching: Bool
     let requireProEstimate: Bool
+    let proDiscoveryAvailable: Bool
     let secondBarAvailable: Bool
     let fullMenuBarModeAvailable: Bool
     let layoutSuggestionsAvailable: Bool
     let safeModeActive: Bool
+    let activeDisplayID: String?
+    let activeAppMenuPressure: CrowdedRevealMenuPressure
 }
 
 /// Pure decision policy for crowded reveal fallback selection.
@@ -53,8 +63,12 @@ nonisolated struct CrowdedRevealDecisionEngine {
             return .inlineReveal
         }
 
-        guard input.estimate.isLikelyCrowded else {
+        guard input.needsCrowdedRescue else {
             return .inlineReveal
+        }
+
+        if input.estimateIsForDifferentDisplay {
+            return input.layoutSuggestionsAvailable ? .showLayoutSuggestion : .inlineReveal
         }
 
         if input.requireProEstimate, input.estimate.source == .basicGeometryOnly {
@@ -67,7 +81,11 @@ nonisolated struct CrowdedRevealDecisionEngine {
             return .inlineReveal
         }
 
-        if input.autoOpenSecondBar, input.secondBarAvailable {
+        if input.askBeforeSwitching {
+            return input.layoutSuggestionsAvailable ? .showLayoutSuggestion : .inlineReveal
+        }
+
+        if input.autoOpenSecondBar, input.proDiscoveryAvailable, input.secondBarAvailable {
             return .secondBar
         }
 
@@ -80,6 +98,29 @@ nonisolated struct CrowdedRevealDecisionEngine {
         }
 
         return .inlineReveal
+    }
+}
+
+private extension CrowdedRevealDecisionInput {
+    nonisolated var estimateIsForDifferentDisplay: Bool {
+        guard let activeDisplayID else { return false }
+        return activeDisplayID != estimate.screenID
+    }
+
+    nonisolated var needsCrowdedRescue: Bool {
+        if estimate.isLikelyCrowded {
+            return true
+        }
+
+        if activeAppMenuPressure == .high {
+            return true
+        }
+
+        return estimate.isLikelyNotchConstrained && knownRevealBacklogCount > 0
+    }
+
+    nonisolated var knownRevealBacklogCount: Int {
+        max(0, estimate.knownHiddenItemCount) + max(0, estimate.knownAlwaysHiddenItemCount)
     }
 }
 

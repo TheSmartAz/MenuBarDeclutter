@@ -17,6 +17,7 @@ nonisolated struct LayoutSettings: Equatable, Sendable {
     var fullMenuBarModeShowsSpacerMarkers: Bool
 
     var crowdedRevealAutoOpenSecondBar: Bool
+    var crowdedRevealAskBeforeSwitching: Bool
     var crowdedRevealThresholdRatio: Double
     var crowdedRevealRequireProEstimate: Bool
 
@@ -45,6 +46,7 @@ nonisolated struct LayoutSettings: Equatable, Sendable {
         self.fullMenuBarModeSuspendsAutoRehide = store.fullMenuBarModeSuspendsAutoRehide
         self.fullMenuBarModeShowsSpacerMarkers = store.fullMenuBarModeShowsSpacerMarkers
         self.crowdedRevealAutoOpenSecondBar = store.crowdedRevealAutoOpenSecondBar
+        self.crowdedRevealAskBeforeSwitching = store.crowdedRevealAskBeforeSwitching
         self.crowdedRevealThresholdRatio = store.crowdedRevealThresholdRatio
         self.crowdedRevealRequireProEstimate = store.crowdedRevealRequireProEstimate
         self.spacerItemsEnabled = store.spacerItemsEnabled

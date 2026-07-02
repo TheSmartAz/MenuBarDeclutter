@@ -26,6 +26,7 @@ final class SettingsExportService {
         groups: [IconGroup] = [],
         hotkeyBindings: [HotkeyBinding] = [],
         spacerItems: [SpacerItemModel] = [],
+        workspaceSnapshot: WorkspaceStoreSnapshot? = nil,
         includeAXSnapshots: Bool = false
     ) -> SettingsExportPackage {
         let settings = exportSettingsDict()
@@ -44,17 +45,22 @@ final class SettingsExportService {
             allowDevicePasswordFallback: settingsStore.privateAccessAllowDevicePasswordFallback
         )
 
+        let safeWorkspaceSnapshot = Self.privacySafeWorkspaceSnapshot(workspaceSnapshot)
+
         return SettingsExportPackage(
+            appName: AppConstants.displayName,
             appVersion: appVersionProvider(),
             exportKind: .fullSettings,
             createdAt: now(),
             redactionMode: .privacySafe,
+            includedSections: SettingsExportSection.defaultIncludedSections,
             settings: settings,
             omittedSettings: Self.intentionallyOmittedSettings.map(\.rawValue).sorted(),
             profiles: profiles,
             groups: IconGroupImportExport.groupsForExport(groups),
             hotkeyBindings: hotkeyBindings,
             spacerItems: spacerItems,
+            workspaceSnapshot: safeWorkspaceSnapshot,
             privateAccessPolicy: privateAccessPolicy,
             includeAXSnapshots: includeAXSnapshots
         )
@@ -92,6 +98,32 @@ final class SettingsExportService {
         .menuBarSpacingLastApplyDate,
         .privateAccessLastAuthStatus
     ]
+
+    private static func privacySafeWorkspaceSnapshot(_ snapshot: WorkspaceStoreSnapshot?) -> WorkspaceStoreSnapshot? {
+        guard var snapshot else { return nil }
+        snapshot.workspaces = snapshot.workspaces.map(privacySafeWorkspace(_:))
+        return snapshot
+    }
+
+    private static func privacySafeWorkspace(_ workspace: MenuBarWorkspace) -> MenuBarWorkspace {
+        var safe = workspace
+        if safe.isProtected {
+            safe.name = "Protected Workspace"
+        }
+        safe.functionItems = safe.functionItems.map(privacySafeWorkspaceItem(_:))
+        return safe
+    }
+
+    private static func privacySafeWorkspaceItem(_ item: WorkspaceItem) -> WorkspaceItem {
+        var safe = item
+        safe.displayNameOverride = nil
+        if case .menuBarItem(var reference) = safe.kind {
+            reference.lastKnownDisplayName = nil
+            reference.lastKnownBundleIdentifier = nil
+            safe.kind = .menuBarItem(reference)
+        }
+        return safe
+    }
 
     private func exportedValue(for key: SettingsStore.Key) -> String? {
         if Self.intentionallyOmittedSettings.contains(key) {
@@ -217,6 +249,8 @@ final class SettingsExportService {
             return settingsStore.fullMenuBarModeShowsSpacerMarkers.description
         case .crowdedRevealAutoOpenSecondBar:
             return settingsStore.crowdedRevealAutoOpenSecondBar.description
+        case .crowdedRevealAskBeforeSwitching:
+            return settingsStore.crowdedRevealAskBeforeSwitching.description
         case .crowdedRevealThresholdRatio:
             return settingsStore.crowdedRevealThresholdRatio.description
         case .crowdedRevealRequireProEstimate:
@@ -277,6 +311,52 @@ final class SettingsExportService {
             return settingsStore.dynamicHotkeysEnabled.description
         case .maxDynamicHotkeys:
             return settingsStore.maxDynamicHotkeys.description
+        case .workspacesPreviewEnabled:
+            return settingsStore.workspacesPreviewEnabled.description
+        case .functionBarPreviewEnabled:
+            return settingsStore.functionBarPreviewEnabled.description
+        case .functionBarPrimaryClickEnabled:
+            return settingsStore.functionBarPrimaryClickEnabled.description
+        case .functionBarPlacementPreference:
+            return settingsStore.functionBarPlacementPreference
+        case .functionBarShowSetSwitcher:
+            return settingsStore.functionBarShowSetSwitcher.description
+        case .functionBarShowLabels:
+            return settingsStore.functionBarShowLabels.description
+        case .functionBarDensity:
+            return settingsStore.functionBarDensity
+        case .functionBarCloseOnOutsideClick:
+            return settingsStore.functionBarCloseOnOutsideClick.description
+        case .functionBarKeyboardNavigationEnabled:
+            return settingsStore.functionBarKeyboardNavigationEnabled.description
+        case .setBuilderPreviewEnabled:
+            return settingsStore.setBuilderPreviewEnabled.description
+        case .setBuilderDragDropEnabled:
+            return settingsStore.setBuilderDragDropEnabled.description
+        case .setBuilderShowAdvancedLibraryItems:
+            return settingsStore.setBuilderShowAdvancedLibraryItems.description
+        case .setBuilderDefaultGroupReferenceMode:
+            return settingsStore.setBuilderDefaultGroupReferenceMode
+        case .setBuilderShowFunctionBarPreview:
+            return settingsStore.setBuilderShowFunctionBarPreview.description
+        case .setBuilderAutosaveDrafts:
+            return settingsStore.setBuilderAutosaveDrafts.description
+        case .setBuilderWarnBeforeLinkedGroupEdits:
+            return settingsStore.setBuilderWarnBeforeLinkedGroupEdits.description
+        case .infoStripPreviewEnabled:
+            return settingsStore.infoStripPreviewEnabled.description
+        case .infoStripAutoShowEnabled:
+            return settingsStore.infoStripAutoShowEnabled.description
+        case .infoStripHoverToFunctionBarEnabled:
+            return settingsStore.infoStripHoverToFunctionBarEnabled.description
+        case .infoStripCloseOnOutsideClick:
+            return settingsStore.infoStripCloseOnOutsideClick.description
+        case .infoStripPauseWhenFunctionBarPinned:
+            return settingsStore.infoStripPauseWhenFunctionBarPinned.description
+        case .infoStripKeyboardNavigationEnabled:
+            return settingsStore.infoStripKeyboardNavigationEnabled.description
+        case .infoStripShowPreviewBadge:
+            return settingsStore.infoStripShowPreviewBadge.description
         }
     }
 }

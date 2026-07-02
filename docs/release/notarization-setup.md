@@ -19,7 +19,7 @@ Then run:
 
 ```sh
 NOTARYTOOL_KEYCHAIN_PROFILE=MenuBarDeclutterNotary \
-  scripts/release_notarize.sh build/Dist/MenuBarDeclutter-v0.1.1.zip
+  scripts/release_notarize.sh build/Dist/MenuBarDeclutter-v0.1.3.zip
 ```
 
 ## Environment Fallback
@@ -28,7 +28,7 @@ NOTARYTOOL_KEYCHAIN_PROFILE=MenuBarDeclutterNotary \
 NOTARYTOOL_APPLE_ID="you@example.com" \
 NOTARYTOOL_TEAM_ID="TEAMID1234" \
 NOTARYTOOL_PASSWORD="app-specific-password" \
-scripts/release_notarize.sh build/Dist/MenuBarDeclutter-v0.1.1.zip
+scripts/release_notarize.sh build/Dist/MenuBarDeclutter-v0.1.3.zip
 ```
 
 Do not commit credentials, passwords, exported certificates, or generated keychain profiles.
@@ -38,7 +38,7 @@ Do not commit credentials, passwords, exported certificates, or generated keycha
 When credentials are unavailable:
 
 ```sh
-scripts/release_notarize.sh --dry-run build/Dist/MenuBarDeclutter-v0.1.1-alpha.zip
+scripts/release_notarize.sh --dry-run build/Dist/MenuBarDeclutter-v0.1.3-alpha.zip
 ```
 
 Real notarization fails clearly when no supported credentials are present. Use `--dry-run` when credentials are unavailable.

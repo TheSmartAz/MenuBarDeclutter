@@ -11,12 +11,12 @@ struct SearchSettingsView: View {
         ClearGlassSettingsPage(
             "Search",
             subtitle: "Find Icon controls for locating menu bar items from the local discovery index.",
-            badges: [.stable, .proMode, .accessibilityRequired]
+            badges: [.preview, .proMode, .accessibilityRequired]
         ) {
             ClearGlassSection("Find Icon", subtitle: "Enable the floating search surface and selection behavior.") {
                 FeatureGateNotice(
-                    .stable,
-                    text: "Stable in v0.1.1 when Pro Mode, discovery, and Accessibility permission are enabled."
+                    .preview,
+                    text: "Preview in v0.1.3 when Pro Mode, discovery, and Accessibility permission are enabled."
                 )
 
                 ClearGlassDivider()
@@ -65,7 +65,7 @@ struct SearchSettingsView: View {
             }
 
             if let commandAvailability {
-                ClearGlassSection("Command Center", subtitle: "Shared routing status for opening Find Icon.") {
+                ClearGlassSection("Item Action Status", subtitle: "Checks whether Find Icon can open from the current gates.") {
                     CommandAvailabilityRow(summary: commandAvailability)
                 }
             }

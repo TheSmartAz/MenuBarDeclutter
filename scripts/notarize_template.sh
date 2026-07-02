@@ -8,7 +8,7 @@ set -euo pipefail
 
 # --- Required configuration (fill in before running) ---
 APP_BUNDLE_ID="${APP_BUNDLE_ID:-Yongjun-Zhang.MenuBarDeclutter}"
-APP_PATH="${APP_PATH:-build/MenuBarDeclutter.app}"
+APP_PATH="${APP_PATH:-build/Export/MenuBarDeclutter.app}"
 SIGNING_IDENTITY="${SIGNING_IDENTITY:-Developer ID Application: Your Name (TEAMID)}"
 NOTARY_API_KEY_PATH="${NOTARY_API_KEY_PATH:-private/AppStoreConnect_APIKey.p8}"
 NOTARY_KEY_ID="${NOTARY_KEY_ID:-XXXXXXXXXX}"

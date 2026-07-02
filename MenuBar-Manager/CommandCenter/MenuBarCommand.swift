@@ -26,6 +26,10 @@ nonisolated enum MenuBarCommandFeature: String, Equatable, Hashable, Sendable {
     case fullMenuBarMode
     case layoutSuggestions
     case spacingLabs
+    case assistedMove
+    case workspaces
+    case functionBar
+    case infoStrip
 }
 
 nonisolated enum MenuBarCommandAction: String, CaseIterable, Equatable, Hashable, Sendable {
@@ -60,7 +64,22 @@ nonisolated enum MenuBarCommandAction: String, CaseIterable, Equatable, Hashable
     case exitFullMenuBarMode
     case spacingPresetDryRun
     case spacingPresetApply
+    case dryRunMoveItem
+    case tryAssistedMoveItem
+    case cancelAssistedMove
+    case showAssistedMoveGuide
     case experimentalActivateItem
+    case showWorkspacePreview
+    case switchWorkspace
+    case showFunctionBar
+    case hideFunctionBar
+    case toggleFunctionBar
+    case showInfoStrip
+    case hideInfoStrip
+    case toggleInfoStrip
+    case nextInfoStripTile
+    case openInfoStripSettings
+    case showFunctionBarFromInfoStrip
 
     var diagnosticName: String { rawValue }
 
@@ -78,7 +97,7 @@ nonisolated enum MenuBarCommandAction: String, CaseIterable, Equatable, Hashable
         case .showFindIcon, .showSecondBar, .showIconPanel, .showItemInSecondBar,
              .revealItem, .highlightItem, .openOwningApp, .revealGroup,
              .createGroupFromItem, .addItemToGroup, .removeItemFromGroup, .assignHotkey,
-             .experimentalActivateItem:
+             .dryRunMoveItem, .tryAssistedMoveItem, .experimentalActivateItem:
             true
         default:
             false
@@ -89,7 +108,8 @@ nonisolated enum MenuBarCommandAction: String, CaseIterable, Equatable, Hashable
         switch self {
         case .showFindIcon, .showSecondBar, .showIconPanel, .showItemInSecondBar,
              .revealItem, .highlightItem, .openOwningApp, .revealGroup,
-             .createGroupFromItem, .addItemToGroup, .removeItemFromGroup, .experimentalActivateItem:
+             .createGroupFromItem, .addItemToGroup, .removeItemFromGroup,
+             .dryRunMoveItem, .tryAssistedMoveItem, .experimentalActivateItem:
             true
         default:
             false
@@ -120,6 +140,16 @@ nonisolated enum MenuBarCommandAction: String, CaseIterable, Equatable, Hashable
             .fullMenuBarMode
         case .spacingPresetDryRun, .spacingPresetApply:
             .spacingLabs
+        case .dryRunMoveItem, .tryAssistedMoveItem, .showAssistedMoveGuide:
+            .assistedMove
+        case .showWorkspacePreview, .switchWorkspace:
+            .workspaces
+        case .showFunctionBar, .hideFunctionBar, .toggleFunctionBar:
+            .functionBar
+        case .showInfoStrip, .hideInfoStrip, .toggleInfoStrip,
+             .nextInfoStripTile, .openInfoStripSettings,
+             .showFunctionBarFromInfoStrip:
+            .infoStrip
         default:
             nil
         }
@@ -160,7 +190,7 @@ nonisolated enum MenuBarCommandAction: String, CaseIterable, Equatable, Hashable
             return .findIcon
         case .showSecondBar, .showIconPanel, .showItemInSecondBar:
             return .secondBar
-        case .experimentalActivateItem:
+        case .tryAssistedMoveItem, .experimentalActivateItem:
             return .iconMoving
         case .spacingPresetApply:
             return .layoutSpacingLabs

@@ -70,6 +70,93 @@ struct RecoveryServiceTests {
         #expect(store.smartTriggersEnabled == false)
     }
 
+    @Test func previewPanelRecoveryHidesPanels() {
+        var hidFunctionBar = 0
+        var hidInfoStrip = 0
+        var resetWorkspaces = 0
+        var resetCurrentWorkspaceLayout = 0
+        var removedMissingGroupReferences = 0
+        var discardedSetBuilderDraft = 0
+        var disabledFunctionBar = 0
+        var disabledSetBuilder = 0
+        var disabledInfoStrip = 0
+        var resetInfoStripSettings = 0
+        var resetInfoStripPlacement = 0
+        var clearedInvalidProviders = 0
+        var showedFunctionBarInstead = 0
+        let service = RecoveryService(
+            actions: RecoveryActions(
+                resetWorkspacesToDefaults: {
+                    resetWorkspaces += 1
+                },
+                resetCurrentWorkspaceLayout: {
+                    resetCurrentWorkspaceLayout += 1
+                },
+                removeMissingWorkspaceGroupReferences: {
+                    removedMissingGroupReferences += 1
+                },
+                discardSetBuilderDraft: {
+                    discardedSetBuilderDraft += 1
+                },
+                hideFunctionBar: {
+                    hidFunctionBar += 1
+                },
+                disableFunctionBarPreview: {
+                    disabledFunctionBar += 1
+                },
+                disableSetBuilderPreview: {
+                    disabledSetBuilder += 1
+                },
+                hideInfoStrip: {
+                    hidInfoStrip += 1
+                },
+                disableInfoStripPreview: {
+                    disabledInfoStrip += 1
+                },
+                resetInfoStripSettings: {
+                    resetInfoStripSettings += 1
+                },
+                resetInfoStripPlacement: {
+                    resetInfoStripPlacement += 1
+                },
+                clearInvalidInfoStripProviders: {
+                    clearedInvalidProviders += 1
+                },
+                showFunctionBarInstead: {
+                    showedFunctionBarInstead += 1
+                }
+            )
+        )
+
+        service.perform(.resetWorkspacesToDefaults)
+        service.perform(.resetCurrentWorkspaceLayout)
+        service.perform(.removeMissingWorkspaceGroupReferences)
+        service.perform(.discardSetBuilderDraft)
+        service.perform(.hideFunctionBar)
+        service.perform(.disableFunctionBarPreview)
+        service.perform(.disableSetBuilderPreview)
+        service.perform(.hideInfoStrip)
+        service.perform(.disableInfoStripPreview)
+        service.perform(.resetInfoStripSettings)
+        service.perform(.resetInfoStripPlacement)
+        service.perform(.clearInvalidInfoStripProviders)
+        service.perform(.showFunctionBarInstead)
+
+        #expect(resetWorkspaces == 1)
+        #expect(resetCurrentWorkspaceLayout == 1)
+        #expect(removedMissingGroupReferences == 1)
+        #expect(discardedSetBuilderDraft == 1)
+        #expect(hidFunctionBar == 1)
+        #expect(disabledFunctionBar == 1)
+        #expect(disabledSetBuilder == 1)
+        #expect(hidInfoStrip == 1)
+        #expect(disabledInfoStrip == 1)
+        #expect(resetInfoStripSettings == 1)
+        #expect(resetInfoStripPlacement == 1)
+        #expect(clearedInvalidProviders == 1)
+        #expect(showedFunctionBarInstead == 1)
+    }
+
     @Test func targetedSettingsRecoveryDoesNotResetAllSettings() {
         var expanded = 0
         var resetScanInterval = 0

@@ -14,16 +14,17 @@ final class SecondBarWindowController: NSWindowController, NSWindowDelegate {
     /// Observer for `NSApplication.didChangeScreenParametersNotification`. The second
     /// bar panel is positioned in screen-relative coordinates, so any display
     /// connect/disconnect/reorder can leave it stranded off-screen or above the
-    /// notch height on a new main display. When notified while visible, we re-invoke
-    /// `positionPanel()`; if the previously-saved position is no longer inside any
-    /// current `NSScreen.visibleFrame`, the panel is closed to ensure the user can
-    /// re-invoke it from a known-good state rather than clicking into empty space.
+    /// notch height on a new main display. When notified while visible, we clear
+    /// unreachable remembered positions and re-invoke `positionPanel()` so the
+    /// panel recovers to the current display.
     ///
     /// Marked `nonisolated(unsafe)` so the observer can be released from
     /// `deinit` (which on Apple platforms runs on whatever thread releases the last
     /// reference). The observer is registered on `.main` and only removed here, so
     /// concurrent access from another thread does not occur in practice.
     @ObservationIgnored nonisolated(unsafe) private var displayParametersObserver: NSObjectProtocol?
+    @ObservationIgnored nonisolated(unsafe) private var activeSpaceObserver: NSObjectProtocol?
+    @ObservationIgnored nonisolated(unsafe) private var screensWakeObserver: NSObjectProtocol?
 
     init(
         settingsStore: SettingsStore,
@@ -95,6 +96,7 @@ final class SecondBarWindowController: NSWindowController, NSWindowDelegate {
         panel.delegate = self
         updatePanelBehaviorFromSettings()
         observeScreenParameters()
+        observeWorkspaceGeometryChanges()
     }
 
     @available(*, unavailable)
@@ -105,6 +107,12 @@ final class SecondBarWindowController: NSWindowController, NSWindowDelegate {
     deinit {
         if let displayParametersObserver {
             NotificationCenter.default.removeObserver(displayParametersObserver)
+        }
+        if let activeSpaceObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(activeSpaceObserver)
+        }
+        if let screensWakeObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(screensWakeObserver)
         }
     }
 
@@ -124,29 +132,61 @@ final class SecondBarWindowController: NSWindowController, NSWindowDelegate {
         }
     }
 
+    private func observeWorkspaceGeometryChanges() {
+        let workspaceCenter = NSWorkspace.shared.notificationCenter
+        if activeSpaceObserver == nil {
+            activeSpaceObserver = workspaceCenter.addObserver(
+                forName: NSWorkspace.activeSpaceDidChangeNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.handleWorkspaceGeometryChanged(reason: "active Space changed")
+                }
+            }
+        }
+
+        if screensWakeObserver == nil {
+            screensWakeObserver = workspaceCenter.addObserver(
+                forName: NSWorkspace.screensDidWakeNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.handleWorkspaceGeometryChanged(reason: "screens woke")
+                }
+            }
+        }
+    }
+
     @MainActor
     private func handleScreenParametersChanged() {
         positioningService.invalidateCurrentScreenSnapshots()
         guard window?.isVisible == true else { return }
 
-        // If the last-saved position no longer falls inside any current screen, close
-        // the panel rather than repositioning blindly — re-opening from settings
-        // will pick a sensible default again.
         if let lastPosition {
             let stillInsideScreen = positioningService.currentScreenSnapshots().contains { screen in
                 screen.visibleFrame.contains(lastPosition)
             }
             if !stillInsideScreen {
                 diagnosticsLogger.log(
-                    "Second Bar closed: previous position no longer inside any current display.",
+                    "Second Bar recovered: previous position no longer inside any current display.",
                     level: .debug
                 )
-                window?.close()
-                return
+                self.lastPosition = nil
             }
         }
 
         positionPanel()
+    }
+
+    @MainActor
+    private func handleWorkspaceGeometryChanged(reason: String) {
+        positioningService.invalidateCurrentScreenSnapshots()
+        guard window?.isVisible == true else { return }
+
+        positionPanel()
+        diagnosticsLogger.log("Second Bar repositioned after \(reason).", level: .debug)
     }
 
     func show() {

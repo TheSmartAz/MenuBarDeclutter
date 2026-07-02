@@ -12,6 +12,7 @@ Guidance for coding agents working in this repository.
 - Current app display name: `MenuBarDeclutter` via the explicit Info.plist at `Config/MenuBarDeclutter-Info.plist`.
 - Target platform: native macOS 26.0+ only.
 - Language and frameworks: Swift, AppKit, and SwiftUI.
+- Current signing/distribution stance: this app is not using an Apple Developer ID for code signing, notarization, or distribution at this stage. Reconsider this later only when explicitly requested.
 - Primary goal: build a privacy-first macOS menu bar decluttering utility similar to Hidden Bar / Dozer first, then add selected Bartender-like Pro features.
 
 Prefer the canonical `MenuBarDeclutter` commands below. The `MenuBar-Manager` scheme remains only as a deprecated compatibility fallback during the temporary naming transition.
@@ -50,6 +51,7 @@ Phase 0 deliberately does not implement real hiding, hotkeys, auto-hide, Accessi
 14. Use modern Swift concurrency where useful, but keep UI work on `MainActor`.
 15. If modifying the Xcode project, ensure every new Swift file is added to the correct app or test target.
 16. Run `xcodebuild build` and/or `xcodebuild test` where available and report exact results.
+17. Do not configure, require, or assume Apple Developer ID signing/notarization for this app right now. Developer ID distribution may be considered later, but is out of scope until explicitly requested.
 
 ## Architecture Guidelines
 

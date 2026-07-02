@@ -88,10 +88,18 @@ struct PrivacySettingsView: View {
     }
 
     private var proModeSection: some View {
-        ClearGlassSection("Private Access To System Data", subtitle: "Advanced local discovery stays behind explicit Pro Mode controls.") {
+        ClearGlassSection("Optional Pro Discovery", subtitle: "Local menu bar metadata stays behind explicit Pro Mode controls.") {
             PrivacyProModeRow(
                 isEnabled: settingsStore.proModeEnabled,
                 enableAction: enableProMode
+            )
+
+            ClearGlassDivider()
+
+            ClearGlassInlineMessage(
+                text: "Setup is explicit: enable Pro Mode, turn on Accessibility Discovery, request permission from your own button press, rescan, then confirm Find & Rescue availability.",
+                systemImage: "list.bullet.rectangle",
+                style: .info
             )
 
             ClearGlassDivider()
@@ -117,7 +125,7 @@ struct PrivacySettingsView: View {
             PrivacyPermissionRow(
                 systemImage: "hand.raised",
                 title: "Accessibility Permission",
-                subtitle: "Required only when Pro discovery is enabled. The prompt is shown only from this button.",
+                subtitle: "Required only when Pro discovery is enabled. The prompt is shown only from an explicit Request Permission button.",
                 status: accessibilityStatusText,
                 style: accessibilityStatusStyle
             ) {
@@ -130,6 +138,23 @@ struct PrivacySettingsView: View {
                         accessibilityButtons
                     }
                 }
+            }
+            .opacity(settingsStore.proModeEnabled ? 1 : 0.55)
+
+            ClearGlassDivider()
+
+            PrivacyPermissionRow(
+                systemImage: "arrow.clockwise",
+                title: "Rescan",
+                subtitle: "Refresh local menu bar metadata after changing Pro or Accessibility settings.",
+                status: canRequestRescan ? "Available" : "Unavailable",
+                style: canRequestRescan ? .info : .secondary
+            ) {
+                Button("Rescan", systemImage: "arrow.clockwise") {
+                    scanCoordinator?.requestManualRefresh()
+                }
+                .controlSize(.small)
+                .disabled(!canRequestRescan)
             }
             .opacity(settingsStore.proModeEnabled ? 1 : 0.55)
 
@@ -153,8 +178,7 @@ struct PrivacySettingsView: View {
                 style: settingsStore.proModeEnabled ? .warning : .secondary
             ) {
                 Button("Disable Pro Mode", systemImage: "lock", role: .destructive) {
-                    settingsStore.proModeEnabled = false
-                    settingsStore.accessibilityDiscoveryEnabled = false
+                    PrivacyProSetupActions.disableProMode(settingsStore: settingsStore)
                     notifyPrivacyChanged()
                 }
                 .disabled(!settingsStore.proModeEnabled)
@@ -219,6 +243,13 @@ struct PrivacySettingsView: View {
             || permissionService?.status == .granted
     }
 
+    private var canRequestRescan: Bool {
+        settingsStore.proModeEnabled
+            && settingsStore.accessibilityDiscoveryEnabled
+            && permissionService?.status == .granted
+            && scanCoordinator != nil
+    }
+
     private var localDataSection: some View {
         ClearGlassSection("Local Data Path", subtitle: "The app keeps its processing path on this Mac.") {
             PrivacyLocalDataFlow()
@@ -274,9 +305,10 @@ struct PrivacySettingsView: View {
     }
 
     private func enableProMode() {
-        settingsStore.proModeEnabled = true
-        settingsStore.accessibilityDiscoveryEnabled = true
-        permissionService?.refreshStatus()
+        PrivacyProSetupActions.enableProMode(
+            settingsStore: settingsStore,
+            permissionService: permissionService
+        )
         notifyPrivacyChanged()
     }
 
@@ -286,6 +318,22 @@ struct PrivacySettingsView: View {
         } else {
             scanCoordinator?.refreshAfterSettingsChanged()
         }
+    }
+}
+
+@MainActor
+enum PrivacyProSetupActions {
+    static func enableProMode(
+        settingsStore: SettingsStore,
+        permissionService: AccessibilityPermissionService?
+    ) {
+        settingsStore.proModeEnabled = true
+        permissionService?.refreshStatus()
+    }
+
+    static func disableProMode(settingsStore: SettingsStore) {
+        settingsStore.proModeEnabled = false
+        settingsStore.accessibilityDiscoveryEnabled = false
     }
 }
 

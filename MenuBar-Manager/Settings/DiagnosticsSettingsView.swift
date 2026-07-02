@@ -16,6 +16,7 @@ struct DiagnosticsSettingsView: View {
     var onResetBasicMode: (() -> Void)?
     var onDisableProMode: (() -> Void)?
     var onEnterSafeModeNextLaunch: (() -> Void)?
+    var workspacePreviewDiagnosticsProvider: (() -> DiagnosticsExporter.WorkspacePreviewDiagnosticsSnapshot?)? = nil
 
     @State private var exportFormat: DiagnosticsExporter.Format = .txt
     @State private var exportError: String?
@@ -33,6 +34,12 @@ struct DiagnosticsSettingsView: View {
 
     private var selectedEvent: DiagnosticEvent? {
         diagnosticsLogger.events.first { $0.id == selectedEventID }
+    }
+
+    private var showsDogfoodPanel: Bool {
+        settingsStore.dogfoodModeEnabled
+            || settingsStore.dogfoodRunID != nil
+            || dogfoodStore.currentRun != nil
     }
 
     var body: some View {
@@ -80,12 +87,14 @@ struct DiagnosticsSettingsView: View {
                         ScreenStatusSection(screensProvider: exporter.screensProvider)
                     }
 
-                    DiagnosticsPanel("Dogfood", systemImage: "checklist") {
-                        DogfoodNotesView(
-                            settingsStore: settingsStore,
-                            dogfoodStore: dogfoodStore,
-                            onExportBundle: exportDogfoodBundle
-                        )
+                    if showsDogfoodPanel {
+                        DiagnosticsPanel("Dogfood", systemImage: "checklist") {
+                            DogfoodNotesView(
+                                settingsStore: settingsStore,
+                                dogfoodStore: dogfoodStore,
+                                onExportBundle: exportDogfoodBundle
+                            )
+                        }
                     }
 
                     if let liveStatus {
@@ -138,6 +147,7 @@ struct DiagnosticsSettingsView: View {
             let snapshot = exporter.makeSnapshot(
                 settingsStore: settingsStore,
                 logger: diagnosticsLogger,
+                workspacePreview: workspacePreviewDiagnosticsProvider?(),
                 events: filteredEvents
             )
             do {
@@ -225,7 +235,8 @@ struct DiagnosticsSettingsView: View {
             try appSupportPaths.ensureDirectoriesExist()
             let snapshot = exporter.makeSnapshot(
                 settingsStore: settingsStore,
-                logger: diagnosticsLogger
+                logger: diagnosticsLogger,
+                workspacePreview: workspacePreviewDiagnosticsProvider?()
             )
             let diagnosticsData = try exporter.serialize(snapshot, format: .txt)
             let metadata = DogfoodBundleMetadata(
@@ -1140,13 +1151,17 @@ private struct LiveStatusAccessibilityGrid: View {
                 label: "Accessibility Permission",
                 value: liveStatus.accessibilityPermissionStatus.displayName
             ),
+            LiveStatusRowData(label: "AX Scan State", value: liveStatus.menuBarScanLifecycleState.rawValue),
+            LiveStatusRowData(label: "AX Scan Reason", value: liveStatus.menuBarScanLastReason ?? "—"),
+            LiveStatusRowData(label: "AX Skip Reason", value: liveStatus.menuBarScanLastSkipReason ?? "—"),
             LiveStatusRowData(label: "Scanned Items", value: liveStatus.scannedMenuBarItems.count.formatted(.number)),
             LiveStatusRowData(
                 label: "Visible / Hidden / Always Hidden / Unknown",
                 value: scanCountSummary
             ),
             LiveStatusRowData(label: "Last AX Scan", value: lastScanText),
-            LiveStatusRowData(label: "AX Failures", value: liveStatus.menuBarScanFailuresCount.formatted(.number))
+            LiveStatusRowData(label: "AX Failures", value: liveStatus.menuBarScanFailuresCount.formatted(.number)),
+            LiveStatusRowData(label: "AX Failure Summary", value: liveStatus.menuBarScanFailureSummary ?? "—")
         ]
     }
 
@@ -1179,10 +1194,23 @@ private struct LiveStatusSearchGrid: View {
     private var rows: [LiveStatusRowData] {
         [
             LiveStatusRowData(label: "Search Index Items", value: liveStatus.searchIndexItemCount.formatted(.number)),
-            LiveStatusRowData(label: "Last Search Query", value: liveStatus.lastSearchQuery.emptyPlaceholder),
-            LiveStatusRowData(label: "Last Search Selection", value: liveStatus.lastSearchSelectedItem ?? "—"),
+            LiveStatusRowData(label: "Last Result Count", value: liveStatus.searchLastResultCount.formatted(.number)),
+            LiveStatusRowData(label: "Index Rebuild", value: millisecondsText(liveStatus.searchIndexRebuildDurationMilliseconds)),
+            LiveStatusRowData(label: "Ranking Time", value: millisecondsText(liveStatus.searchRankingDurationMilliseconds)),
+            LiveStatusRowData(label: "Panel Open", value: millisecondsText(liveStatus.searchPanelOpenDurationMilliseconds)),
+            LiveStatusRowData(label: "Latest Scan Age", value: secondsText(liveStatus.searchLatestScanAgeSeconds)),
             LiveStatusRowData(label: "Last Search Activation", value: liveStatus.lastSearchActivationOutcome ?? "—")
         ]
+    }
+
+    private func millisecondsText(_ value: Double?) -> String {
+        guard let value else { return "—" }
+        return "\(value.formatted(.number.precision(.fractionLength(2)))) ms"
+    }
+
+    private func secondsText(_ value: Double?) -> String {
+        guard let value else { return "No scan" }
+        return "\(value.formatted(.number.precision(.fractionLength(0)))) s"
     }
 
     var body: some View {
@@ -1198,8 +1226,7 @@ private struct LiveStatusSecondBarGrid: View {
             LiveStatusRowData(label: "Second Bar Visible", value: liveStatus.secondBarVisible.yesNoText),
             LiveStatusRowData(label: "Second Bar Items", value: liveStatus.secondBarItemCount.formatted(.number)),
             LiveStatusRowData(label: "Second Bar Screen", value: liveStatus.secondBarCurrentScreen ?? "—"),
-            LiveStatusRowData(label: "Second Bar Position", value: liveStatus.secondBarLastPosition ?? "—"),
-            LiveStatusRowData(label: "Last Second Bar Selection", value: liveStatus.lastSecondBarSelectedItem ?? "—")
+            LiveStatusRowData(label: "Second Bar Position", value: liveStatus.secondBarLastPosition ?? "—")
         ]
     }
 

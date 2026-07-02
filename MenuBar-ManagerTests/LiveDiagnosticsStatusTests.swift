@@ -63,6 +63,24 @@ struct LiveDiagnosticsStatusTests {
         #expect(liveStatus.secondBarItemCount == 3)
     }
 
+    @Test func applyingSearchPerformanceUpdatesOnlyPrivacySafeMetrics() {
+        let liveStatus = LiveDiagnosticsStatus()
+
+        liveStatus.updateSearchPerformance(SearchPerformanceDiagnostics(
+            indexItemCount: 12,
+            resultCount: 4,
+            indexRebuildDurationMilliseconds: 1.5,
+            rankingDurationMilliseconds: 0.25,
+            latestScanAgeSeconds: 42
+        ))
+
+        #expect(liveStatus.searchIndexItemCount == 12)
+        #expect(liveStatus.searchLastResultCount == 4)
+        #expect(liveStatus.searchIndexRebuildDurationMilliseconds == 1.5)
+        #expect(liveStatus.searchRankingDurationMilliseconds == 0.25)
+        #expect(liveStatus.searchLatestScanAgeSeconds == 42)
+    }
+
     @Test func applyingStatusBarVisibilityUpdatesRelatedDiagnostics() {
         let liveStatus = LiveDiagnosticsStatus()
 

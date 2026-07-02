@@ -97,6 +97,7 @@ final class SettingsStore {
         case fullMenuBarModeSuspendsAutoRehide
         case fullMenuBarModeShowsSpacerMarkers
         case crowdedRevealAutoOpenSecondBar
+        case crowdedRevealAskBeforeSwitching
         case crowdedRevealThresholdRatio
         case crowdedRevealRequireProEstimate
         case spacerItemsEnabled
@@ -131,6 +132,31 @@ final class SettingsStore {
         case appIntentsCanAccessLabs
         case dynamicHotkeysEnabled
         case maxDynamicHotkeys
+
+        // Phase 16+ preview workspaces/function bar gates
+        case workspacesPreviewEnabled
+        case functionBarPreviewEnabled
+        case functionBarPrimaryClickEnabled
+        case functionBarPlacementPreference
+        case functionBarShowSetSwitcher
+        case functionBarShowLabels
+        case functionBarDensity
+        case functionBarCloseOnOutsideClick
+        case functionBarKeyboardNavigationEnabled
+        case setBuilderPreviewEnabled
+        case setBuilderDragDropEnabled
+        case setBuilderShowAdvancedLibraryItems
+        case setBuilderDefaultGroupReferenceMode
+        case setBuilderShowFunctionBarPreview
+        case setBuilderAutosaveDrafts
+        case setBuilderWarnBeforeLinkedGroupEdits
+        case infoStripPreviewEnabled
+        case infoStripAutoShowEnabled
+        case infoStripHoverToFunctionBarEnabled
+        case infoStripCloseOnOutsideClick
+        case infoStripPauseWhenFunctionBarPinned
+        case infoStripKeyboardNavigationEnabled
+        case infoStripShowPreviewBadge
     }
 
     @ObservationIgnored private let defaults: UserDefaults
@@ -194,6 +220,7 @@ final class SettingsStore {
         .fullMenuBarModeSuspendsAutoRehide: true,
         .fullMenuBarModeShowsSpacerMarkers: true,
         .crowdedRevealAutoOpenSecondBar: true,
+        .crowdedRevealAskBeforeSwitching: false,
         .crowdedRevealThresholdRatio: AppConstants.defaultCrowdedRevealThresholdRatio,
         .crowdedRevealRequireProEstimate: false,
         .spacerItemsEnabled: true,
@@ -224,7 +251,32 @@ final class SettingsStore {
         .appIntentsCanApplyProfiles: false,
         .appIntentsCanAccessLabs: false,
         .dynamicHotkeysEnabled: false,
-        .maxDynamicHotkeys: AppConstants.defaultMaxDynamicHotkeys
+        .maxDynamicHotkeys: AppConstants.defaultMaxDynamicHotkeys,
+
+        // Phase 16+ preview defaults
+        .workspacesPreviewEnabled: false,
+        .functionBarPreviewEnabled: false,
+        .functionBarPrimaryClickEnabled: false,
+        .functionBarPlacementPreference: FunctionBarPlacementPreference.belowMenuBarIcon.rawValue,
+        .functionBarShowSetSwitcher: true,
+        .functionBarShowLabels: true,
+        .functionBarDensity: "regular",
+        .functionBarCloseOnOutsideClick: true,
+        .functionBarKeyboardNavigationEnabled: true,
+        .setBuilderPreviewEnabled: false,
+        .setBuilderDragDropEnabled: true,
+        .setBuilderShowAdvancedLibraryItems: false,
+        .setBuilderDefaultGroupReferenceMode: WorkspaceGroupReferenceMode.linked.rawValue,
+        .setBuilderShowFunctionBarPreview: true,
+        .setBuilderAutosaveDrafts: true,
+        .setBuilderWarnBeforeLinkedGroupEdits: true,
+        .infoStripPreviewEnabled: false,
+        .infoStripAutoShowEnabled: false,
+        .infoStripHoverToFunctionBarEnabled: true,
+        .infoStripCloseOnOutsideClick: true,
+        .infoStripPauseWhenFunctionBarPinned: true,
+        .infoStripKeyboardNavigationEnabled: true,
+        .infoStripShowPreviewBadge: true
     ]
 
     private static let registrationDefaults: [String: Any] = Dictionary(
@@ -566,6 +618,10 @@ final class SettingsStore {
         didSet { persist(crowdedRevealAutoOpenSecondBar, for: .crowdedRevealAutoOpenSecondBar) }
     }
 
+    var crowdedRevealAskBeforeSwitching: Bool {
+        didSet { persist(crowdedRevealAskBeforeSwitching, for: .crowdedRevealAskBeforeSwitching) }
+    }
+
     private var crowdedRevealThresholdRatioStorage: Double
 
     var crowdedRevealThresholdRatio: Double {
@@ -722,6 +778,98 @@ final class SettingsStore {
 
     var maxDynamicHotkeys: Int {
         didSet { persist(maxDynamicHotkeys, for: .maxDynamicHotkeys) }
+    }
+
+    var workspacesPreviewEnabled: Bool {
+        didSet { persist(workspacesPreviewEnabled, for: .workspacesPreviewEnabled) }
+    }
+
+    var functionBarPreviewEnabled: Bool {
+        didSet { persist(functionBarPreviewEnabled, for: .functionBarPreviewEnabled) }
+    }
+
+    var functionBarPrimaryClickEnabled: Bool {
+        didSet { persist(functionBarPrimaryClickEnabled, for: .functionBarPrimaryClickEnabled) }
+    }
+
+    var functionBarPlacementPreference: String {
+        didSet { persist(functionBarPlacementPreference, for: .functionBarPlacementPreference) }
+    }
+
+    var functionBarShowSetSwitcher: Bool {
+        didSet { persist(functionBarShowSetSwitcher, for: .functionBarShowSetSwitcher) }
+    }
+
+    var functionBarShowLabels: Bool {
+        didSet { persist(functionBarShowLabels, for: .functionBarShowLabels) }
+    }
+
+    var functionBarDensity: String {
+        didSet { persist(functionBarDensity, for: .functionBarDensity) }
+    }
+
+    var functionBarCloseOnOutsideClick: Bool {
+        didSet { persist(functionBarCloseOnOutsideClick, for: .functionBarCloseOnOutsideClick) }
+    }
+
+    var functionBarKeyboardNavigationEnabled: Bool {
+        didSet { persist(functionBarKeyboardNavigationEnabled, for: .functionBarKeyboardNavigationEnabled) }
+    }
+
+    var setBuilderPreviewEnabled: Bool {
+        didSet { persist(setBuilderPreviewEnabled, for: .setBuilderPreviewEnabled) }
+    }
+
+    var setBuilderDragDropEnabled: Bool {
+        didSet { persist(setBuilderDragDropEnabled, for: .setBuilderDragDropEnabled) }
+    }
+
+    var setBuilderShowAdvancedLibraryItems: Bool {
+        didSet { persist(setBuilderShowAdvancedLibraryItems, for: .setBuilderShowAdvancedLibraryItems) }
+    }
+
+    var setBuilderDefaultGroupReferenceMode: String {
+        didSet { persist(setBuilderDefaultGroupReferenceMode, for: .setBuilderDefaultGroupReferenceMode) }
+    }
+
+    var setBuilderShowFunctionBarPreview: Bool {
+        didSet { persist(setBuilderShowFunctionBarPreview, for: .setBuilderShowFunctionBarPreview) }
+    }
+
+    var setBuilderAutosaveDrafts: Bool {
+        didSet { persist(setBuilderAutosaveDrafts, for: .setBuilderAutosaveDrafts) }
+    }
+
+    var setBuilderWarnBeforeLinkedGroupEdits: Bool {
+        didSet { persist(setBuilderWarnBeforeLinkedGroupEdits, for: .setBuilderWarnBeforeLinkedGroupEdits) }
+    }
+
+    var infoStripPreviewEnabled: Bool {
+        didSet { persist(infoStripPreviewEnabled, for: .infoStripPreviewEnabled) }
+    }
+
+    var infoStripAutoShowEnabled: Bool {
+        didSet { persist(infoStripAutoShowEnabled, for: .infoStripAutoShowEnabled) }
+    }
+
+    var infoStripHoverToFunctionBarEnabled: Bool {
+        didSet { persist(infoStripHoverToFunctionBarEnabled, for: .infoStripHoverToFunctionBarEnabled) }
+    }
+
+    var infoStripCloseOnOutsideClick: Bool {
+        didSet { persist(infoStripCloseOnOutsideClick, for: .infoStripCloseOnOutsideClick) }
+    }
+
+    var infoStripPauseWhenFunctionBarPinned: Bool {
+        didSet { persist(infoStripPauseWhenFunctionBarPinned, for: .infoStripPauseWhenFunctionBarPinned) }
+    }
+
+    var infoStripKeyboardNavigationEnabled: Bool {
+        didSet { persist(infoStripKeyboardNavigationEnabled, for: .infoStripKeyboardNavigationEnabled) }
+    }
+
+    var infoStripShowPreviewBadge: Bool {
+        didSet { persist(infoStripShowPreviewBadge, for: .infoStripShowPreviewBadge) }
     }
 
     private func persist<Value>(_ value: Value, for key: Key) {
@@ -1005,6 +1153,7 @@ final class SettingsStore {
         self.fullMenuBarModeSuspendsAutoRehide = Self.value(for: .fullMenuBarModeSuspendsAutoRehide, default: Self.registeredDefault(.fullMenuBarModeSuspendsAutoRehide), in: defaults)
         self.fullMenuBarModeShowsSpacerMarkers = Self.value(for: .fullMenuBarModeShowsSpacerMarkers, default: Self.registeredDefault(.fullMenuBarModeShowsSpacerMarkers), in: defaults)
         self.crowdedRevealAutoOpenSecondBar = Self.value(for: .crowdedRevealAutoOpenSecondBar, default: Self.registeredDefault(.crowdedRevealAutoOpenSecondBar), in: defaults)
+        self.crowdedRevealAskBeforeSwitching = Self.value(for: .crowdedRevealAskBeforeSwitching, default: Self.registeredDefault(.crowdedRevealAskBeforeSwitching), in: defaults)
         self.crowdedRevealThresholdRatioStorage = Self.clampedDouble(
             for: .crowdedRevealThresholdRatio,
             default: Self.registeredDefault(.crowdedRevealThresholdRatio),
@@ -1059,6 +1208,121 @@ final class SettingsStore {
         self.appIntentsCanAccessLabs = Self.value(for: .appIntentsCanAccessLabs, default: Self.registeredDefault(.appIntentsCanAccessLabs), in: defaults)
         self.dynamicHotkeysEnabled = Self.value(for: .dynamicHotkeysEnabled, default: Self.registeredDefault(.dynamicHotkeysEnabled), in: defaults)
         self.maxDynamicHotkeys = Self.value(for: .maxDynamicHotkeys, default: Self.registeredDefault(.maxDynamicHotkeys), in: defaults)
+        self.workspacesPreviewEnabled = Self.value(
+            for: .workspacesPreviewEnabled,
+            default: Self.registeredDefault(.workspacesPreviewEnabled),
+            in: defaults
+        )
+        self.functionBarPreviewEnabled = Self.value(
+            for: .functionBarPreviewEnabled,
+            default: Self.registeredDefault(.functionBarPreviewEnabled),
+            in: defaults
+        )
+        self.functionBarPrimaryClickEnabled = Self.value(
+            for: .functionBarPrimaryClickEnabled,
+            default: Self.registeredDefault(.functionBarPrimaryClickEnabled),
+            in: defaults
+        )
+        self.functionBarPlacementPreference = Self.string(
+            for: .functionBarPlacementPreference,
+            default: Self.registeredDefault(.functionBarPlacementPreference),
+            in: defaults
+        )
+        self.functionBarShowSetSwitcher = Self.value(
+            for: .functionBarShowSetSwitcher,
+            default: Self.registeredDefault(.functionBarShowSetSwitcher),
+            in: defaults
+        )
+        self.functionBarShowLabels = Self.value(
+            for: .functionBarShowLabels,
+            default: Self.registeredDefault(.functionBarShowLabels),
+            in: defaults
+        )
+        self.functionBarDensity = Self.string(
+            for: .functionBarDensity,
+            default: Self.registeredDefault(.functionBarDensity),
+            in: defaults
+        )
+        self.functionBarCloseOnOutsideClick = Self.value(
+            for: .functionBarCloseOnOutsideClick,
+            default: Self.registeredDefault(.functionBarCloseOnOutsideClick),
+            in: defaults
+        )
+        self.functionBarKeyboardNavigationEnabled = Self.value(
+            for: .functionBarKeyboardNavigationEnabled,
+            default: Self.registeredDefault(.functionBarKeyboardNavigationEnabled),
+            in: defaults
+        )
+        self.setBuilderPreviewEnabled = Self.value(
+            for: .setBuilderPreviewEnabled,
+            default: Self.registeredDefault(.setBuilderPreviewEnabled),
+            in: defaults
+        )
+        self.setBuilderDragDropEnabled = Self.value(
+            for: .setBuilderDragDropEnabled,
+            default: Self.registeredDefault(.setBuilderDragDropEnabled),
+            in: defaults
+        )
+        self.setBuilderShowAdvancedLibraryItems = Self.value(
+            for: .setBuilderShowAdvancedLibraryItems,
+            default: Self.registeredDefault(.setBuilderShowAdvancedLibraryItems),
+            in: defaults
+        )
+        self.setBuilderDefaultGroupReferenceMode = Self.string(
+            for: .setBuilderDefaultGroupReferenceMode,
+            default: Self.registeredDefault(.setBuilderDefaultGroupReferenceMode),
+            in: defaults
+        )
+        self.setBuilderShowFunctionBarPreview = Self.value(
+            for: .setBuilderShowFunctionBarPreview,
+            default: Self.registeredDefault(.setBuilderShowFunctionBarPreview),
+            in: defaults
+        )
+        self.setBuilderAutosaveDrafts = Self.value(
+            for: .setBuilderAutosaveDrafts,
+            default: Self.registeredDefault(.setBuilderAutosaveDrafts),
+            in: defaults
+        )
+        self.setBuilderWarnBeforeLinkedGroupEdits = Self.value(
+            for: .setBuilderWarnBeforeLinkedGroupEdits,
+            default: Self.registeredDefault(.setBuilderWarnBeforeLinkedGroupEdits),
+            in: defaults
+        )
+        self.infoStripPreviewEnabled = Self.value(
+            for: .infoStripPreviewEnabled,
+            default: Self.registeredDefault(.infoStripPreviewEnabled),
+            in: defaults
+        )
+        self.infoStripAutoShowEnabled = Self.value(
+            for: .infoStripAutoShowEnabled,
+            default: Self.registeredDefault(.infoStripAutoShowEnabled),
+            in: defaults
+        )
+        self.infoStripHoverToFunctionBarEnabled = Self.value(
+            for: .infoStripHoverToFunctionBarEnabled,
+            default: Self.registeredDefault(.infoStripHoverToFunctionBarEnabled),
+            in: defaults
+        )
+        self.infoStripCloseOnOutsideClick = Self.value(
+            for: .infoStripCloseOnOutsideClick,
+            default: Self.registeredDefault(.infoStripCloseOnOutsideClick),
+            in: defaults
+        )
+        self.infoStripPauseWhenFunctionBarPinned = Self.value(
+            for: .infoStripPauseWhenFunctionBarPinned,
+            default: Self.registeredDefault(.infoStripPauseWhenFunctionBarPinned),
+            in: defaults
+        )
+        self.infoStripKeyboardNavigationEnabled = Self.value(
+            for: .infoStripKeyboardNavigationEnabled,
+            default: Self.registeredDefault(.infoStripKeyboardNavigationEnabled),
+            in: defaults
+        )
+        self.infoStripShowPreviewBadge = Self.value(
+            for: .infoStripShowPreviewBadge,
+            default: Self.registeredDefault(.infoStripShowPreviewBadge),
+            in: defaults
+        )
     }
 
     func restoreDefaults() {
@@ -1128,6 +1392,7 @@ final class SettingsStore {
         fullMenuBarModeSuspendsAutoRehide = Self.registeredDefault(.fullMenuBarModeSuspendsAutoRehide)
         fullMenuBarModeShowsSpacerMarkers = Self.registeredDefault(.fullMenuBarModeShowsSpacerMarkers)
         crowdedRevealAutoOpenSecondBar = Self.registeredDefault(.crowdedRevealAutoOpenSecondBar)
+        crowdedRevealAskBeforeSwitching = Self.registeredDefault(.crowdedRevealAskBeforeSwitching)
         crowdedRevealThresholdRatio = Self.registeredDefault(.crowdedRevealThresholdRatio)
         crowdedRevealRequireProEstimate = Self.registeredDefault(.crowdedRevealRequireProEstimate)
         spacerItemsEnabled = Self.registeredDefault(.spacerItemsEnabled)
@@ -1162,6 +1427,37 @@ final class SettingsStore {
         appIntentsCanAccessLabs = Self.registeredDefault(.appIntentsCanAccessLabs)
         dynamicHotkeysEnabled = Self.registeredDefault(.dynamicHotkeysEnabled)
         maxDynamicHotkeys = Self.registeredDefault(.maxDynamicHotkeys)
+        workspacesPreviewEnabled = Self.registeredDefault(.workspacesPreviewEnabled)
+        functionBarPreviewEnabled = Self.registeredDefault(.functionBarPreviewEnabled)
+        functionBarPrimaryClickEnabled = Self.registeredDefault(.functionBarPrimaryClickEnabled)
+        functionBarPlacementPreference = Self.registeredDefault(.functionBarPlacementPreference)
+        functionBarShowSetSwitcher = Self.registeredDefault(.functionBarShowSetSwitcher)
+        functionBarShowLabels = Self.registeredDefault(.functionBarShowLabels)
+        functionBarDensity = Self.registeredDefault(.functionBarDensity)
+        functionBarCloseOnOutsideClick = Self.registeredDefault(.functionBarCloseOnOutsideClick)
+        functionBarKeyboardNavigationEnabled = Self.registeredDefault(.functionBarKeyboardNavigationEnabled)
+        setBuilderPreviewEnabled = Self.registeredDefault(.setBuilderPreviewEnabled)
+        setBuilderDragDropEnabled = Self.registeredDefault(.setBuilderDragDropEnabled)
+        setBuilderShowAdvancedLibraryItems = Self.registeredDefault(.setBuilderShowAdvancedLibraryItems)
+        setBuilderDefaultGroupReferenceMode = Self.registeredDefault(.setBuilderDefaultGroupReferenceMode)
+        setBuilderShowFunctionBarPreview = Self.registeredDefault(.setBuilderShowFunctionBarPreview)
+        setBuilderAutosaveDrafts = Self.registeredDefault(.setBuilderAutosaveDrafts)
+        setBuilderWarnBeforeLinkedGroupEdits = Self.registeredDefault(.setBuilderWarnBeforeLinkedGroupEdits)
+        infoStripPreviewEnabled = Self.registeredDefault(.infoStripPreviewEnabled)
+        infoStripAutoShowEnabled = Self.registeredDefault(.infoStripAutoShowEnabled)
+        infoStripHoverToFunctionBarEnabled = Self.registeredDefault(.infoStripHoverToFunctionBarEnabled)
+        infoStripCloseOnOutsideClick = Self.registeredDefault(.infoStripCloseOnOutsideClick)
+        infoStripPauseWhenFunctionBarPinned = Self.registeredDefault(.infoStripPauseWhenFunctionBarPinned)
+        infoStripKeyboardNavigationEnabled = Self.registeredDefault(.infoStripKeyboardNavigationEnabled)
+        infoStripShowPreviewBadge = Self.registeredDefault(.infoStripShowPreviewBadge)
+    }
+
+    func effectiveFunctionBarPlacementPreference() -> FunctionBarPlacementPreference {
+        FunctionBarPlacementPreference(rawValue: functionBarPlacementPreference) ?? .belowMenuBarIcon
+    }
+
+    func effectiveSetBuilderDefaultGroupReferenceMode() -> WorkspaceGroupReferenceMode {
+        WorkspaceGroupReferenceMode(rawValue: setBuilderDefaultGroupReferenceMode) ?? .linked
     }
 
     // MARK: Clamping helpers

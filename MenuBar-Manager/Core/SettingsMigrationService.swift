@@ -337,6 +337,8 @@ struct SettingsMigrationService {
             return settingsStore.fullMenuBarModeShowsSpacerMarkers.description
         case .crowdedRevealAutoOpenSecondBar:
             return settingsStore.crowdedRevealAutoOpenSecondBar.description
+        case .crowdedRevealAskBeforeSwitching:
+            return settingsStore.crowdedRevealAskBeforeSwitching.description
         case .crowdedRevealThresholdRatio:
             return settingsStore.crowdedRevealThresholdRatio.description
         case .crowdedRevealRequireProEstimate:
@@ -401,6 +403,52 @@ struct SettingsMigrationService {
             return settingsStore.dynamicHotkeysEnabled.description
         case .maxDynamicHotkeys:
             return settingsStore.maxDynamicHotkeys.description
+        case .workspacesPreviewEnabled:
+            return settingsStore.workspacesPreviewEnabled.description
+        case .functionBarPreviewEnabled:
+            return settingsStore.functionBarPreviewEnabled.description
+        case .functionBarPrimaryClickEnabled:
+            return settingsStore.functionBarPrimaryClickEnabled.description
+        case .functionBarPlacementPreference:
+            return settingsStore.functionBarPlacementPreference
+        case .functionBarShowSetSwitcher:
+            return settingsStore.functionBarShowSetSwitcher.description
+        case .functionBarShowLabels:
+            return settingsStore.functionBarShowLabels.description
+        case .functionBarDensity:
+            return settingsStore.functionBarDensity
+        case .functionBarCloseOnOutsideClick:
+            return settingsStore.functionBarCloseOnOutsideClick.description
+        case .functionBarKeyboardNavigationEnabled:
+            return settingsStore.functionBarKeyboardNavigationEnabled.description
+        case .setBuilderPreviewEnabled:
+            return settingsStore.setBuilderPreviewEnabled.description
+        case .setBuilderDragDropEnabled:
+            return settingsStore.setBuilderDragDropEnabled.description
+        case .setBuilderShowAdvancedLibraryItems:
+            return settingsStore.setBuilderShowAdvancedLibraryItems.description
+        case .setBuilderDefaultGroupReferenceMode:
+            return settingsStore.setBuilderDefaultGroupReferenceMode
+        case .setBuilderShowFunctionBarPreview:
+            return settingsStore.setBuilderShowFunctionBarPreview.description
+        case .setBuilderAutosaveDrafts:
+            return settingsStore.setBuilderAutosaveDrafts.description
+        case .setBuilderWarnBeforeLinkedGroupEdits:
+            return settingsStore.setBuilderWarnBeforeLinkedGroupEdits.description
+        case .infoStripPreviewEnabled:
+            return settingsStore.infoStripPreviewEnabled.description
+        case .infoStripAutoShowEnabled:
+            return settingsStore.infoStripAutoShowEnabled.description
+        case .infoStripHoverToFunctionBarEnabled:
+            return settingsStore.infoStripHoverToFunctionBarEnabled.description
+        case .infoStripCloseOnOutsideClick:
+            return settingsStore.infoStripCloseOnOutsideClick.description
+        case .infoStripPauseWhenFunctionBarPinned:
+            return settingsStore.infoStripPauseWhenFunctionBarPinned.description
+        case .infoStripKeyboardNavigationEnabled:
+            return settingsStore.infoStripKeyboardNavigationEnabled.description
+        case .infoStripShowPreviewBadge:
+            return settingsStore.infoStripShowPreviewBadge.description
         }
     }
 

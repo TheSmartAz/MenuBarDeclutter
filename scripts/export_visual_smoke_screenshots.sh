@@ -12,9 +12,9 @@ Usage:
 
 If result.xcresult is omitted, the latest Test-MenuBarDeclutter result bundle
 under Xcode DerivedData is used. The output directory defaults to:
-  docs/testing/native-redesign-qa/<UTC timestamp>
+  docs/testing/v0.1.3-visual-smoke/<UTC timestamp>
 
-The script exports only the redesigned Settings visual smoke attachments and
+The script exports only the v0.1.3 Settings visual smoke attachments and
 writes normalized screenshots into <output-run-dir>/screenshots.
 USAGE
 }
@@ -41,7 +41,7 @@ if [[ -z "$XCRESULT_PATH" || ! -d "$XCRESULT_PATH" ]]; then
   exit 1
 fi
 
-RUN_DIR="${2:-$ROOT_DIR/docs/testing/native-redesign-qa/$STAMP}"
+RUN_DIR="${2:-$ROOT_DIR/docs/testing/v0.1.3-visual-smoke/$STAMP}"
 SCREENSHOT_DIR="$RUN_DIR/screenshots"
 RAW_DIR="$(mktemp -d "${TMPDIR:-/tmp}/menubar-visual-smoke.XXXXXX")"
 trap 'rm -rf "$RAW_DIR"' EXIT
@@ -72,20 +72,12 @@ if not manifest_path.exists():
 
 pages = [
     ("General", "01-general.png"),
-    ("Behavior", "02-behavior.png"),
-    ("Layout", "03-layout.png"),
-    ("Menu Bar Items", "04-menu-bar-items.png"),
-    ("Search", "05-search.png"),
-    ("Second Bar", "06-second-bar.png"),
-    ("Groups", "07-groups.png"),
-    ("Hotkeys", "08-hotkeys.png"),
-    ("Profiles", "09-profiles.png"),
-    ("Automation", "10-automation.png"),
-    ("Privacy", "11-privacy.png"),
-    ("Private Access", "12-private-access.png"),
-    ("Import Export", "13-import-export.png"),
-    ("Diagnostics", "14-diagnostics.png"),
-    ("Advanced", "15-advanced.png"),
+    ("Hide & Reveal", "02-hide-reveal.png"),
+    ("Arrange", "03-arrange.png"),
+    ("Find & Rescue", "04-find-rescue.png"),
+    ("Privacy", "05-privacy.png"),
+    ("Recovery", "06-recovery.png"),
+    ("Advanced", "07-advanced.png"),
 ]
 
 def normalize(name: str) -> str:
@@ -120,7 +112,7 @@ for key, (name, filename) in expected.items():
 shutil.copy2(manifest_path, run_dir / "xcresult-attachments-manifest.json")
 
 lines = [
-    "# Native Redesign Visual Smoke",
+    "# v0.1.3 Settings Visual Smoke",
     "",
     f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}",
     f"Source result bundle: `{xcresult_path}`",

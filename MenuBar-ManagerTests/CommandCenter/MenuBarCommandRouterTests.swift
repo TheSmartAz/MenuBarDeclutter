@@ -147,6 +147,55 @@ struct MenuBarCommandRouterTests {
         #expect(result.diagnosticReason == "spacingApplyDeferred")
     }
 
+    @Test func assistedMoveDryRunUsesSharedProAccessibilityAndIconMovingGates() {
+        let store = makeStore()
+        let router = MenuBarCommandRouter(
+            settingsStore: store,
+            accessibilityStatus: { .granted }
+        )
+
+        let command = MenuBarCommand(
+            action: .dryRunMoveItem,
+            target: .menuBarItem(id: "item-1")
+        )
+
+        #expect(router.route(command).status == .requiresPro)
+
+        store.proModeEnabled = true
+        #expect(router.route(command).diagnosticReason == "accessibilityDiscoveryDisabled")
+
+        store.accessibilityDiscoveryEnabled = true
+        #expect(router.route(command).diagnosticReason == "assistedMoveDisabled")
+
+        store.iconMovingEnabled = true
+        let result = router.route(command)
+        #expect(result.status == .success)
+        #expect(result.diagnosticReason == "dryRun")
+    }
+
+    @Test func assistedMoveAttemptUsesSharedGatesBeforeExecutor() {
+        let store = makeStore()
+        store.proModeEnabled = true
+        store.accessibilityDiscoveryEnabled = true
+        let router = MenuBarCommandRouter(
+            settingsStore: store,
+            accessibilityStatus: { .granted }
+        )
+        let command = MenuBarCommand(
+            action: .tryAssistedMoveItem,
+            target: .menuBarItem(id: "item-1"),
+            source: .secondBar
+        )
+
+        #expect(router.route(command).diagnosticReason == "assistedMoveDisabled")
+
+        store.iconMovingEnabled = true
+        let result = router.route(command)
+
+        #expect(result.status == .dryRunOnly)
+        #expect(result.diagnosticReason == "assistedMoveExecutorPending")
+    }
+
     @Test func privateAccessLockReportsRequiresUnlockWithoutRunning() {
         let store = makeStore()
         store.proModeEnabled = true
@@ -545,9 +594,36 @@ struct MenuBarCommandRouterTests {
             summary.failedGateText ?? "",
             summary.targetKind
         ].joined(separator: " ")
+        #expect(summary.title == "Apply Profile")
         #expect(summary.statusText == "Unlock Needed")
         #expect(summary.targetKind == "profile")
+        #expect(!summaryText.contains("Command Center"))
         #expect(!summaryText.contains("Secret Client Profile"))
+    }
+
+    @Test func infoStripInternalCommandsUseSharedRouter() {
+        let store = makeStore()
+        store.workspacesPreviewEnabled = true
+        store.infoStripPreviewEnabled = true
+        var advancedTile = 0
+        var openedSettings = 0
+        var showedFunctionBar = 0
+        var handlers = MenuBarCommandHandlers()
+        handlers.nextInfoStripTile = { advancedTile += 1 }
+        handlers.openInfoStripSettings = { openedSettings += 1 }
+        handlers.showFunctionBarFromInfoStrip = { showedFunctionBar += 1 }
+        let router = MenuBarCommandRouter(settingsStore: store, handlers: handlers)
+
+        let nextResult = router.route(.init(action: .nextInfoStripTile, target: .infoStrip, source: .settings))
+        let settingsResult = router.route(.init(action: .openInfoStripSettings, target: .infoStrip, source: .settings))
+        let functionBarResult = router.route(.init(action: .showFunctionBarFromInfoStrip, target: .infoStrip, source: .settings))
+
+        #expect(nextResult.status == .success)
+        #expect(settingsResult.status == .success)
+        #expect(functionBarResult.status == .success)
+        #expect(advancedTile == 1)
+        #expect(openedSettings == 1)
+        #expect(showedFunctionBar == 1)
     }
 
     private func makeStore() -> SettingsStore {
