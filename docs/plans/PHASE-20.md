@@ -1722,11 +1722,12 @@ docs/testing/manual-v0.1.7-results.md
 
 ### Display / Placement
 
+Current v0.1.7 QA gate is single-screen UI QA on the built-in display. External multi-display movement and expanded notch/edge hardware checks are deferred follow-up when suitable hardware is available.
+
 * Place below menu bar icon.
-* Move between displays.
+* Confirm placement remains visible and clamped on the built-in display.
 * Sleep/wake.
 * Toggle menu bar auto-hide.
-* Test notch MacBook if available.
 * Confirm panel stays visible and clamped.
 
 ### Safe Mode

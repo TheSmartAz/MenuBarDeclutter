@@ -1,5 +1,7 @@
 # Manual QA - v0.1.7 Workspace Display
 
+Current v0.1.7 release scope: single-screen UI QA on the built-in display. External multi-display QA is deferred to a future hardware follow-up and is not a current release blocker.
+
 - Enable Workspaces Preview, Function Bar Preview, Info Strip Preview, and Info Strip auto-show.
 - Enable Info Strip for the active Workspace.
 - Show Function Bar.
@@ -16,4 +18,4 @@
 - PASS: Opened Info Strip Preview on the built-in Color LCD display and observed local tile rendering without any system permission prompt.
 - PASS: Waited past the configured 8 second rotation interval and observed Info Strip tile rotation.
 - PARTIAL: Function Bar hover transition was observed through the accessibility window state during the local pass, but the disabling/pinning variants were not manually repeated.
-- NOT AVAILABLE: External multi-display behavior could not be verified because no secondary display was attached.
+- DEFERRED: External multi-display behavior was not part of the current v0.1.7 release gate because the current scope is single-screen UI QA.

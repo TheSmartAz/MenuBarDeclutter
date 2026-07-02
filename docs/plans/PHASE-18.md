@@ -1544,12 +1544,13 @@ docs/testing/manual-v0.1.5-results.md
 
 ### Placement
 
+Current v0.1.7 QA gate is single-screen UI QA on the built-in display. External multi-display movement and expanded notch hardware checks are deferred follow-up when suitable hardware is available.
+
 * Open below menu bar icon.
 * Open near mouse.
-* Move between displays.
+* Confirm placement remains visible and clamped on the built-in display.
 * Sleep/wake if feasible.
 * Toggle menu bar auto-hide.
-* Try notch display if available.
 
 ### Safe Mode
 

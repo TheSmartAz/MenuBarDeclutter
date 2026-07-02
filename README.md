@@ -22,7 +22,7 @@ The current release target is `v0.1.7`. It completes the Preview track for Works
 - Guided Manual Arrange with normal macOS Command-drag.
 - Pro Accessibility Discovery gating and degraded states.
 
-These are the intended stable product surfaces for `v0.1.7`. Final release completion still requires the physical/manual QA gates tracked in `docs/testing/manual-v0.1.7-results.md`, including live menu bar interaction, login-session behavior, permission grant/revoke, crowded/notch behavior, workspace preview behavior, Info Strip preview behavior, and hardware-specific display checks.
+These are the intended stable product surfaces for `v0.1.7`. Current release completion is scoped to the single-screen UI QA gates tracked in `docs/testing/manual-v0.1.7-results.md`, including workspace preview behavior and Info Strip preview behavior on the built-in display. External multi-display QA is deferred to a future hardware follow-up and is not a current release blocker.
 
 ## Preview, Labs, Or Experimental
 

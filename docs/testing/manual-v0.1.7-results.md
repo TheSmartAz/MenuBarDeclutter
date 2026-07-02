@@ -17,6 +17,7 @@ Automated evidence after follow-up audit patches:
 Manual QA run on 2026-07-02:
 
 - Local display environment: one built-in Color LCD, 3456 x 2234 Retina, main display, mirroring off, internal connection.
+- Current release QA scope is single-screen UI behavior on the built-in display. External multi-display QA is intentionally deferred and is not a v0.1.7 blocker.
 - Launched the Debug build in isolated UI-testing mode with `--ui-testing --ui-testing-show-advanced`.
 - Opened Advanced -> Workspaces Preview, enabled Workspaces Preview, Function Bar Preview, Set Builder Preview, and Info Strip Preview.
 - Enabled Info Strip for the active Default workspace, confirmed seven selected local tile providers, and saved the workspace Info Strip config.
@@ -24,7 +25,7 @@ Manual QA run on 2026-07-02:
 - Waited past the configured 8 second rotation interval and observed the tile advance to the recovery status tile.
 - The UI-testing sandbox persisted the active workspace Info Strip config under `/var/folders/w1/vw_ntlk55wj37zd6_s715wb80000gn/T/MenuBarDeclutterUITests/MenuBarDeclutter/workspaces/workspaces.json`; normal user settings were not used.
 
-Manual QA still required before release:
+Deferred hardware follow-up:
 
 - External multi-display placement behavior with an attached secondary display.
-- Physical notch/edge placement review on release hardware.
+- Expanded physical notch/edge placement review beyond the current built-in-display pass.
