@@ -138,6 +138,7 @@ struct TriggerServiceTests {
             saveCounter: saveCounter,
             notificationCenter: notificationCenter,
             workspaceNotificationCenter: NotificationCenter(),
+            notificationDeliveryQueue: nil,
             evaluationDebounceInterval: .milliseconds(25),
             currentContextProvider: {
                 TriggerEvaluationContext(displayCount: 1)
@@ -183,6 +184,7 @@ struct TriggerServiceTests {
         saveCounter: SaveCounter,
         notificationCenter: NotificationCenter = NotificationCenter(),
         workspaceNotificationCenter: NotificationCenter = NotificationCenter(),
+        notificationDeliveryQueue: OperationQueue? = .main,
         evaluationDebounceInterval: Duration = .milliseconds(250),
         currentContextProvider: (() -> TriggerEvaluationContext)? = nil
     ) -> Harness {
@@ -221,6 +223,7 @@ struct TriggerServiceTests {
             now: now,
             notificationCenter: notificationCenter,
             workspaceNotificationCenter: workspaceNotificationCenter,
+            notificationDeliveryQueue: notificationDeliveryQueue,
             evaluationDebounceInterval: evaluationDebounceInterval,
             batteryPercentProvider: { nil },
             currentContextProvider: currentContextProvider,
