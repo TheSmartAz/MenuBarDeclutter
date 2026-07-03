@@ -36,4 +36,4 @@ App build: v0.1.10 build 11
 - Latest split unit result bundle: `Test-MenuBarDeclutter-2026.07.03_04-44-54--0700.xcresult` with 564 tests in 77 suites passed.
 - Latest split UI result bundle: `Test-MenuBarDeclutter-2026.07.03_04-32-46--0700.xcresult` with 17 UI tests passed.
 - Final installed focused screenshot QA contact sheet: `/tmp/MenuBarDeclutter-installed-focused-qa-after-polish-2026-07-03/contact-sheet.png`.
-- Release artifacts refreshed at 2026-07-03 04:41 PDT: `build/Dist/MenuBarDeclutter-v0.1.10-alpha.zip` and `build/Dist/MenuBarDeclutter-v0.1.10.zip`.
+- Release artifact refreshed at 2026-07-03 04:41 PDT: `build/Dist/MenuBarDeclutter-v0.1.10-alpha.zip`. The default dry-run packaging flow does not create `build/Dist/MenuBarDeclutter-v0.1.10.zip` unless explicitly requested.

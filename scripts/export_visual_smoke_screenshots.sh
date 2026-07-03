@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TEST_ID="${TEST_ID:-MenuBar_ManagerUITests/testRedesignedSettingsPagesVisualSmoke()}"
+TEST_ID="${TEST_ID:-MenuBarDeclutterUITests/testRedesignedSettingsPagesVisualSmoke()}"
 STAMP="$(date -u +"%Y-%m-%d_%H%M%S")"
 
 usage() {
@@ -12,9 +12,9 @@ Usage:
 
 If result.xcresult is omitted, the latest Test-MenuBarDeclutter result bundle
 under Xcode DerivedData is used. The output directory defaults to:
-  docs/testing/v0.1.3-visual-smoke/<UTC timestamp>
+  docs/testing/v0.1.10-visual-smoke/<UTC timestamp>
 
-The script exports only the v0.1.3 Settings visual smoke attachments and
+The script exports only the v0.1.10 Settings visual smoke attachments and
 writes normalized screenshots into <output-run-dir>/screenshots.
 USAGE
 }
@@ -41,7 +41,7 @@ if [[ -z "$XCRESULT_PATH" || ! -d "$XCRESULT_PATH" ]]; then
   exit 1
 fi
 
-RUN_DIR="${2:-$ROOT_DIR/docs/testing/v0.1.3-visual-smoke/$STAMP}"
+RUN_DIR="${2:-$ROOT_DIR/docs/testing/v0.1.10-visual-smoke/$STAMP}"
 SCREENSHOT_DIR="$RUN_DIR/screenshots"
 RAW_DIR="$(mktemp -d "${TMPDIR:-/tmp}/menubar-visual-smoke.XXXXXX")"
 trap 'rm -rf "$RAW_DIR"' EXIT
@@ -75,9 +75,10 @@ pages = [
     ("Hide & Reveal", "02-hide-reveal.png"),
     ("Arrange", "03-arrange.png"),
     ("Find & Rescue", "04-find-rescue.png"),
-    ("Privacy", "05-privacy.png"),
-    ("Recovery", "06-recovery.png"),
-    ("Advanced", "07-advanced.png"),
+    ("Workspaces", "05-workspaces.png"),
+    ("Privacy", "06-privacy.png"),
+    ("Recovery", "07-recovery.png"),
+    ("Advanced", "08-advanced.png"),
 ]
 
 def normalize(name: str) -> str:
@@ -112,7 +113,7 @@ for key, (name, filename) in expected.items():
 shutil.copy2(manifest_path, run_dir / "xcresult-attachments-manifest.json")
 
 lines = [
-    "# v0.1.3 Settings Visual Smoke",
+    "# v0.1.10 Settings Visual Smoke",
     "",
     f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}",
     f"Source result bundle: `{xcresult_path}`",

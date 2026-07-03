@@ -9,15 +9,16 @@ Phases covered by this checklist:
 - Confirm project targets macOS 26.0+ only.
 - Run the canonical commands (the scripts pick the active scheme and print the exact `xcodebuild` command before running):
   - `scripts/build_debug.sh`
-  - `scripts/build_release.sh`
+  - `scripts/build_release.sh --dry-run`
   - `scripts/test.sh`
-- Confirm unit tests pass (Swift Testing + XCTest).
+- Confirm unit tests pass (Swift Testing + XCTest). `scripts/test.sh` defaults to the focused hosted unit lane.
+- Run `scripts/test.sh --ui` only when the local UI runner is explicitly part of the pass.
 - Confirm scripts print the exact `xcodebuild` command before execution.
-- Canonical Alpha RC commands:
-  - `xcodebuild build -scheme MenuBarDeclutter -destination 'platform=macOS'`
-  - `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS'`
+- Canonical local Alpha RC build commands use CI-style ad-hoc/no-account signing overrides. Unit tests use project local signing defaults so Xcode can launch the hosted test app:
+  - `xcodebuild build -scheme MenuBarDeclutter -destination 'platform=macOS' CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO`
+  - `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -only-testing:MenuBarDeclutterTests -enableCodeCoverage NO`
 - Deprecated fallback scheme retained during transition:
-  - `xcodebuild test -scheme MenuBar-Manager -destination 'platform=macOS'`
+  - `xcodebuild test -scheme MenuBar-Manager -destination 'platform=macOS' -only-testing:MenuBarDeclutterTests -enableCodeCoverage NO`
 
 ## Privacy
 
@@ -51,9 +52,9 @@ Phases covered by this checklist:
 ## Distribution
 
 - Revisit App Sandbox entitlements before distribution. Current local-alpha builds are intentionally non-sandboxed for opt-in Pro Accessibility Discovery; keep hardened runtime, no-network entitlements, and sensitive usage-string absence verified.
-- Confirm hardened runtime for Release.
-- Confirm signing identity (Developer ID Application), notarization via `scripts/notarize_template.sh`, and `stapler validate`.
-- Re-zip the stapled `.app` (or produce a DMG placeholder) for distribution.
+- Confirm hardened runtime metadata for local Release/dry-run artifacts where available.
+- Do not require, configure, or assume Developer ID signing, notarization, or stapling for the current release stance.
+- Treat `scripts/notarize_template.sh`, `docs/release/notarization-setup.md`, and `docs/release/notarization-runbook.md` as deferred templates until Developer ID distribution is explicitly requested.
 - Confirm license audit remains clean (no GPL or source-available code from Ice, Thaw, SaneBar, or similar menu bar utilities).
 - Complete `docs/release/alpha-rc-checklist.md`.
 - Include `docs/release/alpha-rc-known-limitations.md` in release notes.

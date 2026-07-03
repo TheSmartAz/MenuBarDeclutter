@@ -1,4 +1,7 @@
 import AppKit
+import ApplicationServices
+
+private let appEnvironmentAccessibilityPromptOptionKey = "AXTrustedCheckOptionPrompt"
 
 @MainActor
 final class AppEnvironment {
@@ -24,10 +27,16 @@ final class AppEnvironment {
     private let shouldCollapseAfterStartupHealth: Bool
     private let reflectLaunchAtLoginOnStart: Bool
     private let presentMigrationNoticeOnStart: Bool
+    private let accessibilityTrustProvider: AccessibilityPermissionService.TrustProvider
+    private let accessibilityPromptTrustProvider: AccessibilityPermissionService.TrustProvider
+    private let accessibilitySystemSettingsOpener: AccessibilityPermissionService.SystemSettingsOpener
 
     lazy var accessibilityPermissionService = AccessibilityPermissionService(
         settingsStore: settingsStore,
-        diagnosticsLogger: diagnosticsLogger
+        diagnosticsLogger: diagnosticsLogger,
+        trustProvider: accessibilityTrustProvider,
+        promptTrustProvider: accessibilityPromptTrustProvider,
+        systemSettingsOpener: accessibilitySystemSettingsOpener
     )
 
     private lazy var axMenuBarScanner = AXMenuBarScanner(
@@ -328,6 +337,12 @@ final class AppEnvironment {
             secondBarVisible: { [weak self] in
                 self?.liveStatus.secondBarVisible == true
             },
+            findIconStatusMenuEnabled: { [weak self] in
+                self?.settingsStore.searchEnabled == true
+            },
+            secondBarStatusMenuEnabled: { [weak self] in
+                self?.settingsStore.secondBarEnabled == true
+            },
             safeModeActive: { [weak self] in
                 self?.safeModeLaunchState.isSafeModeActive == true
             },
@@ -446,7 +461,6 @@ final class AppEnvironment {
         diagnosticsLogger: diagnosticsLogger,
         factory: statusItemFactory,
         settingsStore: settingsStore,
-        screenGeometry: screenGeometry,
         hidingService: hidingService,
         primarySeparatorController: primarySeparatorController,
         alwaysHiddenSeparatorController: alwaysHiddenSeparatorController,
@@ -512,7 +526,8 @@ final class AppEnvironment {
             guard let self else { return nil }
             return WorkspaceUsageIndex().rebuild(
                 snapshot: self.workspaceSwitchingService.currentSnapshot(),
-                groups: self.groupStore.groups
+                groups: self.groupStore.groups,
+                discoveredSnapshots: self.liveStatus.scannedMenuBarItems
             )
         },
         openPrivacySettings: { [weak self] in
@@ -791,6 +806,9 @@ final class AppEnvironment {
         safeModeActive: { [weak self] in
             self?.safeModeLaunchState.isSafeModeActive == true
         },
+        statusItemAnchorProvider: { [weak self] in
+            self?.currentSeparatorFrames().primary
+        },
         diagnosticsLogger: diagnosticsLogger
     )
 
@@ -799,6 +817,9 @@ final class AppEnvironment {
         switchingService: workspaceSwitchingService,
         safeModeActive: { [weak self] in
             self?.safeModeLaunchState.isSafeModeActive == true
+        },
+        statusItemAnchorProvider: { [weak self] in
+            self?.currentSeparatorFrames().primary
         },
         contextBuilder: { [weak self] in
             self?.currentInfoTileContext() ?? InfoTileContext.empty
@@ -949,7 +970,23 @@ final class AppEnvironment {
         screenGeometry: ScreenGeometryService = ScreenGeometryService(),
         launchAtLoginService: LaunchAtLoginService? = nil,
         reflectLaunchAtLoginOnStart: Bool = true,
-        presentMigrationNoticeOnStart: Bool = true
+        presentMigrationNoticeOnStart: Bool = true,
+        accessibilityTrustProvider: @escaping AccessibilityPermissionService.TrustProvider = {
+            AXIsProcessTrustedWithOptions([
+                appEnvironmentAccessibilityPromptOptionKey: false
+            ] as CFDictionary)
+        },
+        accessibilityPromptTrustProvider: @escaping AccessibilityPermissionService.TrustProvider = {
+            AXIsProcessTrustedWithOptions([
+                appEnvironmentAccessibilityPromptOptionKey: true
+            ] as CFDictionary)
+        },
+        accessibilitySystemSettingsOpener: @escaping AccessibilityPermissionService.SystemSettingsOpener = {
+            guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") else {
+                return false
+            }
+            return NSWorkspace.shared.open(url)
+        }
     ) {
         self.settingsStore = settingsStore
         self.diagnosticsLogger = diagnosticsLogger
@@ -957,6 +994,9 @@ final class AppEnvironment {
         self.screenGeometry = screenGeometry
         self.reflectLaunchAtLoginOnStart = reflectLaunchAtLoginOnStart
         self.presentMigrationNoticeOnStart = presentMigrationNoticeOnStart
+        self.accessibilityTrustProvider = accessibilityTrustProvider
+        self.accessibilityPromptTrustProvider = accessibilityPromptTrustProvider
+        self.accessibilitySystemSettingsOpener = accessibilitySystemSettingsOpener
         self.liveStatus = LiveDiagnosticsStatus()
         self.settingsMigrationResult = SettingsMigrationService(
             settingsStore: settingsStore,
@@ -2093,6 +2133,16 @@ final class AppEnvironment {
         handlers.showLayoutSuggestions = { [weak self] in self?.showLayoutSuggestions() }
         handlers.enterFullMenuBarMode = { [weak self] in self?.enterFullMenuBarMode() }
         handlers.exitFullMenuBarMode = { [weak self] in self?.exitFullMenuBarMode() }
+        handlers.previewSpacingPreset = { [weak self] _ in
+            guard let self else { return false }
+            self.showSettings(section: .layout)
+            return true
+        }
+        handlers.showAssistedMoveGuide = { [weak self] in
+            guard let self else { return false }
+            self.showSettings(section: .arrange)
+            return true
+        }
         handlers.pauseAutomation = { [weak self] in
             self?.settingsStore.automationPaused = true
             self?.refreshTriggerSettings()

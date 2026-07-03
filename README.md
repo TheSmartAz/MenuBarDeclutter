@@ -65,21 +65,31 @@ These are the intended stable product surfaces for `v0.1.10`. Current release co
 ## Build And Test
 
 ```sh
-xcodebuild -scheme MenuBarDeclutter -destination 'platform=macOS' build
-xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS'
+scripts/build_debug.sh
+scripts/test.sh
 scripts/qa_preflight.sh
 scripts/verify_privacy_boundary.sh
 ```
 
-Current release validation uses `scripts/qa_preflight.sh` for its `build-for-testing` plus `test-without-building` lanes. Direct `xcodebuild test` is still useful, but this macOS/Xcode runner has intermittently failed before tests attach.
+The default local build scripts use CI-style ad-hoc/no-account signing overrides (`CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO`) so a personal Apple signing account is not required. `scripts/test.sh` uses the project's local signing defaults and runs the hosted unit lane by default. Run `scripts/test.sh --ui` when you explicitly want the local UI runner.
+
+Direct Xcode equivalents:
+
+```sh
+xcodebuild -scheme MenuBarDeclutter -destination 'platform=macOS' build CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO
+xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -only-testing:MenuBarDeclutterTests -enableCodeCoverage NO
+```
+
+Current release validation uses `scripts/qa_preflight.sh` for its `build-for-testing` plus split `test-without-building` lanes. Direct full-scheme `xcodebuild test` is still useful for diagnosis; use the focused unit lane when UI automation is not part of the pass.
 
 ## Release Dry Run
 
 ```sh
+scripts/build_release.sh
 scripts/build_release.sh --dry-run
 scripts/build_release.sh --dry-run --install --verify-installed
 ```
 
-Dry-run release builds create local `v0.1.10` artifacts without Developer ID export, notarization credentials, uploads, or network access.
+Release builds are dry-run by default and create local `v0.1.10` artifacts without Developer ID export, notarization credentials, uploads, or network access.
 
-Real Developer ID notarization uses `notarytool` credentials supplied by keychain profile or environment variables and requires an installed Developer ID Application signing certificate. No credentials are stored in this repository.
+Developer ID export/notarization is intentionally out of scope for the current project stance. The future path is behind explicit script opt-in and should only be used after Developer ID distribution is requested.

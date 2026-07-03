@@ -408,8 +408,9 @@ This checklist verifies the Phase 1 hiding MVP. Later-phase features such as glo
 - Open Settings → Search.
 - Disable "Highlight selected item"; select a visible result and confirm no overlay appears.
 - Disable "Reveal item when selected"; select a hidden/always-hidden result and confirm visibility is not changed automatically.
-- Disable "Enable Find Icon"; open Find Icon from the status menu and confirm the panel explains that Find Icon is disabled.
-- Re-enable Find Icon.
+- Open Find Icon with Pro Mode off and confirm the panel shows "Pro Mode Required" with no Accessibility prompt.
+- Confirm no "Find Icon Disabled" enabling page appears in the default gated flow.
+- Disable "Show Find Icon in status menu"; confirm the status menu hides "Find Icon..." while direct Settings and hotkey opens still show the normal gated panel.
 
 ### Find Icon hotkey
 
@@ -445,6 +446,7 @@ This checklist verifies the Phase 1 hiding MVP. Later-phase features such as glo
 - With Pro Mode disabled, confirm the Second Bar opens with a Pro Mode requirement state and Basic Mode collapse/expand still works.
 - Enable Pro Mode but leave Accessibility permission missing; confirm the Second Bar shows the permission-required state and offers explicit settings actions.
 - Confirm no Accessibility prompt appears merely from opening the Second Bar.
+- Disable "Show Second Bar in status menu"; confirm the status menu hides "Show Second Bar" while direct Settings, Shortcuts, or recovery routes still show the normal gated panel.
 
 ### Show, hide, and toggle
 

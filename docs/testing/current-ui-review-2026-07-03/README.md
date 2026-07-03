@@ -10,7 +10,7 @@ debug build using the app's UI-testing launch switches.
 - `xcodebuild -list`: succeeded; canonical scheme is `MenuBarDeclutter`.
 - `xcodebuild -scheme MenuBarDeclutter -destination 'platform=macOS' build`: succeeded.
 - Focused UI smoke test attempt:
-  `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -only-testing:MenuBarDeclutterUITests/MenuBar_ManagerUITests/testRedesignedSettingsPagesVisualSmoke`
+  `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -only-testing:MenuBarDeclutterUITests/MenuBarDeclutterUITests/testRedesignedSettingsPagesVisualSmoke`
   failed because XCTest timed out while enabling automation mode in this desktop session.
 
 ## Captured Surfaces

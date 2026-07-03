@@ -3,14 +3,29 @@ import AppKit
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private(set) var environment: AppEnvironment?
+    private var launchKeepAliveStatusItem: NSStatusItem?
+
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        NSApp.setActivationPolicy(.accessory)
+        ProcessInfo.processInfo.disableAutomaticTermination("MenuBarDeclutter keeps menu bar status items active.")
+        installLaunchKeepAliveStatusItem()
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        ProcessInfo.processInfo.disableAutomaticTermination("MenuBarDeclutter keeps menu bar status items active.")
 
         let environment = makeEnvironment()
         self.environment = environment
+        guard !isHostedUnitTestingLaunch else {
+            environment.start()
+            releaseLaunchKeepAliveStatusItemAfterStartup()
+            return
+        }
+
         seedRequestedUITestingPersistentStores(environment)
         environment.start()
+        releaseLaunchKeepAliveStatusItemAfterStartup()
         openRequestedUITestingSurface(environment)
     }
 
@@ -24,7 +39,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return false
     }
 
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        false
+    }
+
     private func makeEnvironment() -> AppEnvironment {
+        if isHostedUnitTestingLaunch {
+            return makeHostedUnitTestingEnvironment()
+        }
+
         guard launchArguments.contains("--ui-testing"),
               let defaults = UserDefaults(suiteName: "MenuBarDeclutterUITests") else {
             return AppEnvironment()
@@ -33,6 +56,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         defaults.removePersistentDomain(forName: "MenuBarDeclutterUITests")
 
         let settingsStore = SettingsStore(defaults: defaults)
+        let proDiscoveryEnabled = launchArguments.contains("--ui-testing-pro-discovery-enabled")
+        let accessibilityGranted = launchArguments.contains("--ui-testing-accessibility-granted")
+        let hideStatusShortcuts = launchArguments.contains("--ui-testing-hide-status-shortcuts")
         settingsStore.hasCompletedOnboarding = true
         settingsStore.hasSeenDragHint = true
         settingsStore.launchAtLoginEnabled = false
@@ -43,11 +69,72 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .appendingPathComponent("MenuBarDeclutterUITests", isDirectory: true)
         try? FileManager.default.removeItem(at: baseURL)
 
+        let environment = AppEnvironment(
+            settingsStore: settingsStore,
+            appSupportPaths: AppSupportPaths(baseURL: baseURL),
+            reflectLaunchAtLoginOnStart: false,
+            presentMigrationNoticeOnStart: false,
+            accessibilityTrustProvider: { accessibilityGranted },
+            accessibilityPromptTrustProvider: { accessibilityGranted },
+            accessibilitySystemSettingsOpener: { false }
+        )
+
+        if proDiscoveryEnabled {
+            settingsStore.proModeEnabled = true
+            settingsStore.accessibilityDiscoveryEnabled = true
+        }
+        if hideStatusShortcuts {
+            settingsStore.searchEnabled = false
+            settingsStore.secondBarEnabled = false
+        }
+
+        return environment
+    }
+
+    private func installLaunchKeepAliveStatusItem() {
+        guard launchKeepAliveStatusItem == nil else { return }
+
+        let item = NSStatusBar.system.statusItem(withLength: 0)
+        item.button?.toolTip = "MenuBarDeclutter"
+        launchKeepAliveStatusItem = item
+    }
+
+    private func releaseLaunchKeepAliveStatusItemAfterStartup() {
+        guard launchKeepAliveStatusItem != nil else { return }
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self,
+                  let statusItem = self.launchKeepAliveStatusItem else {
+                return
+            }
+            NSStatusBar.system.removeStatusItem(statusItem)
+            self.launchKeepAliveStatusItem = nil
+        }
+    }
+
+    private func makeHostedUnitTestingEnvironment() -> AppEnvironment {
+        let suiteName = "MenuBarDeclutterHostedUnitTests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName) ?? .standard
+        defaults.removePersistentDomain(forName: suiteName)
+
+        let settingsStore = SettingsStore(defaults: defaults)
+        settingsStore.hasCompletedOnboarding = true
+        settingsStore.hasSeenDragHint = true
+        settingsStore.launchAtLoginEnabled = false
+        settingsStore.proModeEnabled = false
+        settingsStore.accessibilityDiscoveryEnabled = false
+
+        let baseURL = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+            .appendingPathComponent("MenuBarDeclutterHostedUnitTests-\(UUID().uuidString)", isDirectory: true)
+
         return AppEnvironment(
             settingsStore: settingsStore,
             appSupportPaths: AppSupportPaths(baseURL: baseURL),
             reflectLaunchAtLoginOnStart: false,
-            presentMigrationNoticeOnStart: false
+            presentMigrationNoticeOnStart: false,
+            accessibilityTrustProvider: { false },
+            accessibilityPromptTrustProvider: { false },
+            accessibilitySystemSettingsOpener: { false }
         )
     }
 
@@ -479,5 +566,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var launchArguments: Set<String> {
         Set(ProcessInfo.processInfo.arguments)
+    }
+
+    private var isHostedUnitTestingLaunch: Bool {
+        guard !launchArguments.contains("--ui-testing") else {
+            return false
+        }
+
+        let environment = ProcessInfo.processInfo.environment
+        return environment["XCTestConfigurationFilePath"] != nil
+            || environment["XCInjectBundleInto"] != nil
     }
 }

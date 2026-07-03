@@ -133,7 +133,9 @@ prepare_phase15_xctestrun() {
     -destination "$DESTINATION" \
     -derivedDataPath "$XCODE_DERIVED_DATA_PATH" \
     -enableCodeCoverage NO \
-    "ENABLE_DEBUG_DYLIB=$XCODE_ENABLE_DEBUG_DYLIB" > "$log_file" 2>&1
+    "ENABLE_DEBUG_DYLIB=$XCODE_ENABLE_DEBUG_DYLIB" \
+    CODE_SIGN_IDENTITY=- \
+    CODE_SIGNING_REQUIRED=NO > "$log_file" 2>&1
   local rc="$?"
   set -e
   cat "$log_file"

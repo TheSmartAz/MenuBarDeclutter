@@ -120,6 +120,43 @@ struct QAScriptsTests {
         #expect(text.contains("Release artifact verification was killed by the OS"))
     }
 
+    @Test func testScriptDefaultsToReliableUnitLaneWithProjectSigning() throws {
+        let root = Self.repositoryRoot()
+        let text = try String(contentsOf: root.appendingPathComponent("scripts/test.sh"), encoding: .utf8)
+
+        #expect(text.contains("TEST_MODE=\"${TEST_MODE:-unit}\""))
+        #expect(text.contains("AD_HOC_SIGNING_OVERRIDES=\"${AD_HOC_SIGNING_OVERRIDES:-0}\""))
+        #expect(text.contains("xcodebuild test"))
+        #expect(text.contains("-only-testing:MenuBarDeclutterTests"))
+        #expect(text.contains("--ui|--ui-tests"))
+        #expect(text.contains("-only-testing:MenuBarDeclutterUITests"))
+        #expect(text.contains("Set AD_HOC_SIGNING_OVERRIDES=1"))
+        #expect(text.contains("CODE_SIGN_IDENTITY=-"))
+        #expect(text.contains("CODE_SIGNING_REQUIRED=NO"))
+    }
+
+    @Test func releaseBuildDefaultsToDryRunAndRequiresDeveloperIDOptIn() throws {
+        let root = Self.repositoryRoot()
+        let buildRelease = try String(contentsOf: root.appendingPathComponent("scripts/build_release.sh"), encoding: .utf8)
+        let exportApp = try String(contentsOf: root.appendingPathComponent("scripts/release_export_app.sh"), encoding: .utf8)
+        let archive = try String(contentsOf: root.appendingPathComponent("scripts/release_archive.sh"), encoding: .utf8)
+        let package = try String(contentsOf: root.appendingPathComponent("scripts/release_package_zip.sh"), encoding: .utf8)
+
+        #expect(buildRelease.contains("DRY_RUN=1"))
+        #expect(buildRelease.contains("--developer-id"))
+        #expect(buildRelease.contains("DEVELOPER_ID=1"))
+        #expect(exportApp.contains("DRY_RUN=\"${DRY_RUN:-1}\""))
+        #expect(exportApp.contains("DEVELOPER_ID_EXPORT=\"${DEVELOPER_ID_EXPORT:-0}\""))
+        #expect(exportApp.contains("Developer ID export is out of the current project scope"))
+        #expect(archive.contains("AD_HOC_SIGNING_OVERRIDES=\"${AD_HOC_SIGNING_OVERRIDES:-1}\""))
+        #expect(archive.contains("CODE_SIGN_IDENTITY=-"))
+        #expect(archive.contains("CODE_SIGNING_REQUIRED=NO"))
+        #expect(package.contains("DRY_RUN=\"${DRY_RUN:-1}\""))
+        #expect(package.contains("ZIP_PATH=\"$ROOT_DIR/build/Dist/MenuBarDeclutter-v$VERSION-alpha.zip\""))
+        #expect(package.contains("ZIP_PATH=\"$ROOT_DIR/build/Dist/MenuBarDeclutter-v$VERSION.zip\""))
+        #expect(package.contains("VERSIONED_ZIP_PATH=\"${VERSIONED_ZIP_PATH:-}\""))
+    }
+
     @Test func preflightScriptsClassifyXcodeAutomationModeTimeoutsAsInfrastructure() throws {
         let root = Self.repositoryRoot()
 
