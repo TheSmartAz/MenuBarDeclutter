@@ -73,6 +73,12 @@ struct AdvancedSettingsView: View {
             DeveloperNotesSection()
         }
         .onIconMovingSettingsChanges(from: settingsStore, perform: onChange)
+        .onChange(of: settingsStore.collapsedSeparatorLengthOverride) { _, newValue in
+            let shouldShowOverride = newValue != nil
+            if showCollapsedOverride != shouldShowOverride {
+                showCollapsedOverride = shouldShowOverride
+            }
+        }
         .confirmationDialog(
             "Enable experimental icon moving?",
             isPresented: $showIconMovingConfirmation,

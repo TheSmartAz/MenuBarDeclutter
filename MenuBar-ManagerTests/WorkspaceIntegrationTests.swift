@@ -70,6 +70,76 @@ struct WorkspaceIntegrationTests {
         #expect(usage.workspaceIDsByGroupID[detachedGroup.id] == [otherID])
     }
 
+    @Test func usageIndexMatchesGroupRefsAgainstDiscoveredSnapshots() {
+        let activeID = UUID()
+        let bundleMatched = TestSnapshots.makeSnapshot(
+            id: "live-bundle",
+            title: "Sync",
+            owningApplicationName: "Cloud Sync",
+            bundleIdentifier: "com.example.sync",
+            zone: .visible
+        )
+        let titleMatched = TestSnapshots.makeSnapshot(
+            id: "live-title",
+            title: "VPN Connected",
+            owningApplicationName: "Network Utility",
+            bundleIdentifier: "com.example.vpn",
+            zone: .hidden
+        )
+        let appMatched = TestSnapshots.makeSnapshot(
+            id: "live-app",
+            title: "Status",
+            owningApplicationName: "Calendar Helper",
+            bundleIdentifier: "com.example.calendar",
+            zone: .visible
+        )
+        let zoneMatched = TestSnapshots.makeSnapshot(
+            id: "live-zone",
+            title: "Audio",
+            owningApplicationName: "Sound",
+            bundleIdentifier: "com.example.audio",
+            zone: .alwaysHidden
+        )
+        let free = TestSnapshots.makeSnapshot(
+            id: "free",
+            title: "Free",
+            owningApplicationName: "Free",
+            bundleIdentifier: "com.example.free",
+            zone: .visible
+        )
+        let group = IconGroup(
+            name: "Live Criteria",
+            itemRefs: [
+                IconGroupItemRef(bundleIdentifier: "com.example.sync"),
+                IconGroupItemRef(appName: "Calendar"),
+                IconGroupItemRef(titleContains: "VPN"),
+                IconGroupItemRef(zone: .alwaysHidden)
+            ]
+        )
+        let workspace = MenuBarWorkspace(
+            id: activeID,
+            name: "Active",
+            functionItems: [
+                WorkspaceItem(kind: .group(WorkspaceGroupReference(groupID: group.id, referenceMode: .linked)))
+            ]
+        )
+        let snapshot = WorkspaceStoreSnapshot(activeWorkspaceID: activeID, workspaces: [workspace])
+
+        let index = WorkspaceUsageIndex()
+        let usage = index.rebuild(
+            snapshot: snapshot,
+            groups: [group],
+            discoveredSnapshots: [bundleMatched, titleMatched, appMatched, zoneMatched, free]
+        )
+
+        #expect(usage.usage(for: "live-bundle").groupIDs == [group.id])
+        #expect(usage.usage(for: "live-title").linkedGroupReferenceCount == 1)
+        #expect(usage.usage(for: "live-app").isUsedInActiveWorkspace)
+        #expect(usage.usage(for: "live-zone").workspaceIDs == [activeID])
+        #expect(usage.usage(for: "free").isUnassigned)
+        #expect(index.unassignedItemHashes(from: [bundleMatched, titleMatched, appMatched, zoneMatched, free]) == ["free"])
+    }
+
     @Test func assignmentServiceAddsItemsGroupsAndHonorsGates() {
         let activeID = UUID()
         let workspace = MenuBarWorkspace(id: activeID, name: "Active")

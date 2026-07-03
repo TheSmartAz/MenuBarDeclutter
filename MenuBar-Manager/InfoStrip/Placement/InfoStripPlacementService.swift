@@ -26,6 +26,7 @@ struct InfoStripPlacementService {
     func placement(
         panelSize: CGSize,
         preference: InfoStripPlacementPreference,
+        statusItemAnchor: CGRect? = nil,
         lastPosition: CGPoint? = nil
     ) -> InfoStripPlacement? {
         let mappedPreference: FunctionBarPlacementPreference = {
@@ -40,6 +41,7 @@ struct InfoStripPlacementService {
         guard let placement = functionBarPlacementService.placement(
             panelSize: panelSize,
             preference: mappedPreference,
+            statusItemAnchor: statusItemAnchor,
             lastPosition: lastPosition
         ) else {
             return nil

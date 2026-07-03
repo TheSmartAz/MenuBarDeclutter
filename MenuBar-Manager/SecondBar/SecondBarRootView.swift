@@ -84,6 +84,18 @@ struct SecondBarRootView: View {
         .onChange(of: liveStatus.scannedMenuBarItems) { _, _ in
             refreshItems()
         }
+        .onChange(of: liveStatus.safeModeActive) {
+            refreshItems()
+        }
+        .onChange(of: settingsStore.proModeEnabled) {
+            refreshItems()
+        }
+        .onChange(of: settingsStore.accessibilityDiscoveryEnabled) {
+            refreshItems()
+        }
+        .onChange(of: permissionService.status) {
+            refreshItems()
+        }
         .onChange(of: settingsStore.secondBarShowHiddenItems) {
             refreshItems()
         }
@@ -373,21 +385,6 @@ struct SecondBarRootView: View {
     }
 
     private var unavailableState: SecondBarUnavailableState? {
-        if !settingsStore.secondBarEnabled {
-            return SecondBarUnavailableState(
-                title: "Second Bar Disabled",
-                systemImage: "menubar.rectangle",
-                message: "Enable Second Bar in settings to show hidden menu bar items here.",
-                primaryButtonTitle: "Enable Second Bar",
-                primaryAction: {
-                    settingsStore.secondBarEnabled = true
-                    onSettingsChanged()
-                },
-                secondaryButtonTitle: nil,
-                secondaryAction: nil
-            )
-        }
-
         if liveStatus.safeModeActive {
             return SecondBarUnavailableState(
                 title: "Safe Mode Active",

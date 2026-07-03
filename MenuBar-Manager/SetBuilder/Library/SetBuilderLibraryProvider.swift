@@ -195,7 +195,11 @@ struct UnassignedMenuBarItemLibraryProvider: SetBuilderLibraryProviding {
         }
 
         let usageIndex = WorkspaceUsageIndex()
-        usageIndex.rebuild(snapshot: workspaceSnapshot, groups: groups)
+        usageIndex.rebuild(
+            snapshot: workspaceSnapshot,
+            groups: groups,
+            discoveredSnapshots: snapshots
+        )
         let unassignedSnapshots = snapshots.filter { snapshot in
             usageIndex.usage(for: snapshot.id).isUnassigned
         }

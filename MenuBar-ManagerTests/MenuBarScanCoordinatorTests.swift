@@ -31,6 +31,24 @@ struct MenuBarScanCoordinatorTests {
         #expect(harness.liveStatus.menuBarScanLastSkipReason == nil)
     }
 
+    @Test func manualRefreshAndWaitReturnsFreshCompletedResult() async throws {
+        let harness = makeHarness(isTrusted: { true }, scanDelayNanoseconds: 80_000_000)
+        defer { harness.tearDown() }
+        harness.store.proModeEnabled = true
+        harness.store.accessibilityDiscoveryEnabled = true
+
+        let awaitedResult = await harness.coordinator.requestManualRefreshAndWait(reason: "assisted move verification")
+        let result = try #require(awaitedResult)
+
+        #expect(await harness.scanner.scanCount == 1)
+        #expect(result.snapshots.count == 1)
+        #expect(harness.coordinator.lastResult == result)
+        #expect(harness.liveStatus.scannedMenuBarItems == result.snapshots)
+        #expect(harness.liveStatus.menuBarScanLifecycleState == .completed)
+        #expect(harness.liveStatus.menuBarScanLastReason == "assisted move verification")
+        #expect(harness.liveStatus.menuBarScanLastSkipReason == nil)
+    }
+
     @Test func revokedPermissionClearsExistingDiagnosticsWithoutScanningAgain() async {
         var isTrusted = true
         let harness = makeHarness(isTrusted: { isTrusted })

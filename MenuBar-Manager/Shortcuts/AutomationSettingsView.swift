@@ -59,7 +59,6 @@ struct AutomationSettingsView: View {
                     appIntentsEnabled: settingsStore.appIntentsEnabled,
                     proModeEnabled: settingsStore.proModeEnabled,
                     accessibilityDiscoveryEnabled: settingsStore.accessibilityDiscoveryEnabled,
-                    searchEnabled: settingsStore.searchEnabled,
                     canApplyProfiles: settingsStore.appIntentsCanApplyProfiles,
                     canAccessLabs: settingsStore.appIntentsCanAccessLabs,
                     spacingLabsEnabled: settingsStore.menuBarSpacingLabsEnabled
@@ -77,7 +76,6 @@ struct AutomationSettingsView: View {
             appIntentsEnabled: settingsStore.appIntentsEnabled,
             proModeEnabled: settingsStore.proModeEnabled,
             accessibilityDiscoveryEnabled: settingsStore.accessibilityDiscoveryEnabled,
-            searchEnabled: settingsStore.searchEnabled,
             canApplyProfiles: settingsStore.appIntentsCanApplyProfiles,
             canAccessLabs: settingsStore.appIntentsCanAccessLabs,
             spacingLabsEnabled: settingsStore.menuBarSpacingLabsEnabled
@@ -263,7 +261,6 @@ private struct AutomationShortcutActionList: View {
     let appIntentsEnabled: Bool
     let proModeEnabled: Bool
     let accessibilityDiscoveryEnabled: Bool
-    let searchEnabled: Bool
     let canApplyProfiles: Bool
     let canAccessLabs: Bool
     let spacingLabsEnabled: Bool
@@ -288,7 +285,6 @@ private struct AutomationShortcutActionList: View {
                             appIntentsEnabled: appIntentsEnabled,
                             proModeEnabled: proModeEnabled,
                             accessibilityDiscoveryEnabled: accessibilityDiscoveryEnabled,
-                            searchEnabled: searchEnabled,
                             canApplyProfiles: canApplyProfiles,
                             canAccessLabs: canAccessLabs,
                             spacingLabsEnabled: spacingLabsEnabled
@@ -316,7 +312,6 @@ private struct AutomationShortcutActionList: View {
                 appIntentsEnabled: appIntentsEnabled,
                 proModeEnabled: proModeEnabled,
                 accessibilityDiscoveryEnabled: accessibilityDiscoveryEnabled,
-                searchEnabled: searchEnabled,
                 canApplyProfiles: canApplyProfiles,
                 canAccessLabs: canAccessLabs,
                 spacingLabsEnabled: spacingLabsEnabled
@@ -621,7 +616,6 @@ struct AutomationShortcutAction: Identifiable, Equatable, Sendable {
         appIntentsEnabled: Bool,
         proModeEnabled: Bool = true,
         accessibilityDiscoveryEnabled: Bool = true,
-        searchEnabled: Bool = true,
         canApplyProfiles: Bool,
         canAccessLabs: Bool,
         spacingLabsEnabled: Bool
@@ -640,7 +634,7 @@ struct AutomationShortcutAction: Identifiable, Equatable, Sendable {
             guard accessibilityDiscoveryEnabled else {
                 return .discoveryGated
             }
-            return searchEnabled ? .ready : .featureGated
+            return .ready
         case .proDiscovery:
             guard proModeEnabled else {
                 return .proGated
@@ -694,7 +688,7 @@ private extension AutomationShortcutAction {
         case .none:
             "Available when App Intents are enabled and global safety gates permit execution."
         case .findIcon:
-            "Requires Pro Discovery and Find Icon to be enabled; permission is checked when the shortcut runs."
+            "Requires Pro Discovery; status-menu visibility does not block the shortcut."
         case .proDiscovery:
             "Requires Pro Discovery; Accessibility permission is checked when the shortcut runs."
         case .profileApply:
@@ -710,7 +704,6 @@ enum AutomationShortcutStatus: Equatable, Sendable {
     case disabled
     case proGated
     case discoveryGated
-    case featureGated
     case profileGated
     case labsGated
     case requiresLabs
@@ -725,8 +718,6 @@ enum AutomationShortcutStatus: Equatable, Sendable {
             "Pro Gate"
         case .discoveryGated:
             "Discovery Gate"
-        case .featureGated:
-            "Feature Gate"
         case .profileGated:
             "Profile Gate"
         case .labsGated:
@@ -742,7 +733,7 @@ enum AutomationShortcutStatus: Equatable, Sendable {
             .success
         case .disabled:
             .secondary
-        case .proGated, .discoveryGated, .featureGated, .profileGated, .labsGated, .requiresLabs:
+        case .proGated, .discoveryGated, .profileGated, .labsGated, .requiresLabs:
             .warning
         }
     }

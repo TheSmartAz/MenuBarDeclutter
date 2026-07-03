@@ -160,7 +160,10 @@ struct IconGroupEditorView: View {
         }
     }
 
+    @ViewBuilder
     private var itemReferencesSection: some View {
+        let matchCounts = matchedCountsByRefID
+
         editorSection("Item References", subtitle: "References can match by bundle ID, app name, title, snapshot ID, or zone.") {
             if draft.itemRefs.isEmpty {
                 ContentUnavailableView("No Items", systemImage: "menubar.rectangle", description: Text("Add at least one item reference before saving."))
@@ -169,7 +172,7 @@ struct IconGroupEditorView: View {
                 ForEach(Array(draft.itemRefs.enumerated()), id: \.element.id) { index, ref in
                     IconGroupEditorItemRow(
                         ref: ref,
-                        matchedCount: matcher.match(ref: ref, snapshots: snapshots).count,
+                        matchedCount: matchCounts[ref.id, default: 0],
                         onRemove: {
                             draft.itemRefs.removeAll { $0.id == ref.id }
                         }
@@ -330,6 +333,12 @@ struct IconGroupEditorView: View {
     private var validationMessage: String? {
         guard !validationErrors.isEmpty else { return nil }
         return validationErrors.map(\.displayText).joined(separator: " ")
+    }
+
+    private var matchedCountsByRefID: [IconGroupItemRef.ID: Int] {
+        Dictionary(uniqueKeysWithValues: draft.itemRefs.map { ref in
+            (ref.id, matcher.match(ref: ref, snapshots: snapshots).count)
+        })
     }
 
     private var isNewGroup: Bool {

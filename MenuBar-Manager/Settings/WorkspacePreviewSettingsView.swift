@@ -14,7 +14,37 @@ struct WorkspacePreviewSettingsView: View {
     var onOpenFindRescue: (() -> Void)? = nil
     var onOpenRecovery: (() -> Void)? = nil
 
+    @State private var workspacePreparedRevision = 0
+
+    private var workspaceState: WorkspacePreviewPreparedState {
+        _ = workspacePreparedRevision
+        return makeWorkspacePreparedState()
+    }
+
     var body: some View {
+        workspacePage(state: workspaceState)
+            .onAppear {
+                setBuilderViewModel.refresh()
+            }
+            .onChange(of: settingsStore.workspacesPreviewEnabled) { _, isEnabled in
+                if !isEnabled {
+                    hideFunctionBar()
+                    hideInfoStrip()
+                }
+            }
+            .onChange(of: settingsStore.functionBarPreviewEnabled) { _, isEnabled in
+                if !isEnabled {
+                    hideFunctionBar()
+                }
+            }
+            .onChange(of: settingsStore.infoStripPreviewEnabled) { _, isEnabled in
+                if !isEnabled {
+                    hideInfoStrip()
+                }
+            }
+    }
+
+    private func workspacePage(state: WorkspacePreviewPreparedState) -> some View {
         ClearGlassSettingsPage(
             "Workspaces",
             subtitle: "Preview workspace sets for MenuBarDeclutter-owned surfaces.",
@@ -31,33 +61,108 @@ struct WorkspacePreviewSettingsView: View {
                 ClearGlassPageAnchor("Diagnostics", systemImage: "waveform.path.ecg")
             ]
         ) {
-            integrationOverviewSection
-            previewGatesSection
-            activeWorkspaceSection
-            quickActionsSection
-            workspaceListSection
-            previewControlsSection
-            infoStripPreviewSection
-            linkedGroupsSection
-            setBuilderSection
-            diagnosticsSection
+            workspacePageContent(state)
         }
-        .onAppear {
-            setBuilderViewModel.refresh()
+    }
+
+    @ViewBuilder
+    private func workspacePageContent(_ state: WorkspacePreviewPreparedState) -> some View {
+        integrationOverviewSection(state)
+        previewGatesSection
+        activeWorkspaceSection(state)
+        quickActionsSection
+        workspaceListSection(state)
+        previewControlsSection
+        infoStripPreviewSection
+        linkedGroupsSection(state)
+        setBuilderSection
+        diagnosticsSection(state)
+    }
+
+    private func makeWorkspacePreparedState() -> WorkspacePreviewPreparedState {
+        let snapshot = switchingService.currentSnapshot()
+        let liveSnapshots = liveStatus?.scannedMenuBarItems ?? []
+        let groups = setBuilderViewModel.groups
+        let usageIndex = WorkspaceUsageIndex()
+        let usage = usageIndex.rebuild(
+            snapshot: snapshot,
+            groups: groups,
+            discoveredSnapshots: liveSnapshots
+        )
+        let active = switchingService.activeWorkspace()
+        let activeLinkedGroupRows = active.functionItems.compactMap { item -> WorkspaceLinkedGroupRow? in
+            guard case .group(let reference) = item.kind,
+                  reference.referenceMode == .linked else {
+                return nil
+            }
+            return WorkspaceLinkedGroupRow(id: item.id, reference: reference)
         }
-        .onChange(of: settingsStore.workspacesPreviewEnabled) { _, isEnabled in
-            guard !isEnabled else { return }
-            hideFunctionBar()
-            hideInfoStrip()
-        }
-        .onChange(of: settingsStore.functionBarPreviewEnabled) { _, isEnabled in
-            guard !isEnabled else { return }
-            hideFunctionBar()
-        }
-        .onChange(of: settingsStore.infoStripPreviewEnabled) { _, isEnabled in
-            guard !isEnabled else { return }
-            hideInfoStrip()
-        }
+        let integration = WorkspaceIntegrationDiagnosticsSnapshot.make(
+            settingsStore: settingsStore,
+            usageSnapshot: usage,
+            newItemInbox: NewMenuBarItemInbox.empty,
+            functionBarFallbackEnabled: settingsStore.functionBarPreviewEnabled,
+            physicalProfileBindingCount: snapshot.workspaces.filter { $0.physicalProfileBinding != nil }.count,
+            lastCrowdedRescueWorkspaceDecision: nil
+        )
+        let availableHashes = availableMenuBarItemHashesForDiagnostics
+        let effectiveKnownGroupIDs = knownGroupIDs.isEmpty ? Set(groups.map(\.id)) : knownGroupIDs
+        let effectiveProtectedGroupIDs = protectedGroupIDs.isEmpty ? Set(groups.filter(\.isProtected).map(\.id)) : protectedGroupIDs
+        let workspaceDiagnostics = WorkspaceDiagnosticsSnapshot.make(
+            settingsStore: settingsStore,
+            snapshot: snapshot,
+            validationIssues: [],
+            lastLoadStatus: .loaded,
+            knownGroupIDs: effectiveKnownGroupIDs,
+            protectedGroupIDs: effectiveProtectedGroupIDs,
+            knownProfileIDs: knownProfileIDs,
+            availableMenuBarItemHashes: availableHashes
+        )
+        let functionDiagnostics = FunctionBarDiagnosticsSnapshot.make(
+            settingsStore: settingsStore,
+            controller: functionBarController
+        )
+        let setBuilderDiagnostics = setBuilderViewModel.diagnosticsSnapshot
+        let infoDiagnostics = InfoStripDiagnosticsSnapshot.make(
+            settingsStore: settingsStore,
+            controller: infoStripController,
+            registry: InfoTileProviderRegistry(),
+            context: InfoTileContext(
+                activeWorkspace: active,
+                functionBarVisible: functionDiagnostics.isVisible,
+                hiddenItemCount: liveStatus?.menuBarScanHiddenCount,
+                alwaysHiddenItemCount: liveStatus?.menuBarScanAlwaysHiddenCount,
+                newItemCount: liveStatus?.newMenuBarItemReviewCount,
+                healthWarningCount: liveStatus?.healthReport?.issues.count ?? 0,
+                latestScanAgeSeconds: nil,
+                proDiscoveryAvailable: settingsStore.proModeEnabled && settingsStore.accessibilityDiscoveryEnabled,
+                safeModeActive: liveStatus?.safeModeActive ?? false,
+                currentDate: Date()
+            )
+        )
+
+        return WorkspacePreviewPreparedState(
+            snapshot: snapshot,
+            integrationDiagnostics: integration,
+            workspaceDiagnostics: workspaceDiagnostics,
+            functionDiagnostics: functionDiagnostics,
+            setBuilderDiagnostics: setBuilderDiagnostics,
+            infoDiagnostics: infoDiagnostics,
+            availableWorkspaces: snapshot.workspaces.filter { !$0.isArchived },
+            archivedWorkspaceCount: snapshot.workspaces.filter(\.isArchived).count,
+            activeWorkspace: active,
+            groupsByID: Dictionary(uniqueKeysWithValues: groups.map { ($0.id, $0) }),
+            activeLinkedGroupRows: activeLinkedGroupRows,
+            activeLinkedGroupCount: activeLinkedGroupRows.count,
+            unassignedItemCount: liveStatus.map { status in
+                usageIndex.unassignedItemHashes(from: status.scannedMenuBarItems).count
+            } ?? 0,
+            usedInActiveWorkspaceCount: usage.usagesByItemHash.values.filter(\.isUsedInActiveWorkspace).count
+        )
+    }
+
+    private func refreshWorkspacePreparedState() {
+        workspacePreparedRevision = workspacePreparedRevision == Int.max ? 0 : workspacePreparedRevision + 1
     }
 
     private var previewGatesSection: some View {
@@ -131,80 +236,52 @@ struct WorkspacePreviewSettingsView: View {
         }
     }
 
-    private var integrationOverviewSection: some View {
-        let snapshot = switchingService.currentSnapshot()
-        let usage = WorkspaceUsageIndex().rebuild(
-            snapshot: snapshot,
-            groups: setBuilderViewModel.groups
-        )
-        let integration = WorkspaceIntegrationDiagnosticsSnapshot.make(
-            settingsStore: settingsStore,
-            usageSnapshot: usage,
-            newItemInbox: NewMenuBarItemInbox.empty,
-            functionBarFallbackEnabled: settingsStore.functionBarPreviewEnabled,
-            physicalProfileBindingCount: snapshot.workspaces.filter { $0.physicalProfileBinding != nil }.count,
-            lastCrowdedRescueWorkspaceDecision: nil
-        )
-
-        return ClearGlassSection(
+    private func integrationOverviewSection(_ state: WorkspacePreviewPreparedState) -> some View {
+        ClearGlassSection(
             "Workspace Integration",
             subtitle: "Local-only status for Workspace-aware item assignment, search badges, placement hints, and rescue fallback."
         ) {
             Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 8) {
-                diagnosticsRow("Indexed Workspaces", "\(integration.workspaceCount)")
-                diagnosticsRow("Indexed Items", "\(integration.indexedItemReferenceCount)")
-                diagnosticsRow("Unassigned Items", "\(integration.unassignedItemReferenceCount)")
-                diagnosticsRow("Missing Group Refs", "\(integration.missingGroupReferenceCount)")
-                diagnosticsRow("Physical Bindings", "\(integration.physicalProfileBindingCount)")
+                diagnosticsRow("Indexed Workspaces", "\(state.integrationDiagnostics.workspaceCount)")
+                diagnosticsRow("Indexed Items", "\(state.integrationDiagnostics.indexedItemReferenceCount)")
+                diagnosticsRow("Unassigned Items", "\(state.integrationDiagnostics.unassignedItemReferenceCount)")
+                diagnosticsRow("Missing Group Refs", "\(state.integrationDiagnostics.missingGroupReferenceCount)")
+                diagnosticsRow("Physical Bindings", "\(state.integrationDiagnostics.physicalProfileBindingCount)")
                 diagnosticsRow("Command Automation", "Internal only")
             }
         }
     }
 
-    private var activeWorkspaceSection: some View {
-        let snapshot = switchingService.currentSnapshot()
-        let active = switchingService.activeWorkspace()
-        let usageIndex = WorkspaceUsageIndex()
-        let usage = usageIndex.rebuild(snapshot: snapshot, groups: setBuilderViewModel.groups)
-        let unassignedCount = liveStatus.map { status in
-            usageIndex.unassignedItemHashes(from: status.scannedMenuBarItems.map { snapshot in
-                MenuBarItemReference(
-                    stableHash: snapshot.id,
-                    source: .accessibilitySnapshot,
-                    lastKnownDisplayName: snapshot.owningApplicationName ?? snapshot.title,
-                    lastKnownBundleIdentifier: snapshot.bundleIdentifier
-                )
-            }).count
-        } ?? 0
-        return ClearGlassSection(
+    private func activeWorkspaceSection(_ state: WorkspacePreviewPreparedState) -> some View {
+        ClearGlassSection(
             "Active Workspace",
-            subtitle: "\(snapshot.workspaces.filter { !$0.isArchived }.count) available, \(snapshot.workspaces.filter(\.isArchived).count) archived."
+            subtitle: "\(state.availableWorkspaces.count) available, \(state.archivedWorkspaceCount) archived."
         ) {
             VStack(alignment: .leading, spacing: 12) {
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 12) {
-                        activeWorkspaceIdentity(active)
+                        activeWorkspaceIdentity(state.activeWorkspace)
 
                         Spacer(minLength: 12)
 
-                        switchDefaultWorkspaceButton(snapshot)
+                        switchDefaultWorkspaceButton(state.snapshot)
                     }
 
                     VStack(alignment: .leading, spacing: 10) {
-                        activeWorkspaceIdentity(active)
-                        switchDefaultWorkspaceButton(snapshot)
+                        activeWorkspaceIdentity(state.activeWorkspace)
+                        switchDefaultWorkspaceButton(state.snapshot)
                     }
                 }
 
                 Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 8) {
                     diagnosticsRow("Function Bar", functionBarLandingStatus)
                     diagnosticsRow("Info Strip", infoStripLandingStatus)
-                    diagnosticsRow("Workspace Items", "\(active.functionItems.count)")
-                    diagnosticsRow("Linked Groups", "\(activeLinkedGroupCount)")
+                    diagnosticsRow("Workspace Items", "\(state.activeWorkspace.functionItems.count)")
+                    diagnosticsRow("Linked Groups", "\(state.activeLinkedGroupCount)")
                     diagnosticsRow("New Items", "\(liveStatus?.newMenuBarItemReviewCount ?? 0)")
-                    diagnosticsRow("Unassigned Items", "\(unassignedCount)")
-                    diagnosticsRow("Profile Binding", active.physicalProfileBinding == nil ? "Preview none" : "Dry-run bound")
-                    diagnosticsRow("Used In Active", "\(usage.usagesByItemHash.values.filter(\.isUsedInActiveWorkspace).count)")
+                    diagnosticsRow("Unassigned Items", "\(state.unassignedItemCount)")
+                    diagnosticsRow("Profile Binding", state.activeWorkspace.physicalProfileBinding == nil ? "Preview none" : "Dry-run bound")
+                    diagnosticsRow("Used In Active", "\(state.usedInActiveWorkspaceCount)")
                 }
             }
         }
@@ -255,20 +332,17 @@ struct WorkspacePreviewSettingsView: View {
         }
     }
 
-    private var workspaceListSection: some View {
-        let activeID = switchingService.activeWorkspace().id
-        let workspaces = switchingService.currentSnapshot().workspaces.filter { !$0.isArchived }
-
-        return ClearGlassSection(
+    private func workspaceListSection(_ state: WorkspacePreviewPreparedState) -> some View {
+        ClearGlassSection(
             "Workspace List",
             subtitle: "Switch local Workspace records without moving real menu bar icons."
         ) {
             VStack(spacing: 0) {
-                ForEach(Array(workspaces.enumerated()), id: \.element.id) { offset, workspace in
+                ForEach(Array(state.availableWorkspaces.enumerated()), id: \.element.id) { offset, workspace in
                     HStack(spacing: 10) {
                         Image(systemName: workspace.iconName)
                             .frame(width: 20)
-                            .foregroundStyle(workspace.id == activeID ? Color.accentColor : .secondary)
+                            .foregroundStyle(workspace.id == state.activeWorkspace.id ? Color.accentColor : .secondary)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(WorkspaceDiagnosticsRedactor.displayName(for: workspace))
                                 .font(.callout)
@@ -277,7 +351,7 @@ struct WorkspacePreviewSettingsView: View {
                                 .foregroundStyle(.secondary)
                         }
                         Spacer()
-                        if workspace.id == activeID {
+                        if workspace.id == state.activeWorkspace.id {
                             Text("Active")
                                 .font(.caption2)
                                 .foregroundStyle(Color.accentColor)
@@ -291,7 +365,7 @@ struct WorkspacePreviewSettingsView: View {
                     }
                     .padding(.vertical, 8)
 
-                    if offset < workspaces.count - 1 {
+                    if offset < state.availableWorkspaces.count - 1 {
                         ClearGlassDivider()
                     }
                 }
@@ -299,28 +373,19 @@ struct WorkspacePreviewSettingsView: View {
         }
     }
 
-    private var linkedGroupsSection: some View {
-        let active = switchingService.activeWorkspace()
-        let linked = active.functionItems.compactMap { item -> WorkspaceGroupReference? in
-            guard case .group(let reference) = item.kind,
-                  reference.referenceMode == .linked else {
-                return nil
-            }
-            return reference
-        }
-
-        return ClearGlassSection(
+    private func linkedGroupsSection(_ state: WorkspacePreviewPreparedState) -> some View {
+        ClearGlassSection(
             "Linked Groups",
             subtitle: "Reusable Groups can appear in multiple Workspaces; detached copies stay one-off."
         ) {
-            if linked.isEmpty {
+            if state.activeLinkedGroupRows.isEmpty {
                 ContentUnavailableView("No linked Groups in this Workspace.", systemImage: "person.2")
                     .frame(maxWidth: .infinity, minHeight: 120)
             } else {
                 VStack(spacing: 0) {
-                    ForEach(Array(linked.enumerated()), id: \.element.groupID) { offset, reference in
+                    ForEach(Array(state.activeLinkedGroupRows.enumerated()), id: \.element.id) { offset, row in
                         HStack {
-                            Label(linkedGroupDisplayName(for: reference.groupID), systemImage: "person.2")
+                            Label(state.displayName(forLinkedGroupID: row.reference.groupID), systemImage: "person.2")
                             Spacer()
                             Text("Linked")
                                 .font(.caption2)
@@ -328,7 +393,7 @@ struct WorkspacePreviewSettingsView: View {
                         }
                         .padding(.vertical, 8)
 
-                        if offset < linked.count - 1 {
+                        if offset < state.activeLinkedGroupRows.count - 1 {
                             ClearGlassDivider()
                         }
                     }
@@ -682,63 +747,28 @@ struct WorkspacePreviewSettingsView: View {
         }
     }
 
-    private var diagnosticsSection: some View {
-        let snapshot = switchingService.currentSnapshot()
-        let active = switchingService.activeWorkspace()
-        let workspaceDiagnostics = WorkspaceDiagnosticsSnapshot.make(
-            settingsStore: settingsStore,
-            snapshot: snapshot,
-            validationIssues: [],
-            lastLoadStatus: .loaded,
-            knownGroupIDs: knownGroupIDs.isEmpty ? Set(setBuilderViewModel.groups.map(\.id)) : knownGroupIDs,
-            protectedGroupIDs: protectedGroupIDs.isEmpty ? Set(setBuilderViewModel.groups.filter(\.isProtected).map(\.id)) : protectedGroupIDs,
-            knownProfileIDs: knownProfileIDs,
-            availableMenuBarItemHashes: availableMenuBarItemHashesForDiagnostics
-        )
-        let functionDiagnostics = FunctionBarDiagnosticsSnapshot.make(
-            settingsStore: settingsStore,
-            controller: functionBarController
-        )
-        let setBuilderDiagnostics = setBuilderViewModel.diagnosticsSnapshot
-        let infoDiagnostics = InfoStripDiagnosticsSnapshot.make(
-            settingsStore: settingsStore,
-            controller: infoStripController,
-            registry: InfoTileProviderRegistry(),
-            context: InfoTileContext(
-                activeWorkspace: active,
-                functionBarVisible: functionDiagnostics.isVisible,
-                hiddenItemCount: liveStatus?.menuBarScanHiddenCount,
-                alwaysHiddenItemCount: liveStatus?.menuBarScanAlwaysHiddenCount,
-                newItemCount: liveStatus?.newMenuBarItemReviewCount,
-                healthWarningCount: liveStatus?.healthReport?.issues.count ?? 0,
-                latestScanAgeSeconds: nil,
-                proDiscoveryAvailable: settingsStore.proModeEnabled && settingsStore.accessibilityDiscoveryEnabled,
-                safeModeActive: liveStatus?.safeModeActive ?? false,
-                currentDate: Date()
-            )
-        )
-
-        return ClearGlassSection(
+    private func diagnosticsSection(_ state: WorkspacePreviewPreparedState) -> some View {
+        ClearGlassSection(
             "Diagnostics",
             subtitle: "Counts and states are safe to export; protected names are redacted."
         ) {
             Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 8) {
-                diagnosticsRow("Store", workspaceDiagnostics.lastLoadStatus.rawValue)
-                diagnosticsRow("Workspaces", "\(workspaceDiagnostics.workspaceCount)")
-                diagnosticsRow("Active", workspaceDiagnostics.activeWorkspacePresent ? "Present" : "Missing")
-                diagnosticsRow("Function Bar", functionDiagnostics.displayState)
-                diagnosticsRow("Function Items", "\(functionDiagnostics.visibleItemCount)")
-                diagnosticsRow("Set Builder", setBuilderDiagnostics.previewEnabled ? "Enabled" : "Disabled")
-                diagnosticsRow("Workspace Items", "\(setBuilderDiagnostics.totalWorkspaceItemCount)")
-                diagnosticsRow("Group Refs", "\(workspaceDiagnostics.groupReferenceCount)")
-                diagnosticsRow("Linked Groups", "\(setBuilderDiagnostics.linkedGroupReferenceCount)")
-                diagnosticsRow("Protected Groups", "\(workspaceDiagnostics.protectedGroupReferenceCount)")
-                diagnosticsRow("Missing Groups", "\(setBuilderDiagnostics.missingGroupReferenceCount)")
-                diagnosticsRow("Detached Sources Missing", "\(setBuilderDiagnostics.detachedSourceGroupMissingCount)")
-                diagnosticsRow("Proxy Items", "\(setBuilderDiagnostics.menuBarProxyReferenceCount)")
-                diagnosticsRow("Unresolved Proxies", "\(setBuilderDiagnostics.unresolvedMenuBarProxyReferenceCount)")
-                diagnosticsRow("Info Strip", infoDiagnostics.displayState)
-                diagnosticsRow("Current Tile", infoDiagnostics.currentTileProviderID ?? "None")
+                diagnosticsRow("Store", state.workspaceDiagnostics.lastLoadStatus.rawValue)
+                diagnosticsRow("Workspaces", "\(state.workspaceDiagnostics.workspaceCount)")
+                diagnosticsRow("Active", state.workspaceDiagnostics.activeWorkspacePresent ? "Present" : "Missing")
+                diagnosticsRow("Function Bar", state.functionDiagnostics.displayState)
+                diagnosticsRow("Function Items", "\(state.functionDiagnostics.visibleItemCount)")
+                diagnosticsRow("Set Builder", state.setBuilderDiagnostics.previewEnabled ? "Enabled" : "Disabled")
+                diagnosticsRow("Workspace Items", "\(state.setBuilderDiagnostics.totalWorkspaceItemCount)")
+                diagnosticsRow("Group Refs", "\(state.workspaceDiagnostics.groupReferenceCount)")
+                diagnosticsRow("Linked Groups", "\(state.setBuilderDiagnostics.linkedGroupReferenceCount)")
+                diagnosticsRow("Protected Groups", "\(state.workspaceDiagnostics.protectedGroupReferenceCount)")
+                diagnosticsRow("Missing Groups", "\(state.setBuilderDiagnostics.missingGroupReferenceCount)")
+                diagnosticsRow("Detached Sources Missing", "\(state.setBuilderDiagnostics.detachedSourceGroupMissingCount)")
+                diagnosticsRow("Proxy Items", "\(state.setBuilderDiagnostics.menuBarProxyReferenceCount)")
+                diagnosticsRow("Unresolved Proxies", "\(state.setBuilderDiagnostics.unresolvedMenuBarProxyReferenceCount)")
+                diagnosticsRow("Info Strip", state.infoDiagnostics.displayState)
+                diagnosticsRow("Current Tile", state.infoDiagnostics.currentTileProviderID ?? "None")
                 diagnosticsRow("New Items", "\(liveStatus?.newMenuBarItemReviewCount ?? 0)")
             }
         }
@@ -782,6 +812,7 @@ struct WorkspacePreviewSettingsView: View {
             if let first = snapshot.workspaces.first(where: { !$0.isArchived }) {
                 _ = switchingService.switchWorkspace(id: first.id, source: .settings)
                 setBuilderViewModel.refresh()
+                refreshWorkspacePanelsAfterSettingsChange()
             }
         }
     }
@@ -811,6 +842,7 @@ struct WorkspacePreviewSettingsView: View {
         } else {
             functionBarController.show(source: .settings)
         }
+        refreshWorkspacePreparedState()
     }
 
     private func hideFunctionBar() {
@@ -819,6 +851,7 @@ struct WorkspacePreviewSettingsView: View {
         } else {
             functionBarController.hide(source: .settings)
         }
+        refreshWorkspacePreparedState()
     }
 
     private func showInfoStrip() {
@@ -827,6 +860,7 @@ struct WorkspacePreviewSettingsView: View {
         } else {
             infoStripController.show()
         }
+        refreshWorkspacePreparedState()
     }
 
     private func hideInfoStrip() {
@@ -835,6 +869,7 @@ struct WorkspacePreviewSettingsView: View {
         } else {
             infoStripController.hide()
         }
+        refreshWorkspacePreparedState()
     }
 
     private var functionBarControlsDisabled: Bool {
@@ -843,13 +878,6 @@ struct WorkspacePreviewSettingsView: View {
 
     private var infoStripControlsDisabled: Bool {
         !settingsStore.workspacesPreviewEnabled || !settingsStore.infoStripPreviewEnabled
-    }
-
-    private var activeLinkedGroupCount: Int {
-        switchingService.activeWorkspace().functionItems.filter { item in
-            guard case .group(let reference) = item.kind else { return false }
-            return reference.referenceMode == .linked
-        }.count
     }
 
     private var functionBarLandingStatus: String {
@@ -868,13 +896,6 @@ struct WorkspacePreviewSettingsView: View {
         return "Ready"
     }
 
-    private func linkedGroupDisplayName(for groupID: UUID) -> String {
-        guard let group = setBuilderViewModel.groups.first(where: { $0.id == groupID }) else {
-            return "Missing Group"
-        }
-        return group.isProtected ? "Protected Group" : group.name
-    }
-
     private func refreshAfterWorkspaceMutation() {
         setBuilderViewModel.refresh()
         refreshWorkspacePanelsAfterSettingsChange()
@@ -883,6 +904,7 @@ struct WorkspacePreviewSettingsView: View {
     private func refreshWorkspacePanelsAfterSettingsChange() {
         functionBarController.refresh(reason: .workspaceChanged)
         infoStripController.refresh()
+        refreshWorkspacePreparedState()
     }
 
     private var availableMenuBarItemHashesForDiagnostics: Set<String>? {
@@ -962,6 +984,7 @@ struct WorkspacePreviewSettingsView: View {
         prepareActiveInfoStripDraft()
         setBuilderViewModel.commitDraft()
         infoStripController.refresh()
+        refreshWorkspacePreparedState()
     }
 
     private func infoStripHoverBehaviorLabel(_ behavior: WorkspaceInfoStripHoverBehavior) -> String {
@@ -981,6 +1004,35 @@ struct WorkspacePreviewSettingsView: View {
         }
         return nil
     }
+}
+
+private struct WorkspacePreviewPreparedState: Equatable {
+    let snapshot: WorkspaceStoreSnapshot
+    let integrationDiagnostics: WorkspaceIntegrationDiagnosticsSnapshot
+    let workspaceDiagnostics: WorkspaceDiagnosticsSnapshot
+    let functionDiagnostics: FunctionBarDiagnosticsSnapshot
+    let setBuilderDiagnostics: SetBuilderDiagnosticsSnapshot
+    let infoDiagnostics: InfoStripDiagnosticsSnapshot
+    let availableWorkspaces: [MenuBarWorkspace]
+    let archivedWorkspaceCount: Int
+    let activeWorkspace: MenuBarWorkspace
+    let groupsByID: [UUID: IconGroup]
+    let activeLinkedGroupRows: [WorkspaceLinkedGroupRow]
+    let activeLinkedGroupCount: Int
+    let unassignedItemCount: Int
+    let usedInActiveWorkspaceCount: Int
+
+    func displayName(forLinkedGroupID groupID: UUID) -> String {
+        guard let group = groupsByID[groupID] else {
+            return "Missing Group"
+        }
+        return group.isProtected ? "Protected Group" : group.name
+    }
+}
+
+private struct WorkspaceLinkedGroupRow: Identifiable, Equatable {
+    let id: UUID
+    let reference: WorkspaceGroupReference
 }
 
 private struct WorkspaceFunctionBarPreview: View {

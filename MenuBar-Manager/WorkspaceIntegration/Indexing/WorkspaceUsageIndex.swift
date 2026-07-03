@@ -4,10 +4,15 @@ final class WorkspaceUsageIndex {
     private var snapshot: WorkspaceUsageIndexSnapshot = .empty
 
     @discardableResult
-    func rebuild(snapshot storeSnapshot: WorkspaceStoreSnapshot, groups: [IconGroup]) -> WorkspaceUsageIndexSnapshot {
+    func rebuild(
+        snapshot storeSnapshot: WorkspaceStoreSnapshot,
+        groups: [IconGroup],
+        discoveredSnapshots: [MenuBarItemSnapshot] = []
+    ) -> WorkspaceUsageIndexSnapshot {
         let groupsByID = Dictionary(uniqueKeysWithValues: groups.map { ($0.id, $0) })
         let activeWorkspaceID = storeSnapshot.activeWorkspaceID
         let workspaces = storeSnapshot.workspaces.filter { !$0.isArchived }
+        let groupMatcher = IconGroupMatcher()
 
         var builder = WorkspaceUsageBuilder(activeWorkspaceID: activeWorkspaceID)
         var workspaceIDsByGroupID: [UUID: Set<UUID>] = [:]
@@ -26,7 +31,11 @@ final class WorkspaceUsageIndex {
                         continue
                     }
 
-                    for itemHash in group.itemRefs.compactMap(\.snapshotStableID).filter({ !$0.isEmpty }) {
+                    for itemHash in itemHashes(
+                        for: group,
+                        discoveredSnapshots: discoveredSnapshots,
+                        matcher: groupMatcher
+                    ) {
                         groupIDsByItemHash[itemHash, default: []].insert(group.id)
                         builder.addGroup(
                             itemHash: itemHash,
@@ -73,6 +82,36 @@ final class WorkspaceUsageIndex {
             .map(\.stableHash)
             .filter { usage(for: $0).isUnassigned }
             .sorted()
+    }
+
+    func unassignedItemHashes(from discoveredSnapshots: [MenuBarItemSnapshot]) -> [String] {
+        discoveredSnapshots
+            .map(\.id)
+            .filter { usage(for: $0).isUnassigned }
+            .sorted()
+    }
+
+    private func itemHashes(
+        for group: IconGroup,
+        discoveredSnapshots: [MenuBarItemSnapshot],
+        matcher: IconGroupMatcher
+    ) -> [String] {
+        var itemHashes: Set<String> = []
+
+        if !discoveredSnapshots.isEmpty {
+            for ref in group.itemRefs {
+                for snapshot in matcher.match(ref: ref, snapshots: discoveredSnapshots) {
+                    guard !snapshot.id.isEmpty else { continue }
+                    itemHashes.insert(snapshot.id)
+                }
+            }
+        }
+
+        for itemHash in group.itemRefs.compactMap(\.snapshotStableID).filter({ !$0.isEmpty }) {
+            itemHashes.insert(itemHash)
+        }
+
+        return itemHashes.sorted()
     }
 
     private func sortedUUIDs(_ ids: Set<UUID>) -> [UUID] {

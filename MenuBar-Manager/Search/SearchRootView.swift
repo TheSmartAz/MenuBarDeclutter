@@ -41,6 +41,7 @@ struct SearchRootView: View {
 
     @State private var searchDebounceTask: Task<Void, Never>?
     @State private var latestIndexRebuildDurationMilliseconds: Double?
+    @State private var providerInvalidationSignature: SearchProviderInvalidationSignature?
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
 
     private let keyboardRouter = SearchKeyboardActionRouter()
@@ -82,9 +83,23 @@ struct SearchRootView: View {
         .onChange(of: itemMemoryStore.favoriteCount) {
             refreshResults()
         }
+        .onChange(of: searchAvailabilitySignature) {
+            refreshProviderBackedResultsIfNeeded()
+        }
+        .onChange(of: liveStatus.newMenuBarItemReviewCount) {
+            refreshProviderBackedResultsIfNeeded()
+        }
         .onChange(of: liveStatus.scannedMenuBarItems) { _, newSnapshots in
             rebuildSearchIndex(from: newSnapshots)
             scheduleSearch()
+        }
+        .task {
+            refreshProviderBackedResultsIfNeeded()
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                guard !Task.isCancelled else { return }
+                refreshProviderBackedResultsIfNeeded()
+            }
         }
         .onKeyPress(.downArrow) {
             moveSelection(by: 1)
@@ -419,17 +434,23 @@ struct SearchRootView: View {
         unavailableState == nil
     }
 
+    private var searchAvailabilitySignature: SearchAvailabilitySignature {
+        SearchAvailabilitySignature(
+            safeModeActive: liveStatus.safeModeActive,
+            proModeEnabled: settingsStore.proModeEnabled,
+            accessibilityDiscoveryEnabled: settingsStore.accessibilityDiscoveryEnabled,
+            permissionStatus: permissionService.status
+        )
+    }
+
     private var unavailableState: SearchUnavailableState? {
-        if !settingsStore.searchEnabled {
+        if liveStatus.safeModeActive {
             return SearchUnavailableState(
-                title: "Find Icon Disabled",
-                systemImage: "magnifyingglass.circle",
-                message: "Enable Find Icon in Search settings to use the panel.",
-                primaryButtonTitle: "Enable Find Icon",
-                primaryAction: {
-                    settingsStore.searchEnabled = true
-                    onSettingsChanged()
-                },
+                title: "Safe Mode Active",
+                systemImage: "exclamationmark.triangle",
+                message: "Find Icon is paused while Safe Mode is active. Reason: \(liveStatus.safeModeReasonSummary).",
+                primaryButtonTitle: "Refresh Status",
+                primaryAction: onRefresh,
                 secondaryButtonTitle: nil,
                 secondaryAction: nil
             )
@@ -644,11 +665,9 @@ struct SearchRootView: View {
     /// snapshot evaluation while preserving the perception of immediate feedback.
     private func scheduleSearch() {
         searchDebounceTask?.cancel()
-        let snapshotQuery = query
         searchDebounceTask = Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(100))
             if Task.isCancelled { return }
-            _ = snapshotQuery
             refreshResults()
         }
     }
@@ -661,22 +680,55 @@ struct SearchRootView: View {
 
     /// Re-evaluates `results` against the current `searchIndex` and `query`, then
     /// propagates diagnostics state and reselects the first result as needed.
-    private func refreshResults() {
+    private func refreshResults(providerSignature: SearchProviderInvalidationSignature? = nil) {
+        let signature = providerSignature ?? syncProviderInvalidationSignature()
         guard searchIsAvailable else {
-            results = []
+            if !results.isEmpty {
+                results = []
+            }
+            if selectedID != nil {
+                selectedID = nil
+            }
             return
         }
         let start = Date()
-        results = searchService.results(
+        let refreshedResults = searchService.results(
             from: searchIndex,
             query: query,
             filter: selectedFilter,
             memoryStore: itemMemoryStore,
-            rankingContext: rankingContext()
+            rankingContext: rankingContext(from: signature)
         )
+        if results != refreshedResults {
+            results = refreshedResults
+        }
         let rankingDurationMilliseconds = Date().timeIntervalSince(start) * 1000
         updateSearchDiagnostics(rankingDurationMilliseconds: rankingDurationMilliseconds)
         selectFirstResultIfNeeded()
+    }
+
+    private func refreshProviderBackedResultsIfNeeded() {
+        let signature = currentProviderInvalidationSignature()
+        guard providerInvalidationSignature != signature else { return }
+        providerInvalidationSignature = signature
+        refreshResults(providerSignature: signature)
+    }
+
+    @discardableResult
+    private func syncProviderInvalidationSignature() -> SearchProviderInvalidationSignature {
+        let signature = currentProviderInvalidationSignature()
+        if providerInvalidationSignature != signature {
+            providerInvalidationSignature = signature
+        }
+        return signature
+    }
+
+    private func currentProviderInvalidationSignature() -> SearchProviderInvalidationSignature {
+        SearchProviderInvalidationSignature(
+            availability: searchAvailabilitySignature,
+            newItemStorageKeys: newItemStorageKeysProvider(),
+            workspaceUsageSnapshot: workspaceUsageProvider()
+        )
     }
 
     private func updateSearchDiagnostics(rankingDurationMilliseconds: Double) {
@@ -701,11 +753,12 @@ struct SearchRootView: View {
         )
     }
 
-    private func rankingContext() -> SearchRankingContext {
-        SearchRankingContext(
-            newItemStorageKeys: newItemStorageKeysProvider(),
+    private func rankingContext(from signature: SearchProviderInvalidationSignature? = nil) -> SearchRankingContext {
+        let signature = signature ?? currentProviderInvalidationSignature()
+        return SearchRankingContext(
+            newItemStorageKeys: signature.newItemStorageKeys,
             staleBefore: Date().addingTimeInterval(-300),
-            workspaceUsageSnapshot: workspaceUsageProvider()
+            workspaceUsageSnapshot: signature.workspaceUsageSnapshot
         )
     }
 
@@ -741,6 +794,19 @@ struct SearchRootView: View {
             return "stale"
         }
     }
+}
+
+private struct SearchAvailabilitySignature: Equatable {
+    let safeModeActive: Bool
+    let proModeEnabled: Bool
+    let accessibilityDiscoveryEnabled: Bool
+    let permissionStatus: AccessibilityPermissionStatus
+}
+
+private struct SearchProviderInvalidationSignature: Equatable {
+    let availability: SearchAvailabilitySignature
+    let newItemStorageKeys: Set<String>
+    let workspaceUsageSnapshot: WorkspaceUsageIndexSnapshot?
 }
 
 private struct SearchUnavailableState {

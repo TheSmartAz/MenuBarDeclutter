@@ -52,6 +52,7 @@ final class FunctionBarController: NSObject, NSWindowDelegate {
     private let dispatcher: FunctionBarActionDispatcher
     private let placementService: FunctionBarPlacementService
     private let safeModeActive: () -> Bool
+    private let statusItemAnchorProvider: () -> CGRect?
     private let diagnosticsLogger: DiagnosticsLogger?
 
     private var panel: NSPanel?
@@ -69,6 +70,7 @@ final class FunctionBarController: NSObject, NSWindowDelegate {
         dispatcher: FunctionBarActionDispatcher,
         placementService: FunctionBarPlacementService = FunctionBarPlacementService(),
         safeModeActive: @escaping () -> Bool,
+        statusItemAnchorProvider: @escaping () -> CGRect? = { nil },
         diagnosticsLogger: DiagnosticsLogger? = nil
     ) {
         self.settingsStore = settingsStore
@@ -77,6 +79,7 @@ final class FunctionBarController: NSObject, NSWindowDelegate {
         self.dispatcher = dispatcher
         self.placementService = placementService
         self.safeModeActive = safeModeActive
+        self.statusItemAnchorProvider = statusItemAnchorProvider
         self.diagnosticsLogger = diagnosticsLogger
         super.init()
         configureViewModel()
@@ -265,6 +268,7 @@ final class FunctionBarController: NSObject, NSWindowDelegate {
         placementService.placement(
             panelSize: panelSize,
             preference: settingsStore.effectiveFunctionBarPlacementPreference(),
+            statusItemAnchor: statusItemAnchorProvider(),
             lastPosition: lastPosition
         )
     }

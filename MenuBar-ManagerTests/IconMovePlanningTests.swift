@@ -178,6 +178,72 @@ struct IconMovePlanningTests {
         #expect(visibility == .expanded)
     }
 
+    @Test func moveServiceAwaitsFreshSnapshotsBeforeVerifying() async {
+        let suiteName = "IconMovePlanningTests.freshScan.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let store = SettingsStore(defaults: defaults)
+        store.proModeEnabled = true
+        store.iconMovingEnabled = true
+        store.iconMovingRequireConfirmation = false
+        store.iconMovingMaxRetries = 0
+
+        let logger = DiagnosticsLogger()
+        let permission = AccessibilityPermissionService(
+            settingsStore: store,
+            diagnosticsLogger: logger,
+            trustProvider: { true },
+            promptTrustProvider: { true },
+            systemSettingsOpener: { true }
+        )
+        let liveStatus = LiveDiagnosticsStatus()
+        let dragProbe = AsyncDragProbe()
+        let original = makeSnapshot(
+            bundleID: "com.example.move",
+            zone: .hidden,
+            frame: CGRect(x: 260, y: 850, width: 24, height: 22)
+        )
+        let moved = makeSnapshot(
+            bundleID: "com.example.move",
+            zone: .visible,
+            frame: CGRect(x: 560, y: 850, width: 24, height: 22)
+        )
+
+        var refreshStarted = false
+        var refreshCompleted = false
+        let service = IconMoveService(
+            settingsStore: store,
+            permissionService: permission,
+            liveStatus: liveStatus,
+            diagnosticsLogger: logger,
+            dragExecutor: ProbeDragExecutor(probe: dragProbe),
+            separatorFramesProvider: {
+                MenuBarSeparatorFrames(
+                    primary: CGRect(x: 500, y: 848, width: 20, height: 24),
+                    alwaysHidden: nil
+                )
+            },
+            currentVisibilityProvider: { .collapsed },
+            setVisibility: { _ in },
+            refreshSnapshots: {
+                refreshStarted = true
+                try? await Task.sleep(nanoseconds: 50_000_000)
+                refreshCompleted = true
+                return [moved]
+            },
+            suspendRuntimeBehaviors: {},
+            resumeRuntimeBehaviors: {}
+        )
+
+        let result = await service.move(original, command: .moveToZone(.visible))
+
+        #expect(result.outcome == .succeeded)
+        #expect(refreshStarted)
+        #expect(refreshCompleted)
+        #expect(result.verificationSummary == "Expected Visible: Succeeded")
+    }
+
     @Test func moveServiceRecordsPrivacySafeDogfoodEventWhenBlocked() async throws {
         let suiteName = "IconMovePlanningTests.dogfood.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!

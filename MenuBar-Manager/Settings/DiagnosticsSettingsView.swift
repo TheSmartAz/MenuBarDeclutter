@@ -34,13 +34,36 @@ struct DiagnosticsSettingsView: View {
     }
 
     private var selectedEvent: DiagnosticEvent? {
-        diagnosticsLogger.events.first { $0.id == selectedEventID }
+        filteredEvents.first { $0.id == selectedEventID }
     }
 
     private var showsDogfoodPanel: Bool {
         settingsStore.dogfoodModeEnabled
             || settingsStore.dogfoodRunID != nil
             || dogfoodStore.currentRun != nil
+    }
+
+    private var pageSectionAnchors: [ClearGlassPageAnchor] {
+        var anchors: [ClearGlassPageAnchor] = []
+
+        if liveStatus != nil {
+            anchors.append(ClearGlassPageAnchor("Summary", systemImage: "chart.bar.doc.horizontal"))
+            anchors.append(ClearGlassPageAnchor("Health", systemImage: "stethoscope"))
+        }
+
+        anchors.append(ClearGlassPageAnchor("Screens", systemImage: "display.2"))
+
+        if showsDogfoodPanel {
+            anchors.append(ClearGlassPageAnchor("Dogfood", systemImage: "checklist"))
+        }
+
+        if liveStatus != nil {
+            anchors.append(ClearGlassPageAnchor("Live Status", systemImage: "waveform.path.ecg"))
+            anchors.append(ClearGlassPageAnchor("Items", systemImage: "menubar.rectangle", targetID: "Scanned Items"))
+        }
+
+        anchors.append(ClearGlassPageAnchor("Events", systemImage: "list.bullet.rectangle"))
+        return anchors
     }
 
     var body: some View {
@@ -60,7 +83,7 @@ struct DiagnosticsSettingsView: View {
 
             ScrollViewReader { proxy in
                 VStack(spacing: 0) {
-                    ClearGlassPageAnchorBar(anchors: Self.sectionAnchors) { anchor in
+                    ClearGlassPageAnchorBar(anchors: pageSectionAnchors) { anchor in
                         scroll(to: anchor, using: proxy)
                     }
                     .padding(.horizontal, 22)
@@ -144,16 +167,6 @@ struct DiagnosticsSettingsView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .windowBackgroundColor))
     }
-
-    private static let sectionAnchors = [
-        ClearGlassPageAnchor("Summary", systemImage: "chart.bar.doc.horizontal"),
-        ClearGlassPageAnchor("Health", systemImage: "stethoscope"),
-        ClearGlassPageAnchor("Screens", systemImage: "display.2"),
-        ClearGlassPageAnchor("Dogfood", systemImage: "checklist"),
-        ClearGlassPageAnchor("Live Status", systemImage: "waveform.path.ecg"),
-        ClearGlassPageAnchor("Items", systemImage: "menubar.rectangle", targetID: "Scanned Items"),
-        ClearGlassPageAnchor("Events", systemImage: "list.bullet.rectangle")
-    ]
 
     private func scroll(to anchor: ClearGlassPageAnchor, using proxy: ScrollViewProxy) {
         if accessibilityReduceMotion {
@@ -553,7 +566,10 @@ private struct DiagnosticsToolbar: View {
 
     private var canCopySelected: Bool {
         guard let selectedEventID else { return false }
-        return diagnosticsLogger.events.contains { $0.id == selectedEventID }
+        return diagnosticsLogger.events.matching(
+            severityFilter: severityFilter,
+            selectedCategory: selectedCategory
+        ).contains { $0.id == selectedEventID }
     }
 
     var body: some View {
@@ -914,15 +930,6 @@ private struct HealthStatusSection: View {
         case nil:
             .secondary
         }
-    }
-
-    @ViewBuilder
-    private var healthButtons: some View {
-        fixButton
-        resetButton
-        disableProButton
-        exportButton
-        safeModeButton
     }
 
     private var fixButton: some View {

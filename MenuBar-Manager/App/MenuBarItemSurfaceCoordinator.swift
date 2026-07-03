@@ -110,8 +110,7 @@ final class MenuBarItemSurfaceCoordinator {
             self?.hidingService.setVisibility(state)
         },
         refreshSnapshots: { [weak self] in
-            self?.refreshMenuBarItems()
-            return self?.liveStatus.scannedMenuBarItems ?? []
+            await self?.refreshMenuBarItemsForMoveVerification() ?? []
         },
         suspendRuntimeBehaviors: { [weak self] in
             self?.suspendRuntimeForIconMove()
@@ -183,8 +182,6 @@ final class MenuBarItemSurfaceCoordinator {
     }
 
     func showSecondBar() {
-        settingsStore.secondBarEnabled = true
-        refreshSecondBarSettings()
         refreshMenuBarItems()
         secondBarWindowController.show()
     }
@@ -194,10 +191,6 @@ final class MenuBarItemSurfaceCoordinator {
     }
 
     func toggleSecondBar() {
-        if !settingsStore.secondBarEnabled {
-            settingsStore.secondBarEnabled = true
-            refreshSecondBarSettings()
-        }
         refreshMenuBarItems()
         secondBarWindowController.toggle()
     }
@@ -213,6 +206,20 @@ final class MenuBarItemSurfaceCoordinator {
             menuBarScanCoordinator.requestManualRefresh()
         }
         liveStatusSynchronizer.refreshSearchAndSecondBarItemCounts()
+    }
+
+    func refreshMenuBarItemsForMoveVerification() async -> [MenuBarItemSnapshot] {
+        guard !safeModeLaunchState.isSafeModeActive else {
+            diagnosticsLogger.log("Safe Mode skipped Assisted Move verification scan.", level: .warning)
+            liveStatusSynchronizer.refreshSearchAndSecondBarItemCounts()
+            return liveStatus.scannedMenuBarItems
+        }
+
+        let result = await menuBarScanCoordinator.requestManualRefreshAndWait(
+            reason: "assisted move verification"
+        )
+        liveStatusSynchronizer.refreshSearchAndSecondBarItemCounts()
+        return result?.snapshots ?? liveStatus.scannedMenuBarItems
     }
 
     func resetMovingWarnings() {

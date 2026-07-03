@@ -88,6 +88,8 @@ struct WorkspaceCanvasPane: View {
     @Bindable var viewModel: SetBuilderViewModel
 
     var body: some View {
+        let linkedGroupUsageCountsByItemID = viewModel.linkedGroupUsageCountsByItemID
+
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text("Function Bar Layout")
@@ -116,7 +118,7 @@ struct WorkspaceCanvasPane: View {
                             ForEach(draft.editedWorkspace.functionItems) { item in
                                 WorkspaceItemRow(
                                     item: item,
-                                    linkedGroupUsageCount: viewModel.linkedGroupUsageCount(for: item),
+                                    linkedGroupUsageCount: linkedGroupUsageCountsByItemID[item.id],
                                     showsLinkedGroupWarning: viewModel.showsLinkedGroupWarnings,
                                     onSelect: { viewModel.selection = .item(item.id) },
                                     onRemove: { viewModel.removeItem(id: item.id) },
@@ -149,13 +151,20 @@ struct WorkspaceItemRow: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            WorkspaceItemPreview(item: item)
-            Spacer()
-            if showsLinkedGroupWarning, let linkedGroupUsageCount, linkedGroupUsageCount > 1 {
-                Label("Used in \(linkedGroupUsageCount) Workspaces", systemImage: "exclamationmark.triangle")
-                    .font(.caption)
-                    .foregroundStyle(.orange)
+            Button(action: onSelect) {
+                HStack(spacing: 8) {
+                    WorkspaceItemPreview(item: item)
+                    Spacer()
+                    if showsLinkedGroupWarning, let linkedGroupUsageCount, linkedGroupUsageCount > 1 {
+                        Label("Used in \(linkedGroupUsageCount) Workspaces", systemImage: "exclamationmark.triangle")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    }
+                }
+                .contentShape(.rect)
             }
+            .buttonStyle(.plain)
+
             Button("Up", systemImage: "arrow.up", action: onMoveUp)
                 .labelStyle(.iconOnly)
             Button("Down", systemImage: "arrow.down", action: onMoveDown)
@@ -165,7 +174,6 @@ struct WorkspaceItemRow: View {
         }
         .padding(8)
         .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 7))
-        .onTapGesture(perform: onSelect)
     }
 }
 

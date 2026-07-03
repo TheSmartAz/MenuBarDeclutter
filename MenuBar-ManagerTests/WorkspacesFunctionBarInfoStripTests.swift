@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import CoreGraphics
 import Testing
@@ -95,6 +96,35 @@ struct WorkspacesFunctionBarInfoStripTests {
 
         #expect(controller.activeState() == .unavailable(.noDisplayAvailable))
         #expect(controller.lastShowResult == FunctionBarUnavailableReason.noDisplayAvailable.rawValue)
+    }
+
+    @Test func placementServicesUseStatusItemAnchorWhenAvailable() throws {
+        let screen = try #require(NSScreen.screens.first)
+        let visibleFrame = screen.visibleFrame
+        let panelSize = CGSize(width: 200, height: 80)
+        let anchor = CGRect(x: visibleFrame.midX + 60, y: visibleFrame.maxY - 24, width: 24, height: 18)
+        let expectedX = anchor.midX - panelSize.width / 2
+        let functionPlacementService = FunctionBarPlacementService(
+            screensProvider: { [screen] },
+            mouseLocationProvider: { CGPoint(x: visibleFrame.midX, y: visibleFrame.midY) }
+        )
+        let functionPlacement = try #require(functionPlacementService.placement(
+            panelSize: panelSize,
+            preference: .belowMenuBarIcon,
+            statusItemAnchor: anchor
+        ))
+        let infoStripPlacement = try #require(InfoStripPlacementService(
+            functionBarPlacementService: functionPlacementService
+        ).placement(
+            panelSize: panelSize,
+            preference: .alignWithFunctionBar,
+            statusItemAnchor: anchor
+        ))
+
+        #expect(functionPlacement.reason == .preferred)
+        #expect(functionPlacement.origin.x == expectedX)
+        #expect(infoStripPlacement.origin.x == expectedX)
+        #expect(infoStripPlacement.placementMode == .alignWithFunctionBar)
     }
 
     @Test func validationRecreatesDefaultWorkspacesWhenStoreIsEmpty() {
@@ -763,12 +793,14 @@ struct WorkspacesFunctionBarInfoStripTests {
         )
 
         #expect(viewModel.linkedGroupUsageCount(for: item) == 2)
+        #expect(viewModel.linkedGroupUsageCountsByItemID[item.id] == 2)
         #expect(viewModel.showsLinkedGroupWarnings)
 
         settings.setBuilderWarnBeforeLinkedGroupEdits = false
 
         #expect(!viewModel.showsLinkedGroupWarnings)
         #expect(viewModel.linkedGroupUsageCount(for: item) == 2)
+        #expect(viewModel.linkedGroupUsageCountsByItemID[item.id] == 2)
     }
 
     @Test func functionBarStateMachineSuppressesSafeMode() {

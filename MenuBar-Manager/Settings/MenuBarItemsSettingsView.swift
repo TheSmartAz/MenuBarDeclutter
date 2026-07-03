@@ -10,27 +10,15 @@ struct MenuBarItemsSettingsView: View {
     @State private var selectedSnapshotID: MenuBarItemSnapshot.ID?
     @State private var searchText = ""
     @State private var selectedFilter: MenuBarItemsFilter = .all
+    @State private var visibleSnapshots: [MenuBarItemSnapshot] = []
 
     private var snapshots: [MenuBarItemSnapshot] {
         liveStatus?.scannedMenuBarItems ?? []
     }
 
-    private var filteredSnapshots: [MenuBarItemSnapshot] {
-        let filteredByZone = snapshots.filter { selectedFilter.includes($0) }
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        guard !query.isEmpty else {
-            return filteredByZone
-        }
-
-        return filteredByZone.filter { snapshot in
-            snapshot.searchText.localizedStandardContains(query)
-        }
-    }
-
     private var selectedSnapshot: MenuBarItemSnapshot? {
-        guard let selectedSnapshotID else { return filteredSnapshots.first }
-        return filteredSnapshots.first { $0.id == selectedSnapshotID }
+        guard let selectedSnapshotID else { return visibleSnapshots.first }
+        return visibleSnapshots.first { $0.id == selectedSnapshotID }
     }
 
     private var permissionStatus: AccessibilityPermissionStatus {
@@ -138,13 +126,13 @@ struct MenuBarItemsSettingsView: View {
                         onOpenPrivacySettings: onOpenPrivacySettings
                     )
                 } else {
-                    ClearGlassPaneLayout(primaryWidth: 280, spacing: 0) {
-                        MenuBarItemsSourcePane(
-                            snapshots: filteredSnapshots,
-                            totalCount: snapshots.count,
-                            searchText: $searchText,
-                            selectedFilter: $selectedFilter,
-                            selectedSnapshotID: $selectedSnapshotID
+                        ClearGlassPaneLayout(primaryWidth: 280, spacing: 0) {
+                            MenuBarItemsSourcePane(
+                                snapshots: visibleSnapshots,
+                                totalCount: snapshots.count,
+                                searchText: $searchText,
+                                selectedFilter: $selectedFilter,
+                                selectedSnapshotID: $selectedSnapshotID
                         )
                         .frame(minHeight: 320, maxHeight: 430)
                     } detail: {
@@ -165,9 +153,15 @@ struct MenuBarItemsSettingsView: View {
                 }
             }
         }
-        .onAppear(perform: reconcileSelection)
-        .onChange(of: filteredSnapshots.map(\.id)) {
-            reconcileSelection()
+        .onAppear(perform: refreshVisibleSnapshots)
+        .onChange(of: snapshots) { _, _ in
+            refreshVisibleSnapshots()
+        }
+        .onChange(of: searchText) { _, _ in
+            refreshVisibleSnapshots()
+        }
+        .onChange(of: selectedFilter) { _, _ in
+            refreshVisibleSnapshots()
         }
     }
 
@@ -200,18 +194,47 @@ struct MenuBarItemsSettingsView: View {
         }
     }
 
-    private func reconcileSelection() {
-        guard !filteredSnapshots.isEmpty else {
+    private func refreshVisibleSnapshots() {
+        let nextSnapshots = Self.filteredSnapshots(
+            from: snapshots,
+            selectedFilter: selectedFilter,
+            searchText: searchText
+        )
+        if visibleSnapshots != nextSnapshots {
+            visibleSnapshots = nextSnapshots
+        }
+        reconcileSelection(in: nextSnapshots)
+    }
+
+    private func reconcileSelection(in snapshots: [MenuBarItemSnapshot]) {
+        guard !snapshots.isEmpty else {
             selectedSnapshotID = nil
             return
         }
 
         if let selectedSnapshotID,
-           filteredSnapshots.contains(where: { $0.id == selectedSnapshotID }) {
+           snapshots.contains(where: { $0.id == selectedSnapshotID }) {
             return
         }
 
-        selectedSnapshotID = filteredSnapshots.first?.id
+        selectedSnapshotID = snapshots.first?.id
+    }
+
+    private static func filteredSnapshots(
+        from snapshots: [MenuBarItemSnapshot],
+        selectedFilter: MenuBarItemsFilter,
+        searchText: String
+    ) -> [MenuBarItemSnapshot] {
+        let filteredByZone = snapshots.filter { selectedFilter.includes($0) }
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !query.isEmpty else {
+            return filteredByZone
+        }
+
+        return filteredByZone.filter { snapshot in
+            snapshot.searchText.localizedStandardContains(query)
+        }
     }
 }
 

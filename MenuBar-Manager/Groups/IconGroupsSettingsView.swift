@@ -16,13 +16,8 @@ struct IconGroupsSettingsView: View {
 
     @State private var selectedID: UUID?
     @State private var editingGroup: IconGroup?
-    @State private var revision = 0
+    @State private var groups: [IconGroup] = []
     @State private var statusMessage: String?
-
-    private var groups: [IconGroup] {
-        _ = revision
-        return IconGroupSort.sort(groupStore.groups)
-    }
 
     private var selectedGroup: IconGroup? {
         groups.first { $0.id == selectedID } ?? groups.first
@@ -112,8 +107,14 @@ struct IconGroupsSettingsView: View {
             }
         }
         .onAppear {
-            groupStore.load()
-            selectedID = selectedID ?? groups.first?.id
+            reloadGroups()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: IconGroupStore.groupsDidChangeNotification)) { notification in
+            guard let changedStore = notification.object as? IconGroupStore,
+                  changedStore === groupStore else {
+                return
+            }
+            reloadGroups(loadFromDisk: false)
         }
         .sheet(item: $editingGroup) { group in
             IconGroupEditorView(
@@ -263,7 +264,10 @@ struct IconGroupsSettingsView: View {
         }
     }
 
+    @ViewBuilder
     private var groupList: some View {
+        let selectedGroupID = selectedGroup?.id
+
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Label("Groups", systemImage: "sidebar.left")
@@ -304,7 +308,7 @@ struct IconGroupsSettingsView: View {
                         ForEach(groups) { group in
                             IconGroupRowView(
                                 group: group,
-                                isSelected: group.id == selectedGroup?.id
+                                isSelected: group.id == selectedGroupID
                             ) {
                                 selectedID = group.id
                             }
@@ -449,9 +453,28 @@ struct IconGroupsSettingsView: View {
         return "\(base) \(counter)"
     }
 
+    private func reloadGroups(loadFromDisk: Bool = true) {
+        if loadFromDisk {
+            groupStore.load()
+        }
+
+        let sortedGroups = IconGroupSort.sort(groupStore.groups)
+        if groups != sortedGroups {
+            groups = sortedGroups
+        }
+
+        guard let selectedID,
+              sortedGroups.contains(where: { $0.id == selectedID }) else {
+            let fallbackID = sortedGroups.first?.id
+            if selectedID != fallbackID {
+                self.selectedID = fallbackID
+            }
+            return
+        }
+    }
+
     private func notifyChanged() {
-        revision += 1
-        groupStore.load()
+        reloadGroups()
         onGroupsChanged?()
     }
 }

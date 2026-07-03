@@ -114,24 +114,28 @@ final class SetBuilderViewModel {
         settingsStore.setBuilderWarnBeforeLinkedGroupEdits
     }
 
+    var linkedGroupUsageCountsByItemID: [UUID: Int] {
+        guard let draft else { return [:] }
+        let usageIndex = WorkspaceGroupUsageIndex(workspaces: workspacesIncludingDraft(draft))
+
+        return Dictionary(uniqueKeysWithValues: draft.editedWorkspace.functionItems.compactMap { item in
+            guard case .group(let reference) = item.kind,
+                  reference.referenceMode == .linked else {
+                return nil
+            }
+            return (item.id, usageIndex.referenceCount(groupID: reference.groupID))
+        })
+    }
+
     func linkedGroupUsageCount(for item: WorkspaceItem) -> Int? {
         guard case .group(let reference) = item.kind,
               reference.referenceMode == .linked else {
             return nil
         }
 
-        let selectedID = draft?.editedWorkspace.id
-        let currentWorkspaces = switchingService.currentSnapshot().workspaces
-            .filter { !$0.isArchived }
-            .map { workspace in
-                guard workspace.id == selectedID,
-                      let draft else {
-                    return workspace
-                }
-                return draft.editedWorkspace
-            }
+        guard let draft else { return nil }
 
-        return WorkspaceGroupUsageIndex(workspaces: currentWorkspaces)
+        return WorkspaceGroupUsageIndex(workspaces: workspacesIncludingDraft(draft))
             .referenceCount(groupID: reference.groupID)
     }
 
@@ -392,6 +396,14 @@ final class SetBuilderViewModel {
             return saved
         }
         return SetBuilderDraft(workspace: workspace)
+    }
+
+    private func workspacesIncludingDraft(_ draft: SetBuilderDraft) -> [MenuBarWorkspace] {
+        switchingService.currentSnapshot().workspaces
+            .filter { !$0.isArchived }
+            .map { workspace in
+                workspace.id == draft.editedWorkspace.id ? draft.editedWorkspace : workspace
+            }
     }
 
     private func setDraft(_ draft: SetBuilderDraft) {

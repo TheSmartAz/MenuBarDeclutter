@@ -4,6 +4,8 @@ import Foundation
 /// Application Support. Handles corruption by backing up and resetting.
 @MainActor
 final class IconGroupStore {
+    static let groupsDidChangeNotification = Notification.Name("MBDIconGroupStoreGroupsDidChange")
+
     private let fileURL: URL
     private let backupsDirectory: URL
     private let fileManager: FileManager
@@ -63,6 +65,7 @@ final class IconGroupStore {
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             let data = try encoder.encode(container)
             try data.write(to: fileURL, options: .atomic)
+            notifyGroupsDidChange()
         } catch {
             diagnosticsLogger?.log(
                 "Failed to save group store: \(error.localizedDescription)",
@@ -165,6 +168,10 @@ final class IconGroupStore {
                 category: .layout
             )
         }
+    }
+
+    private func notifyGroupsDidChange() {
+        NotificationCenter.default.post(name: Self.groupsDidChangeNotification, object: self)
     }
 }
 

@@ -15,7 +15,7 @@ final class IconMoveService {
     private let separatorFramesProvider: () -> MenuBarSeparatorFrames
     private let currentVisibilityProvider: () -> HidingVisibilityState
     private let setVisibility: (HidingVisibilityState) -> Void
-    private let refreshSnapshots: () -> [MenuBarItemSnapshot]
+    private let refreshSnapshots: @MainActor () async -> [MenuBarItemSnapshot]
     private let suspendRuntimeBehaviors: () -> Void
     private let resumeRuntimeBehaviors: () -> Void
     private let confirmationHandler: (MenuBarItemSnapshot, IconMoveCommand) -> IconMoveConfirmationDecision
@@ -40,7 +40,7 @@ final class IconMoveService {
         separatorFramesProvider: @escaping () -> MenuBarSeparatorFrames,
         currentVisibilityProvider: @escaping () -> HidingVisibilityState,
         setVisibility: @escaping (HidingVisibilityState) -> Void,
-        refreshSnapshots: @escaping () -> [MenuBarItemSnapshot],
+        refreshSnapshots: @escaping @MainActor () async -> [MenuBarItemSnapshot],
         suspendRuntimeBehaviors: @escaping () -> Void,
         resumeRuntimeBehaviors: @escaping () -> Void,
         confirmationHandler: ((MenuBarItemSnapshot, IconMoveCommand) -> IconMoveConfirmationDecision)? = nil,
@@ -361,7 +361,7 @@ final class IconMoveService {
                     )
                 }
 
-                let rescanned = refreshSnapshots()
+                let rescanned = await refreshSnapshots()
                 let verification = verifier.verify(
                     original: originalSnapshot,
                     targetZone: plan.targetZone,
