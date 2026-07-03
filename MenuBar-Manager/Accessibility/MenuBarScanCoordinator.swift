@@ -142,6 +142,20 @@ final class MenuBarScanCoordinator {
         scanIfAllowed(reason: "manual refresh", force: true)
     }
 
+#if DEBUG
+    func scheduleVisibilityChangeScanForTesting() {
+        scheduleVisibilityChangeScan()
+    }
+
+    func waitForPendingVisibilityScanForTesting() async {
+        let visibilityTask = pendingVisibilityScanTask
+        await visibilityTask?.value
+
+        let scanTask = pendingScanTask
+        await scanTask?.value
+    }
+#endif
+
     @discardableResult
     func scanIfAllowed(reason: String, force: Bool = false) -> MenuBarScanResult? {
         switch prepareScan(reason: reason, force: force) {

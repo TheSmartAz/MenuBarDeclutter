@@ -43,4 +43,70 @@ struct HidingVisibilityStateTests {
     @Test func allCasesAreThree() {
         #expect(HidingVisibilityState.allCases == [.collapsed, .expanded, .revealAll])
     }
+
+    @Test func basicModeReadinessReportsReadyExpandedState() {
+        let readiness = BasicModeReadiness.evaluate(
+            visibilityState: .expanded,
+            primarySeparatorLength: AppConstants.defaultExpandedSeparatorLength,
+            alwaysHiddenEnabled: false,
+            alwaysHiddenSeparatorInstalled: false,
+            alwaysHiddenSeparatorLength: nil
+        )
+
+        #expect(readiness.status == .ready)
+        #expect(readiness.tone == .ready)
+        #expect(readiness.systemImage == "checkmark.shield")
+    }
+
+    @Test func basicModeReadinessWarnsWhenPrimarySeparatorIsMissing() {
+        let readiness = BasicModeReadiness.evaluate(
+            visibilityState: .expanded,
+            primarySeparatorLength: 0,
+            alwaysHiddenEnabled: false,
+            alwaysHiddenSeparatorInstalled: false,
+            alwaysHiddenSeparatorLength: nil
+        )
+
+        #expect(readiness.status == .primarySeparatorMissing)
+        #expect(readiness.tone == .warning)
+    }
+
+    @Test func basicModeReadinessWarnsWhenCollapsedSeparatorIsStillShort() {
+        let readiness = BasicModeReadiness.evaluate(
+            visibilityState: .collapsed,
+            primarySeparatorLength: AppConstants.defaultExpandedSeparatorLength,
+            alwaysHiddenEnabled: false,
+            alwaysHiddenSeparatorInstalled: false,
+            alwaysHiddenSeparatorLength: nil
+        )
+
+        #expect(readiness.status == .primarySeparatorTooShortForCollapsedState)
+        #expect(readiness.tone == .warning)
+    }
+
+    @Test func basicModeReadinessWarnsWhenAlwaysHiddenSeparatorIsMissing() {
+        let readiness = BasicModeReadiness.evaluate(
+            visibilityState: .expanded,
+            primarySeparatorLength: AppConstants.defaultExpandedSeparatorLength,
+            alwaysHiddenEnabled: true,
+            alwaysHiddenSeparatorInstalled: false,
+            alwaysHiddenSeparatorLength: nil
+        )
+
+        #expect(readiness.status == .alwaysHiddenSeparatorMissing)
+        #expect(readiness.tone == .warning)
+    }
+
+    @Test func basicModeReadinessHandlesUnavailableRuntimeStatus() {
+        let readiness = BasicModeReadiness.evaluate(
+            visibilityState: nil,
+            primarySeparatorLength: nil,
+            alwaysHiddenEnabled: false,
+            alwaysHiddenSeparatorInstalled: false,
+            alwaysHiddenSeparatorLength: nil
+        )
+
+        #expect(readiness.status == .runtimeUnavailable)
+        #expect(readiness.tone == .info)
+    }
 }
