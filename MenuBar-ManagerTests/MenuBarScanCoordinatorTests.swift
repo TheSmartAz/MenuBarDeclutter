@@ -118,12 +118,10 @@ struct MenuBarScanCoordinatorTests {
         await waitUntil { harness.liveStatus.menuBarScanLifecycleState == .completed }
     }
 
-    @Test func rapidVisibilityNotificationsCoalesceIntoOneScan() async {
+    @Test func rapidVisibilityChangesCoalesceIntoOneScan() async {
         var now = Date(timeIntervalSince1970: 100)
-        let notificationCenter = NotificationCenter()
         let harness = makeHarness(
             isTrusted: { true },
-            notificationCenter: notificationCenter,
             visibilityScanDebounceNanoseconds: 20_000_000,
             now: { now }
         )
@@ -140,11 +138,11 @@ struct MenuBarScanCoordinatorTests {
         #expect(await harness.scanner.scanCount == 1)
 
         now = Date(timeIntervalSince1970: 101)
-        notificationCenter.post(name: HidingService.visibilityDidChangeNotification, object: nil)
-        notificationCenter.post(name: HidingService.visibilityDidChangeNotification, object: nil)
-        notificationCenter.post(name: HidingService.visibilityDidChangeNotification, object: nil)
+        harness.coordinator.scheduleVisibilityChangeScanForTesting()
+        harness.coordinator.scheduleVisibilityChangeScanForTesting()
+        harness.coordinator.scheduleVisibilityChangeScanForTesting()
 
-        await waitUntilScanCount(2, scanner: harness.scanner)
+        await harness.coordinator.waitForPendingVisibilityScanForTesting()
 
         #expect(await harness.scanner.scanCount == 2)
     }
