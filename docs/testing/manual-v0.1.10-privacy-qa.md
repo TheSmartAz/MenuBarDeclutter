@@ -1,6 +1,6 @@
 # Manual QA - v0.1.10 Privacy
 
-Status: recorded. Source, project, installed-bundle, entitlement, and linkage checks passed.
+Status: recorded. Source, project, installed-bundle, entitlement, and linkage checks passed after the final installed-app rerun.
 
 Run date: 2026-07-03
 
@@ -14,7 +14,7 @@ Environment:
 
 | Area | Result | Notes |
 | --- | --- | --- |
-| Basic Mode does not request Accessibility | PASS | UI privacy workflow passed with Pro Mode off by default; Request Permission stayed disabled until explicit Pro controls. Privacy verifier passed against source and installed app. |
+| Basic Mode does not request Accessibility | PASS | UI privacy workflow passed with Pro Mode off by default; Request Permission stayed disabled until explicit Pro controls. Final privacy verifier passed against source and installed app. |
 | Workspaces Preview does not request Screen Recording | PASS | Installed app has no `NSScreenCaptureUsageDescription`; source/project searches found no app ScreenCaptureKit usage. |
 | No network access required for Preview surfaces | PASS | Privacy verifier found no network entitlements and no direct network client APIs or analytics SDK names in app code. |
 | Diagnostics export excludes protected names/raw item metadata | PASS | Diagnostics exporter/source tests passed, including privacy exclusions and redacted aggregate metadata paths. |

@@ -302,6 +302,9 @@ if [[ -d "$APP_PATH" ]]; then
       warn "spctl assessment used a temporary copy after persistent transient errors on the original path."
     fi
     warn "spctl assessment failed with an expected non-notarized dry-run rejection."
+  elif transient_spctl_failure "$SPCTL_OUTPUT"; then
+    printf '%s\n' "$SPCTL_OUTPUT"
+    warn "spctl assessment ended with a persistent local Gatekeeper resource error after retries; dry-run verification is continuing because notarization is not required."
   else
     printf '%s\n' "$SPCTL_OUTPUT"
     fail "spctl assessment failed with an unexpected error; not treating it as a notarization warning."

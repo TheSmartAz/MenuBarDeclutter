@@ -73,6 +73,7 @@ struct SearchResultRowView: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(result.displayTitle), \(result.snapshot.zone.displayName), \(result.matchReason.displayName)")
         .accessibilityValue(isSelected ? "Selected" : "Not selected")
+        .accessibilityHint(isSelected ? "Press Return to reveal and highlight this menu bar item." : "Use the arrow keys to select this result.")
     }
 
     private var rowBackground: Color {

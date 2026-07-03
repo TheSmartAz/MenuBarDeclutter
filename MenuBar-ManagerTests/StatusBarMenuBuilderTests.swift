@@ -20,6 +20,7 @@ struct StatusBarMenuBuilderTests {
 
         let menu = builder.makeMenu()
         let infoItems = informationItems(in: menu)
+        let sectionHeaders = sectionHeaderItems(in: menu)
         let commandItems = actionItems(in: menu)
         let advancedItems = try? #require(menu.items.first { $0.title == "Advanced" }?.submenu)
 
@@ -30,6 +31,12 @@ struct StatusBarMenuBuilderTests {
             "Privacy: no sensitive permissions requested here"
         ])
         #expect(infoItems.first?.toolTip == "Hidden-zone items are currently visible.")
+        #expect(sectionHeaders.map(\.title) == [
+            "Basic Mode",
+            "Find & Rescue",
+            "Layout",
+            "Support"
+        ])
 
         #expect(
             commandItems.map { $0.title } == [
@@ -644,6 +651,14 @@ struct StatusBarMenuBuilderTests {
     private func informationItems(in menu: NSMenu) -> [NSMenuItem] {
         menu.items.filter { item in
             !item.isSeparatorItem && item.action == nil && item.submenu == nil
+                && (item.title.hasPrefix("Status:") || item.title.hasPrefix("Privacy:"))
+        }
+    }
+
+    private func sectionHeaderItems(in menu: NSMenu) -> [NSMenuItem] {
+        menu.items.filter { item in
+            !item.isSeparatorItem && item.action == nil && item.submenu == nil
+                && !item.title.hasPrefix("Status:") && !item.title.hasPrefix("Privacy:")
         }
     }
 }

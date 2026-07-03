@@ -211,6 +211,7 @@ struct QAScriptsTests {
             #expect(text.contains("raise_gatekeeper_file_limit"))
             #expect(text.contains("ulimit -n 1048575"))
             #expect(text.contains("ulimit -n 8192"))
+            #expect(text.contains("persistent local Gatekeeper resource error after retries"))
             #expect(text.contains("unexpected error; not treating it as a notarization warning"))
             #expect(text.contains("Pro Accessibility Discovery requires a non-sandboxed assistive build"))
             #expect(text.contains("assistive/no-network invariants"))

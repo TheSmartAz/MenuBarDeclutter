@@ -206,6 +206,7 @@ private struct SettingsCommandPaletteRow: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityValue(isSelected ? "Selected" : "Not selected")
+        .accessibilityHint(isSelected ? "Press Return to open this setting or action." : "Use the arrow keys to select this result.")
         .accessibilityIdentifier("settings.commandPalette.row.\(entry.id)")
     }
 

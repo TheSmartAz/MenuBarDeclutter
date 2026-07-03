@@ -110,6 +110,7 @@ final class StatusBarMenuBuilder {
         addStatusSummary(to: menu)
         menu.addItem(.separator())
 
+        menu.addItem(sectionHeader("Basic Mode", systemImage: "checkmark.shield"))
         menu.addItem(menuItem(
             title: "Reveal Hidden Items",
             command: .expand,
@@ -137,6 +138,7 @@ final class StatusBarMenuBuilder {
 
         menu.addItem(.separator())
 
+        menu.addItem(sectionHeader("Find & Rescue", systemImage: "lifepreserver"))
         menu.addItem(
             menuItem(
                 title: "Workspaces…",
@@ -176,6 +178,7 @@ final class StatusBarMenuBuilder {
 
         menu.addItem(.separator())
 
+        menu.addItem(sectionHeader("Layout", systemImage: "arrow.up.left.and.arrow.down.right"))
         menu.addItem(
             menuItem(
                 title: "Arrange Items…",
@@ -230,6 +233,7 @@ final class StatusBarMenuBuilder {
 
         menu.addItem(.separator())
 
+        menu.addItem(sectionHeader("Support", systemImage: "cross.case"))
         menu.addItem(
             menuItem(
                 title: "Recovery…",
@@ -404,9 +408,12 @@ final class StatusBarMenuBuilder {
         refresh(for: state.isCollapsed ? HidingVisibilityState.collapsed : HidingVisibilityState.expanded)
     }
 
-    private func sectionHeader(_ title: String) -> NSMenuItem {
+    private func sectionHeader(_ title: String, systemImage: String? = nil) -> NSMenuItem {
         let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
         item.isEnabled = false
+        if let systemImage {
+            item.image = NSImage(systemSymbolName: systemImage, accessibilityDescription: title)
+        }
         return item
     }
 
