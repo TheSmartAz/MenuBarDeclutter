@@ -237,6 +237,113 @@ struct WorkspacesFunctionBarInfoStripTests {
         #expect(itemIDs.contains("command.\(WorkspaceCommandReference.showFunctionBarFromInfoStrip.actionID)"))
     }
 
+    @Test func setBuilderExposesNewAndUnassignedItemLibrariesWithoutMovingIcons() throws {
+        let suiteName = "SetBuilderNewUnassigned.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let settings = SettingsStore(defaults: defaults)
+        settings.proModeEnabled = true
+        settings.accessibilityDiscoveryEnabled = true
+        settings.lastAccessibilityPermissionStatus = AccessibilityPermissionStatus.granted.rawValue
+
+        let inboxStore = NewMenuBarItemInboxStore(fileURL: nil)
+        let newItem = NewMenuBarItem(
+            id: "new-item-hash",
+            firstSeenAt: Date(timeIntervalSince1970: 1),
+            lastSeenAt: Date(timeIntervalSince1970: 2),
+            seenCount: 2
+        )
+        inboxStore.apply(update: NewMenuBarItemInboxUpdate(
+            inbox: NewMenuBarItemInbox(
+                schemaVersion: 1,
+                knownItemKeys: ["new-item-hash"],
+                dismissedItemKeys: [],
+                items: [newItem]
+            ),
+            addedItemIDs: ["new-item-hash"]
+        ))
+
+        var workspace = MenuBarWorkspace(name: "Builder")
+        workspace.functionItems = [
+            WorkspaceItem(kind: .menuBarItem(MenuBarItemReference(stableHash: "assigned"))),
+            WorkspaceItem(kind: .menuBarItem(MenuBarItemReference(stableHash: "grouped")))
+        ]
+
+        let snapshot = WorkspaceStoreSnapshot(activeWorkspaceID: workspace.id, workspaces: [workspace])
+        let service = WorkspaceSwitchingService(
+            store: MemoryWorkspaceStore(snapshot: snapshot),
+            initialSnapshot: snapshot
+        )
+        let discovered = [
+            TestSnapshots.makeSnapshot(id: "assigned", title: "Assigned", owningApplicationName: "Assigned"),
+            TestSnapshots.makeSnapshot(id: "grouped", title: "Grouped", owningApplicationName: "Grouped"),
+            TestSnapshots.makeSnapshot(id: "free", title: "Free", owningApplicationName: "Free")
+        ]
+        let viewModel = SetBuilderViewModel(
+            switchingService: service,
+            groupStore: nil,
+            newItemInboxStore: inboxStore,
+            snapshotsProvider: { discovered },
+            settingsStore: settings
+        )
+
+        let newLibraryItem = try #require(viewModel.newItemLibrary.first)
+        #expect(newLibraryItem.badge == "New")
+        #expect(newLibraryItem.subtitle?.contains("no icon is moved") == true)
+        if case .menuBarItem(let reference) = newLibraryItem.kind {
+            #expect(reference.stableHash == "new-item-hash")
+            #expect(reference.source == .itemMemory)
+        } else {
+            Issue.record("Expected New Item library entry to create a menu bar item proxy.")
+        }
+
+        let unassignedLibraryItems = viewModel.unassignedItemLibrary
+        #expect(unassignedLibraryItems.map(\.id) == ["unassigned.free"])
+        #expect(unassignedLibraryItems.first?.badge == "Unassigned")
+        #expect(unassignedLibraryItems.first?.subtitle?.contains("no icon is moved") == true)
+    }
+
+    @Test func functionBarBadgesExposeWorkspaceReferenceState() {
+        let group = IconGroup(name: "Utilities")
+        let snapshot = TestSnapshots.makeSnapshot(id: "proxy", title: "Proxy", owningApplicationName: "Proxy")
+        let resolver = FunctionBarItemResolver(
+            groupsProvider: { [group] },
+            snapshotsProvider: { [snapshot] },
+            proDiscoveryAvailable: { true },
+            accessibilityAvailable: { true }
+        )
+
+        let linkedGroup = resolver.resolve(item: WorkspaceItem(kind: .group(WorkspaceGroupReference(groupID: group.id, referenceMode: .linked))))
+        let detachedGroup = resolver.resolve(item: WorkspaceItem(kind: .group(WorkspaceGroupReference(groupID: group.id, referenceMode: .detached))))
+        let missingGroup = resolver.resolve(item: WorkspaceItem(kind: .group(WorkspaceGroupReference(groupID: UUID(), referenceMode: .linked))))
+        let newProxy = resolver.resolve(item: WorkspaceItem(kind: .menuBarItem(MenuBarItemReference(
+            stableHash: "proxy",
+            source: .itemMemory
+        ))))
+        let protectedProxy = resolver.resolve(item: WorkspaceItem(kind: .menuBarItem(MenuBarItemReference(
+            stableHash: "proxy",
+            redactionPolicy: .protected
+        ))))
+        let missingProxy = resolver.resolve(item: WorkspaceItem(kind: .menuBarItem(MenuBarItemReference(stableHash: "missing"))))
+        let gatedResolver = FunctionBarItemResolver(
+            groupsProvider: { [] },
+            snapshotsProvider: { [] },
+            proDiscoveryAvailable: { false },
+            accessibilityAvailable: { false }
+        )
+        let proGatedProxy = gatedResolver.resolve(item: WorkspaceItem(kind: .menuBarItem(MenuBarItemReference(stableHash: "proxy"))))
+
+        #expect(linkedGroup.badge?.title == "Linked Group")
+        #expect(detachedGroup.badge?.title == "Detached")
+        #expect(missingGroup.badge?.title == "Missing")
+        #expect(newProxy.badge?.title == "New Item")
+        #expect(protectedProxy.badge?.title == "Protected")
+        #expect(missingProxy.badge?.title == "Missing")
+        #expect(proGatedProxy.badge?.title == "Requires Pro")
+    }
+
     @Test func validationClampsInfoStripTimingToPhase20Bounds() throws {
         var workspace = MenuBarWorkspace(name: "Timing")
         workspace.infoStripConfig.rotationIntervalSeconds = 500

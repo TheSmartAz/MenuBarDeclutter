@@ -7,19 +7,20 @@ import Testing
 struct OnboardingStepTests {
     @Test func allStepsAreUniqueAndOrdered() {
         let steps = OnboardingStep.allSteps
-        #expect(steps.count == 8)
+        #expect(steps.count == 9)
 
         let ids = steps.map(\.id)
         #expect(Set(ids).count == ids.count)
 
-        #expect(steps[0].id == "intro")
+        #expect(steps[0].id == "welcome")
         #expect(steps[1].id == "nativeCleanup")
-        #expect(steps[2].id == "commandDrag")
-        #expect(steps[3].id == "hiddenVsAlwaysHidden")
-        #expect(steps[4].id == "testArrange")
-        #expect(steps[5].id == "hotkeyAutoRehide")
+        #expect(steps[2].id == "basicHideReveal")
+        #expect(steps[3].id == "arrange")
+        #expect(steps[4].id == "findRescue")
+        #expect(steps[5].id == "workspaces")
         #expect(steps[6].id == "privacy")
-        #expect(steps[7].id == "macOS26Note")
+        #expect(steps[7].id == "recovery")
+        #expect(steps[8].id == "finish")
     }
 
     @Test func nativeCleanupStepExplainsAppleSettingsBoundary() throws {
@@ -30,42 +31,47 @@ struct OnboardingStepTests {
         #expect(step.body.contains("complements Apple's settings"))
     }
 
-    @Test func macos26StepCarriesCallout() throws {
-        let step = OnboardingStep.allSteps.first { $0.id == "macOS26Note" }
+    @Test func finishStepCarriesLocalSampleWorkspaceCallout() throws {
+        let step = OnboardingStep.allSteps.first { $0.id == "finish" }
         let callout = try #require(step?.callout)
-        #expect(!callout.isEmpty)
+        #expect(callout.contains("local app-owned commands"))
+        #expect(callout.contains("requests no permissions"))
     }
 
     @Test func privacyStepMentionsNoSensitivePermissions() throws {
         let step = try #require(OnboardingStep.allSteps.first { $0.id == "privacy" })
         #expect(step.body.contains("Accessibility"))
         #expect(step.body.contains("Screen Recording"))
+        #expect(step.body.contains("ScreenCaptureKit"))
+        #expect(step.body.contains("Apple Events"))
+        #expect(step.body.contains("Input Monitoring"))
         #expect(step.body.contains("network"))
-        #expect(step.body.contains("Basic Mode usable"))
+        #expect(step.body.contains("Basic Mode does not request"))
+        #expect(step.body.contains("never turns on silently"))
     }
 
-    @Test func arrangeTestStepKeepsStableFlowPermissionFree() throws {
-        let step = try #require(OnboardingStep.allSteps.first { $0.id == "testArrange" })
+    @Test func arrangeStepKeepsStableFlowPermissionFree() throws {
+        let step = try #require(OnboardingStep.allSteps.first { $0.id == "arrange" })
         #expect(step.body.contains("Collapse"))
         #expect(step.body.contains("Reveal All"))
         #expect(step.body.contains("Reset Layout"))
-        #expect(step.body.contains("Basic Mode"))
-        #expect(step.body.contains("does not request Pro permissions"))
+        #expect(step.body.contains("Command"))
     }
 
-    @Test func behaviorStepMatchesCurrentDefaults() throws {
-        let suiteName = "OnboardingStepTests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
-        defaults.removePersistentDomain(forName: suiteName)
-        defer { defaults.removePersistentDomain(forName: suiteName) }
+    @Test func workspaceStepExplainsPreviewBoundary() throws {
+        let step = try #require(OnboardingStep.allSteps.first { $0.id == "workspaces" })
+        #expect(step.body.contains("Function Bar"))
+        #expect(step.body.contains("Linked Groups"))
+        #expect(step.body.contains("Info Strip"))
+        #expect(step.body.contains("do not replace or control"))
+    }
 
-        let store = SettingsStore(defaults: defaults)
-        let step = try #require(OnboardingStep.allSteps.first { $0.id == "hotkeyAutoRehide" })
-
-        #expect(store.globalHotkeyEnabled == false)
-        #expect(store.autoRehideEnabled == false)
-        #expect(step.body.contains("hotkey is off by default"))
-        #expect(step.body.contains("Auto-Rehide is off by default"))
+    @Test func recoveryStepMentionsSafeModeAndDiagnostics() throws {
+        let step = try #require(OnboardingStep.allSteps.first { $0.id == "recovery" })
+        #expect(step.body.contains("Safe Mode"))
+        #expect(step.body.contains("Reset Layout"))
+        #expect(step.body.contains("Reveal All"))
+        #expect(step.body.contains("diagnostics export"))
     }
 
     @Test func nativeCleanupSettingsOpenerFallsBackToSystemSettings() {

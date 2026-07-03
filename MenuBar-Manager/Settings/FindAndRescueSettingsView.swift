@@ -9,6 +9,8 @@ struct FindAndRescueSettingsView: View {
     var newItemCount: Int = 0
     var newItemInboxStore: NewMenuBarItemInboxStore? = nil
     var placementPreferenceStore: PlacementItemPreferenceStore? = nil
+    var workspaceSwitchingService: WorkspaceSwitchingService? = nil
+    var groupStore: IconGroupStore? = nil
     var onOpenFindIcon: (() -> Void)? = nil
     var onOpenSecondBar: (() -> Void)? = nil
     var onOpenSearchSettings: (() -> Void)? = nil
@@ -140,8 +142,22 @@ struct FindAndRescueSettingsView: View {
                 onOpenArrange: onOpenArrange,
                 onOpenGroups: onOpenGroups,
                 onOpenInspector: onOpenMenuBarItems,
-                onOpenPrivacy: onOpenPrivacy
+                onOpenPrivacy: onOpenPrivacy,
+                workspaceOptions: workspaceAssignmentOptions,
+                groupOptions: groupAssignmentOptions,
+                onAssignToCurrentWorkspace: assignNewItemToCurrentWorkspace,
+                onAssignToWorkspace: assignNewItemToWorkspace,
+                onAssignToGroup: assignNewItemToGroup,
+                onCreateGroup: createGroupForNewItem
             )
+
+            if let message = lastNewItemAssignmentMessage {
+                ClearGlassInlineMessage(
+                    text: message,
+                    systemImage: "rectangle.3.group",
+                    style: .info
+                )
+            }
         }
     }
 
@@ -194,6 +210,22 @@ struct FindAndRescueSettingsView: View {
                     systemImage: "questionmark.circle",
                     binding: $settingsStore.crowdedRevealAskBeforeSwitching
                 )
+
+                ClearGlassDivider()
+
+                ClearGlassControlRow(
+                    systemImage: "rectangle.3.group",
+                    title: "Workspace fallback",
+                    subtitle: "Choose whether crowded rescue prefers Function Bar, Second Bar, a prompt, inline reveal, or Full Menu Bar Mode."
+                ) {
+                    Picker("Workspace fallback", selection: $settingsStore.crowdedRescueWorkspaceFallbackPreference) {
+                        ForEach(CrowdedRescueWorkspaceFallbackPreference.allCases) { preference in
+                            Text(preference.displayName).tag(preference.rawValue)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 210)
+                }
 
                 ClearGlassDivider()
 
@@ -257,6 +289,8 @@ struct FindAndRescueSettingsView: View {
         )
     }
 
+    @State private var lastNewItemAssignmentMessage: String?
+
     private func dismissNewItem(_ itemID: String) {
         newItemInboxStore?.dismiss(itemID: itemID)
         refreshNewItemCount()
@@ -270,6 +304,55 @@ struct FindAndRescueSettingsView: View {
 
     private func resetNewItemInbox() {
         newItemInboxStore?.reset()
+        refreshNewItemCount()
+    }
+
+    private var workspaceAssignmentOptions: [WorkspaceAssignmentOption] {
+        workspaceSwitchingService?.currentSnapshot().workspaces
+            .filter { !$0.isArchived }
+            .map { WorkspaceAssignmentOption(id: $0.id, title: WorkspaceDiagnosticsRedactor.displayName(for: $0)) }
+            ?? []
+    }
+
+    private var groupAssignmentOptions: [WorkspaceAssignmentOption] {
+        groupStore?.groups
+            .filter(\.isEnabled)
+            .map { WorkspaceAssignmentOption(id: $0.id, title: $0.isProtected ? "Protected Group" : $0.name) }
+            ?? []
+    }
+
+    private func assignNewItemToCurrentWorkspace(_ itemID: String) {
+        assignNewItem(itemID, to: .currentWorkspace)
+    }
+
+    private func assignNewItemToWorkspace(_ itemID: String, workspaceID: UUID) {
+        assignNewItem(itemID, to: .workspace(workspaceID))
+    }
+
+    private func assignNewItemToGroup(_ itemID: String, groupID: UUID) {
+        assignNewItem(itemID, to: .group(groupID))
+    }
+
+    private func createGroupForNewItem(_ itemID: String) {
+        assignNewItem(itemID, to: .newGroup(name: "New Item Group", workspaceID: workspaceSwitchingService?.activeWorkspace().id))
+    }
+
+    private func assignNewItem(_ itemID: String, to target: WorkspaceAssignmentTarget) {
+        guard let item = newItemInboxStore?.inbox.items.first(where: { $0.id == itemID }),
+              let workspaceSwitchingService else {
+            lastNewItemAssignmentMessage = "Workspace assignment is unavailable."
+            return
+        }
+
+        let service = WorkspaceAssignmentService(
+            switchingService: workspaceSwitchingService,
+            groupStore: groupStore,
+            newItemInboxStore: newItemInboxStore,
+            safeModeActive: { liveStatus?.safeModeActive == true },
+            previewEnabled: { settingsStore.workspacesPreviewEnabled }
+        )
+        let result = service.assignNewItem(item, to: target)
+        lastNewItemAssignmentMessage = result.message
         refreshNewItemCount()
     }
 
@@ -292,6 +375,11 @@ struct FindAndRescueSettingsView: View {
                 .labelsHidden()
         }
     }
+}
+
+nonisolated struct WorkspaceAssignmentOption: Identifiable, Equatable, Sendable {
+    var id: UUID
+    var title: String
 }
 
 private struct CrowdedRescueExplanationRow: View {

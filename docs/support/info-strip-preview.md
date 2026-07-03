@@ -1,6 +1,6 @@
-# Info Strip Preview Support
+# Info Strip Support
 
-Open Advanced, Workspaces Preview, then enable Info Strip Preview.
+Open the top-level Workspaces settings page, then enable Info Strip Preview.
 
 To see Info Strip:
 
@@ -13,4 +13,4 @@ To see Info Strip:
 
 Info Strip is app-owned Preview UI. It does not replace the macOS menu bar, use Screen Recording, use ScreenCaptureKit, use network widgets, or scrape notifications.
 
-Current v0.1.7 QA scope covers single-screen UI behavior on the built-in display. External multi-display placement checks are deferred to a future hardware follow-up.
+Current v0.1.9 scope keeps Info Strip in Preview. External multi-display placement checks remain manual QA follow-up.

@@ -4,7 +4,7 @@ Last updated: 2026-07-02
 
 `MenuBarDeclutter` is a native macOS menu bar decluttering utility for macOS 26.0+. It is written in Swift with AppKit for real menu bar integration and SwiftUI for app-owned UI surfaces. The product direction is privacy-first: ship a useful Basic Mode that does not require sensitive permissions, then add selected power-user workflows behind explicit Pro, Preview, Labs, or Experimental gates.
 
-The current checkout is well beyond the original Phase 0 skeleton. The active release line is `v0.1.7`. Basic Mode remains the intended stable product core pending physical QA, while Workspaces, Function Bar, Set Builder, and Info Strip surfaces remain Preview-gated.
+The current sealed release line is `v0.1.7`, tagged after Phase 16-20 implementation and CI validation. Basic Mode remains the intended stable product core pending physical QA, while Workspaces, Function Bar, Set Builder, linked Groups, and Info Strip surfaces remain Preview-gated.
 
 ## Current Facts
 
@@ -30,19 +30,23 @@ The project, source, and test folders still use the legacy `MenuBar-Manager` nam
 
 ## Current Status
 
-`v0.1.7` keeps the privacy boundary intact while adding later Preview surfaces. It does not add Screen Recording, ScreenCaptureKit, Apple Events scripting/control, Input Monitoring, network access, telemetry, cloud sync, remote config, or private Apple menu bar APIs.
+`v0.1.7` keeps the privacy boundary intact while completing the Phase 16-20 track: competitive-core polish, Workspaces Foundation, Function Bar Preview, linked Groups / Set Builder Preview, and Info Strip Preview. It does not add Screen Recording, ScreenCaptureKit, Apple Events scripting/control, Input Monitoring, network access, telemetry, cloud sync, remote config, or private Apple menu bar APIs.
 
 The intended stable claim is Basic Mode: app-owned menu bar controls, local settings, local diagnostics, local recovery, Launch at Login opt-in, permission-free hiding/reveal behavior, and Guided Manual Arrange using normal macOS Command-drag. The app mode is currently Basic; Pro is a separate opt-in capability gate, not a replacement runtime mode. Pro workflows are present, but most are still opt-in, Preview, Labs, or Experimental. Public docs and Settings copy should not describe those surfaces as Stable unless their feature gate explicitly does.
 
-The latest Phase 16 validation ledger is `docs/progress/phase-16-v0.1.3-competitive-core-catch-up.md`. It records the v0.1.3 version bump, baseline validation state, release identity work, and competitive core catch-up implementation progress.
+The Phase 16 ledger is `docs/progress/phase-16-v0.1.3-competitive-core-catch-up.md`. It records the v0.1.3 release identity work, Find & Rescue and Second Bar polish, crowded/notch rescue hardening, Guided Arrange / Placement Planner quality work, Assisted Move guardrails, New Item Inbox polish, Shortcuts validation, backup/restore confidence, Developer ID rehearsal, expanded manual QA docs, and public-claims cleanup.
 
-The latest direct validation evidence is strong for repository automation and local dry-run artifacts. After the reboot, the exact direct Phase 15.11 command, `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS'`, passed with `** TEST SUCCEEDED **`, 453 Swift Testing tests in 73 suites, and 16 UI tests. The stable split preflight also passes with `build-for-testing`, generated `.xctestrun` execution, 453 Swift Testing tests in 73 suites, 16 UI tests, source/config privacy verification, and preflight completion. Later local polish removed the Dynamic Hotkeys Swift 6 sendability warning, cleaned local test warnings, clarified Privacy's `Optional Pro Discovery` setup state, renamed the dogfood status-menu entry to `Dogfood Diagnostics...`, corrected support-doc overclaims, kept always-hidden Arrange guidance in the Stable guided flow, aligned Find & Rescue with the `Crowded menu rescue` wording, and wired Recovery's `Export Diagnostics` button to a real TXT save panel. Earlier focused validation still passed 46 warning-cleanup tests, 11 status-menu tests, the Privacy Pro Discovery UI smoke, and the Arrange UI smoke. The current post-reboot dogfood preflight passed the main app build, fixture build, 107 focused Phase 15 tests in 12 suites, source/config privacy verification, release artifact verification, and fixture status check. QA Scripts now cover shell syntax, preflight/dogfood guards, exact sandbox-aware Safe Mode flag smoke behavior, installed-app launch wait/path fallback, strict Gatekeeper classification, bounded `spctl` retries for transient resource errors, and dry-run temp-copy fallback for persistent transient Gatekeeper resource errors. Release dry-run packaging produced `MenuBarDeclutter-v0.1.2-alpha.zip` and `MenuBarDeclutter-v0.1.2.zip`; the latest post-reboot full dry-run install/open/verify flow passed for `/Applications/MenuBarDeclutter.app` as `0.1.2 (3)` with expected non-notarized dry-run Gatekeeper/stapler warnings and no release-build warnings. The latest installed-app evidence spans scripted smoke plus separate local physical/session smokes: the freshly installed app passed URL command reuse, installed-app privacy, no-network probing, intentional termination marker cleanup, exact sandbox-aware one-shot Safe Mode flag consumption, and normal relaunch; same-version local evidence covers normal/Safe Mode status-menu screenshots, status-control toggle/restore, global hotkey delivery, hover reveal from public mouse-position polling, Recovery reset/recreate actions, Option-held launch Safe Mode, Launch at Login enable/disable registration through BTM, Pro Accessibility grant/revoke with restored System Settings grant, Find & Rescue availability after rescan, and diagnostics export through the save panel. Auto-rehide has one scripted URL-driven rehide pass, but the latest direct timed run remained partial. The local restored Pro Discovery scan reported `Discovered 0`, so nonzero third-party metadata remains tied to crowded/live menu QA. A targeted Settings visual smoke pass exported seven clean current-page screenshots after the responsive Settings sizing fix, the latest focused floating-panel smoke passed, and final hard-rule text searches found only guardrails, privacy exclusions, or explicit non-claims. Earlier pre-reboot LaunchServices attachment failures are retained as historical infrastructure notes; the QA scripts still classify pre-attach Launch Services and automation-mode initialization failures as runner infrastructure if they recur, while preserving real product/test failures separately.
+The Phase 17-20 ledger is `docs/progress/phase-17-20-v0.1.7-workspaces-function-bar-info-strip.md`. It records the Workspaces track implementation: local workspace models, validation, persistence, switching, repair, backups, Advanced-only Workspaces Preview UI, Function Bar Preview, Set Switcher, Set Builder draft editing, linked/detached group references, Info Strip Preview, local tile providers, rotation, workspace display coordination, diagnostics, import/export, recovery, and release/privacy verification.
 
-The latest dated physical installed-app QA record remains `docs/testing/installed-app-qa-2026-06-30-native-redesign.md`. It records a dry-run release archive/export/package/install pass, installed-app verification, privacy-boundary verification, native Settings page inspection, health report export fix and retest, URL scheme smoke, no-network watch, clean crash-marker recovery, Launch at Login enable/disable/restore, and an earlier `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS'` pass with 410 Swift tests and 11 UI tests. The latest v0.1.2 artifact has now passed post-reboot scripted dry-run install/open/verify plus URL-scheme, no-network, exact sandbox-aware one-shot Safe Mode flag smoke, current-session status-menu/control, global hotkey, hover reveal, Recovery reset/recreate, Option-held launch Safe Mode, Launch at Login registration, and Pro Accessibility grant/revoke smokes. Same-version installed-app local evidence also covers synthetic crash-marker Safe Mode menu smoke and diagnostics export through the save panel with saved-file privacy inspection. Current local environment inventory records macOS `26.1` on arm64, MacBook Pro `Mac16,7`, Apple M4 Pro, one built-in Liquid Retina XDR display at 3456 x 2234 Retina, and no external display attached. Phase 15 still needs a fresh physical installed-app/manual system pass for the remaining hardware/session gates.
+The latest sealed v0.1.7 validation evidence is strong for repository automation and local dry-run artifacts. `scripts/qa_preflight.sh` passed on merged `main`: build-for-testing succeeded, 538 app-unit tests in 75 suites passed, 16 UI tests passed, and privacy boundary source checks passed. `scripts/qa_dogfood_preflight.sh` passed after Phase 20 audit/UI stabilization fixes with the main app build, fixture build, 125 focused tests in 12 suites, privacy boundary checks, release artifact verification, and fixture launch. `scripts/build_release.sh --dry-run --install --verify-installed` passed for `0.1.7 (8)`, producing `MenuBarDeclutter-v0.1.7-alpha.zip` and `MenuBarDeclutter-v0.1.7.zip`, installing to `/Applications/MenuBarDeclutter.app`, and verifying the installed app as `0.1.7 (8)`. Expected dry-run warnings remain: non-notarized `spctl` rejection and missing stapled ticket.
+
+Post-merge CI initially exposed a `TriggerServiceTests` debounce race. The fix stabilized the test by exercising deterministic DEBUG-only scheduling instead of relying on NotificationCenter delivery timing, while keeping production observers on `.main`. Local targeted and full app-unit tests passed, and GitHub Actions run `28611722018` passed for commit `d766a785bde7cf52c77978f94e1c686024b6540c`. The remote annotated tag `v0.1.7` points at that green commit.
+
+The latest dated physical installed-app QA record before the Workspaces track remains `docs/testing/installed-app-qa-2026-06-30-native-redesign.md`. The Phase 20 release checklist adds the current v0.1.7 UI QA scope: single-screen behavior on the built-in display is recorded for Workspaces Preview and Info Strip Preview; external multi-display placement QA is deferred to future hardware follow-up and is not a current release blocker.
 
 The current distribution stage is internal/local alpha. Public Developer ID distribution is intentionally deferred, so the repo uses dry-run archive/export/package/install flows for this stage. Developer ID export and notarization tooling remain available, but this machine/session only has an Apple Development identity; real Developer ID export, notarization, stapling, and Gatekeeper acceptance require external credentials when public distribution becomes in scope. Dry-run artifacts are expected to fail `spctl` and stapler validation until notarized.
 
-Manual system QA remains partial. Release-blocking stable gates still need hands-on validation for Command-drag placement, always-hidden live visual behavior, hands-on auto-rehide timing/postponement/flicker behavior, notch and external-display layouts, sleep/wake, and logout/login or restart transition. Beyond those stable gates, Preview/Labs/Experimental surfaces still need non-blocking hands-on hardening for nonzero Pro Discovery metadata in a crowded/live menu setup, real Shortcuts execution, Touch ID / LocalAuthentication behavior, Spacing Labs apply/restore, and real icon moving.
+Manual system QA remains partial. Release-blocking stable gates still need hands-on validation for Command-drag placement, always-hidden live visual behavior, hands-on auto-rehide timing/postponement/flicker behavior, notch and external-display layouts, sleep/wake, and logout/login or restart transition. Beyond those stable gates, Preview/Labs/Experimental surfaces still need non-blocking hands-on hardening for nonzero Pro Discovery metadata in a crowded/live menu setup, real Shortcuts execution, Touch ID / LocalAuthentication behavior, Spacing Labs apply/restore, real icon moving, and external multi-display placement for Workspaces / Function Bar / Info Strip Preview.
 
 ## Feature Status
 
@@ -59,6 +63,10 @@ Intended stable in current `v0.1.7`, pending physical QA:
 Preview in current `v0.1.7`:
 
 - Command Center routing.
+- Workspaces Foundation: local workspace models, validation, switching, repair, backups, diagnostics, import/export, and an Advanced-only Workspaces Preview settings route.
+- Function Bar Preview: app-owned floating panel, Set Switcher, local command items, gated menu bar item proxies, group items, spacers/dividers, placement, diagnostics, and Command Center-routed actions.
+- Set Builder Preview: draft workspace composition, add/remove/reorder/commit/revert flows, library providers, linked/detached group references, and Function Bar preview integration.
+- Info Strip Preview: app-owned local tile strip, local-only providers, rotation, placement, per-workspace selected providers, display coordination with Function Bar, and status-menu preview actions.
 - Find Icon reveal/highlight when Pro gates are satisfied.
 - Second Bar metadata/icon browsing when Pro gates are satisfied.
 - Placement Planner, which reads Pro Discovery metadata and produces manual instructions without moving items.
@@ -130,6 +138,10 @@ Real menu bar control lives in AppKit services around `NSStatusItem`. SwiftUI ow
 - `MenuBar-Manager/Search/`: Find Icon panel, search ranking, filters, local item memory, reveal/highlight activation.
 - `MenuBar-Manager/SecondBar/`: floating hidden-item panel, view model, row views, placement.
 - `MenuBar-Manager/Layout/`: capacity, suggestions, Full Menu Bar Mode, crowded rescue, spacers, spacing labs.
+- `MenuBar-Manager/Workspaces/`: Preview workspace models, validation, store, switching service, diagnostics, and repair/recovery helpers.
+- `MenuBar-Manager/FunctionBar/`: Preview floating Function Bar runtime, placement, item resolution, dispatch, views, Set Switcher, and diagnostics.
+- `MenuBar-Manager/SetBuilder/`: Preview draft editor, library providers, drag/drop validation, linked/detached group reference editing, and SwiftUI views.
+- `MenuBar-Manager/InfoStrip/`: Preview local tile providers, registry, rotation runtime, placement, controller, views, display coordination, and diagnostics.
 - `MenuBar-Manager/Moving/`: experimental icon moving, drag planning, CGEvent execution, verification, safety rules.
 - `MenuBar-Manager/Profiles/`: profiles, trigger models, trigger runtime, profile application, URL automation.
 - `MenuBar-Manager/Groups/`: icon groups, group panels, group status items, import/export, item actions.
@@ -157,6 +169,7 @@ Real menu bar control lives in AppKit services around `NSStatusItem`. SwiftUI ow
 - `backups/` for migration/import backups and corrupted-store backups.
 - `Dogfood/runs/` and `Dogfood/exports/`.
 - `menu-bar-item-memory.json` for hashed Find Icon / Second Bar recents and favorites.
+- `workspaces/workspaces.json` for Preview workspace snapshots, active workspace selection, Function Bar composition, Set Builder output, and Info Strip configuration.
 
 Other local stores are intentionally focused:
 
@@ -164,9 +177,9 @@ Other local stores are intentionally focused:
 - Groups are stored in `groups.json`.
 - Dynamic hotkeys are stored in `hotkeys.json`.
 - App-owned spacers are stored in `spacers.json`.
-- Settings export packages include schema metadata, real privacy-safe setting values, profiles, groups, hotkeys, spacer items, and Private Access policy export fields.
+- Settings export packages include schema metadata, real privacy-safe setting values, profiles, groups, hotkeys, spacer items, workspace snapshots, and Private Access policy export fields.
 
-Corrupted groups, hotkeys, and spacers are backed up before resetting. Recents/favorites store hashed item IDs only and are treated as convenience state, so persistence failures fail closed without breaking Basic Mode.
+Corrupted groups, hotkeys, spacers, and workspace snapshots are backed up before resetting. Recents/favorites store hashed item IDs only and are treated as convenience state, so persistence failures fail closed without breaking Basic Mode.
 
 ## Basic Mode
 
@@ -227,6 +240,14 @@ Arrange is the intended stable icon-placement surface pending physical QA. Guide
 Find & Rescue consolidates Find Icon, Second Bar, New Items, Crowded Reveal Rescue, and lightweight collections/tags into one workflow. New Item Inbox has privacy-safe detection/dismiss/reset/persistence logic, live Pro Discovery scan persistence, Settings count plumbing, a dedicated review list with generic item labels and user-facing dismiss/reset controls, and a conditional status-menu New Items row behind Pro Discovery gates. Richer per-item placement actions remain deferred to Placement Planner work.
 
 Groups let users organize discovered item identities into local groups, open group panels, reveal groups, assign group hotkeys, protect groups with Private Access, and import/export group data with protected-name redaction by default.
+
+Workspaces Preview is an Advanced-only surface in `v0.1.7`, not a stable top-level Settings section. It stores local workspace compositions, validates and repairs snapshots, switches active workspace selection without physical profile application or icon movement, and backs up corrupted workspace data before reset/repair.
+
+Function Bar Preview is an app-owned floating panel for active Workspace items. It can show command items, group items, gated menu bar item proxies, spacers, dividers, and deferred Info Strip placeholders. It routes actions through Command Center, suppresses itself in Safe Mode, and does not replace Basic Mode hiding.
+
+Set Builder Preview lets users draft, reorder, commit, and revert Workspace / Function Bar compositions. It supports linked and detached Group references, keeps menu bar item proxy behavior behind Pro Discovery gates, and preserves Workspaces and group references in local import/export snapshots.
+
+Info Strip Preview is an app-owned local tile strip. It uses local providers such as current workspace, clock, battery, hidden count, new item count, recovery warning, and stale-scan warning, skips unavailable providers during rotation, and requires explicit global plus per-Workspace opt-in for idle display. Calendar, reminder, online/media/news/weather/stocks tiles are not implemented in v0.1.7.
 
 Profiles and triggers provide local workflow presets. Profile application is conservative: Basic settings can apply directly, while target-zone movement remains explicit and gated. Smart Triggers are opt-in and paused by default.
 
@@ -304,6 +325,7 @@ Safe defaults matter because older alpha builds exposed more switches while feat
 - Dynamic Hotkeys are off by default.
 - Optional group status items are off by default.
 - Spacing Labs is off by default.
+- Workspaces Preview, Function Bar Preview, Set Builder Preview, and Info Strip Preview are off by default or reachable only through explicit Preview/Advanced controls.
 
 Safe Mode starts expanded and suppresses optional Pro/automation/hotkey/hover/rehide/moving/status-item behaviors while preserving the visible Basic control, Settings, Diagnostics, reset, and recovery paths.
 
@@ -345,9 +367,14 @@ Release verification checks bundle identity, version/build, `LSUIElement`, app c
 
 Latest evidence to consult:
 
+- `docs/progress/phase-16-v0.1.3-competitive-core-catch-up.md`: Phase 16 competitive core catch-up ledger.
 - `docs/progress/phase-17-20-v0.1.7-workspaces-function-bar-info-strip.md`: current Workspaces, Function Bar, Set Builder, and Info Strip validation ledger.
+- `docs/progress/phase-17-v0.1.4-workspaces-foundation.md`: Workspaces Foundation implementation and audit ledger.
 - `docs/progress/phase-18-v0.1.5-set-switcher-function-bar.md`: Function Bar Preview implementation and validation ledger.
-- `docs/release/v0.1.7-release-checklist.md`: current v0.1.7 release gate checklist and known blockers.
+- `docs/progress/phase-19-v0.1.6-linked-groups-set-builder.md`: linked Groups and Set Builder Preview implementation ledger.
+- `docs/progress/phase-20-v0.1.7-info-strip-mvp.md`: Info Strip MVP implementation, audit fixes, and validation ledger.
+- `docs/release/v0.1.7-release-notes.md`: current v0.1.7 release notes.
+- `docs/release/v0.1.7-release-checklist.md`: current v0.1.7 release gate checklist.
 - `docs/testing/manual-v0.1.7-workspaces-function-bar-info-strip-qa.md`: current preview manual QA matrix.
 - `docs/testing/manual-v0.1.7-results.md`: current manual QA and automated-evidence record.
 - `docs/release/v0.1.7-known-limitations.md`: current v0.1.7 limitations.
@@ -408,9 +435,11 @@ For docs-only changes, a full build/test run is usually not necessary. For code,
 
 Immediate work:
 
+- Branch future post-`v0.1.7` work separately from the sealed release tag so `main` keeps a clean release checkpoint.
 - Finish the remaining physical/manual QA gates for live menu bar behavior, OS state changes, and current Preview surfaces.
 - Keep the hardened preflight and dogfood scripts as the canonical automated gates, while tracking any future direct `xcodebuild test` runner/bootstrap instability with preserved logs.
 - Harden live Pro Discovery planner behavior, New Item Inbox persistence, and Assisted Move on disposable third-party menu bar items through hands-on QA before making broader claims.
+- Harden Workspaces, Function Bar, Set Builder, linked Groups, and Info Strip Preview through focused single-screen QA first, then external multi-display QA when hardware is available.
 - Keep Developer ID Application credentials and real notarization/stapling/Gatekeeper validation deferred until public distribution becomes in scope.
 - Keep public docs and Settings copy aligned with Stable/Preview/Labs/Experimental/Deferred statuses.
 
@@ -420,6 +449,7 @@ Near-term hardening:
 - Private Access prompt and unlock-session dogfood.
 - Group/profile/hotkey automation workflows.
 - Crowded menu rescue behavior on real crowded systems.
+- Workspaces / Function Bar / Set Builder / Info Strip Preview integration hardening.
 - Import/export compatibility and recovery testing.
 - Spacing Labs backup/restore proving before broader exposure.
 
@@ -436,12 +466,12 @@ Post-`v0.1` exploration:
 - `AGENTS.md`: coding-agent constraints and project rules.
 - `README.md`: public-facing project overview.
 - `docs/architecture/architecture-overview.md`: detailed architecture notes.
-- `docs/plans/PHASE-17.md` through `docs/plans/PHASE-20.md`: current Workspaces, Function Bar, Set Builder, and Info Strip implementation plans and definitions of done.
-- `docs/progress/phase-17-20-v0.1.7-workspaces-function-bar-info-strip.md`, `docs/progress/phase-18-v0.1.5-set-switcher-function-bar.md`, `docs/progress/phase-19-v0.1.6-linked-groups-set-builder.md`, and `docs/progress/phase-20-v0.1.7-info-strip-mvp.md`: current Preview progress and validation ledgers.
+- `docs/plans/PHASE-16.md` through `docs/plans/PHASE-20.md`: Phase 16-20 implementation plans and definitions of done.
+- `docs/progress/phase-16-v0.1.3-competitive-core-catch-up.md`, `docs/progress/phase-17-v0.1.4-workspaces-foundation.md`, `docs/progress/phase-18-v0.1.5-set-switcher-function-bar.md`, `docs/progress/phase-19-v0.1.6-linked-groups-set-builder.md`, `docs/progress/phase-20-v0.1.7-info-strip-mvp.md`, and `docs/progress/phase-17-20-v0.1.7-workspaces-function-bar-info-strip.md`: current Phase 16-20 progress and validation ledgers.
 - `docs/release/v0.1.7-release-notes.md`, `docs/release/v0.1.7-release-checklist.md`, and `docs/release/v0.1.7-known-limitations.md`: current release notes, gate checklist, and limitations.
-- `docs/features/workspaces-v0.1.7-preview.md`, `docs/features/function-bar-v0.1.7-preview.md`, `docs/features/set-builder-v0.1.6-preview.md`, and `docs/features/info-strip-v0.1.7-preview.md`: current Preview behavior.
+- `docs/features/arrange-v0.1.3.md`, `docs/features/find-rescue-v0.1.3.md`, `docs/features/second-bar-v0.1.3.md`, `docs/features/new-item-inbox-v0.1.3.md`, `docs/features/workspaces-v0.1.7-preview.md`, `docs/features/function-bar-v0.1.7-preview.md`, `docs/features/set-builder-v0.1.6-preview.md`, `docs/features/linked-groups-v0.1.6-preview.md`, and `docs/features/info-strip-v0.1.7-preview.md`: current Phase 16-20 feature behavior.
 - `docs/testing/manual-v0.1.7-workspaces-function-bar-info-strip-qa.md` and `docs/testing/manual-v0.1.7-results.md`: current manual QA matrix and evidence record.
-- `docs/support/settings-overview.md`, `docs/support/arrange-menu-bar-items.md`, `docs/support/i-cant-find-my-icons.md`, `docs/support/icon-moving-boundary.md`, `docs/support/troubleshooting.md`, and `docs/support/safe-mode.md`: current user support docs.
+- `docs/support/settings-overview.md`, `docs/support/arrange-menu-bar-items.md`, `docs/support/i-cant-find-my-icons.md`, `docs/support/icon-moving-boundary.md`, `docs/support/troubleshooting.md`, `docs/support/backup-restore.md`, and `docs/support/safe-mode.md`: current user support docs.
 - `docs/features/`: feature notes for Basic behavior, Pro discovery, Find Icon, Second Bar, profiles, triggers, automation, diagnostics, dogfood, health/recovery, and Preview/Labs/Experimental surfaces.
 
 Historical/reference docs, superseded for active v0.1.7 claims by the current docs above:

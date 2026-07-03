@@ -12,6 +12,7 @@ final class SetBuilderViewModel {
 
     @ObservationIgnored private let switchingService: WorkspaceSwitchingService
     @ObservationIgnored private let groupStore: IconGroupStore?
+    @ObservationIgnored private let newItemInboxStore: NewMenuBarItemInboxStore?
     @ObservationIgnored private let snapshotsProvider: () -> [MenuBarItemSnapshot]
     @ObservationIgnored private let settingsStore: SettingsStore
     @ObservationIgnored private let now: () -> Date
@@ -23,12 +24,14 @@ final class SetBuilderViewModel {
     init(
         switchingService: WorkspaceSwitchingService,
         groupStore: IconGroupStore?,
+        newItemInboxStore: NewMenuBarItemInboxStore? = nil,
         snapshotsProvider: @escaping () -> [MenuBarItemSnapshot],
         settingsStore: SettingsStore,
         now: @escaping () -> Date = { Date() }
     ) {
         self.switchingService = switchingService
         self.groupStore = groupStore
+        self.newItemInboxStore = newItemInboxStore
         self.snapshotsProvider = snapshotsProvider
         self.settingsStore = settingsStore
         self.now = now
@@ -63,6 +66,20 @@ final class SetBuilderViewModel {
     var proxyLibrary: [SetBuilderLibraryItem] {
         MenuBarItemLibraryProvider(
             snapshots: snapshotsProvider(),
+            proDiscoveryAvailable: settingsStore.proModeEnabled && settingsStore.accessibilityDiscoveryEnabled,
+            accessibilityAvailable: settingsStore.lastAccessibilityPermissionStatus == AccessibilityPermissionStatus.granted.rawValue
+        ).items()
+    }
+
+    var newItemLibrary: [SetBuilderLibraryItem] {
+        NewItemLibraryProvider(inbox: newItemInboxStore?.inbox).items()
+    }
+
+    var unassignedItemLibrary: [SetBuilderLibraryItem] {
+        UnassignedMenuBarItemLibraryProvider(
+            snapshots: snapshotsProvider(),
+            workspaceSnapshot: switchingService.currentSnapshot(),
+            groups: groups,
             proDiscoveryAvailable: settingsStore.proModeEnabled && settingsStore.accessibilityDiscoveryEnabled,
             accessibilityAvailable: settingsStore.lastAccessibilityPermissionStatus == AccessibilityPermissionStatus.granted.rawValue
         ).items()

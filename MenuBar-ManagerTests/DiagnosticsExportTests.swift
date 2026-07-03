@@ -375,6 +375,7 @@ struct DiagnosticsExportTests {
         store.layoutFeaturesEnabled = true
         store.fullMenuBarModeEnabled = false
         store.crowdedRevealAskBeforeSwitching = true
+        store.crowdedRescueWorkspaceFallbackPreference = CrowdedRescueWorkspaceFallbackPreference.preferFunctionBar.rawValue
         store.crowdedRevealThresholdRatio = 0.75
         store.spacerItemsJSONVersion = 2
         store.menuBarSpacingLabsEnabled = true
@@ -410,6 +411,7 @@ struct DiagnosticsExportTests {
         #expect(snapshot.settings.layoutFeaturesEnabled == true)
         #expect(snapshot.settings.fullMenuBarModeEnabled == false)
         #expect(snapshot.settings.crowdedRevealAskBeforeSwitching == true)
+        #expect(snapshot.settings.crowdedRescueWorkspaceFallbackPreference == "preferFunctionBar")
         #expect(snapshot.settings.crowdedRevealThresholdRatio == 0.75)
         #expect(snapshot.settings.spacerItemsJSONVersion == 2)
         #expect(snapshot.settings.menuBarSpacingLabsEnabled == true)
@@ -467,6 +469,7 @@ struct DiagnosticsExportTests {
         "autoRehideEnabled",
         "automationPaused",
         "collapsedSeparatorLengthOverride",
+        "crowdedRescueWorkspaceFallbackPreference",
         "crowdedRevealAskBeforeSwitching",
         "crowdedRevealAutoOpenSecondBar",
         "crowdedRevealRequireProEstimate",

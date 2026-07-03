@@ -1,6 +1,6 @@
 # Set Builder Support
 
-Set Builder is available from Advanced, Workspaces Preview.
+Set Builder is available from the top-level Workspaces settings page when Workspaces Preview and Set Builder Preview are enabled.
 
 Use it to edit app-owned Workspace and Function Bar items:
 

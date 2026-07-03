@@ -30,7 +30,7 @@ Modes:
                     Verify the installed app after install.
   --version VERSION Override MARKETING_VERSION-derived release version.
 
-This release line is v0.1.7. The script refuses future-release artifact names.
+This release line is v0.1.9. The script refuses future-release artifact names.
 EOF
 }
 

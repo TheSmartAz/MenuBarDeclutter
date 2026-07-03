@@ -18,10 +18,37 @@ struct CrowdedRevealDecisionEngineTests {
             crowded: true,
             source: .proAXSnapshot,
             secondBarAvailable: true,
+            functionBarAvailable: true,
             fullMenuBarModeAvailable: true
         ))
 
         #expect(decision == .secondBar)
+    }
+
+    @Test func crowdedMenuCanPreferFunctionBarWhenConfigured() {
+        let decision = engine.decide(input(
+            crowded: true,
+            source: .proAXSnapshot,
+            secondBarAvailable: true,
+            functionBarAvailable: true,
+            workspaceFallbackPreference: .preferFunctionBar,
+            fullMenuBarModeAvailable: true
+        ))
+
+        #expect(decision == .functionBar)
+    }
+
+    @Test func crowdedMenuFallsBackToSecondBarWhenFunctionBarUnavailable() {
+        let decision = engine.decide(input(
+            crowded: true,
+            source: .proAXSnapshot,
+            secondBarAvailable: true,
+            functionBarAvailable: false,
+            workspaceFallbackPreference: .preferFunctionBar,
+            fullMenuBarModeAvailable: true
+        ))
+
+        #expect(decision == .functionBarThenSecondBar)
     }
 
     @Test func crowdedMenuFallsBackToFullMenuBarMode() {
@@ -169,6 +196,8 @@ struct CrowdedRevealDecisionEngineTests {
         requireProEstimate: Bool = false,
         proDiscoveryAvailable: Bool = true,
         secondBarAvailable: Bool = false,
+        functionBarAvailable: Bool = false,
+        workspaceFallbackPreference: CrowdedRescueWorkspaceFallbackPreference = .preferSecondBar,
         fullMenuBarModeAvailable: Bool = false,
         layoutSuggestionsAvailable: Bool = false,
         safeModeActive: Bool = false,
@@ -194,6 +223,8 @@ struct CrowdedRevealDecisionEngineTests {
             requireProEstimate: requireProEstimate,
             proDiscoveryAvailable: proDiscoveryAvailable,
             secondBarAvailable: secondBarAvailable,
+            functionBarAvailable: functionBarAvailable,
+            workspaceFallbackPreference: workspaceFallbackPreference,
             fullMenuBarModeAvailable: fullMenuBarModeAvailable,
             layoutSuggestionsAvailable: layoutSuggestionsAvailable,
             safeModeActive: safeModeActive,

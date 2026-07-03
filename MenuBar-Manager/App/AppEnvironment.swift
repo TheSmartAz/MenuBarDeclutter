@@ -242,6 +242,9 @@ final class AppEnvironment {
             disableFunctionBarPreview: { [weak self] in
                 self?.performRecoveryAction(.disableFunctionBarPreview)
             },
+            disableInfoStripPreview: { [weak self] in
+                self?.performRecoveryAction(.disableInfoStripPreview)
+            },
             disableSetBuilderPreview: { [weak self] in
                 self?.performRecoveryAction(.disableSetBuilderPreview)
             },
@@ -265,6 +268,18 @@ final class AppEnvironment {
         diagnosticsLogger: diagnosticsLogger,
         onComplete: { [weak self] in
             self?.refreshAfterOnboarding()
+        },
+        onOpenSettings: { [weak self] in
+            self?.showSettings()
+        },
+        onOpenArrange: { [weak self] in
+            self?.showSettings(section: .arrange)
+        },
+        onOpenWorkspaces: { [weak self] in
+            self?.showSettings(section: .workspacesPreview)
+        },
+        onCreateSampleWorkspace: { [weak self] in
+            self?.createSampleWorkspaceFromOnboarding()
         }
     )
 
@@ -493,6 +508,13 @@ final class AppEnvironment {
         refreshSecondBarSettings: { [weak self] in
             self?.refreshSecondBarSettings()
         },
+        workspaceUsageProvider: { [weak self] in
+            guard let self else { return nil }
+            return WorkspaceUsageIndex().rebuild(
+                snapshot: self.workspaceSwitchingService.currentSnapshot(),
+                groups: self.groupStore.groups
+            )
+        },
         openPrivacySettings: { [weak self] in
             self?.settingsWindowController.show(section: SettingsSection.privacy)
         },
@@ -682,6 +704,9 @@ final class AppEnvironment {
                 target: .secondBar
             )
         },
+        openFunctionBar: { [weak self] in
+            self?.showFunctionBarPreview(source: .commandCenter)
+        },
         enterFullMenuBarMode: { [weak self] in
             self?.enterFullMenuBarMode()
         },
@@ -803,6 +828,7 @@ final class AppEnvironment {
         let model = SetBuilderViewModel(
             switchingService: workspaceSwitchingService,
             groupStore: groupStore,
+            newItemInboxStore: newMenuBarItemInboxStore,
             snapshotsProvider: { [weak self] in
                 self?.liveStatus.scannedMenuBarItems ?? []
             },
@@ -1342,6 +1368,9 @@ final class AppEnvironment {
                 action: .showSecondBar,
                 target: .secondBar
             ),
+            functionBarAvailable: settingsStore.workspacesPreviewEnabled
+                && settingsStore.functionBarPreviewEnabled
+                && !safeModeLaunchState.isSafeModeActive,
             fullMenuBarModeAvailable: crowdedRescueCommandAvailable(
                 action: .enterFullMenuBarMode,
                 target: .fullMenuBarMode
@@ -1356,7 +1385,7 @@ final class AppEnvironment {
         switch result {
         case .proceedInline, .inlineOverride:
             inlineAction()
-        case .openedSecondBar, .enteredFullMenuBarMode, .suggestedOnly, .noOp:
+        case .openedSecondBar, .openedFunctionBar, .enteredFullMenuBarMode, .suggestedOnly, .noOp:
             break
         }
     }
@@ -1495,6 +1524,40 @@ final class AppEnvironment {
         // Currently a no-op beyond logging; kept as a hook so future phases can
         // react when the user first completes onboarding (e.g. show drag hint).
         diagnosticsLogger.log("Post-onboarding refresh applied.")
+    }
+
+    private func createSampleWorkspaceFromOnboarding() {
+        let snapshot = workspaceSwitchingService.currentSnapshot()
+        if let existing = snapshot.workspaces.first(where: { !$0.isArchived && $0.name == "Focus" }) {
+            _ = workspaceSwitchingService.switchWorkspace(id: existing.id, source: .settings)
+            refreshWorkspacePreviewRuntime()
+            showSettings(section: .workspacesPreview)
+            diagnosticsLogger.log("Onboarding sample Workspace already exists; opened Workspaces.", level: .info)
+            return
+        }
+
+        let result = workspaceSwitchingService.createWorkspace(WorkspaceDraft(name: "Focus", iconName: "moon"))
+        guard result.status == .success,
+              let workspaceID = result.activeWorkspaceID,
+              var workspace = workspaceSwitchingService.currentSnapshot().workspaces.first(where: { $0.id == workspaceID }) else {
+            diagnosticsLogger.log("Onboarding sample Workspace could not be created: \(result.message)", level: .warning)
+            showSettings(section: .workspacesPreview)
+            return
+        }
+
+        let now = Date()
+        workspace.functionItems = [
+            .command(.findIcon, now: now),
+            .command(.showSecondBar, now: now),
+            .divider(now: now),
+            .command(.revealAll, now: now),
+            .command(.openRecovery, now: now)
+        ]
+        workspace.updatedAt = now
+        _ = workspaceSwitchingService.updateWorkspace(workspace)
+        refreshWorkspacePreviewRuntime()
+        showSettings(section: .workspacesPreview)
+        diagnosticsLogger.log("Onboarding created a local sample Workspace with safe commands only.", level: .info)
     }
 
     // MARK: Health and recovery

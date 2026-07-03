@@ -251,6 +251,8 @@ final class SettingsExportService {
             return settingsStore.crowdedRevealAutoOpenSecondBar.description
         case .crowdedRevealAskBeforeSwitching:
             return settingsStore.crowdedRevealAskBeforeSwitching.description
+        case .crowdedRescueWorkspaceFallbackPreference:
+            return settingsStore.crowdedRescueWorkspaceFallbackPreference
         case .crowdedRevealThresholdRatio:
             return settingsStore.crowdedRevealThresholdRatio.description
         case .crowdedRevealRequireProEstimate:

@@ -166,6 +166,7 @@ struct DiagnosticsExporter {
         let fullMenuBarModeShowsSpacerMarkers: Bool
         let crowdedRevealAutoOpenSecondBar: Bool
         let crowdedRevealAskBeforeSwitching: Bool
+        let crowdedRescueWorkspaceFallbackPreference: String
         let crowdedRevealThresholdRatio: Double
         let crowdedRevealRequireProEstimate: Bool
         let spacerItemsEnabled: Bool
@@ -309,6 +310,7 @@ struct DiagnosticsExporter {
             fullMenuBarModeShowsSpacerMarkers: store.fullMenuBarModeShowsSpacerMarkers,
             crowdedRevealAutoOpenSecondBar: store.crowdedRevealAutoOpenSecondBar,
             crowdedRevealAskBeforeSwitching: store.crowdedRevealAskBeforeSwitching,
+            crowdedRescueWorkspaceFallbackPreference: store.crowdedRescueWorkspaceFallbackPreference,
             crowdedRevealThresholdRatio: store.crowdedRevealThresholdRatio,
             crowdedRevealRequireProEstimate: store.crowdedRevealRequireProEstimate,
             spacerItemsEnabled: store.spacerItemsEnabled,
@@ -835,6 +837,9 @@ struct DiagnosticsExporter {
         },
         SettingsField(key: "crowdedRevealAskBeforeSwitching", label: "Crowded Reveal Asks Before Switching") {
             .bool($0.crowdedRevealAskBeforeSwitching)
+        },
+        SettingsField(key: "crowdedRescueWorkspaceFallbackPreference", label: "Crowded Rescue Workspace Fallback") {
+            .string($0.crowdedRescueWorkspaceFallbackPreference)
         },
         SettingsField(key: "crowdedRevealThresholdRatio", label: "Crowded Reveal Threshold Ratio") {
             .double($0.crowdedRevealThresholdRatio)

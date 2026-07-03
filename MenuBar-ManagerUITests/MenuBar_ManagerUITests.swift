@@ -153,7 +153,7 @@ final class MenuBar_ManagerUITests: XCTestCase {
     }
 
     @MainActor
-    func testSettingsSidebarUsesSevenFocusedSections() throws {
+    func testSettingsSidebarUsesFocusedSections() throws {
         let app = launchApp(opening: "--ui-testing-show-general")
         assertSettingsWindow(in: app)
 
@@ -162,6 +162,7 @@ final class MenuBar_ManagerUITests: XCTestCase {
             "settings.sidebar.hideReveal",
             "settings.sidebar.arrange",
             "settings.sidebar.findRescue",
+            "settings.sidebar.workspacesPreview",
             "settings.sidebar.privacy",
             "settings.sidebar.recovery",
             "settings.sidebar.advanced"
@@ -216,6 +217,12 @@ final class MenuBar_ManagerUITests: XCTestCase {
                 arguments: ["--ui-testing-show-find-rescue", "--ui-testing-seed-menu-bar-items"],
                 pageIdentifier: "settings.page.findRescue",
                 expectedText: "Find & Rescue"
+            ),
+            VisualSmokePage(
+                name: "Workspaces",
+                arguments: ["--ui-testing-show-workspaces"],
+                pageIdentifier: "settings.page.workspacesPreview",
+                expectedText: "Workspaces"
             ),
             VisualSmokePage(
                 name: "Privacy",

@@ -9,7 +9,7 @@ MenuBarDeclutter has three icon-placement layers. They are intentionally differe
 - No Accessibility required.
 - No automation.
 - Recommended for everyday setup.
-- Final v0.1.3 release completion still requires the physical Command-drag QA pass.
+- Physical release completion still requires the manual Command-drag QA pass.
 
 ## Preview: Placement Planner
 

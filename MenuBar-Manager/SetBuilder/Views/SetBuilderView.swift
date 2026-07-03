@@ -234,6 +234,10 @@ struct SetBuilderLibraryPane: View {
             .tabItem { Label("Groups", systemImage: "person.2") }
             LibraryList(title: "Items", items: viewModel.proxyLibrary, onAdd: viewModel.addLibraryItem(_:))
                 .tabItem { Label("Items", systemImage: "app.badge") }
+            LibraryList(title: "New Items", items: viewModel.newItemLibrary, onAdd: viewModel.addLibraryItem(_:))
+                .tabItem { Label("New Items", systemImage: "tray") }
+            LibraryList(title: "Unassigned Items", items: viewModel.unassignedItemLibrary, onAdd: viewModel.addLibraryItem(_:))
+                .tabItem { Label("Unassigned", systemImage: "questionmark.app") }
             LibraryList(title: "Layout", items: viewModel.layoutLibrary, onAdd: viewModel.addLibraryItem(_:))
                 .tabItem { Label("Layout", systemImage: "rectangle.split.1x2") }
             LibraryList(title: "Info", items: viewModel.infoTileLibrary, onAdd: viewModel.addLibraryItem(_:))

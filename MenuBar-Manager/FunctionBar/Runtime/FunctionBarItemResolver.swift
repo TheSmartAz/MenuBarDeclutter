@@ -63,7 +63,7 @@ struct FunctionBarItemResolver {
                     icon: FunctionBarIcon(systemName: item.iconOverride ?? group.symbolName ?? "person.2"),
                     status: group.isProtected ? .protected : .available,
                     availability: .available,
-                    badge: reference.referenceMode == .detached ? FunctionBarItemBadge(title: "Detached") : nil
+                    badge: groupBadge(for: group, reference: reference)
                 )
             }
             return FunctionBarItemModel(
@@ -74,7 +74,7 @@ struct FunctionBarItemResolver {
                 icon: FunctionBarIcon(systemName: "questionmark.folder"),
                 status: .missingReference,
                 availability: .unavailable(.missingReference),
-                badge: nil
+                badge: FunctionBarItemBadge(title: "Missing")
             )
         case .spacer:
             return FunctionBarItemModel(
@@ -127,8 +127,63 @@ struct FunctionBarItemResolver {
             icon: FunctionBarIcon(systemName: item.iconOverride ?? "app.badge"),
             status: status,
             availability: reason.map(FunctionBarActionAvailability.unavailable) ?? .available,
-            badge: nil
+            badge: proxyBadge(for: reference, status: status)
         )
+    }
+
+    private func proxyBadge(
+        for reference: MenuBarItemReference,
+        status: FunctionBarItemStatus
+    ) -> FunctionBarItemBadge? {
+        if reference.redactionPolicy == .protected {
+            return FunctionBarItemBadge(title: "Protected")
+        }
+
+        switch status {
+        case .available:
+            switch reference.source {
+            case .accessibilitySnapshot:
+                return FunctionBarItemBadge(title: "Workspace Item")
+            case .itemMemory:
+                return FunctionBarItemBadge(title: "New Item")
+            case .manual:
+                return FunctionBarItemBadge(title: "Manual")
+            case .imported:
+                return FunctionBarItemBadge(title: "Imported")
+            }
+        case .missingReference:
+            return FunctionBarItemBadge(title: "Missing")
+        case .requiresPro:
+            return FunctionBarItemBadge(title: "Requires Pro")
+        case .requiresAccessibility:
+            return FunctionBarItemBadge(title: "Requires Accessibility")
+        case .stale:
+            return FunctionBarItemBadge(title: "Stale")
+        case .protected:
+            return FunctionBarItemBadge(title: "Protected")
+        case .previewOnly:
+            return FunctionBarItemBadge(title: "Preview")
+        case .deferred:
+            return FunctionBarItemBadge(title: "Deferred")
+        case .unavailable:
+            return FunctionBarItemBadge(title: "Unavailable")
+        }
+    }
+
+    private func groupBadge(
+        for group: IconGroup,
+        reference: WorkspaceGroupReference
+    ) -> FunctionBarItemBadge {
+        if group.isProtected {
+            return FunctionBarItemBadge(title: "Protected")
+        }
+
+        switch reference.referenceMode {
+        case .linked:
+            return FunctionBarItemBadge(title: "Linked Group")
+        case .detached:
+            return FunctionBarItemBadge(title: "Detached")
+        }
     }
 
     private func iconName(for command: WorkspaceCommandReference) -> String {

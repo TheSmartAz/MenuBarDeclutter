@@ -30,6 +30,14 @@ struct SearchResultRowView: View {
                         color: zoneColor,
                         isSelected: isSelected
                     )
+
+                    ForEach(Array(result.workspaceBadges.prefix(2)), id: \.rawValue) { badge in
+                        SearchZoneBadge(
+                            title: badge.title,
+                            color: .blue,
+                            isSelected: isSelected
+                        )
+                    }
                 }
 
                 HStack(spacing: 8) {

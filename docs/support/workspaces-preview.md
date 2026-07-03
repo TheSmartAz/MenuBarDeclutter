@@ -1,7 +1,7 @@
 # Workspaces Preview Support
 
-Open Advanced, then Workspaces Preview, to inspect local app-owned Workspace configuration.
+Workspaces is now a top-level Settings section in v0.1.9. This compatibility page is retained for older links.
 
-Workspaces Preview can create and switch Workspaces, open Function Bar Preview, open Info Strip Preview, and show Set Builder when its preview setting is enabled.
+Use `docs/support/workspaces.md` for current Workspaces support.
 
 Workspaces Preview does not move real menu bar icons, apply physical profiles, replace the macOS menu bar, or request sensitive permissions in Basic Mode.

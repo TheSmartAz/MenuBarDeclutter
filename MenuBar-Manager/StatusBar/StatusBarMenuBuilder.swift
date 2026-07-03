@@ -279,7 +279,7 @@ final class StatusBarMenuBuilder {
         submenu.addItem(menuItem(title: actions.automationPausedTitle(), command: .toggleAutomationPaused, keyEquivalent: "", systemImage: actions.automationPaused() ? "play.circle" : "pause.circle"))
         submenu.addItem(.separator())
         submenu.addItem(menuItem(title: "Spacing Labs Settings…", command: .openLayoutSettings, keyEquivalent: "", systemImage: "ruler"))
-        submenu.addItem(menuItem(title: "Workspaces Preview…", command: .openWorkspacesPreview, keyEquivalent: "", systemImage: "rectangle.3.group"))
+        submenu.addItem(menuItem(title: "Workspaces…", command: .openWorkspacesPreview, keyEquivalent: "", systemImage: "rectangle.3.group"))
         let canShowFunctionBarPreview = actions.workspacesPreviewEnabled() && actions.functionBarPreviewEnabled()
         if canShowFunctionBarPreview || actions.functionBarVisible() {
             submenu.addItem(

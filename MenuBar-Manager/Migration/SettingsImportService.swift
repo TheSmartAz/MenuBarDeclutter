@@ -510,6 +510,11 @@ final class SettingsImportService {
             return applyBool(rawValue) { settingsStore.crowdedRevealAutoOpenSecondBar = $0 }
         case .crowdedRevealAskBeforeSwitching:
             return applyBool(rawValue) { settingsStore.crowdedRevealAskBeforeSwitching = $0 }
+        case .crowdedRescueWorkspaceFallbackPreference:
+            settingsStore.crowdedRescueWorkspaceFallbackPreference =
+                CrowdedRescueWorkspaceFallbackPreference(rawValue: rawValue)?.rawValue
+                ?? CrowdedRescueWorkspaceFallbackPreference.preferSecondBar.rawValue
+            return .applied
         case .crowdedRevealThresholdRatio:
             return applyDouble(rawValue) { settingsStore.crowdedRevealThresholdRatio = $0 }
         case .crowdedRevealRequireProEstimate:

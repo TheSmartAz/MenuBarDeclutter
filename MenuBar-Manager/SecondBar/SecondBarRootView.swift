@@ -317,12 +317,26 @@ struct SecondBarRootView: View {
             return "No Recent Items"
         case .favorites:
             return "No Favorites"
+        case .currentWorkspace:
+            return "No Current Workspace Items"
+        case .anyWorkspace:
+            return "No Workspace Items"
+        case .unassigned:
+            return "No Unassigned Items"
+        case .usedInOtherWorkspace:
+            return "No Other Workspace Items"
+        case .groups:
+            return "No Group Items"
+        case .newItems:
+            return "No New Items"
         case .hidden:
             return "No Hidden Items"
         case .alwaysHidden:
             return "No Always Hidden Items"
         case .visible:
             return "No Visible Items"
+        case .stale:
+            return "No Stale Items"
         }
     }
 

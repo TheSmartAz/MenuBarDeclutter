@@ -315,7 +315,7 @@ nonisolated struct FeatureVisibility: Equatable, Sendable {
             area: .advanced,
             status: .deferred,
             isVisibleInMainFlow: false,
-            summary: "Not part of the v0.1.7 release line."
+            summary: "Not part of the v0.1.9 release line."
         ),
         FeatureVisibility(
             feature: .visualItemCapture,
@@ -323,7 +323,7 @@ nonisolated struct FeatureVisibility: Equatable, Sendable {
             area: .advanced,
             status: .deferred,
             isVisibleInMainFlow: false,
-            summary: "Screen capture based workflows are not part of v0.1.7."
+            summary: "Screen capture based workflows are not part of v0.1.9."
         )
     ]
 

@@ -5,17 +5,18 @@ import Testing
 
 @Suite("Phase 14 product diet")
 struct Phase14ProductDietTests {
-    @Test func visibleSidebarUsesSevenFocusedSections() {
+    @Test func visibleSidebarUsesFocusedSectionsWithWorkspacesPreviewPromoted() {
         #expect(SettingsSection.visibleSidebarSections == [
             .general,
             .hideReveal,
             .arrange,
             .findRescue,
+            .workspacesPreview,
             .privacy,
             .recovery,
             .advanced
         ])
-        #expect(SettingsSection.visibleSidebarSections.count == 7)
+        #expect(SettingsSection.visibleSidebarSections.count == 8)
     }
 
     @Test func visibleSidebarTitlesExcludeHeavyAdvancedSurfaces() {
@@ -25,6 +26,7 @@ struct Phase14ProductDietTests {
             "Hide & Reveal",
             "Arrange",
             "Find & Rescue",
+            "Workspaces",
             "Privacy",
             "Recovery",
             "Advanced"
@@ -60,8 +62,7 @@ struct Phase14ProductDietTests {
             .profiles,
             .automation,
             .importExport,
-            .diagnostics,
-            .workspacesPreview
+            .diagnostics
         ])
 
         for section in hidden {
@@ -113,8 +114,8 @@ struct Phase14ProductDietTests {
         let bulkMoving = FeatureVisibility.visibility(for: .stableBulkMoving)
         let visualCapture = FeatureVisibility.visibility(for: .visualItemCapture)
 
-        #expect(bulkMoving.summary.contains("v0.1.7"))
-        #expect(visualCapture.summary.contains("v0.1.7"))
+        #expect(bulkMoving.summary.contains("v0.1.9"))
+        #expect(visualCapture.summary.contains("v0.1.9"))
         #expect(!bulkMoving.summary.contains("v0.1.1"))
         #expect(!visualCapture.summary.contains("v0.1.1"))
     }

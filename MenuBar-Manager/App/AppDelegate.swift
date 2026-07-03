@@ -68,6 +68,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             environment.showSettings(section: .arrange)
         } else if launchArguments.contains("--ui-testing-show-find-rescue") {
             environment.showSettings(section: .findRescue)
+        } else if launchArguments.contains("--ui-testing-show-workspaces") {
+            environment.showSettings(section: .workspacesPreview)
         } else if launchArguments.contains("--ui-testing-show-recovery") {
             environment.showSettings(section: .recovery)
         } else if launchArguments.contains("--ui-testing-show-behavior") {

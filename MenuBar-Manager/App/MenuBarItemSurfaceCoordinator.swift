@@ -65,6 +65,9 @@ final class MenuBarItemSurfaceCoordinator {
         newItemStorageKeysProvider: { [weak self] in
             Set(self?.newItemInboxStore?.inbox.items.map(\.id) ?? [])
         },
+        workspaceUsageProvider: { [weak self] in
+            self?.workspaceUsageProvider()
+        },
         onRefresh: { [weak self] in
             self?.refreshMenuBarItems()
         },
@@ -122,6 +125,7 @@ final class MenuBarItemSurfaceCoordinator {
     private let separatorFramesProvider: () -> MenuBarSeparatorFrames
     private let refreshSearchSettings: () -> Void
     private let refreshSecondBarSettings: () -> Void
+    private let workspaceUsageProvider: () -> WorkspaceUsageIndexSnapshot?
     private let openPrivacySettings: () -> Void
     private let routeCommand: (MenuBarCommand) -> MenuBarCommandResult
 
@@ -145,6 +149,7 @@ final class MenuBarItemSurfaceCoordinator {
         isHoverRevealSuppressed: @escaping () -> Bool,
         refreshSearchSettings: @escaping () -> Void,
         refreshSecondBarSettings: @escaping () -> Void,
+        workspaceUsageProvider: @escaping () -> WorkspaceUsageIndexSnapshot? = { nil },
         openPrivacySettings: @escaping () -> Void,
         routeCommand: @escaping (MenuBarCommand) -> MenuBarCommandResult
     ) {
@@ -167,6 +172,7 @@ final class MenuBarItemSurfaceCoordinator {
         self.isHoverRevealSuppressed = isHoverRevealSuppressed
         self.refreshSearchSettings = refreshSearchSettings
         self.refreshSecondBarSettings = refreshSecondBarSettings
+        self.workspaceUsageProvider = workspaceUsageProvider
         self.openPrivacySettings = openPrivacySettings
         self.routeCommand = routeCommand
     }

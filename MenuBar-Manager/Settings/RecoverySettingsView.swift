@@ -19,6 +19,7 @@ struct RecoverySettingsView: View {
     var onRemoveMissingWorkspaceGroupReferences: (() -> Void)? = nil
     var onDiscardSetBuilderDraft: (() -> Void)? = nil
     var onDisableFunctionBarPreview: (() -> Void)? = nil
+    var onDisableInfoStripPreview: (() -> Void)? = nil
     var onDisableSetBuilderPreview: (() -> Void)? = nil
     var onResetLayout: (() -> Void)? = nil
     var onResetAllSettings: (() -> Void)? = nil
@@ -88,7 +89,7 @@ struct RecoverySettingsView: View {
     }
 
     private var workspacePreviewRecoverySection: some View {
-        ClearGlassSection("Workspaces Preview Recovery", subtitle: "Repair preview-only Workspace and Set Builder state.") {
+        ClearGlassSection("Workspaces Recovery", subtitle: "Repair preview-only Workspace and Set Builder state.") {
             ClearGlassControlRow(
                 systemImage: "rectangle.3.group",
                 title: "Reset Current Workspace Layout",
@@ -138,6 +139,20 @@ struct RecoverySettingsView: View {
                 }
                 .controlSize(.small)
                 .disabled(!settingsStore.functionBarPreviewEnabled && !settingsStore.functionBarPrimaryClickEnabled)
+            }
+
+            ClearGlassDivider()
+
+            ClearGlassControlRow(
+                systemImage: "info.circle",
+                title: "Disable Info Strip Preview",
+                subtitle: "Turn off Info Strip Preview and auto-show behavior."
+            ) {
+                Button("Disable") {
+                    onDisableInfoStripPreview?()
+                }
+                .controlSize(.small)
+                .disabled(!settingsStore.infoStripPreviewEnabled && !settingsStore.infoStripAutoShowEnabled)
             }
 
             ClearGlassDivider()

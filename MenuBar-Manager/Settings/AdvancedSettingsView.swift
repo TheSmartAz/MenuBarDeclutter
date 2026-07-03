@@ -112,7 +112,7 @@ struct AdvancedSettingsView: View {
 enum AdvancedFeatureDirectory {
     static let entries: [AdvancedFeatureDirectoryEntry] = [
         AdvancedFeatureDirectoryEntry(
-            title: "Workspaces Preview",
+            title: "Workspaces",
             subtitle: "Local Workspaces, Function Bar, Set Builder, and Info Strip previews.",
             status: .experimental,
             systemImage: "rectangle.3.group",

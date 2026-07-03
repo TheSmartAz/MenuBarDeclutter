@@ -35,13 +35,15 @@ final class OnboardingNavigationModel {
     }
 }
 
-/// SwiftUI onboarding root view. Phase 3 version: linear paged flow with
-/// Back / Continue / Get Started buttons. Completion is delegated to a closure
-/// so the owning controller can dismiss the window and persist
-/// `hasCompletedOnboarding`.
+/// SwiftUI onboarding root view. Completion is delegated to a closure so the
+/// owning controller can dismiss the window and persist `hasCompletedOnboarding`.
 struct OnboardingRootView: View {
     @Bindable var navigationModel: OnboardingNavigationModel
     let onComplete: () -> Void
+    var onOpenSettings: (() -> Void)? = nil
+    var onOpenArrange: (() -> Void)? = nil
+    var onOpenWorkspaces: (() -> Void)? = nil
+    var onCreateSampleWorkspace: (() -> Void)? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -52,7 +54,14 @@ struct OnboardingRootView: View {
 
             TabView(selection: $navigationModel.currentIndex) {
                 ForEach(Array(OnboardingStep.allSteps.enumerated()), id: \.element.id) { index, step in
-                    OnboardingStepView(step: step, index: index)
+                    OnboardingStepView(
+                        step: step,
+                        index: index,
+                        onOpenSettings: onOpenSettings,
+                        onOpenArrange: onOpenArrange,
+                        onOpenWorkspaces: onOpenWorkspaces,
+                        onCreateSampleWorkspace: onCreateSampleWorkspace
+                    )
                         .tag(index)
                 }
             }
@@ -110,6 +119,10 @@ private struct OnboardingHeader: View {
 private struct OnboardingStepView: View {
     let step: OnboardingStep
     let index: Int
+    var onOpenSettings: (() -> Void)? = nil
+    var onOpenArrange: (() -> Void)? = nil
+    var onOpenWorkspaces: (() -> Void)? = nil
+    var onCreateSampleWorkspace: (() -> Void)? = nil
 
     var body: some View {
         VStack(spacing: 16) {
@@ -135,7 +148,13 @@ private struct OnboardingStepView: View {
                     .frame(maxWidth: 500)
             }
 
-            OnboardingStepDetail(step: step)
+            OnboardingStepDetail(
+                step: step,
+                onOpenSettings: onOpenSettings,
+                onOpenArrange: onOpenArrange,
+                onOpenWorkspaces: onOpenWorkspaces,
+                onCreateSampleWorkspace: onCreateSampleWorkspace
+            )
 
             if let callout = step.callout {
                 ClearGlassInlineMessage(
@@ -171,25 +190,36 @@ private struct OnboardingStepIcon: View {
 
 private struct OnboardingStepDetail: View {
     let step: OnboardingStep
+    var onOpenSettings: (() -> Void)? = nil
+    var onOpenArrange: (() -> Void)? = nil
+    var onOpenWorkspaces: (() -> Void)? = nil
+    var onCreateSampleWorkspace: (() -> Void)? = nil
 
     var body: some View {
         switch step.id {
-        case "intro":
+        case "welcome":
             OnboardingMenuStrip()
         case "nativeCleanup":
             OnboardingNativeCleanupSummary()
-        case "commandDrag":
+        case "basicHideReveal":
+            OnboardingBasicHideRevealSummary()
+        case "arrange":
             OnboardingCommandDragStrip()
-        case "hiddenVsAlwaysHidden":
-            OnboardingZoneSummary()
-        case "testArrange":
-            OnboardingArrangeTestSummary()
-        case "hotkeyAutoRehide":
-            OnboardingShortcutSummary()
+        case "findRescue":
+            OnboardingFindRescueSummary()
+        case "workspaces":
+            OnboardingWorkspaceSummary()
         case "privacy":
             OnboardingPrivacySummary()
+        case "recovery":
+            OnboardingRecoverySummary()
         default:
-            OnboardingMacOSNoteSummary()
+            OnboardingFinishActions(
+                onOpenSettings: onOpenSettings,
+                onOpenArrange: onOpenArrange,
+                onOpenWorkspaces: onOpenWorkspaces,
+                onCreateSampleWorkspace: onCreateSampleWorkspace
+            )
         }
     }
 }
@@ -293,6 +323,31 @@ private struct OnboardingZoneCard: View {
     }
 }
 
+private struct OnboardingBasicHideRevealSummary: View {
+    private let actions = [
+        ("Collapse", "eye.slash"),
+        ("Expand", "eye"),
+        ("Reveal All", "rectangle.expand.vertical")
+    ]
+
+    var body: some View {
+        HStack(spacing: 10) {
+            ForEach(actions, id: \.0) { action in
+                Label(action.0, systemImage: action.1)
+                    .font(.callout)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 7))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 7)
+                            .stroke(.primary.opacity(0.10), lineWidth: 1)
+                    }
+            }
+        }
+        .accessibilityHidden(true)
+    }
+}
+
 private struct OnboardingArrangeTestSummary: View {
     private let actions = [
         ("Collapse", "eye.slash"),
@@ -315,6 +370,63 @@ private struct OnboardingArrangeTestSummary: View {
             }
         }
         .accessibilityHidden(true)
+    }
+}
+
+private struct OnboardingFindRescueSummary: View {
+    private let surfaces = [
+        ("Find Icon", "magnifyingglass", "Preview"),
+        ("Second Bar", "rectangle.bottomthird.inset.filled", "Preview"),
+        ("New Items", "tray", "Requires Pro")
+    ]
+
+    var body: some View {
+        HStack(spacing: 10) {
+            ForEach(surfaces, id: \.0) { surface in
+                VStack(spacing: 5) {
+                    Label(surface.0, systemImage: surface.1)
+                        .font(.callout)
+                    Text(surface.2)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 11)
+                .padding(.vertical, 8)
+                .frame(maxWidth: .infinity)
+                .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(.primary.opacity(0.10), lineWidth: 1)
+                }
+            }
+        }
+        .frame(maxWidth: 500)
+    }
+}
+
+private struct OnboardingWorkspaceSummary: View {
+    private let surfaces = [
+        ("Function Bar", "menubar.rectangle"),
+        ("Linked Groups", "person.2"),
+        ("Info Strip", "info.circle")
+    ]
+
+    var body: some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 10) {
+                ForEach(surfaces, id: \.0) { surface in
+                    Label(surface.0, systemImage: surface.1)
+                        .font(.callout)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 7))
+                }
+            }
+
+            Text("Local Preview configuration only")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
     }
 }
 
@@ -377,6 +489,56 @@ private struct OnboardingPrivacySummary: View {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(.primary.opacity(0.10), lineWidth: 1)
         }
+    }
+}
+
+private struct OnboardingRecoverySummary: View {
+    private let actions = [
+        ("Safe Mode", "lifepreserver"),
+        ("Reset Layout", "arrow.counterclockwise"),
+        ("Diagnostics", "waveform.path.ecg")
+    ]
+
+    var body: some View {
+        HStack(spacing: 10) {
+            ForEach(actions, id: \.0) { action in
+                Label(action.0, systemImage: action.1)
+                    .font(.callout)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 7))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 7)
+                            .stroke(.primary.opacity(0.10), lineWidth: 1)
+                    }
+            }
+        }
+    }
+}
+
+private struct OnboardingFinishActions: View {
+    var onOpenSettings: (() -> Void)? = nil
+    var onOpenArrange: (() -> Void)? = nil
+    var onOpenWorkspaces: (() -> Void)? = nil
+    var onCreateSampleWorkspace: (() -> Void)? = nil
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Button("Open Settings", systemImage: "gearshape") {
+                onOpenSettings?()
+            }
+            Button("Open Arrange", systemImage: "arrow.up.left.and.arrow.down.right") {
+                onOpenArrange?()
+            }
+            Button("Open Workspaces", systemImage: "rectangle.3.group") {
+                onOpenWorkspaces?()
+            }
+            Button("Create Sample Workspace", systemImage: "plus.rectangle.on.rectangle") {
+                onCreateSampleWorkspace?()
+            }
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.small)
     }
 }
 

@@ -1,6 +1,6 @@
 # Safe Mode
 
-Safe Mode is the recovery path for `v0.1.3`.
+Safe Mode is the recovery path for `v0.1.9`.
 
 Enter Safe Mode by launching with the intended Option-launch path or the one-shot Safe Mode flag available from Recovery and Diagnostics. The one-shot flag and crash-marker paths have scripted evidence; Option-launch still needs a physical installed-app QA pass before release completion.
 

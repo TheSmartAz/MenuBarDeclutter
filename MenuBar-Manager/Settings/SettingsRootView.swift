@@ -31,6 +31,7 @@ enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         .hideReveal,
         .arrange,
         .findRescue,
+        .workspacesPreview,
         .privacy,
         .recovery,
         .advanced
@@ -77,7 +78,7 @@ enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         case .advanced:
             "Advanced"
         case .workspacesPreview:
-            "Workspaces Preview"
+            "Workspaces"
         }
     }
 
@@ -337,6 +338,8 @@ struct SettingsRootView: View {
                 newItemCount: liveStatus?.newMenuBarItemReviewCount ?? 0,
                 newItemInboxStore: newItemInboxStore,
                 placementPreferenceStore: placementPreferenceStore,
+                workspaceSwitchingService: workspaceSwitchingService,
+                groupStore: groupStore,
                 onOpenFindIcon: {
                     _ = routeSettingsCommand(MenuBarCommand(
                         action: .showFindIcon,
@@ -551,6 +554,7 @@ struct SettingsRootView: View {
                 onRemoveMissingWorkspaceGroupReferences: actions.removeMissingWorkspaceGroupReferences,
                 onDiscardSetBuilderDraft: actions.discardSetBuilderDraft,
                 onDisableFunctionBarPreview: actions.disableFunctionBarPreview,
+                onDisableInfoStripPreview: actions.disableInfoStripPreview,
                 onDisableSetBuilderPreview: actions.disableSetBuilderPreview,
                 onResetLayout: actions.resetLayout,
                 onResetAllSettings: actions.resetAllSettings,
@@ -626,13 +630,16 @@ struct SettingsRootView: View {
                     protectedGroupIDs: Set((groupStore?.groups ?? setBuilderViewModel.groups).filter(\.isProtected).map(\.id)),
                     knownProfileIDs: Set(profileStore?.profiles.map(\.id) ?? []),
                     routeCommand: actions.routeCommand,
+                    onOpenFindRescue: {
+                        navigationModel.selectedSection = .findRescue
+                    },
                     onOpenRecovery: {
                         navigationModel.selectedSection = .recovery
                     }
                 )
             } else {
                 ClearGlassSettingsPage(
-                    "Workspaces Preview",
+                    "Workspaces",
                     subtitle: "Workspaces are available once preview services are attached.",
                     badges: [.experimental, .privacySafe]
                 ) {

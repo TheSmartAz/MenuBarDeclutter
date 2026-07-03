@@ -9,6 +9,7 @@ struct SearchRootView: View {
     @Bindable var itemMemoryStore: MenuBarItemMemoryStore
     let diagnosticsLogger: DiagnosticsLogger
     let newItemStorageKeysProvider: () -> Set<String>
+    let workspaceUsageProvider: () -> WorkspaceUsageIndexSnapshot?
     let onRefresh: () -> Void
     let onCommand: (MenuBarCommand) -> MenuBarCommandResult
     let onMove: @MainActor (MenuBarSearchResult, IconMoveCommand) async -> IconMoveResult
@@ -355,12 +356,26 @@ struct SearchRootView: View {
             return "No Recent Items"
         case .favorites:
             return "No Favorites"
+        case .currentWorkspace:
+            return "No Current Workspace Items"
+        case .anyWorkspace:
+            return "No Workspace Items"
+        case .unassigned:
+            return "No Unassigned Items"
+        case .usedInOtherWorkspace:
+            return "No Other Workspace Items"
+        case .groups:
+            return "No Group Items"
+        case .newItems:
+            return "No New Items"
         case .visible:
             return "No Visible Items"
         case .hidden:
             return "No Hidden Items"
         case .alwaysHidden:
             return "No Always Hidden Items"
+        case .stale:
+            return "No Stale Items"
         }
     }
 
@@ -669,7 +684,8 @@ struct SearchRootView: View {
     private func rankingContext() -> SearchRankingContext {
         SearchRankingContext(
             newItemStorageKeys: newItemStorageKeysProvider(),
-            staleBefore: Date().addingTimeInterval(-300)
+            staleBefore: Date().addingTimeInterval(-300),
+            workspaceUsageSnapshot: workspaceUsageProvider()
         )
     }
 
@@ -787,6 +803,7 @@ private struct SearchUnavailableView: View {
         itemMemoryStore: MenuBarItemMemoryStore(fileURL: nil),
         diagnosticsLogger: logger,
         newItemStorageKeysProvider: { [] },
+        workspaceUsageProvider: { nil },
         onRefresh: {},
         onCommand: { command in
             MenuBarCommandResult.success(command, message: "Preview command")
