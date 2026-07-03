@@ -231,6 +231,20 @@ struct StatusBarMenuBuilderTests {
         ))
     }
 
+    @Test func findAndRescueEntryPointsCanBeHiddenFromStatusMenu() {
+        let builder = StatusBarMenuBuilder(
+            actions: Self.makeActions(
+                findIconStatusMenuEnabled: false,
+                secondBarStatusMenuEnabled: false
+            )
+        )
+
+        let titles = actionItems(in: builder.makeMenu()).map(\.title)
+
+        #expect(!titles.contains("Find Icon…"))
+        #expect(!titles.contains("Show Second Bar"))
+    }
+
     @Test func openNewItemsAppearsOnlyWhenGatedInboxHasItems() throws {
         let emptyMenu = StatusBarMenuBuilder(
             actions: Self.makeActions(
@@ -563,6 +577,8 @@ struct StatusBarMenuBuilderTests {
         advancedMenuRelevant: Bool = false,
         dogfoodModeEnabled: Bool = false,
         canRefreshMenuBarItems: Bool = true,
+        findIconStatusMenuEnabled: Bool = true,
+        secondBarStatusMenuEnabled: Bool = true,
         commandAvailability: @escaping (MenuBarCommand) -> MenuBarCommandAvailability = { _ in .available },
         routeCommands: Bool = false
     ) -> StatusBarMenuBuilder.Actions {
@@ -584,6 +600,8 @@ struct StatusBarMenuBuilderTests {
             automationPausedTitle: { automationPausedTitle },
             automationPaused: { automationPaused },
             secondBarVisible: { secondBarVisible },
+            findIconStatusMenuEnabled: { findIconStatusMenuEnabled },
+            secondBarStatusMenuEnabled: { secondBarStatusMenuEnabled },
             safeModeActive: { safeModeActive },
             advancedMenuRelevant: { advancedMenuRelevant },
             canShowNewMenuBarItems: { canShowNewMenuBarItems },

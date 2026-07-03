@@ -31,7 +31,7 @@ struct SearchSettingsView: View {
             badges: [.preview, .proMode, .accessibilityRequired],
             sectionAnchors: pageSectionAnchors
         ) {
-            ClearGlassSection("Find Icon", subtitle: "Enable the floating search surface and selection behavior.") {
+            ClearGlassSection("Find Icon", subtitle: "Status menu entry point and selection behavior.") {
                 FeatureGateNotice(
                     .preview,
                     text: "Preview in v0.1.3 when Pro Mode, discovery, and Accessibility permission are enabled."
@@ -41,11 +41,11 @@ struct SearchSettingsView: View {
 
                 ClearGlassControlRow(
                     systemImage: "magnifyingglass",
-                    title: "Enable Find Icon",
-                    subtitle: "Show the Find Icon button in the status menu and floating panel.",
+                    title: "Show in status menu",
+                    subtitle: "Keep the Find Icon shortcut visible in the status menu. Direct links and automation still open the gated panel.",
                     iconTint: .blue
                 ) {
-                    Toggle("Enable Find Icon", isOn: $settingsStore.searchEnabled)
+                    Toggle("Show Find Icon in status menu", isOn: $settingsStore.searchEnabled)
                         .labelsHidden()
                 }
 
@@ -58,9 +58,7 @@ struct SearchSettingsView: View {
                 ) {
                     Toggle("Reveal item when selected", isOn: $settingsStore.searchRevealOnSelection)
                         .labelsHidden()
-                        .disabled(!settingsStore.searchEnabled)
                 }
-                .opacity(settingsStore.searchEnabled ? 1 : 0.55)
 
                 ClearGlassDivider()
 
@@ -71,9 +69,7 @@ struct SearchSettingsView: View {
                 ) {
                     Toggle("Highlight selected item", isOn: $settingsStore.searchHighlightOnSelection)
                         .labelsHidden()
-                        .disabled(!settingsStore.searchEnabled)
                 }
-                .opacity(settingsStore.searchEnabled ? 1 : 0.55)
 
                 ClearGlassInlineMessage(
                     text: "Find Icon uses the local Accessibility discovery index only after Pro Mode is enabled. It does not click, drag, record the screen, or use the network.",
@@ -96,9 +92,7 @@ struct SearchSettingsView: View {
                 ) {
                     Toggle("Enable Find Icon hotkey", isOn: $settingsStore.searchHotkeyEnabled)
                         .labelsHidden()
-                        .disabled(!settingsStore.searchEnabled)
                 }
-                .opacity(settingsStore.searchEnabled ? 1 : 0.55)
 
                 if settingsStore.searchHotkeyEnabled {
                     ClearGlassDivider()

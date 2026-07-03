@@ -198,13 +198,13 @@ struct PrivacySettingsView: View {
                 permissionService?.requestPromptFromUserAction()
                 notifyPrivacyChanged()
             }
-            .disabled(!settingsStore.proModeEnabled || permissionService == nil || permissionService?.status == .granted)
+            .disabled(!canUseAccessibilityPermissionControls || permissionService?.status == .granted)
             .accessibilityIdentifier("privacy.action.requestPermission")
 
             Button("Open Settings", systemImage: "gearshape") {
                 permissionService?.openSystemSettingsPrivacyPane()
             }
-            .disabled(!settingsStore.proModeEnabled || permissionService == nil)
+            .disabled(!canUseAccessibilityPermissionControls)
             .accessibilityIdentifier("privacy.action.openAccessibilitySettings")
         }
         .controlSize(.small)
@@ -251,6 +251,12 @@ struct PrivacySettingsView: View {
             && settingsStore.accessibilityDiscoveryEnabled
             && permissionService?.status == .granted
             && scanCoordinator != nil
+    }
+
+    private var canUseAccessibilityPermissionControls: Bool {
+        settingsStore.proModeEnabled
+            && settingsStore.accessibilityDiscoveryEnabled
+            && permissionService != nil
     }
 
     private var localDataSection: some View {

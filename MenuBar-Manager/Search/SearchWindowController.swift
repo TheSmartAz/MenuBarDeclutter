@@ -27,7 +27,8 @@ final class SearchWindowController: NSWindowController, NSWindowDelegate {
 
         let showsUnavailableState = Self.showsUnavailableState(
             settingsStore: settingsStore,
-            permissionService: permissionService
+            permissionService: permissionService,
+            liveStatus: liveStatus
         )
         let panel = SearchPanel(
             contentRect: NSRect(x: 0, y: 0, width: 620, height: 440),
@@ -117,9 +118,10 @@ final class SearchWindowController: NSWindowController, NSWindowDelegate {
 
     private static func showsUnavailableState(
         settingsStore: SettingsStore,
-        permissionService: AccessibilityPermissionService
+        permissionService: AccessibilityPermissionService,
+        liveStatus: LiveDiagnosticsStatus
     ) -> Bool {
-        !settingsStore.searchEnabled
+        liveStatus.safeModeActive
             || !settingsStore.proModeEnabled
             || !settingsStore.accessibilityDiscoveryEnabled
             || permissionService.status != .granted

@@ -45,6 +45,8 @@ final class StatusBarMenuBuilder {
         let automationPausedTitle: () -> String
         var automationPaused: () -> Bool = { false }
         var secondBarVisible: () -> Bool = { false }
+        var findIconStatusMenuEnabled: () -> Bool = { true }
+        var secondBarStatusMenuEnabled: () -> Bool = { true }
         var safeModeActive: () -> Bool = { false }
         var advancedMenuRelevant: () -> Bool = { false }
         var canShowNewMenuBarItems: () -> Bool = { false }
@@ -149,32 +151,36 @@ final class StatusBarMenuBuilder {
             )
         )
 
-        menu.addItem(
-            routedMenuItem(
-                title: "Find Icon…",
-                command: .findIcon,
-                routedCommand: MenuBarCommand(action: .showFindIcon, source: .statusMenu),
-                keyEquivalent: "f",
-                systemImage: "magnifyingglass",
-                toolTip: "Open local Find Icon search when Pro discovery gates are satisfied."
+        if actions.findIconStatusMenuEnabled() {
+            menu.addItem(
+                routedMenuItem(
+                    title: "Find Icon…",
+                    command: .findIcon,
+                    routedCommand: MenuBarCommand(action: .showFindIcon, source: .statusMenu),
+                    keyEquivalent: "f",
+                    systemImage: "magnifyingglass",
+                    toolTip: "Open local Find Icon search when Pro discovery gates are satisfied."
+                )
             )
-        )
+        }
 
-        let secondBarCommand = MenuBarCommand(
-            action: actions.secondBarVisible() ? .hideSecondBar : .showSecondBar,
-            target: .secondBar,
-            source: .statusMenu
-        )
-        menu.addItem(
-            routedMenuItem(
-                title: actions.secondBarVisible() ? "Hide Second Bar" : "Show Second Bar",
-                command: .toggleSecondBar,
-                routedCommand: secondBarCommand,
-                keyEquivalent: "s",
-                systemImage: "rectangle.bottomthird.inset.filled",
-                toolTip: "Show or hide the optional Second Bar surface for hidden items."
+        if actions.secondBarStatusMenuEnabled() {
+            let secondBarCommand = MenuBarCommand(
+                action: actions.secondBarVisible() ? .hideSecondBar : .showSecondBar,
+                target: .secondBar,
+                source: .statusMenu
             )
-        )
+            menu.addItem(
+                routedMenuItem(
+                    title: actions.secondBarVisible() ? "Hide Second Bar" : "Show Second Bar",
+                    command: .toggleSecondBar,
+                    routedCommand: secondBarCommand,
+                    keyEquivalent: "s",
+                    systemImage: "rectangle.bottomthird.inset.filled",
+                    toolTip: "Show or hide the optional Second Bar surface for hidden items."
+                )
+            )
+        }
 
         menu.addItem(.separator())
 

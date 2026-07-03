@@ -147,6 +147,40 @@ struct MenuBarCommandRouterTests {
         #expect(result.diagnosticReason == "spacingApplyDeferred")
     }
 
+    @Test func statusMenuSpacingPreviewAndAssistedGuideRunHandlers() {
+        let store = makeStore()
+        store.menuBarSpacingLabsEnabled = true
+        var previewedPreset: String?
+        var didShowAssistedGuide = false
+        var handlers = MenuBarCommandHandlers()
+        handlers.previewSpacingPreset = { preset in
+            previewedPreset = preset
+            return true
+        }
+        handlers.showAssistedMoveGuide = {
+            didShowAssistedGuide = true
+            return true
+        }
+        let router = MenuBarCommandRouter(settingsStore: store, handlers: handlers)
+
+        let spacingResult = router.route(MenuBarCommand(
+            action: .spacingPresetDryRun,
+            target: .spacingPreset("status-menu"),
+            source: .statusMenu
+        ))
+        let guideResult = router.route(MenuBarCommand(
+            action: .showAssistedMoveGuide,
+            source: .statusMenu
+        ))
+
+        #expect(spacingResult.status == .success)
+        #expect(spacingResult.diagnosticReason == "dryRun")
+        #expect(previewedPreset == "status-menu")
+        #expect(guideResult.status == .success)
+        #expect(guideResult.diagnosticReason == "guide")
+        #expect(didShowAssistedGuide)
+    }
+
     @Test func assistedMoveDryRunUsesSharedProAccessibilityAndIconMovingGates() {
         let store = makeStore()
         let router = MenuBarCommandRouter(

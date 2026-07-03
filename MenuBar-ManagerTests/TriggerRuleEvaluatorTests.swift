@@ -23,6 +23,18 @@ struct TriggerRuleEvaluatorTests {
         }
     }
 
+    @Test func runtimeSupportMarksFocusAndWifiRulesUnavailable() {
+        #expect(TriggerRule.externalDisplayConnected(minimumDisplayCount: 2).isSupportedByCurrentRuntime)
+        #expect(TriggerRule.appLaunched(bundleIdentifier: "com.example.editor").isSupportedByCurrentRuntime)
+        #expect(TriggerRule.frontmostApp(bundleIdentifier: "com.example.browser").isSupportedByCurrentRuntime)
+        #expect(TriggerRule.batteryLow(thresholdPercent: 20).isSupportedByCurrentRuntime)
+        #expect(TriggerRule.timeOfDay(hour: 9, minute: 30).isSupportedByCurrentRuntime)
+        #expect(!TriggerRule.focusModePlaceholder.isSupportedByCurrentRuntime)
+        #expect(!TriggerRule.wifiSSID("Studio").isSupportedByCurrentRuntime)
+        #expect(TriggerRule.focusModePlaceholder.unsupportedRuntimeReason?.contains("Focus trigger provider") == true)
+        #expect(TriggerRule.wifiSSID("Studio").unsupportedRuntimeReason?.contains("Wi-Fi trigger provider") == true)
+    }
+
     @Test func matchesExternalDisplayRule() {
         let context = TriggerEvaluationContext(displayCount: 2)
         #expect(evaluator.matches(rule: .externalDisplayConnected(minimumDisplayCount: 2), context: context))

@@ -102,16 +102,16 @@ struct AppIntentExecutionServiceTests {
         #expect(result == .success)
     }
 
-    @Test func showFindIconUsesProDiscoveryAndFeatureGates() {
+    @Test func showFindIconUsesProDiscoveryGates() {
         let (blockedService, _) = makeService()
         #expect(blockedService.showFindIcon() == .requiresProMode)
 
-        let (featureBlockedService, _) = makeService(
+        let (readyWithStatusMenuHiddenService, _) = makeService(
             proModeEnabled: true,
             accessibilityDiscoveryEnabled: true,
             searchEnabled: false
         )
-        #expect(featureBlockedService.showFindIcon() == .blocked("Find Icon is disabled."))
+        #expect(readyWithStatusMenuHiddenService.showFindIcon() == .success)
 
         let (readyService, _) = makeService(
             proModeEnabled: true,
@@ -182,7 +182,6 @@ struct AppIntentExecutionServiceTests {
             appIntentsEnabled: true,
             proModeEnabled: false,
             accessibilityDiscoveryEnabled: true,
-            searchEnabled: true,
             canApplyProfiles: false,
             canAccessLabs: false,
             spacingLabsEnabled: false
@@ -191,7 +190,6 @@ struct AppIntentExecutionServiceTests {
             appIntentsEnabled: true,
             proModeEnabled: true,
             accessibilityDiscoveryEnabled: false,
-            searchEnabled: true,
             canApplyProfiles: false,
             canAccessLabs: false,
             spacingLabsEnabled: false
@@ -200,16 +198,14 @@ struct AppIntentExecutionServiceTests {
             appIntentsEnabled: true,
             proModeEnabled: true,
             accessibilityDiscoveryEnabled: true,
-            searchEnabled: false,
             canApplyProfiles: false,
             canAccessLabs: false,
             spacingLabsEnabled: false
-        ) == .featureGated)
+        ) == .ready)
         #expect(findAction.status(
             appIntentsEnabled: true,
             proModeEnabled: true,
             accessibilityDiscoveryEnabled: true,
-            searchEnabled: true,
             canApplyProfiles: false,
             canAccessLabs: false,
             spacingLabsEnabled: false
@@ -218,7 +214,6 @@ struct AppIntentExecutionServiceTests {
             appIntentsEnabled: true,
             proModeEnabled: true,
             accessibilityDiscoveryEnabled: false,
-            searchEnabled: true,
             canApplyProfiles: false,
             canAccessLabs: false,
             spacingLabsEnabled: false
@@ -227,7 +222,6 @@ struct AppIntentExecutionServiceTests {
             appIntentsEnabled: true,
             proModeEnabled: true,
             accessibilityDiscoveryEnabled: true,
-            searchEnabled: true,
             canApplyProfiles: false,
             canAccessLabs: false,
             spacingLabsEnabled: false

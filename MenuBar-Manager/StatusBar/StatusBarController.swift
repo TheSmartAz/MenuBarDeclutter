@@ -12,7 +12,6 @@ final class StatusBarController {
     private let diagnosticsLogger: DiagnosticsLogger
     private let factory: StatusItemFactory
     private let settingsStore: SettingsStore
-    private let screenGeometry: ScreenGeometryService
     private let hidingService: HidingService
     private let primarySeparatorController: SeparatorController
     private let alwaysHiddenSeparatorController: SeparatorController
@@ -25,7 +24,6 @@ final class StatusBarController {
     private let primaryClickPreviewAction: () -> Bool
 
     private var controlItem: NSStatusItem?
-    private var didChangeScreenParametersObserver: NSObjectProtocol?
     private var dragHintPopover: NSPopover?
 
     // The menu target object holds @objc callbacks invoked from menu items and
@@ -37,7 +35,6 @@ final class StatusBarController {
         diagnosticsLogger: DiagnosticsLogger,
         factory: StatusItemFactory,
         settingsStore: SettingsStore,
-        screenGeometry: ScreenGeometryService,
         hidingService: HidingService,
         primarySeparatorController: SeparatorController,
         alwaysHiddenSeparatorController: SeparatorController,
@@ -57,7 +54,6 @@ final class StatusBarController {
         self.diagnosticsLogger = diagnosticsLogger
         self.factory = factory
         self.settingsStore = settingsStore
-        self.screenGeometry = screenGeometry
         self.hidingService = hidingService
         self.primarySeparatorController = primarySeparatorController
         self.alwaysHiddenSeparatorController = alwaysHiddenSeparatorController
@@ -129,7 +125,6 @@ final class StatusBarController {
         // first click already shows the correct labels.
         menuPresenter.refresh(for: hidingService.visibilityState)
 
-        observeScreenParameters()
         diagnosticsLogger.log("Status bar controller installed.")
         applyVisibility(hidingService.visibilityState)
         liveStatus.visibilityState = hidingService.visibilityState
@@ -142,10 +137,6 @@ final class StatusBarController {
         }
         primarySeparatorController.remove()
         alwaysHiddenSeparatorController.remove()
-        if let observer = didChangeScreenParametersObserver {
-            NotificationCenter.default.removeObserver(observer)
-            didChangeScreenParametersObserver = nil
-        }
         rehideController.cancel()
         hoverRevealController.stop()
         hotkeyManager.unregister()
@@ -277,19 +268,6 @@ final class StatusBarController {
     }
 
     // MARK: Private
-
-    private func observeScreenParameters() {
-        guard didChangeScreenParametersObserver == nil else { return }
-        didChangeScreenParametersObserver = NotificationCenter.default.addObserver(
-            forName: NSApplication.didChangeScreenParametersNotification,
-            object: NSApp,
-            queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated {
-                self?.hidingService.handleScreenParametersChanged()
-            }
-        }
-    }
 
     private func applyVisibility(_ visibility: HidingVisibilityState) {
         primarySeparatorController.apply(state: visibility.primarySeparatorState)

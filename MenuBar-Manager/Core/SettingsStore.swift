@@ -160,6 +160,33 @@ final class SettingsStore {
         case infoStripShowPreviewBadge
     }
 
+    static let privacySafeExportOmittedKeys: Set<Key> = [
+        .launchAtLoginEnabled,
+        .lastKnownAppVersion,
+        .settingsMigrationVersion,
+        .v01SafeDefaultsNoticePending,
+        .showPrimarySeparator,
+        .lastAccessibilityPermissionStatus,
+        .iconMovingConfirmationSuppressed,
+        .dogfoodModeEnabled,
+        .dogfoodRunID,
+        .dogfoodNotesEnabled,
+        .menuBarSpacingHasBackup,
+        .menuBarSpacingLastApplyStatus,
+        .menuBarSpacingLastApplyDate,
+        .privateAccessLastAuthStatus
+    ]
+
+    static let importSkippedKeys: Set<Key> = privacySafeExportOmittedKeys
+
+    static var privacySafeExportKeys: [Key] {
+        Key.allCases.filter { !privacySafeExportOmittedKeys.contains($0) }
+    }
+
+    static var migrationSnapshotKeys: [Key] {
+        Key.allCases.filter { $0 != .showPrimarySeparator }
+    }
+
     @ObservationIgnored private let defaults: UserDefaults
 
     private static let registeredDefaults: [Key: Any] = [
@@ -177,11 +204,11 @@ final class SettingsStore {
         .proModeEnabled: false,
         .accessibilityDiscoveryEnabled: false,
         .menuBarScanIntervalSeconds: AppConstants.defaultMenuBarScanIntervalSeconds,
-        .searchEnabled: false,
+        .searchEnabled: true,
         .searchHotkeyEnabled: false,
         .searchRevealOnSelection: true,
         .searchHighlightOnSelection: true,
-        .secondBarEnabled: false,
+        .secondBarEnabled: true,
         .secondBarShowHiddenItems: true,
         .secondBarShowAlwaysHiddenItems: true,
         .secondBarAutoCloseAfterSelection: true,

@@ -98,6 +98,48 @@ struct TriggerServiceTests {
         #expect(harness.liveStatus.triggerEvaluationLog == "Automation paused; skipped trigger evaluation (paused unit test).")
     }
 
+    @Test func loadDisablesUnsupportedImportedFocusAndWifiRules() throws {
+        let saveCounter = SaveCounter()
+        let harness = makeHarness(now: { Date(timeIntervalSince1970: 2_150) }, saveCounter: saveCounter)
+        defer { harness.tearDown() }
+        let profile = harness.createProfile(
+            name: "Unsupported",
+            preferredVisibilityState: .collapsed
+        )
+        let focusTrigger = TriggerModel(
+            name: "Imported Focus",
+            profileID: profile.id,
+            rule: .focusModePlaceholder
+        )
+        let wifiTrigger = TriggerModel(
+            name: "Imported Wi-Fi",
+            profileID: profile.id,
+            rule: .wifiSSID("Studio")
+        )
+        let supportedTrigger = TriggerModel(
+            name: "Imported Display",
+            profileID: profile.id,
+            rule: .externalDisplayConnected(minimumDisplayCount: 2)
+        )
+        try harness.appSupportPaths.ensureDirectoriesExist()
+        let url = harness.appSupportPaths.profilesDirectory
+            .appendingPathComponent(TriggerService.storageFilename)
+        try JSONCoding.encodePrettySorted([focusTrigger, wifiTrigger, supportedTrigger])
+            .write(to: url, options: .atomic)
+
+        harness.service.load()
+
+        #expect(harness.service.triggers.map(\.isEnabled) == [false, false, true])
+        #expect(harness.service.lastUnsupportedRuleWarning == "Disabled 2 unsupported trigger rule(s).")
+        let event = try #require(harness.diagnosticsLogger.events.last)
+        #expect(event.message == "Disabled 2 unsupported trigger rule(s).")
+        #expect(event.metadata["disabledCount"] == "2")
+        #expect(!event.formattedSummary.contains("Imported Focus"))
+        #expect(!event.formattedSummary.contains("Imported Wi-Fi"))
+        #expect(try harness.persistedTriggers().map(\.isEnabled) == [false, false, true])
+        #expect(saveCounter.count == 1)
+    }
+
     @Test func evaluateSkipsAlreadyActiveProfileWithoutMutatingLastFiredAt() {
         let saveCounter = SaveCounter()
         let firedAt = Date(timeIntervalSince1970: 2_200)
@@ -127,6 +169,41 @@ struct TriggerServiceTests {
         #expect(harness.liveStatus.lastTriggerFired == nil)
         #expect(harness.applyProbe.visibilityStates.isEmpty)
         #expect(harness.liveStatus.triggerEvaluationLog == "Matched Loop guard but skipped (loop unit test).")
+    }
+
+    @Test func evaluateSkipsUnsupportedRulesEvenWhenContextContainsValues() {
+        let saveCounter = SaveCounter()
+        let firedAt = Date(timeIntervalSince1970: 2_250)
+        let harness = makeHarness(now: { firedAt }, saveCounter: saveCounter)
+        defer { harness.tearDown() }
+        let profile = harness.createProfile(
+            name: "Unsupported",
+            preferredVisibilityState: .collapsed
+        )
+        harness.service.triggers = [
+            TriggerModel(
+                name: "Focus",
+                profileID: profile.id,
+                rule: .focusModePlaceholder,
+                debounceSeconds: 0
+            ),
+            TriggerModel(
+                name: "Wi-Fi",
+                profileID: profile.id,
+                rule: .wifiSSID("Studio"),
+                debounceSeconds: 0
+            )
+        ]
+
+        harness.service.evaluate(
+            context: TriggerEvaluationContext(focusModeActive: true, wifiSSID: "Studio"),
+            reason: "unsupported unit test"
+        )
+
+        #expect(saveCounter.count == 0)
+        #expect(harness.liveStatus.lastTriggerFired == nil)
+        #expect(harness.service.triggers.allSatisfy { $0.lastFiredAt == nil })
+        #expect(harness.liveStatus.triggerEvaluationLog == "No triggers matched (unsupported unit test).")
     }
 
     @Test func scheduleCoalescesBurstScreenEventsIntoSingleEvaluation() async throws {
@@ -228,6 +305,7 @@ struct TriggerServiceTests {
             settingsStore: settingsStore,
             profileStore: profileStore,
             service: service,
+            diagnosticsLogger: diagnosticsLogger,
             liveStatus: liveStatus,
             applyProbe: applyProbe,
             appSupportPaths: appSupportPaths,
@@ -281,6 +359,7 @@ struct TriggerServiceTests {
         let settingsStore: SettingsStore
         let profileStore: ProfileStore
         let service: TriggerService
+        let diagnosticsLogger: DiagnosticsLogger
         let liveStatus: LiveDiagnosticsStatus
         let applyProbe: ApplyProbe
         let appSupportPaths: AppSupportPaths

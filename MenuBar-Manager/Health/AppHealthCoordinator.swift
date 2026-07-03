@@ -286,8 +286,7 @@ final class AppHealthCoordinator {
             globalHotkeyEnabled: dependencies.settingsStore.globalHotkeyEnabled
                 && !dependencies.safeModeLaunchState.isSafeModeActive,
             globalHotkeyRegistered: dependencies.hotkeyManager.isRegistered(identifier: .visibilityToggle),
-            searchHotkeyEnabled: dependencies.settingsStore.searchEnabled
-                && dependencies.settingsStore.searchHotkeyEnabled
+            searchHotkeyEnabled: dependencies.settingsStore.searchHotkeyEnabled
                 && !dependencies.safeModeLaunchState.isSafeModeActive,
             searchHotkeyRegistered: dependencies.hotkeyManager.isRegistered(identifier: .findIcon),
             autoRehideEnabled: dependencies.settingsStore.autoRehideEnabled && !isAutoRehideSuppressed,

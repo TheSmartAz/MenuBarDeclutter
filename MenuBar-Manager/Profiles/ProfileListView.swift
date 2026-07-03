@@ -29,6 +29,15 @@ struct ProfileListView: View {
         }
     }
 
+    private var triggerCountsByProfileID: [ProfileModel.ID: Int] {
+        Dictionary(grouping: triggerService.triggers, by: \.profileID)
+            .mapValues(\.count)
+    }
+
+    private var profileNamesByID: [ProfileModel.ID: String] {
+        Dictionary(uniqueKeysWithValues: profileStore.profiles.map { ($0.id, $0.name) })
+    }
+
     var body: some View {
         ClearGlassSettingsPage(
             "Profiles",
@@ -81,7 +90,10 @@ struct ProfileListView: View {
         }
     }
 
+    @ViewBuilder
     private var profileLibrary: some View {
+        let triggerCountsByProfileID = triggerCountsByProfileID
+
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Label("Profiles", systemImage: "sidebar.left")
@@ -134,7 +146,7 @@ struct ProfileListView: View {
                                 profile: profile,
                                 isSelected: selectedProfileID == profile.id,
                                 isActive: liveStatus.activeProfileID == profile.id.uuidString,
-                                triggerCount: triggerCount(for: profile)
+                                triggerCount: triggerCountsByProfileID[profile.id, default: 0]
                             ) {
                                 selectedProfileID = profile.id
                             }
@@ -152,14 +164,17 @@ struct ProfileListView: View {
         }
     }
 
+    @ViewBuilder
     private var profileDetail: some View {
+        let triggerCountsByProfileID = triggerCountsByProfileID
+
         VStack(alignment: .leading, spacing: 10) {
             if let binding = draftBinding,
                let draftProfile {
                 ProfileDetailHeader(
                     profile: draftProfile,
                     isActive: liveStatus.activeProfileID == draftProfile.id.uuidString,
-                    triggerCount: triggerCount(for: draftProfile),
+                    triggerCount: triggerCountsByProfileID[draftProfile.id, default: 0],
                     dryRunSummary: dryRunSummary
                 )
 
@@ -257,6 +272,14 @@ struct ProfileListView: View {
                 )
             }
 
+            if let lastUnsupportedRuleWarning = triggerService.lastUnsupportedRuleWarning {
+                ClearGlassInlineMessage(
+                    text: lastUnsupportedRuleWarning,
+                    systemImage: "exclamationmark.triangle",
+                    style: .warning
+                )
+            }
+
             TriggerDraftForm(
                 isProfileSelected: selectedProfile != nil,
                 selectedProfileName: selectedProfile?.name ?? "No Profile"
@@ -294,7 +317,10 @@ struct ProfileListView: View {
         }
     }
 
+    @ViewBuilder
     private var triggerList: some View {
+        let profileNamesByID = profileNamesByID
+
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Label("Rules", systemImage: "list.bullet.rectangle")
@@ -324,7 +350,7 @@ struct ProfileListView: View {
                         ForEach(triggerService.triggers) { trigger in
                             TriggerRuleRow(
                                 trigger: trigger,
-                                profileName: profileName(for: trigger.profileID),
+                                profileName: profileNamesByID[trigger.profileID] ?? "Missing Profile",
                                 smartTriggersEnabled: settingsStore.smartTriggersEnabled,
                                 automationPaused: settingsStore.automationPaused,
                                 onEnabledChanged: { isEnabled in
@@ -463,14 +489,6 @@ struct ProfileListView: View {
         triggerService.delete(trigger)
         onTriggersChanged()
         message = "Deleted trigger \(trigger.name)."
-    }
-
-    private func profileName(for id: ProfileModel.ID) -> String {
-        profileStore.profiles.first { $0.id == id }?.name ?? "Missing Profile"
-    }
-
-    private func triggerCount(for profile: ProfileModel) -> Int {
-        triggerService.triggers.filter { $0.profileID == profile.id }.count
     }
 
     private func export(profile: ProfileModel) {
@@ -614,7 +632,7 @@ private struct ProfileListRow: View {
                         Text("\(profile.targetZonesByBundleID.count) zone\(profile.targetZonesByBundleID.count == 1 ? "" : "s")")
 
                         if profile.showSecondBar {
-                            ProfileRowBadge("Second Bar", systemImage: "rectangle.bottomthird.inset.filled")
+                            ProfileRowBadge("Second Bar shortcut", systemImage: "rectangle.bottomthird.inset.filled")
                         }
 
                         if triggerCount > 0 {
@@ -1033,7 +1051,7 @@ private struct TriggerRuleRow: View {
                     .font(.body)
                     .lineLimit(1)
 
-                Text(trigger.rule.displayName)
+                Text(trigger.rule.unsupportedRuntimeReason ?? trigger.rule.displayName)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -1069,6 +1087,7 @@ private struct TriggerRuleRow: View {
                 )
             )
             .labelsHidden()
+            .disabled(!trigger.rule.isSupportedByCurrentRuntime)
 
             Button("Delete Trigger", systemImage: "trash", role: .destructive, action: onDelete)
                 .labelStyle(.iconOnly)
@@ -1085,6 +1104,9 @@ private struct TriggerRuleRow: View {
     }
 
     private var statusText: String {
+        if !trigger.rule.isSupportedByCurrentRuntime {
+            return "Unsupported"
+        }
         if !smartTriggersEnabled {
             return "Off"
         }
@@ -1095,6 +1117,9 @@ private struct TriggerRuleRow: View {
     }
 
     private var statusStyle: ClearGlassStatusStyle {
+        if !trigger.rule.isSupportedByCurrentRuntime {
+            return .warning
+        }
         if !smartTriggersEnabled || !trigger.isEnabled {
             return .secondary
         }

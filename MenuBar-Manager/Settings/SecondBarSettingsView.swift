@@ -33,7 +33,7 @@ struct SecondBarSettingsView: View {
             badges: [.preview, .proMode, .accessibilityRequired],
             sectionAnchors: pageSectionAnchors
         ) {
-            ClearGlassSection("Second Bar", subtitle: "Feature controls for the secondary item surface.") {
+            ClearGlassSection("Second Bar", subtitle: "Status menu entry point and panel behavior.") {
                 FeatureGateNotice(
                     .preview,
                     text: "Second Bar metadata and icon browsing are supported in v0.1.3 when Pro discovery requirements are satisfied."
@@ -43,11 +43,11 @@ struct SecondBarSettingsView: View {
 
                 ClearGlassControlRow(
                     systemImage: "menubar.rectangle",
-                    title: "Enable Second Bar",
-                    subtitle: "Show hidden menu bar items in a secondary bar.",
+                    title: "Show in status menu",
+                    subtitle: "Keep the Second Bar shortcut visible in the status menu. Direct links and automation still open the gated panel.",
                     iconTint: .blue
                 ) {
-                    Toggle("Enable Second Bar", isOn: $settingsStore.secondBarEnabled)
+                    Toggle("Show Second Bar in status menu", isOn: $settingsStore.secondBarEnabled)
                         .labelsHidden()
                 }
 
@@ -130,9 +130,7 @@ struct SecondBarSettingsView: View {
                     .pickerStyle(.segmented)
                     .labelsHidden()
                     .frame(width: 320)
-                    .disabled(!settingsStore.secondBarEnabled)
                 }
-                .opacity(settingsStore.secondBarEnabled ? 1 : 0.55)
 
                 ClearGlassDivider()
 
@@ -144,8 +142,6 @@ struct SecondBarSettingsView: View {
                     valueSuffix: "pt",
                     valueFractionLength: 0
                 )
-                .disabled(!settingsStore.secondBarEnabled)
-                .opacity(settingsStore.secondBarEnabled ? 1 : 0.55)
 
                 ClearGlassDivider()
 
@@ -209,9 +205,7 @@ struct SecondBarSettingsView: View {
         ) {
             Toggle(title, isOn: binding)
                 .labelsHidden()
-                .disabled(!settingsStore.secondBarEnabled)
         }
-        .opacity(settingsStore.secondBarEnabled ? 1 : 0.55)
     }
 }
 

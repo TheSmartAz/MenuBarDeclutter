@@ -140,7 +140,7 @@ nonisolated enum MenuBarCommandAction: String, CaseIterable, Equatable, Hashable
             .fullMenuBarMode
         case .spacingPresetDryRun, .spacingPresetApply:
             .spacingLabs
-        case .dryRunMoveItem, .tryAssistedMoveItem, .showAssistedMoveGuide:
+        case .dryRunMoveItem, .tryAssistedMoveItem:
             .assistedMove
         case .showWorkspacePreview, .switchWorkspace:
             .workspaces

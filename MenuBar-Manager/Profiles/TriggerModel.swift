@@ -27,6 +27,26 @@ enum TriggerRule: Codable, Equatable, Sendable {
             "Wi-Fi: \(ssid)"
         }
     }
+
+    var isSupportedByCurrentRuntime: Bool {
+        switch self {
+        case .externalDisplayConnected, .appLaunched, .frontmostApp, .batteryLow, .timeOfDay:
+            true
+        case .focusModePlaceholder, .wifiSSID:
+            false
+        }
+    }
+
+    var unsupportedRuntimeReason: String? {
+        switch self {
+        case .externalDisplayConnected, .appLaunched, .frontmostApp, .batteryLow, .timeOfDay:
+            nil
+        case .focusModePlaceholder:
+            "Focus trigger provider is not available in this build."
+        case .wifiSSID:
+            "Wi-Fi trigger provider is not available without adding new permissions."
+        }
+    }
 }
 
 struct TriggerModel: Identifiable, Codable, Equatable, Sendable {

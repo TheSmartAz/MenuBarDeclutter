@@ -53,6 +53,18 @@ struct SettingsMigrationService {
             return .notNeeded(version: Self.currentMigrationVersion)
         }
 
+        if previousVersion == "0.1.0" {
+            let repairedKeys = repairStatusMenuShortcutDefaults()
+            settingsStore.settingsMigrationVersion = Self.currentMigrationVersion
+            return SettingsMigrationResult(
+                didMigrate: true,
+                fromVersion: previousVersion,
+                toVersion: Self.currentMigrationVersion,
+                backupURL: nil,
+                repairedKeys: repairedKeys
+            )
+        }
+
         let backupURL = writeBackup(version: previousVersion)
         var repairedKeys: [SettingsStore.Key] = []
 
@@ -93,13 +105,13 @@ struct SettingsMigrationService {
             repairedKeys.append(.lastAccessibilityPermissionStatus)
         }
         repair(&repairedKeys, .searchEnabled) {
-            settingsStore.searchEnabled = false
+            settingsStore.searchEnabled = true
         }
         repair(&repairedKeys, .searchHotkeyEnabled) {
             settingsStore.searchHotkeyEnabled = false
         }
         repair(&repairedKeys, .secondBarEnabled) {
-            settingsStore.secondBarEnabled = false
+            settingsStore.secondBarEnabled = true
         }
         repair(&repairedKeys, .iconMovingEnabled) {
             settingsStore.iconMovingEnabled = false
@@ -138,6 +150,32 @@ struct SettingsMigrationService {
             backupURL: backupURL,
             repairedKeys: repairedKeys
         )
+    }
+
+    private func repairStatusMenuShortcutDefaults() -> [SettingsStore.Key] {
+        var repairedKeys: [SettingsStore.Key] = []
+
+        repair(&repairedKeys, .searchEnabled) {
+            settingsStore.searchEnabled = true
+        }
+        repair(&repairedKeys, .secondBarEnabled) {
+            settingsStore.secondBarEnabled = true
+        }
+
+        if !repairedKeys.isEmpty {
+            diagnosticsLogger.log(
+                "Settings repaired status-menu shortcut defaults.",
+                level: .info,
+                category: .recovery,
+                metadata: [
+                    "fromVersion": "0.1.0",
+                    "version": Self.currentMigrationVersion,
+                    "repairedKeys": repairedKeys.map(\.rawValue).joined(separator: ",")
+                ]
+            )
+        }
+
+        return repairedKeys
     }
 
     private func repair(
@@ -182,8 +220,8 @@ struct SettingsMigrationService {
             settingsStore.proModeEnabled == false &&
             settingsStore.accessibilityDiscoveryEnabled == false &&
             settingsStore.lastAccessibilityPermissionStatus == nil &&
-            settingsStore.searchEnabled == false &&
-            settingsStore.secondBarEnabled == false &&
+            settingsStore.searchEnabled == true &&
+            settingsStore.secondBarEnabled == true &&
             settingsStore.iconMovingEnabled == false &&
             settingsStore.smartTriggersEnabled == false &&
             settingsStore.automationPaused == true &&
@@ -201,9 +239,7 @@ struct SettingsMigrationService {
 
     private func settingsSnapshot() -> [String: String] {
         Dictionary(
-            uniqueKeysWithValues: SettingsStore.Key.allCases.filter { key in
-                key != .showPrimarySeparator
-            }.map { key in
+            uniqueKeysWithValues: SettingsStore.migrationSnapshotKeys.map { key in
                 (key.rawValue, snapshotValue(for: key))
             }
         )
