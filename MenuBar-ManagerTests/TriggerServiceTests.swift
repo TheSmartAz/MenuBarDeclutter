@@ -238,9 +238,7 @@ struct TriggerServiceTests {
             harness.service.scheduleEvaluationForTesting(reason: "screen change")
         }
 
-        await waitUntil {
-            saveCounter.count == 1
-        }
+        await harness.service.waitForPendingEvaluationForTesting()
 
         #expect(clock.callCount == 1)
         #expect(saveCounter.count == 1)
@@ -311,18 +309,6 @@ struct TriggerServiceTests {
             appSupportPaths: appSupportPaths,
             fileManager: fileManager
         )
-    }
-
-    private func waitUntil(
-        timeoutNanoseconds: UInt64 = 2_000_000_000,
-        condition: @escaping () -> Bool
-    ) async {
-        let deadline = ContinuousClock.now + .nanoseconds(Int64(timeoutNanoseconds))
-
-        while !condition(),
-              ContinuousClock.now < deadline {
-            try? await Task.sleep(nanoseconds: 10_000_000)
-        }
     }
 
     private final class SaveCounter {

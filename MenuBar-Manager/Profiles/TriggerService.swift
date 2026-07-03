@@ -435,5 +435,9 @@ final class TriggerService {
     func scheduleEvaluationForTesting(reason: String) {
         scheduleEvaluation(reason: reason)
     }
+
+    func waitForPendingEvaluationForTesting() async {
+        await pendingEvaluationTask?.value
+    }
     #endif
 }
