@@ -41,6 +41,7 @@ struct SearchRootView: View {
 
     @State private var searchDebounceTask: Task<Void, Never>?
     @State private var latestIndexRebuildDurationMilliseconds: Double?
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
 
     private let keyboardRouter = SearchKeyboardActionRouter()
 
@@ -60,8 +61,9 @@ struct SearchRootView: View {
             Divider()
             searchFooter
         }
-        .frame(width: 620, height: 440)
+        .frame(width: panelWidth, height: panelHeight)
         .background(Color(nsColor: .windowBackgroundColor))
+        .accessibilityIdentifier("search.panel")
         .onAppear {
             onRefresh()
             rebuildSearchIndex(from: liveStatus.scannedMenuBarItems)
@@ -108,20 +110,29 @@ struct SearchRootView: View {
         }
     }
 
+    private var panelWidth: CGFloat {
+        searchIsAvailable ? 600 : 560
+    }
+
+    private var panelHeight: CGFloat {
+        searchIsAvailable ? 400 : 340
+    }
+
     private var searchHeader: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {
                 searchInputBar
 
-                Button("Refresh", systemImage: "arrow.clockwise") {
-                    onRefresh()
-                }
-                .labelStyle(.iconOnly)
-                .buttonStyle(.bordered)
-                .help("Refresh Menu Bar Items")
-                .disabled(!searchIsAvailable)
+                if searchIsAvailable {
+                    Button("Refresh", systemImage: "arrow.clockwise") {
+                        onRefresh()
+                    }
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.bordered)
+                    .help("Refresh Menu Bar Items")
 
-                ClearGlassBadge(style: .privacySafe)
+                    ClearGlassBadge(style: .privacySafe)
+                }
             }
 
             if searchIsAvailable {
@@ -142,6 +153,9 @@ struct SearchRootView: View {
                 .textFieldStyle(.plain)
                 .font(.body)
                 .focused($searchFieldFocused)
+                .disabled(!searchIsAvailable)
+                .accessibilityLabel("Find menu bar icon")
+                .accessibilityIdentifier("search.field")
                 .onSubmit {
                     activateSelectedResult()
                 }
@@ -155,6 +169,7 @@ struct SearchRootView: View {
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
                 .help("Clear Search")
+                .accessibilityIdentifier("search.clear")
             }
         }
         .padding(.horizontal, 12)
@@ -240,6 +255,7 @@ struct SearchRootView: View {
                     description: Text(emptyResultsDescription)
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .accessibilityIdentifier("search.empty")
             } else {
                 ScrollViewReader { proxy in
                     ScrollView {
@@ -303,8 +319,12 @@ struct SearchRootView: View {
                     }
                     .onChange(of: selectedID) { _, newValue in
                         guard let newValue else { return }
-                        withAnimation(.snappy(duration: 0.15)) {
+                        if accessibilityReduceMotion {
                             proxy.scrollTo(newValue, anchor: .center)
+                        } else {
+                            withAnimation(.snappy(duration: 0.15)) {
+                                proxy.scrollTo(newValue, anchor: .center)
+                            }
                         }
                     }
                 }
@@ -321,7 +341,7 @@ struct SearchRootView: View {
             Spacer()
 
             if !searchIsAvailable {
-                Text("Enable the requirements above to use local menu bar search.")
+                Text("Enable requirements above to use local search.")
                     .lineLimit(1)
                     .foregroundStyle(.secondary)
             } else if let activationMessage {
@@ -737,14 +757,14 @@ private struct SearchUnavailableView: View {
     let state: SearchUnavailableState
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: state.systemImage)
-                    .font(.system(size: 28, weight: .regular))
+                    .font(.system(size: 24, weight: .regular))
                     .foregroundStyle(.orange)
-                    .frame(width: 34)
+                    .frame(width: 30)
 
-                VStack(alignment: .leading, spacing: 7) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text(state.title)
                         .font(.title3)
                         .bold()
@@ -755,15 +775,13 @@ private struct SearchUnavailableView: View {
                 }
             }
 
-            HStack(spacing: 10) {
-                Button(state.primaryButtonTitle, action: state.primaryAction)
-                    .buttonStyle(.borderedProminent)
-                    .accessibilityLabel(Text(state.primaryButtonTitle))
-                    .accessibilityIdentifier("search.unavailable.primary")
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) {
+                    unavailableButtons
+                }
 
-                if let secondaryButtonTitle = state.secondaryButtonTitle,
-                   let secondaryAction = state.secondaryAction {
-                    Button(secondaryButtonTitle, action: secondaryAction)
+                VStack(alignment: .leading, spacing: 8) {
+                    unavailableButtons
                 }
             }
 
@@ -773,14 +791,29 @@ private struct SearchUnavailableView: View {
                 style: .success
             )
         }
-        .padding(24)
-        .frame(maxWidth: 440, alignment: .leading)
+        .padding(20)
+        .frame(maxWidth: 400, alignment: .leading)
         .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
         .overlay {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("search.unavailable")
+    }
+
+    @ViewBuilder
+    private var unavailableButtons: some View {
+        Button(state.primaryButtonTitle, action: state.primaryAction)
+            .buttonStyle(.borderedProminent)
+            .accessibilityLabel(Text(state.primaryButtonTitle))
+            .accessibilityIdentifier("search.unavailable.primary")
+
+        if let secondaryButtonTitle = state.secondaryButtonTitle,
+           let secondaryAction = state.secondaryAction {
+            Button(secondaryButtonTitle, action: secondaryAction)
+        }
     }
 }
 

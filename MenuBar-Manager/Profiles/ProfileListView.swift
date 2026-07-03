@@ -33,7 +33,11 @@ struct ProfileListView: View {
         ClearGlassSettingsPage(
             "Profiles",
             subtitle: "Save, preview, and apply local menu bar layouts.",
-            badges: [.preview, .privacySafe]
+            badges: [.preview, .privacySafe],
+            sectionAnchors: [
+                ClearGlassPageAnchor("Profiles", systemImage: "person.crop.rectangle.stack"),
+                ClearGlassPageAnchor("Smart Triggers", systemImage: "bolt")
+            ]
         ) {
             ProfileOverviewStrip(
                 profileCount: profileStore.profiles.count,
@@ -43,12 +47,10 @@ struct ProfileListView: View {
 
             ClearGlassSection("Profiles", subtitle: "Create, edit, preview, apply, import, and export local layouts.") {
                 VStack(alignment: .leading, spacing: 12) {
-                    HStack(alignment: .top, spacing: 14) {
+                    ClearGlassPaneLayout(primaryWidth: 300, spacing: 14) {
                         profileLibrary
-                            .frame(width: 300)
-
+                    } detail: {
                         profileDetail
-                            .frame(minWidth: 360, maxWidth: .infinity)
                     }
 
                     if let message {
@@ -105,11 +107,25 @@ struct ProfileListView: View {
 
             ScrollView {
                 if filteredProfiles.isEmpty {
-                    ContentUnavailableView(
-                        searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "No Profiles" : "No Matching Profiles",
+                    SettingsUnavailableGate(
+                        searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .emptyData : .noMatches,
+                        title: searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "No Profiles" : "No Matching Profiles",
+                        message: searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            ? "Create a profile to save a local menu bar layout."
+                            : "Try a different profile name, note, or bundle ID.",
                         systemImage: "person.crop.rectangle.stack",
-                        description: Text("Create a profile to save a local menu bar layout.")
-                    )
+                        minHeight: 220
+                    ) {
+                        if searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Button("Create Profile", systemImage: "plus") {
+                                createProfile()
+                            }
+                        } else {
+                            Button("Clear Search", systemImage: "xmark.circle") {
+                                searchText = ""
+                            }
+                        }
+                    }
                     .frame(maxWidth: .infinity, minHeight: 220)
                 } else {
                     LazyVStack(spacing: 6) {
@@ -168,11 +184,17 @@ struct ProfileListView: View {
                     DryRunSummaryView(summary: dryRunSummary)
                 }
             } else {
-                ContentUnavailableView(
-                    "No Profile Selected",
+                SettingsUnavailableGate(
+                    .emptyData,
+                    title: "No Profile Selected",
+                    message: "Create or select a profile to edit its local layout settings.",
                     systemImage: "person.crop.rectangle.stack",
-                    description: Text("Create or select a profile to edit its local layout settings.")
-                )
+                    minHeight: 300
+                ) {
+                    Button("Create Profile", systemImage: "plus") {
+                        createProfile()
+                    }
+                }
                 .frame(maxWidth: .infinity, minHeight: 300)
             }
         }
@@ -288,17 +310,14 @@ struct ProfileListView: View {
             }
 
             if triggerService.triggers.isEmpty {
-                ContentUnavailableView(
-                    "No Triggers",
+                SettingsUnavailableGate(
+                    .emptyData,
+                    title: "No Triggers",
+                    message: "Add a rule to apply the selected profile automatically.",
                     systemImage: "bolt.badge.xmark",
-                    description: Text("Add a rule to apply the selected profile automatically.")
+                    minHeight: 150
                 )
                 .frame(maxWidth: .infinity, minHeight: 150)
-                .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 8))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(Color(nsColor: .separatorColor).opacity(0.42), lineWidth: 0.5)
-                }
             } else {
                 ScrollView {
                     LazyVStack(spacing: 6) {

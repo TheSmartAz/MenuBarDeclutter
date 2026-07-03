@@ -8,11 +8,30 @@ struct SecondBarSettingsView: View {
     var onChange: (() -> Void)? = nil
     var onOpenPrivacySettings: (() -> Void)? = nil
 
+    private var pageSectionAnchors: [ClearGlassPageAnchor] {
+        var anchors = [
+            ClearGlassPageAnchor("Second Bar", systemImage: "menubar.rectangle")
+        ]
+
+        if commandAvailability != nil || iconPanelAvailability != nil {
+            anchors.append(ClearGlassPageAnchor("Panel Action Status", systemImage: "checkmark.seal"))
+        }
+
+        anchors.append(contentsOf: [
+            ClearGlassPageAnchor("Position & Appearance", systemImage: "slider.horizontal.3"),
+            ClearGlassPageAnchor("Preview", systemImage: "eye"),
+            ClearGlassPageAnchor("Requirements", systemImage: "checklist")
+        ])
+
+        return anchors
+    }
+
     var body: some View {
         ClearGlassSettingsPage(
             "Second Bar",
             subtitle: "Configure the optional secondary bar for hidden menu bar items.",
-            badges: [.preview, .proMode, .accessibilityRequired]
+            badges: [.preview, .proMode, .accessibilityRequired],
+            sectionAnchors: pageSectionAnchors
         ) {
             ClearGlassSection("Second Bar", subtitle: "Feature controls for the secondary item surface.") {
                 FeatureGateNotice(

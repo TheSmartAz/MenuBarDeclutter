@@ -142,7 +142,7 @@ private struct SettingsSidebarGroup: Identifiable {
     ]
 }
 
-private extension SettingsSection {
+extension SettingsSection {
     var helpText: String {
         switch self {
         case .general:
@@ -197,6 +197,7 @@ private extension SettingsSection {
 @MainActor
 final class SettingsNavigationModel {
     var selectedSection: SettingsSection? = .general
+    var searchText = ""
 }
 
 struct SettingsRootView: View {
@@ -224,7 +225,7 @@ struct SettingsRootView: View {
     var functionBarController: FunctionBarController?
     var infoStripController: InfoStripController?
     var actions: SettingsActions = .empty
-    @State private var settingsSearchText = ""
+    @State private var isCommandPalettePresented = false
 
     var body: some View {
         NavigationSplitView {
@@ -242,8 +243,20 @@ struct SettingsRootView: View {
             }
             .listStyle(.sidebar)
             .navigationTitle("Settings")
-            .searchable(text: $settingsSearchText, prompt: "Search Settings")
+            .searchable(text: $navigationModel.searchText, prompt: "Search Settings")
             .navigationSplitViewColumnWidth(min: 200, ideal: 226, max: 270)
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        isCommandPalettePresented = true
+                    } label: {
+                        Label("Find Setting or Action", systemImage: "magnifyingglass")
+                    }
+                    .keyboardShortcut("k", modifiers: [.command])
+                    .help("Find a setting or action")
+                    .accessibilityIdentifier("settings.commandPalette.open")
+                }
+            }
         } detail: {
             detailView(for: selectedSection)
                 .accessibilityIdentifier(selectedSection.pageAccessibilityIdentifier)
@@ -251,6 +264,12 @@ struct SettingsRootView: View {
         }
         .frame(minWidth: 820, minHeight: 620)
         .background(Color(nsColor: .windowBackgroundColor))
+        .sheet(isPresented: $isCommandPalettePresented) {
+            SettingsCommandPaletteView(
+                index: commandPaletteIndex,
+                onActivate: activateCommandPaletteEntry
+            )
+        }
         .onAppear {
             navigationModel.selectedSection = navigationModel.selectedSection ?? .general
         }
@@ -261,7 +280,7 @@ struct SettingsRootView: View {
     }
 
     private var filteredSidebarGroups: [SettingsSidebarGroup] {
-        let query = settingsSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let query = navigationModel.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return SettingsSidebarGroup.all }
 
         return SettingsSidebarGroup.all.compactMap { group in
@@ -271,6 +290,86 @@ struct SettingsRootView: View {
             }
             guard !sections.isEmpty else { return nil }
             return SettingsSidebarGroup(title: group.title, sections: sections)
+        }
+    }
+
+    private var commandPaletteIndex: SettingsCommandPaletteIndex {
+        SettingsCommandPaletteIndex.make(
+            includeDogfood: settingsStore.dogfoodModeEnabled || settingsStore.dogfoodRunID != nil,
+            availableActions: availableCommandPaletteActions
+        )
+    }
+
+    private var availableCommandPaletteActions: Set<SettingsCommandPaletteAction> {
+        var availableActions = Set<SettingsCommandPaletteAction>()
+
+        if actions.showOnboarding != nil {
+            availableActions.insert(.showOnboarding)
+        }
+        if actions.showDragHint != nil {
+            availableActions.insert(.showDragHint)
+        }
+        if actions.runHealthCheck != nil {
+            availableActions.insert(.runHealthCheck)
+        }
+        if actions.fixHealthIssues != nil {
+            availableActions.insert(.fixHealthIssues)
+        }
+        if actions.expand != nil {
+            availableActions.insert(.expand)
+        }
+        if actions.revealAll != nil {
+            availableActions.insert(.revealAll)
+        }
+        if actions.recreateStatusItems != nil {
+            availableActions.insert(.recreateStatusItems)
+        }
+        if actions.disableAutoRehideTemporarily != nil {
+            availableActions.insert(.disableAutoRehideTemporarily)
+        }
+        if actions.disableHoverRevealTemporarily != nil {
+            availableActions.insert(.disableHoverRevealTemporarily)
+        }
+        if actions.openTroubleshootingGuide != nil {
+            availableActions.insert(.openTroubleshootingGuide)
+        }
+
+        return availableActions
+    }
+
+    private func activateCommandPaletteEntry(_ entry: SettingsCommandPaletteEntry) {
+        if let destination = entry.destination {
+            navigationModel.selectedSection = destination
+            return
+        }
+
+        if let action = entry.action {
+            performCommandPaletteAction(action)
+        }
+    }
+
+    private func performCommandPaletteAction(_ action: SettingsCommandPaletteAction) {
+        switch action {
+        case .showOnboarding:
+            actions.showOnboarding?()
+        case .showDragHint:
+            actions.showDragHint?()
+        case .runHealthCheck:
+            actions.runHealthCheck?()
+        case .fixHealthIssues:
+            actions.fixHealthIssues?()
+        case .expand:
+            actions.expand?()
+        case .revealAll:
+            actions.revealAll?()
+        case .recreateStatusItems:
+            actions.recreateStatusItems?()
+        case .disableAutoRehideTemporarily:
+            actions.disableAutoRehideTemporarily?()
+        case .disableHoverRevealTemporarily:
+            actions.disableHoverRevealTemporarily?()
+        case .openTroubleshootingGuide:
+            actions.openTroubleshootingGuide?()
         }
     }
 
@@ -474,7 +573,13 @@ struct SettingsRootView: View {
             } else {
                 ClearGlassSettingsPage("Groups", subtitle: "Group controls are available once group services are attached.") {
                     ClearGlassSection("Groups Unavailable") {
-                        ContentUnavailableView("Groups Unavailable", systemImage: "person.2")
+                        SettingsUnavailableGate(
+                            .serviceUnavailable,
+                            title: "Groups Unavailable",
+                            message: "Group services are not attached in this build. Basic Mode remains available.",
+                            systemImage: "person.2",
+                            minHeight: 220
+                        )
                             .frame(maxWidth: .infinity, minHeight: 220)
                     }
                 }
@@ -491,7 +596,13 @@ struct SettingsRootView: View {
             } else {
                 ClearGlassSettingsPage("Hotkeys", subtitle: "Dynamic hotkeys are available once the hotkey store is attached.") {
                     ClearGlassSection("Hotkeys Unavailable") {
-                        ContentUnavailableView("Hotkeys Unavailable", systemImage: "keyboard")
+                        SettingsUnavailableGate(
+                            .serviceUnavailable,
+                            title: "Hotkeys Unavailable",
+                            message: "The dynamic hotkey store is not attached in this build. The stable Basic hotkey is unchanged.",
+                            systemImage: "keyboard",
+                            minHeight: 220
+                        )
                             .frame(maxWidth: .infinity, minHeight: 220)
                     }
                 }
@@ -524,7 +635,13 @@ struct SettingsRootView: View {
                     subtitle: "Profile controls are available once profile services are attached."
                 ) {
                     ClearGlassSection("Profiles Unavailable") {
-                        ContentUnavailableView("Profiles Unavailable", systemImage: "person.crop.rectangle.stack")
+                        SettingsUnavailableGate(
+                            .serviceUnavailable,
+                            title: "Profiles Unavailable",
+                            message: "Profile services are not attached in this build. Existing Basic Mode controls remain available.",
+                            systemImage: "person.crop.rectangle.stack",
+                            minHeight: 220
+                        )
                             .frame(maxWidth: .infinity, minHeight: 220)
                     }
                 }
@@ -644,7 +761,13 @@ struct SettingsRootView: View {
                     badges: [.experimental, .privacySafe]
                 ) {
                     ClearGlassSection("Preview Unavailable") {
-                        ContentUnavailableView("Preview Unavailable", systemImage: "rectangle.3.group")
+                        SettingsUnavailableGate(
+                            .serviceUnavailable,
+                            title: "Preview Unavailable",
+                            message: "Workspace preview services are not attached in this build. Stable settings remain usable.",
+                            systemImage: "rectangle.3.group",
+                            minHeight: 220
+                        )
                             .frame(maxWidth: .infinity, minHeight: 220)
                     }
                 }
@@ -814,7 +937,7 @@ struct SettingsRootView: View {
     }
 }
 
-private extension SettingsSection {
+extension SettingsSection {
     var pageAccessibilityIdentifier: String {
         "settings.page.\(rawValue)"
     }
@@ -828,49 +951,162 @@ struct ClearGlassSettingsPage<Content: View>: View {
     private let title: String
     private let subtitle: String?
     private let badges: [ClearGlassBadgeStyle]
+    private let sectionAnchors: [ClearGlassPageAnchor]
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @ViewBuilder private let content: Content
 
     init(
         _ title: String,
         subtitle: String? = nil,
         badges: [ClearGlassBadgeStyle] = [],
+        sectionAnchors: [ClearGlassPageAnchor] = [],
         @ViewBuilder content: () -> Content
     ) {
         self.title = title
         self.subtitle = subtitle
         self.badges = badges
+        self.sectionAnchors = sectionAnchors
         self.content = content()
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                ClearGlassPageHeader(title: title, subtitle: subtitle, badges: badges)
-                content
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    ClearGlassPageHeader(title: title, subtitle: subtitle, badges: badges)
+                        .id(ClearGlassPageAnchor.top.targetID)
+
+                    if !sectionAnchors.isEmpty {
+                        ClearGlassPageAnchorBar(anchors: sectionAnchors) { anchor in
+                            scroll(to: anchor, using: proxy)
+                        }
+                    }
+
+                    content
+                }
+                .padding(.horizontal, 32)
+                .padding(.top, 24)
+                .padding(.bottom, 36)
+                .frame(maxWidth: 980, alignment: .topLeading)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
             }
-            .padding(.horizontal, 32)
-            .padding(.top, 24)
-            .padding(.bottom, 36)
-            .frame(maxWidth: 980, alignment: .topLeading)
-            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .accessibilityIdentifier("settings.page.scroll")
+            .background(Color(nsColor: .windowBackgroundColor))
         }
-        .accessibilityIdentifier("settings.page.scroll")
-        .background(Color(nsColor: .windowBackgroundColor))
+    }
+
+    private func scroll(to anchor: ClearGlassPageAnchor, using proxy: ScrollViewProxy) {
+        if accessibilityReduceMotion {
+            proxy.scrollTo(anchor.targetID, anchor: .top)
+        } else {
+            withAnimation(.easeInOut(duration: 0.22)) {
+                proxy.scrollTo(anchor.targetID, anchor: .top)
+            }
+        }
+    }
+}
+
+struct ClearGlassPageAnchor: Identifiable, Hashable {
+    let title: String
+    let systemImage: String
+    let targetID: String
+
+    var id: String { targetID }
+
+    init(_ title: String, systemImage: String, targetID: String? = nil) {
+        self.title = title
+        self.systemImage = systemImage
+        self.targetID = targetID ?? title
+    }
+
+    static let top = ClearGlassPageAnchor("Top", systemImage: "arrow.up", targetID: "settings.page.top")
+}
+
+struct ClearGlassPageAnchorBar: View {
+    let anchors: [ClearGlassPageAnchor]
+    let onSelect: (ClearGlassPageAnchor) -> Void
+
+    private var allAnchors: [ClearGlassPageAnchor] {
+        [ClearGlassPageAnchor.top] + anchors
+    }
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            expandedAnchorBar
+            compactAnchorMenu
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .controlBackgroundColor).opacity(0.68), in: .rect(cornerRadius: 8))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Page sections")
+    }
+
+    private var expandedAnchorBar: some View {
+        HStack(spacing: 7) {
+            ForEach(allAnchors) { anchor in
+                anchorButton(anchor)
+            }
+        }
+        .padding(6)
+        .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private var compactAnchorMenu: some View {
+        Menu {
+            ForEach(allAnchors) { anchor in
+                Button {
+                    onSelect(anchor)
+                } label: {
+                    Label(anchor.title, systemImage: anchor.systemImage)
+                }
+            }
+        } label: {
+            Label("Sections", systemImage: "list.bullet")
+                .labelStyle(.titleAndIcon)
+                .lineLimit(1)
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.small)
+        .padding(6)
+        .fixedSize(horizontal: true, vertical: false)
+        .accessibilityLabel("Jump to page section")
+        .accessibilityHint("Opens a menu of sections on this settings page.")
+    }
+
+    private func anchorButton(_ anchor: ClearGlassPageAnchor) -> some View {
+        Button {
+            onSelect(anchor)
+        } label: {
+            Label(anchor.title, systemImage: anchor.systemImage)
+                .labelStyle(.titleAndIcon)
+                .lineLimit(1)
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.small)
+        .accessibilityLabel("Jump to \(anchor.title)")
+        .accessibilityHint("Scrolls to this section.")
     }
 }
 
 struct ClearGlassSection<Content: View>: View {
     private let title: String
     private let subtitle: String?
+    private let anchorID: String?
     @ViewBuilder private let content: Content
 
     init(
         _ title: String,
         subtitle: String? = nil,
+        anchorID: String? = nil,
         @ViewBuilder content: () -> Content
     ) {
         self.title = title
         self.subtitle = subtitle
+        self.anchorID = anchorID
         self.content = content()
     }
 
@@ -902,6 +1138,75 @@ struct ClearGlassSection<Content: View>: View {
                     .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .id(anchorID ?? title)
+    }
+}
+
+struct ClearGlassPaneLayout<Primary: View, Detail: View>: View {
+    private let primaryWidth: CGFloat
+    private let spacing: CGFloat
+    @ViewBuilder private let primary: Primary
+    @ViewBuilder private let detail: Detail
+
+    init(
+        primaryWidth: CGFloat = 280,
+        spacing: CGFloat = 14,
+        @ViewBuilder primary: () -> Primary,
+        @ViewBuilder detail: () -> Detail
+    ) {
+        self.primaryWidth = primaryWidth
+        self.spacing = spacing
+        self.primary = primary()
+        self.detail = detail()
+    }
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: spacing) {
+                primary
+                    .frame(width: primaryWidth)
+
+                detail
+                    .frame(minWidth: 0, maxWidth: .infinity, alignment: .topLeading)
+            }
+
+            VStack(alignment: .leading, spacing: spacing) {
+                primary
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+
+                detail
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+    }
+}
+
+struct ClearGlassButtonGrid<Content: View>: View {
+    private let minimumItemWidth: CGFloat
+    private let spacing: CGFloat
+    @ViewBuilder private let content: Content
+
+    init(
+        minimumItemWidth: CGFloat = 150,
+        spacing: CGFloat = 8,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.minimumItemWidth = minimumItemWidth
+        self.spacing = spacing
+        self.content = content()
+    }
+
+    var body: some View {
+        LazyVGrid(
+            columns: [GridItem(.adaptive(minimum: minimumItemWidth), spacing: spacing)],
+            alignment: .leading,
+            spacing: spacing
+        ) {
+            content
+        }
+        .buttonStyle(.bordered)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
@@ -1188,6 +1493,8 @@ struct ClearGlassStatusValue: View {
                 .font(.callout)
                 .foregroundStyle(style.foreground)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(text)
     }
 }
 
@@ -1205,6 +1512,7 @@ struct KeyboardShortcutToken: View {
                 RoundedRectangle(cornerRadius: 6)
                     .stroke(Color(nsColor: .separatorColor).opacity(0.75), lineWidth: 1)
             }
+            .accessibilityLabel("Keyboard shortcut \(text)")
     }
 }
 
@@ -1487,9 +1795,9 @@ private struct ClearGlassPageHeader: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            if !badges.isEmpty {
+            if !visibleBadges.isEmpty {
                 HStack(spacing: 8) {
-                    ForEach(badges, id: \.self) { badge in
+                    ForEach(visibleBadges, id: \.self) { badge in
                         ClearGlassBadge(style: badge)
                     }
                 }
@@ -1497,6 +1805,66 @@ private struct ClearGlassPageHeader: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var visibleBadges: [ClearGlassBadgeStyle] {
+        let actionable = badges
+            .filter { !$0.isQuietHeaderBadge }
+            .sorted { $0.headerPriority < $1.headerPriority }
+
+        if !actionable.isEmpty {
+            return Array(actionable.prefix(2))
+        }
+
+        for preferred in [ClearGlassBadgeStyle.basicMode, .privacySafe, .stable] where badges.contains(preferred) {
+            return [preferred]
+        }
+
+        return Array(badges.prefix(1))
+    }
+}
+
+private extension ClearGlassBadgeStyle {
+    var isQuietHeaderBadge: Bool {
+        switch self {
+        case .basicMode, .privacySafe, .stable:
+            true
+        case .proMode,
+             .accessibilityRequired,
+             .diagnostics,
+             .preview,
+             .labs,
+             .experimental,
+             .unavailable,
+             .deferred,
+             .actionNeeded:
+            false
+        }
+    }
+
+    var headerPriority: Int {
+        switch self {
+        case .actionNeeded:
+            0
+        case .accessibilityRequired:
+            1
+        case .proMode:
+            2
+        case .labs:
+            3
+        case .experimental:
+            4
+        case .preview:
+            5
+        case .unavailable:
+            6
+        case .deferred:
+            7
+        case .diagnostics:
+            8
+        case .basicMode, .privacySafe, .stable:
+            20
+        }
     }
 }
 

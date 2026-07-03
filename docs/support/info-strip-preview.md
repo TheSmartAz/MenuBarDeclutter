@@ -13,4 +13,4 @@ To see Info Strip:
 
 Info Strip is app-owned Preview UI. It does not replace the macOS menu bar, use Screen Recording, use ScreenCaptureKit, use network widgets, or scrape notifications.
 
-Current v0.1.9 scope keeps Info Strip in Preview. External multi-display placement checks remain manual QA follow-up.
+Current v0.1.10 scope keeps Info Strip in Preview. External multi-display placement checks remain manual QA follow-up.

@@ -131,6 +131,7 @@ private struct OnboardingStepView: View {
             Text("Step \(index + 1) of \(OnboardingStep.allSteps.count)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .accessibilityIdentifier("onboarding.stepCounter")
 
             OnboardingStepIcon(systemImage: step.symbol)
 
@@ -169,6 +170,7 @@ private struct OnboardingStepView: View {
         }
         .padding(.horizontal, 42)
         .padding(.vertical, 16)
+        .accessibilityIdentifier("onboarding.step.\(step.id)")
     }
 }
 
@@ -202,13 +204,13 @@ private struct OnboardingStepDetail: View {
         case "nativeCleanup":
             OnboardingNativeCleanupSummary()
         case "basicHideReveal":
-            OnboardingBasicHideRevealSummary()
+            OnboardingHideRevealPreview()
         case "arrange":
             OnboardingCommandDragStrip()
         case "findRescue":
             OnboardingFindRescueSummary()
         case "workspaces":
-            OnboardingWorkspaceSummary()
+            OnboardingWorkspacePreview()
         case "privacy":
             OnboardingPrivacySummary()
         case "recovery":
@@ -293,83 +295,50 @@ private struct OnboardingCommandDragStrip: View {
     }
 }
 
-private struct OnboardingZoneSummary: View {
-    var body: some View {
-        HStack(spacing: 12) {
-            OnboardingZoneCard(title: "Hidden", systemImage: "eye.slash", tint: .blue)
-            OnboardingZoneCard(title: "Always-Hidden", systemImage: "lock", tint: .orange)
-        }
-        .frame(maxWidth: 430)
-    }
-}
-
-private struct OnboardingZoneCard: View {
-    let title: String
-    let systemImage: String
-    let tint: Color
+private struct OnboardingHideRevealPreview: View {
+    private let pinnedIcons = ["wifi", "speaker.wave.2"]
+    private let collapsibleIcons = ["paperplane", "cloud", "bell", "moon"]
 
     var body: some View {
-        Label(title, systemImage: systemImage)
-            .font(.callout)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 9)
-            .frame(maxWidth: .infinity)
-            .background(tint.opacity(0.10), in: .rect(cornerRadius: 8))
-            .overlay {
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(tint.opacity(0.22), lineWidth: 1)
+        VStack(alignment: .leading, spacing: 10) {
+            OnboardingPreviewLabel("Expanded")
+
+            OnboardingMenuBarPreviewRow {
+                OnboardingMenuBarIcon(systemImage: "line.3.horizontal", tint: .accentColor)
+                OnboardingSeparatorMarker()
+
+                ForEach(pinnedIcons, id: \.self) { icon in
+                    OnboardingMenuBarIcon(systemImage: icon)
+                }
+
+                ForEach(collapsibleIcons, id: \.self) { icon in
+                    OnboardingMenuBarIcon(systemImage: icon)
+                }
             }
-            .foregroundStyle(tint)
-    }
-}
 
-private struct OnboardingBasicHideRevealSummary: View {
-    private let actions = [
-        ("Collapse", "eye.slash"),
-        ("Expand", "eye"),
-        ("Reveal All", "rectangle.expand.vertical")
-    ]
+            OnboardingPreviewArrow()
 
-    var body: some View {
-        HStack(spacing: 10) {
-            ForEach(actions, id: \.0) { action in
-                Label(action.0, systemImage: action.1)
-                    .font(.callout)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 7)
-                    .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 7))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 7)
-                            .stroke(.primary.opacity(0.10), lineWidth: 1)
-                    }
+            OnboardingPreviewLabel("Collapsed")
+
+            OnboardingMenuBarPreviewRow {
+                OnboardingMenuBarIcon(systemImage: "line.3.horizontal", tint: .accentColor)
+                OnboardingSeparatorMarker()
+
+                ForEach(pinnedIcons, id: \.self) { icon in
+                    OnboardingMenuBarIcon(systemImage: icon)
+                }
+
+                OnboardingHiddenItemsCapsule(count: collapsibleIcons.count)
             }
         }
-        .accessibilityHidden(true)
-    }
-}
-
-private struct OnboardingArrangeTestSummary: View {
-    private let actions = [
-        ("Collapse", "eye.slash"),
-        ("Reveal All", "rectangle.expand.vertical"),
-        ("Reset Layout", "arrow.counterclockwise")
-    ]
-
-    var body: some View {
-        HStack(spacing: 10) {
-            ForEach(actions, id: \.0) { action in
-                Label(action.0, systemImage: action.1)
-                    .font(.callout)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 7)
-                    .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 7))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 7)
-                            .stroke(.primary.opacity(0.10), lineWidth: 1)
-                    }
-            }
+        .padding(12)
+        .frame(width: 440)
+        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(.primary.opacity(0.10), lineWidth: 1)
         }
-        .accessibilityHidden(true)
+        .accessibilityLabel("Diagram showing expanded menu bar items becoming a collapsed group behind the separator.")
     }
 }
 
@@ -404,86 +373,251 @@ private struct OnboardingFindRescueSummary: View {
     }
 }
 
-private struct OnboardingWorkspaceSummary: View {
-    private let surfaces = [
-        ("Function Bar", "menubar.rectangle"),
-        ("Linked Groups", "person.2"),
-        ("Info Strip", "info.circle")
+private struct OnboardingWorkspacePreview: View {
+    private let workspaces = [
+        ("Focus", "timer", ["terminal", "doc.text", "bell.slash"]),
+        ("Meeting", "person.2", ["video", "mic", "message"])
     ]
 
     var body: some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 10) {
-                ForEach(surfaces, id: \.0) { surface in
-                    Label(surface.0, systemImage: surface.1)
-                        .font(.callout)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 7)
-                        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 7))
-                }
+        HStack(alignment: .top, spacing: 12) {
+            ForEach(workspaces, id: \.0) { workspace in
+                OnboardingWorkspaceCard(
+                    title: workspace.0,
+                    systemImage: workspace.1,
+                    symbols: workspace.2
+                )
             }
 
-            Text("Local Preview configuration only")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 8) {
+                OnboardingWorkspaceSurface(title: "Function Bar", systemImage: "menubar.rectangle")
+                OnboardingWorkspaceSurface(title: "Linked Groups", systemImage: "link")
+                OnboardingWorkspaceSurface(title: "Info Strip", systemImage: "info.circle")
+            }
+        }
+        .padding(12)
+        .frame(width: 500)
+        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(.primary.opacity(0.10), lineWidth: 1)
+        }
+        .accessibilityLabel("Diagram showing local workspaces feeding app-owned Function Bar, Linked Groups, and Info Strip previews.")
+    }
+}
+
+private struct OnboardingPreviewLabel: View {
+    let text: String
+
+    init(_ text: String) {
+        self.text = text
+    }
+
+    var body: some View {
+        Text(text)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+    }
+}
+
+private struct OnboardingMenuBarPreviewRow<Content: View>: View {
+    let content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Spacer(minLength: 0)
+            content
+        }
+        .padding(.horizontal, 10)
+        .frame(height: 34)
+        .background(Color(nsColor: .windowBackgroundColor), in: .rect(cornerRadius: 7))
+        .overlay {
+            RoundedRectangle(cornerRadius: 7)
+                .stroke(.primary.opacity(0.08), lineWidth: 1)
         }
     }
 }
 
-private struct OnboardingShortcutSummary: View {
+private struct OnboardingMenuBarIcon: View {
+    let systemImage: String
+    var tint: Color = .primary
+
     var body: some View {
-        HStack(spacing: 10) {
-            Label("Option", systemImage: "option")
-            Label("Command", systemImage: "command")
-            Text("B")
-                .font(.system(.callout, design: .monospaced))
-                .bold()
-                .padding(.horizontal, 8)
-                .padding(.vertical, 5)
-                .background(.quaternary, in: .rect(cornerRadius: 6))
-            ClearGlassBadge(style: .basicMode)
+        Image(systemName: systemImage)
+            .font(.system(size: 13, weight: .medium))
+            .foregroundStyle(tint)
+            .frame(width: 22, height: 22)
+            .background(tint.opacity(0.08), in: .rect(cornerRadius: 5))
+    }
+}
+
+private struct OnboardingSeparatorMarker: View {
+    var body: some View {
+        VStack(spacing: 2) {
+            Circle()
+                .fill(Color.accentColor)
+                .frame(width: 4, height: 4)
+            Capsule()
+                .fill(Color.accentColor.opacity(0.75))
+                .frame(width: 4, height: 17)
+            Circle()
+                .fill(Color.accentColor)
+                .frame(width: 4, height: 4)
         }
-        .font(.callout)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
+        .frame(width: 14, height: 26)
+        .accessibilityHidden(true)
+    }
+}
+
+private struct OnboardingHiddenItemsCapsule: View {
+    let count: Int
+
+    var body: some View {
+        Label("\(count) hidden", systemImage: "eye.slash")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 9)
+            .frame(height: 22)
+            .background(Color.secondary.opacity(0.10), in: .capsule)
+    }
+}
+
+private struct OnboardingPreviewArrow: View {
+    var body: some View {
+        Image(systemName: "arrow.down")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity)
+    }
+}
+
+private struct OnboardingWorkspaceCard: View {
+    let title: String
+    let systemImage: String
+    let symbols: [String]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            Label(title, systemImage: systemImage)
+                .font(.callout)
+                .foregroundStyle(.primary)
+
+            HStack(spacing: 6) {
+                ForEach(symbols, id: \.self) { symbol in
+                    Image(systemName: symbol)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 24, height: 24)
+                        .background(Color(nsColor: .windowBackgroundColor), in: .rect(cornerRadius: 6))
+                }
+            }
+
+            Capsule()
+                .fill(Color.accentColor.opacity(0.22))
+                .frame(width: 56, height: 5)
+        }
+        .padding(10)
+        .frame(width: 122, alignment: .leading)
+        .background(Color(nsColor: .windowBackgroundColor), in: .rect(cornerRadius: 7))
+        .overlay {
+            RoundedRectangle(cornerRadius: 7)
+                .stroke(.primary.opacity(0.08), lineWidth: 1)
+        }
+    }
+}
+
+private struct OnboardingWorkspaceSurface: View {
+    let title: String
+    let systemImage: String
+
+    var body: some View {
+        Label(title, systemImage: systemImage)
+            .font(.callout)
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 10)
+            .frame(width: 150, height: 32, alignment: .leading)
+            .background(Color(nsColor: .windowBackgroundColor), in: .rect(cornerRadius: 7))
+            .overlay {
+                RoundedRectangle(cornerRadius: 7)
+                    .stroke(.primary.opacity(0.08), lineWidth: 1)
+            }
     }
 }
 
 private struct OnboardingPrivacySummary: View {
-    private let permissions = [
-        "Accessibility",
-        "Screen Recording",
-        "Apple Events",
-        "Input Monitoring",
-        "Network Access"
-    ]
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: 12) {
+                basicModeCard
+                proDiscoveryCard
+            }
+
+            VStack(spacing: 12) {
+                basicModeCard
+                proDiscoveryCard
+            }
+        }
+        .frame(maxWidth: 540)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("onboarding.privacyBoundary")
+    }
+
+    private var basicModeCard: some View {
+        OnboardingPermissionCard(
+            title: "Basic Mode",
+            systemImage: "checkmark.shield",
+            tint: .green,
+            rows: [
+                ("No sensitive permissions", "checkmark.circle"),
+                ("Local settings only", "folder"),
+                ("No network access", "network.slash")
+            ]
+        )
+    }
+
+    private var proDiscoveryCard: some View {
+        OnboardingPermissionCard(
+            title: "Optional Pro Discovery",
+            systemImage: "lock",
+            tint: .orange,
+            rows: [
+                ("Off until enabled", "power"),
+                ("Permission can be denied", "hand.raised"),
+                ("Basic Mode keeps working", "checkmark.circle")
+            ]
+        )
+    }
+}
+
+private struct OnboardingPermissionCard: View {
+    let title: String
+    let systemImage: String
+    let tint: Color
+    let rows: [(String, String)]
 
     var body: some View {
-        VStack(spacing: 0) {
-            ForEach(Array(permissions.enumerated()), id: \.offset) { index, permission in
-                HStack(spacing: 10) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
+        VStack(alignment: .leading, spacing: 10) {
+            Label(title, systemImage: systemImage)
+                .font(.callout)
+                .bold()
+                .foregroundStyle(tint)
 
-                    Text(permission)
-
-                    Spacer()
-
-                    Text("Not Requested")
-                        .font(.callout)
+            VStack(alignment: .leading, spacing: 7) {
+                ForEach(rows, id: \.0) { row in
+                    Label(row.0, systemImage: row.1)
+                        .font(.caption)
                         .foregroundStyle(.secondary)
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-
-                if index < permissions.count - 1 {
-                    Divider()
-                        .overlay(.primary.opacity(0.08))
+                        .labelStyle(.titleAndIcon)
+                        .lineLimit(2)
                 }
             }
         }
-        .frame(maxWidth: 430)
+        .padding(12)
+        .frame(maxWidth: .infinity, minHeight: 128, alignment: .topLeading)
         .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
         .overlay {
             RoundedRectangle(cornerRadius: 8)
@@ -523,33 +657,57 @@ private struct OnboardingFinishActions: View {
     var onCreateSampleWorkspace: (() -> Void)? = nil
 
     var body: some View {
-        HStack(spacing: 10) {
-            Button("Open Settings", systemImage: "gearshape") {
-                onOpenSettings?()
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 10) {
+                finishButtons
             }
-            Button("Open Arrange", systemImage: "arrow.up.left.and.arrow.down.right") {
-                onOpenArrange?()
-            }
-            Button("Open Workspaces", systemImage: "rectangle.3.group") {
-                onOpenWorkspaces?()
-            }
-            Button("Create Sample Workspace", systemImage: "plus.rectangle.on.rectangle") {
-                onCreateSampleWorkspace?()
+
+            VStack(alignment: .center, spacing: 8) {
+                HStack(spacing: 10) {
+                    openSettingsButton
+                    openArrangeButton
+                }
+
+                HStack(spacing: 10) {
+                    openWorkspacesButton
+                    createSampleWorkspaceButton
+                }
             }
         }
         .buttonStyle(.bordered)
         .controlSize(.small)
     }
-}
 
-private struct OnboardingMacOSNoteSummary: View {
-    var body: some View {
-        ClearGlassInlineMessage(
-            text: "Separator appearance is adjustable without changing the Basic Mode permission boundary.",
-            systemImage: "slider.horizontal.3",
-            style: .secondary
-        )
-        .frame(maxWidth: 430)
+    @ViewBuilder
+    private var finishButtons: some View {
+        openSettingsButton
+        openArrangeButton
+        openWorkspacesButton
+        createSampleWorkspaceButton
+    }
+
+    private var openSettingsButton: some View {
+        Button("Open Settings", systemImage: "gearshape") {
+            onOpenSettings?()
+        }
+    }
+
+    private var openArrangeButton: some View {
+        Button("Open Arrange", systemImage: "arrow.up.left.and.arrow.down.right") {
+            onOpenArrange?()
+        }
+    }
+
+    private var openWorkspacesButton: some View {
+        Button("Open Workspaces", systemImage: "rectangle.3.group") {
+            onOpenWorkspaces?()
+        }
+    }
+
+    private var createSampleWorkspaceButton: some View {
+        Button("Create Sample Workspace", systemImage: "plus.rectangle.on.rectangle") {
+            onCreateSampleWorkspace?()
+        }
     }
 }
 
@@ -559,27 +717,31 @@ private struct OnboardingFooter: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            PageControl(
+            OnboardingProgressSummary(
                 count: OnboardingStep.allSteps.count,
-                current: navigationModel.currentIndex
+                current: navigationModel.currentIndex,
+                currentStep: navigationModel.currentStep
             )
 
             HStack(spacing: 12) {
-                Button("Back") { navigationModel.back() }
+                Button("Back", systemImage: "chevron.left") { navigationModel.back() }
                     .disabled(!navigationModel.canGoBack)
+                    .keyboardShortcut(.leftArrow, modifiers: [.command])
 
                 Spacer()
 
                 if navigationModel.isLastStep {
-                    Button("Get Started") {
+                    Button("Get Started", systemImage: "checkmark") {
                         onComplete()
                     }
                     .buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.defaultAction)
                 } else {
-                    Button("Continue") {
+                    Button("Continue", systemImage: "arrow.right") {
                         navigationModel.advance()
                     }
                     .buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.defaultAction)
                 }
             }
         }
@@ -588,7 +750,39 @@ private struct OnboardingFooter: View {
     }
 }
 
+private struct OnboardingProgressSummary: View {
+    let count: Int
+    let current: Int
+    let currentStep: OnboardingStep
+
+    var body: some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 10) {
+                Text("Step \(current + 1) of \(count)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Text(currentStep.title)
+                    .font(.caption)
+                    .bold()
+                    .lineLimit(1)
+
+                Spacer(minLength: 12)
+
+                PageControl(count: count, current: current)
+            }
+
+            ProgressView(value: Double(current + 1), total: Double(count))
+                .controlSize(.small)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Onboarding progress, step \(current + 1) of \(count), \(currentStep.title)")
+        .accessibilityIdentifier("onboarding.progress")
+    }
+}
+
 private struct PageControl: View {
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     let count: Int
     let current: Int
 
@@ -598,7 +792,7 @@ private struct PageControl: View {
                 Capsule()
                     .fill(index == current ? Color.accentColor : Color.secondary.opacity(0.35))
                     .frame(width: index == current ? 18 : 7, height: 7)
-                    .animation(.snappy(duration: 0.18), value: current)
+                    .animation(accessibilityReduceMotion ? nil : .snappy(duration: 0.18), value: current)
             }
         }
         .accessibilityHidden(true)

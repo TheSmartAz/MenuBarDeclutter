@@ -1,6 +1,6 @@
 # Workspaces Support
 
-Workspaces is the top-level Preview settings page for app-owned Workspace configuration in `v0.1.9`.
+Workspaces is the top-level Preview settings page for app-owned Workspace configuration in `v0.1.10`.
 
 Use Workspaces to:
 

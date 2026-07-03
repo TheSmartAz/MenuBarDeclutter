@@ -70,6 +70,9 @@ struct SearchResultRowView: View {
         }
         .foregroundStyle(isSelected ? .white : .primary)
         .contentShape(.rect)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(result.displayTitle), \(result.snapshot.zone.displayName), \(result.matchReason.displayName)")
+        .accessibilityValue(isSelected ? "Selected" : "Not selected")
     }
 
     private var rowBackground: Color {

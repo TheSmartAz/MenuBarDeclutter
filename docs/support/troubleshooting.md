@@ -38,7 +38,7 @@ Open Settings -> Arrange and use the placement test:
 4. Reveal All.
 5. Reset Layout if the control or separator is hard to find.
 
-Manual Arrange is the intended stable path for `v0.1.9` and does not require Pro Mode or Accessibility. Physical Command-drag behavior remains covered by manual QA records.
+Manual Arrange is the intended stable path for `v0.1.10` and does not require Pro Mode or Accessibility. Physical Command-drag behavior remains covered by manual QA records.
 
 ## Pro features are unavailable
 
@@ -52,7 +52,7 @@ Basic Mode should continue to work even when all Pro gates are off.
 
 ## Import or export looks limited
 
-Import/Export is Preview in `v0.1.9`.
+Import/Export is Preview in `v0.1.10`.
 
 - Export writes a real local JSON settings package.
 - Export intentionally omits volatile/private local state.

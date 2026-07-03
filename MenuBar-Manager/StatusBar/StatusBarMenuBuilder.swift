@@ -17,14 +17,14 @@ nonisolated struct StatusMenuAdvancedVisibility: Equatable, Sendable {
             || iconMovingEnabled
             || menuBarSpacingLabsEnabled
             || dogfoodModeEnabled
-            || workspacesPreviewEnabled
+            || (workspacesPreviewEnabled && (functionBarPreviewEnabled || infoStripPreviewEnabled))
     }
 }
 
 /// Builds the menu shown by both the control item and the right-click menu
-/// on the separator. The builder is stateless with respect to AppKit: it
-/// generates ``NSMenu`` instances on demand and refreshes their dynamic
-/// items whenever the hiding state changes via ``refresh(for:)``.
+/// on the separator. The builder generates ``NSMenu`` instances on demand and
+/// keeps a small, non-AppKit visibility snapshot so each open can show the
+/// current Basic Mode state without asking for sensitive permissions.
 @MainActor
 final class StatusBarMenuBuilder {
     struct Actions {
@@ -92,6 +92,7 @@ final class StatusBarMenuBuilder {
 
     private let actions: Actions
     private let commandTarget: StatusBarMenuCommandTarget
+    private var visibilityState: HidingVisibilityState = .expanded
 
     init(actions: Actions) {
         self.actions = actions
@@ -104,39 +105,47 @@ final class StatusBarMenuBuilder {
         }
 
         let menu = NSMenu(title: AppConstants.displayName)
+        menu.autoenablesItems = false
 
-        menu.addItem(menuItem(title: "Hide Menu Bar Items", command: .collapse, keyEquivalent: "", systemImage: "eye.slash"))
-        menu.addItem(menuItem(title: "Show Menu Bar Items", command: .expand, keyEquivalent: "", systemImage: "eye"))
+        addStatusSummary(to: menu)
+        menu.addItem(.separator())
+
+        menu.addItem(menuItem(
+            title: "Reveal Hidden Items",
+            command: .expand,
+            keyEquivalent: "",
+            systemImage: "eye",
+            toolTip: "Show items in the Hidden zone without requesting extra permissions."
+        ))
+        menu.addItem(menuItem(
+            title: "Collapse Hidden Items",
+            command: .collapse,
+            keyEquivalent: "",
+            systemImage: "eye.slash",
+            toolTip: "Return Hidden-zone items to the decluttered layout."
+        ))
 
         menu.addItem(
             menuItem(
-                title: "Reveal All",
+                title: "Reveal All Items",
                 command: .revealAll,
                 keyEquivalent: "",
-                systemImage: "rectangle.expand.vertical"
+                systemImage: "rectangle.expand.vertical",
+                toolTip: "Reveal Hidden and Always-Hidden items until you collapse again."
             )
         )
+
+        menu.addItem(.separator())
 
         menu.addItem(
             menuItem(
-                title: "Arrange Items…",
-                command: .openArrangeSettings,
+                title: "Workspaces…",
+                command: .openWorkspacesPreview,
                 keyEquivalent: "",
-                systemImage: "arrow.up.left.and.arrow.down.right"
+                systemImage: "rectangle.3.group",
+                toolTip: "Open workspace preview settings and profile-linked layouts."
             )
         )
-
-        let newItemCount = actions.newMenuBarItemReviewCount()
-        if actions.canShowNewMenuBarItems(), newItemCount > 0 {
-            menu.addItem(
-                menuItem(
-                    title: newItemCount == 1 ? "Review 1 New Item…" : "Review \(newItemCount) New Items…",
-                    command: .openNewMenuBarItems,
-                    keyEquivalent: "",
-                    systemImage: "tray"
-                )
-            )
-        }
 
         menu.addItem(
             routedMenuItem(
@@ -144,7 +153,8 @@ final class StatusBarMenuBuilder {
                 command: .findIcon,
                 routedCommand: MenuBarCommand(action: .showFindIcon, source: .statusMenu),
                 keyEquivalent: "f",
-                systemImage: "magnifyingglass"
+                systemImage: "magnifyingglass",
+                toolTip: "Open local Find Icon search when Pro discovery gates are satisfied."
             )
         )
 
@@ -159,9 +169,35 @@ final class StatusBarMenuBuilder {
                 command: .toggleSecondBar,
                 routedCommand: secondBarCommand,
                 keyEquivalent: "s",
-                systemImage: "rectangle.bottomthird.inset.filled"
+                systemImage: "rectangle.bottomthird.inset.filled",
+                toolTip: "Show or hide the optional Second Bar surface for hidden items."
             )
         )
+
+        menu.addItem(.separator())
+
+        menu.addItem(
+            menuItem(
+                title: "Arrange Items…",
+                command: .openArrangeSettings,
+                keyEquivalent: "",
+                systemImage: "arrow.up.left.and.arrow.down.right",
+                toolTip: "Open layout and assisted arrangement controls."
+            )
+        )
+
+        let newItemCount = actions.newMenuBarItemReviewCount()
+        if actions.canShowNewMenuBarItems(), newItemCount > 0 {
+            menu.addItem(
+                menuItem(
+                    title: newItemCount == 1 ? "Review 1 New Item…" : "Review \(newItemCount) New Items…",
+                    command: .openNewMenuBarItems,
+                    keyEquivalent: "",
+                    systemImage: "tray",
+                    toolTip: "Review newly discovered menu bar items before assigning zones."
+                )
+            )
+        }
 
         if actions.fullMenuBarModeIsActive() {
             menu.addItem(
@@ -170,7 +206,8 @@ final class StatusBarMenuBuilder {
                     command: .exitFullMenuBarMode,
                     routedCommand: MenuBarCommand(action: .exitFullMenuBarMode, target: .fullMenuBarMode, source: .statusMenu),
                     keyEquivalent: "",
-                    systemImage: "rectangle.compress.vertical"
+                    systemImage: "rectangle.compress.vertical",
+                    toolTip: "Return to the saved decluttered layout."
                 )
             )
         } else {
@@ -180,7 +217,8 @@ final class StatusBarMenuBuilder {
                     command: .enterFullMenuBarMode,
                     routedCommand: MenuBarCommand(action: .enterFullMenuBarMode, target: .fullMenuBarMode, source: .statusMenu),
                     keyEquivalent: "",
-                    systemImage: "rectangle.expand.vertical"
+                    systemImage: "rectangle.expand.vertical",
+                    toolTip: "Reveal the full menu bar layout temporarily."
                 )
             )
         }
@@ -194,19 +232,21 @@ final class StatusBarMenuBuilder {
 
         menu.addItem(
             menuItem(
-                title: "Settings…",
-                command: .openSettings,
-                keyEquivalent: ",",
-                systemImage: "gearshape"
+                title: "Recovery…",
+                command: .openRecoverySettings,
+                keyEquivalent: "",
+                systemImage: "cross.case",
+                toolTip: "Open recovery tools for layout resets, Safe Mode, and diagnostics."
             )
         )
 
         menu.addItem(
             menuItem(
-                title: "Recovery…",
-                command: .openRecoverySettings,
-                keyEquivalent: "",
-                systemImage: "cross.case"
+                title: "Settings…",
+                command: .openSettings,
+                keyEquivalent: ",",
+                systemImage: "gearshape",
+                toolTip: "Open MenuBarDeclutter settings."
             )
         )
 
@@ -216,7 +256,8 @@ final class StatusBarMenuBuilder {
                     title: "Reveal Inline Anyway",
                     command: .revealInlineAnyway,
                     keyEquivalent: "",
-                    systemImage: "arrow.right.circle"
+                    systemImage: "arrow.right.circle",
+                    toolTip: "Override the crowded-menu warning for the current reveal attempt."
                 )
             )
         }
@@ -226,7 +267,8 @@ final class StatusBarMenuBuilder {
                 title: "Diagnostics…",
                 command: .showDiagnostics,
                 keyEquivalent: "",
-                systemImage: "waveform.path.ecg"
+                systemImage: "waveform.path.ecg",
+                toolTip: "Open local diagnostics and export support information."
             )
         )
 
@@ -235,7 +277,8 @@ final class StatusBarMenuBuilder {
                 title: "Quit",
                 command: .quit,
                 keyEquivalent: "q",
-                systemImage: "power"
+                systemImage: "power",
+                toolTip: "Quit MenuBarDeclutter."
             )
         )
 
@@ -244,8 +287,11 @@ final class StatusBarMenuBuilder {
 
     private func makeSafeModeMenu() -> NSMenu {
         let menu = NSMenu(title: AppConstants.displayName)
+        menu.autoenablesItems = false
 
-        menu.addItem(sectionHeader("Safe Mode"))
+        menu.addItem(statusLine(title: "Status: Safe Mode active", systemImage: "cross.case"))
+        menu.addItem(privacyStatusLine())
+        menu.addItem(.separator())
         menu.addItem(menuItem(title: "Show MenuBarDeclutter", command: .expand, keyEquivalent: "", systemImage: "eye"))
         menu.addItem(menuItem(title: "Reset Layout", command: .resetLayout, keyEquivalent: "", systemImage: "arrow.counterclockwise"))
         menu.addItem(menuItem(title: "Open Settings", command: .openSettings, keyEquivalent: ",", systemImage: "gearshape"))
@@ -261,6 +307,7 @@ final class StatusBarMenuBuilder {
         parent.image = NSImage(systemSymbolName: "slider.horizontal.3", accessibilityDescription: "Advanced")
 
         let submenu = NSMenu(title: "Advanced")
+        submenu.autoenablesItems = false
 
         let refreshItem = menuItem(
             title: "Refresh Menu Bar Items",
@@ -279,7 +326,6 @@ final class StatusBarMenuBuilder {
         submenu.addItem(menuItem(title: actions.automationPausedTitle(), command: .toggleAutomationPaused, keyEquivalent: "", systemImage: actions.automationPaused() ? "play.circle" : "pause.circle"))
         submenu.addItem(.separator())
         submenu.addItem(menuItem(title: "Spacing Labs Settings…", command: .openLayoutSettings, keyEquivalent: "", systemImage: "ruler"))
-        submenu.addItem(menuItem(title: "Workspaces…", command: .openWorkspacesPreview, keyEquivalent: "", systemImage: "rectangle.3.group"))
         let canShowFunctionBarPreview = actions.workspacesPreviewEnabled() && actions.functionBarPreviewEnabled()
         if canShowFunctionBarPreview || actions.functionBarVisible() {
             submenu.addItem(
@@ -349,11 +395,7 @@ final class StatusBarMenuBuilder {
     /// rebuild the menu on every open, this primarily exists as a hook for
     /// future onboarding and any state-dependent badges or disabled items.
     func refresh(for visibility: HidingVisibilityState) {
-        // No persistent menu instance to mutate today; the next `makeMenu()`
-        // call will reflect `visibility` indirectly through the actions caller.
-        // The hook is here so we can add badges/disable logic without an API
-        // change in follow-up tasks.
-        _ = visibility
+        visibilityState = visibility
     }
 
     /// Backward-compatible refresh that maps a legacy binary state to a
@@ -368,11 +410,42 @@ final class StatusBarMenuBuilder {
         return item
     }
 
+    private func addStatusSummary(to menu: NSMenu) {
+        menu.addItem(
+            statusLine(
+                title: visibilityState.statusMenuTitle,
+                systemImage: visibilityState.statusMenuSystemImage,
+                toolTip: visibilityState.statusMenuToolTip
+            )
+        )
+        menu.addItem(privacyStatusLine())
+    }
+
+    private func privacyStatusLine() -> NSMenuItem {
+        statusLine(
+            title: "Privacy: no sensitive permissions requested here",
+            systemImage: "hand.raised",
+            toolTip: "This menu does not request Accessibility, Screen Recording, Apple Events, Input Monitoring, or network access."
+        )
+    }
+
+    private func statusLine(
+        title: String,
+        systemImage: String,
+        toolTip: String? = nil
+    ) -> NSMenuItem {
+        let item = sectionHeader(title)
+        item.image = NSImage(systemSymbolName: systemImage, accessibilityDescription: title)
+        item.toolTip = toolTip
+        return item
+    }
+
     private func menuItem(
         title: String,
         command: StatusBarMenuCommand,
         keyEquivalent: String,
-        systemImage: String? = nil
+        systemImage: String? = nil,
+        toolTip: String? = nil
     ) -> NSMenuItem {
         let item = NSMenuItem(
             title: title,
@@ -384,6 +457,7 @@ final class StatusBarMenuBuilder {
         if let systemImage {
             item.image = NSImage(systemSymbolName: systemImage, accessibilityDescription: title)
         }
+        item.toolTip = toolTip
         return item
     }
 
@@ -392,15 +466,51 @@ final class StatusBarMenuBuilder {
         command: StatusBarMenuCommand,
         routedCommand: MenuBarCommand,
         keyEquivalent: String,
-        systemImage: String? = nil
+        systemImage: String? = nil,
+        toolTip: String? = nil
     ) -> NSMenuItem {
-        let item = menuItem(title: title, command: command, keyEquivalent: keyEquivalent, systemImage: systemImage)
+        let item = menuItem(title: title, command: command, keyEquivalent: keyEquivalent, systemImage: systemImage, toolTip: toolTip)
         let availability = actions.commandAvailability(routedCommand)
         item.isEnabled = availability.isAvailable
         if !availability.isAvailable {
             item.toolTip = availability.message
         }
         return item
+    }
+}
+
+private extension HidingVisibilityState {
+    var statusMenuTitle: String {
+        switch self {
+        case .collapsed:
+            "Status: hidden items collapsed"
+        case .expanded:
+            "Status: hidden items visible"
+        case .revealAll:
+            "Status: all items revealed"
+        }
+    }
+
+    var statusMenuSystemImage: String {
+        switch self {
+        case .collapsed:
+            "eye.slash"
+        case .expanded:
+            "eye"
+        case .revealAll:
+            "rectangle.expand.vertical"
+        }
+    }
+
+    var statusMenuToolTip: String {
+        switch self {
+        case .collapsed:
+            "Hidden-zone items are currently collapsed."
+        case .expanded:
+            "Hidden-zone items are currently visible."
+        case .revealAll:
+            "All menu bar item zones are currently revealed."
+        }
     }
 }
 

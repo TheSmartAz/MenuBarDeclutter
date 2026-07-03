@@ -2,7 +2,7 @@
 
 MenuBarDeclutter is a native macOS 26.0+ menu bar decluttering utility built with Swift, AppKit, and SwiftUI.
 
-The current release target is `v0.1.9`. It promotes Workspaces to a top-level Preview area, adds Workspace-aware integration across Find & Rescue, placement hints, Function Bar, Info Strip, diagnostics, and recovery, while keeping Basic Mode as the stable product core.
+The current release target is `v0.1.10`. This is a release-hardening checkpoint for the v0.1.9 source/docs baseline: build, test, privacy, manual QA, dry-run packaging, and installed-app verification are the focus. Basic Mode remains the stable product core.
 
 ## Product Promise
 
@@ -11,7 +11,7 @@ The current release target is `v0.1.9`. It promotes Workspaces to a top-level Pr
 - Pro Mode is opt-in. It can use Accessibility metadata only after the user enables Pro Mode, enables Accessibility Discovery, and explicitly grants macOS Accessibility permission.
 - Labs and Experimental features are off by default and must fail closed when permissions or gates are missing.
 
-## Intended Stable In v0.1.9 Pending Physical QA
+## Stable Surfaces Under v0.1.10 Verification
 
 - Basic expand, collapse, toggle, reveal-all, and always-hidden reveal.
 - Auto-rehide, hover reveal, and global visibility hotkey.
@@ -22,7 +22,7 @@ The current release target is `v0.1.9`. It promotes Workspaces to a top-level Pr
 - Guided Manual Arrange with normal macOS Command-drag.
 - Pro Accessibility Discovery gating and degraded states.
 
-These are the intended stable product surfaces for `v0.1.9`. Current release completion is scoped to the QA gates tracked in the v0.1.9 manual QA templates. External multi-display QA remains documented separately and is not claimed complete until it is run.
+These are the intended stable product surfaces for `v0.1.10`. Current release completion is scoped to the QA gates tracked in the v0.1.10 manual QA templates. External multi-display QA remains documented separately and is not claimed complete until it is run.
 
 ## Preview, Labs, Or Experimental
 
@@ -33,14 +33,14 @@ These are the intended stable product surfaces for `v0.1.9`. Current release com
 
 ## User Docs
 
-- Workspaces: `docs/features/workspaces-v0.1.9-preview.md`
-- Function Bar: `docs/features/function-bar-v0.1.9-preview.md`
-- Set Builder: `docs/features/set-builder-v0.1.9-preview.md`
-- Linked Groups: `docs/features/linked-groups-v0.1.9-preview.md`
-- Info Strip: `docs/features/info-strip-v0.1.9-preview.md`
-- Workspace Integration: `docs/features/workspace-integration-v0.1.9-preview.md`
-- Arrange: `docs/features/arrange-v0.1.9.md`
-- Find & Rescue: `docs/features/find-rescue-v0.1.9.md`
+- Workspaces: `docs/features/workspaces-v0.1.10-preview.md`
+- Function Bar: `docs/features/function-bar-v0.1.10-preview.md`
+- Set Builder: `docs/features/set-builder-v0.1.10-preview.md`
+- Linked Groups: `docs/features/linked-groups-v0.1.10-preview.md`
+- Info Strip: `docs/features/info-strip-v0.1.10-preview.md`
+- Workspace Integration: `docs/features/workspace-integration-v0.1.10-preview.md`
+- Arrange: `docs/features/arrange-v0.1.10.md`
+- Find & Rescue: `docs/features/find-rescue-v0.1.10.md`
 - Second Bar: `docs/features/second-bar-v0.1.3.md`
 - Placement Planner: `docs/features/placement-planner-v0.1.3.md`
 - Assisted Move: `docs/features/assisted-move-v0.1.3-experimental.md`
@@ -58,9 +58,9 @@ These are the intended stable product surfaces for `v0.1.9`. Current release com
 - Permissions: `docs/support/permissions.md`
 - Safe Mode: `docs/support/safe-mode.md`
 - Uninstall: `docs/support/uninstall.md`
-- Release notes: `docs/release/v0.1.9-release-notes.md`
-- Known limitations: `docs/release/v0.1.9-known-limitations.md`
-- Release checklist: `docs/release/v0.1.9-release-checklist.md`
+- Release notes: `docs/release/v0.1.10-release-notes.md`
+- Known limitations: `docs/release/v0.1.10-known-limitations.md`
+- Release checklist: `docs/release/v0.1.10-release-checklist.md`
 
 ## Build And Test
 
@@ -80,6 +80,6 @@ scripts/build_release.sh --dry-run
 scripts/build_release.sh --dry-run --install --verify-installed
 ```
 
-Dry-run release builds create local `v0.1.9` artifacts without Developer ID export, notarization credentials, uploads, or network access.
+Dry-run release builds create local `v0.1.10` artifacts without Developer ID export, notarization credentials, uploads, or network access.
 
 Real Developer ID notarization uses `notarytool` credentials supplied by keychain profile or environment variables and requires an installed Developer ID Application signing certificate. No credentials are stored in this repository.

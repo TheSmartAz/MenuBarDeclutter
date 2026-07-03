@@ -20,7 +20,7 @@ struct OnboardingStep: Identifiable, Equatable, Sendable {
 }
 
 extension OnboardingStep {
-    /// The ordered set of first-run onboarding steps for the v0.1.9 product story.
+    /// The ordered set of first-run onboarding steps for the v0.1.10 product story.
     /// These live as a static list so the order can be unit-tested and the
     /// content reviewed in one place.
     static let allSteps: [OnboardingStep] = [
@@ -28,19 +28,19 @@ extension OnboardingStep {
             id: "welcome",
             title: "Quiet your menu bar",
             symbol: "menubar.rectangle",
-            body: "\(AppConstants.displayName) is a privacy-first menu bar declutter and Workspace tool. Basic Mode starts with native app-owned controls, local settings, and no sensitive permissions."
+            body: "\(AppConstants.displayName) starts in Basic Mode: local settings, app-owned controls, and no sensitive permissions. You can hide clutter first and decide later whether any optional Pro tools are worth enabling."
         ),
         OnboardingStep(
             id: "nativeCleanup",
             title: "Use Control Center first",
             symbol: "switch.2",
-            body: "Move rarely used system controls into Control Center first. Then use \(AppConstants.displayName) for third-party icons, separators, and crowded menu bar workflows. It complements Apple's settings rather than replacing them."
+            body: "Move rarely used system controls into Control Center first. Then use \(AppConstants.displayName) for third-party icons and separator-based cleanup. It complements Apple's settings rather than replacing them."
         ),
         OnboardingStep(
             id: "basicHideReveal",
             title: "Basic Hide & Reveal",
             symbol: "eye",
-            body: "The menu bar control and separator mark what hides and what returns. Collapse hides items past the separator; Expand and Reveal All bring them back without Pro Mode."
+            body: "Place the control and separator, then collapse the items to the right of the separator. Expand or Reveal All brings them back in Basic Mode, without Accessibility, Screen Recording, or Pro Mode."
         ),
         OnboardingStep(
             id: "arrange",
@@ -50,21 +50,21 @@ extension OnboardingStep {
         ),
         OnboardingStep(
             id: "findRescue",
-            title: "Find & Rescue",
+            title: "Optional rescue tools",
             symbol: "lifepreserver",
-            body: "Find Icon, Second Bar, and New Item Inbox help recover hidden or newly discovered items. These Preview workflows use Pro Discovery only after explicit opt-in."
+            body: "Later, Find Icon, Second Bar, and New Item Inbox can help recover hidden or newly discovered items. They stay optional and use Pro Discovery only after explicit opt-in."
         ),
         OnboardingStep(
             id: "workspaces",
-            title: "Workspaces Preview",
+            title: "Workspaces are app-owned",
             symbol: "rectangle.3.group",
-            body: "Workspaces organize app-owned Function Bar, Linked Groups, and Info Strip previews for different contexts. They do not replace or control the macOS system menu bar."
+            body: "Workspaces organize local Function Bar, Linked Groups, and Info Strip previews for different contexts. They are app-owned views and do not replace, capture, or control the macOS system menu bar."
         ),
         OnboardingStep(
             id: "privacy",
-            title: "Privacy Boundary",
+            title: "Privacy boundary",
             symbol: "hand.raised",
-            body: "Basic Mode does not request Accessibility, Screen Recording, ScreenCaptureKit, Apple Events, Input Monitoring, or network access. Pro Discovery is optional and never turns on silently."
+            body: "Basic Mode does not request Accessibility, Screen Recording, screen capture APIs, Apple Events, Input Monitoring, or network access. Optional Pro Discovery is separate, explicit, and never turns on silently."
         ),
         OnboardingStep(
             id: "recovery",
@@ -76,7 +76,7 @@ extension OnboardingStep {
             id: "finish",
             title: "Choose your next step",
             symbol: "checkmark.circle",
-            body: "Open Settings, test Arrange, create a first local Workspace, or skip advanced setup. Preview, Labs, Experimental, and Pro features remain off until you explicitly enable them.",
+            body: "Open Settings, test Arrange, create a local sample Workspace, or skip advanced setup. Preview, Labs, Experimental, and Pro features remain off until you explicitly enable them.",
             callout: "Creating a sample Workspace uses local app-owned commands only and requests no permissions."
         )
     ]

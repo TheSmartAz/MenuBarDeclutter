@@ -19,29 +19,33 @@ struct StatusBarMenuBuilderTests {
         )
 
         let menu = builder.makeMenu()
-        let headers = menu.items.filter { item in
-            !item.isSeparatorItem && item.action == nil && item.submenu == nil
-        }
+        let infoItems = informationItems(in: menu)
         let commandItems = actionItems(in: menu)
         let advancedItems = try? #require(menu.items.first { $0.title == "Advanced" }?.submenu)
 
-        #expect(headers.map { $0.title } == [])
+        #expect(menu.autoenablesItems == false)
+        #expect(advancedItems?.autoenablesItems == false)
+        #expect(infoItems.map { $0.title } == [
+            "Status: hidden items visible",
+            "Privacy: no sensitive permissions requested here"
+        ])
+        #expect(infoItems.first?.toolTip == "Hidden-zone items are currently visible.")
 
         #expect(
             commandItems.map { $0.title } == [
-                "Hide Menu Bar Items",
-                "Show Menu Bar Items",
-                "Reveal All",
-                "Arrange Items…",
+                "Reveal Hidden Items",
+                "Collapse Hidden Items",
+                "Reveal All Items",
+                "Workspaces…",
                 "Find Icon…",
                 "Show Second Bar",
+                "Arrange Items…",
                 "Full Menu Bar Mode",
                 "Refresh Menu Bar Items",
                 "Apply Profile…",
                 "Disable Pro Mode",
                 "Resume Automation",
                 "Spacing Labs Settings…",
-                "Workspaces…",
                 "Show Function Bar Preview",
                 "Show Info Strip Preview",
                 "Preview Spacing Preset",
@@ -52,26 +56,27 @@ struct StatusBarMenuBuilderTests {
                 "Toggle Spacer Markers",
                 "Advanced Settings…",
                 "About \(AppConstants.displayName)",
-                "Settings…",
                 "Recovery…",
+                "Settings…",
                 "Diagnostics…",
                 "Quit"
             ]
         )
         #expect(
             commandItems.map { $0.keyEquivalent } == [
-                "", "", "", "", "f", "s", "", "r", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ",", "", "", "q"
+                "", "", "", "", "f", "s", "", "", "r", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ",", "", "q"
             ]
         )
         #expect(commandItems.allSatisfy { $0.image != nil })
         #expect(commandItems.map { $0.action }.allSatisfy { $0 == commandItems.first?.action })
+        #expect(commandItems.first { $0.title == "Reveal Hidden Items" }?.toolTip?.contains("Hidden zone") == true)
+        #expect(commandItems.first { $0.title == "Settings…" }?.toolTip == "Open MenuBarDeclutter settings.")
         #expect(advancedItems?.items.filter { !$0.isSeparatorItem }.map { $0.title } == [
             "Refresh Menu Bar Items",
             "Apply Profile…",
             "Disable Pro Mode",
             "Resume Automation",
             "Spacing Labs Settings…",
-            "Workspaces…",
             "Show Function Bar Preview",
             "Show Info Strip Preview",
             "Preview Spacing Preset",
@@ -84,6 +89,36 @@ struct StatusBarMenuBuilderTests {
             "About \(AppConstants.displayName)"
         ])
         #expect(advancedItems?.items.first { $0.title == "Refresh Menu Bar Items" }?.isEnabled == false)
+    }
+
+    @Test func statusRowsReflectVisibilityStateAndPrivacyBoundary() throws {
+        let builder = StatusBarMenuBuilder(actions: Self.makeActions())
+
+        var menu = builder.makeMenu()
+        #expect(informationItems(in: menu).map { $0.title } == [
+            "Status: hidden items visible",
+            "Privacy: no sensitive permissions requested here"
+        ])
+
+        builder.refresh(for: HidingVisibilityState.collapsed)
+        menu = builder.makeMenu()
+        #expect(informationItems(in: menu).map { $0.title } == [
+            "Status: hidden items collapsed",
+            "Privacy: no sensitive permissions requested here"
+        ])
+
+        builder.refresh(for: HidingVisibilityState.revealAll)
+        menu = builder.makeMenu()
+        #expect(informationItems(in: menu).map { $0.title } == [
+            "Status: all items revealed",
+            "Privacy: no sensitive permissions requested here"
+        ])
+
+        let privacyItem = try #require(informationItems(in: menu).last)
+        #expect(privacyItem.isEnabled == false)
+        #expect(privacyItem.toolTip?.contains("Accessibility") == true)
+        #expect(privacyItem.toolTip?.contains("Screen Recording") == true)
+        #expect(privacyItem.toolTip?.contains("network") == true)
     }
 
     @Test func menuCommandsDispatchToMatchingActionClosures() throws {
@@ -275,7 +310,7 @@ struct StatusBarMenuBuilderTests {
             menuBarSpacingLabsEnabled: false,
             dogfoodModeEnabled: true
         ).isRelevant)
-        #expect(StatusMenuAdvancedVisibility(
+        #expect(!StatusMenuAdvancedVisibility(
             proModeEnabled: false,
             automationPaused: true,
             iconMovingEnabled: false,
@@ -430,6 +465,7 @@ struct StatusBarMenuBuilderTests {
             actions: Self.makeActions(safeModeActive: true)
         ).makeMenu()
 
+        #expect(menu.autoenablesItems == false)
         #expect(actionItems(in: menu).map { $0.title } == [
             "Show MenuBarDeclutter",
             "Reset Layout",
@@ -604,6 +640,12 @@ struct StatusBarMenuBuilderTests {
             return item.action == nil ? [] : [item]
         }
     }
+
+    private func informationItems(in menu: NSMenu) -> [NSMenuItem] {
+        menu.items.filter { item in
+            !item.isSeparatorItem && item.action == nil && item.submenu == nil
+        }
+    }
 }
 
 @MainActor
@@ -652,19 +694,19 @@ private final class MenuActionRecorder {
     }
 
     static let menuCommands: [Command] = [
-        .collapse,
         .expand,
+        .collapse,
         .revealAll,
-        .openArrangeSettings,
+        .openWorkspacesPreview,
         .findIcon,
         .toggleSecondBar,
+        .openArrangeSettings,
         .enterFullMenuBarMode,
         .refreshMenuBarItems,
         .openProfilesSettings,
         .toggleProMode,
         .toggleAutomationPaused,
         .openLayoutSettings,
-        .openWorkspacesPreview,
         .showFunctionBarPreview,
         .showInfoStripPreview,
         .previewSpacingPreset,
@@ -675,8 +717,8 @@ private final class MenuActionRecorder {
         .toggleSpacerMarkers,
         .openAdvancedSettings,
         .showAbout,
-        .openSettings,
         .openRecoverySettings,
+        .openSettings,
         .showDiagnostics,
         .quit
     ]

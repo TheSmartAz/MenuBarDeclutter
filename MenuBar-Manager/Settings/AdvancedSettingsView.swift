@@ -36,7 +36,14 @@ struct AdvancedSettingsView: View {
         ClearGlassSettingsPage(
             "Advanced",
             subtitle: "Low-level layout, diagnostics, and experimental automation controls.",
-            badges: [.privacySafe, .diagnostics, .labs, .experimental]
+            badges: [.privacySafe, .diagnostics, .labs, .experimental],
+            sectionAnchors: [
+                ClearGlassPageAnchor("Directory", systemImage: "list.bullet.rectangle", targetID: "Advanced Feature Directory"),
+                ClearGlassPageAnchor("Separators", systemImage: "ruler", targetID: "Separator Geometry"),
+                ClearGlassPageAnchor("Diagnostics", systemImage: "waveform.path.ecg", targetID: "Recovery & Diagnostics"),
+                ClearGlassPageAnchor("Labs", systemImage: "testtube.2", targetID: "Labs / Experimental"),
+                ClearGlassPageAnchor("Notes", systemImage: "exclamationmark.triangle", targetID: "Developer Notes")
+            ]
         ) {
             AdvancedOverviewStrip(settingsStore: settingsStore)
 
@@ -114,7 +121,8 @@ enum AdvancedFeatureDirectory {
         AdvancedFeatureDirectoryEntry(
             title: "Workspaces",
             subtitle: "Local Workspaces, Function Bar, Set Builder, and Info Strip previews.",
-            status: .experimental,
+            status: .preview,
+            category: .previews,
             systemImage: "rectangle.3.group",
             destination: .workspacesPreview
         ),
@@ -122,6 +130,7 @@ enum AdvancedFeatureDirectory {
             title: "Profiles",
             subtitle: "Saved configurations and manual profile application.",
             status: .preview,
+            category: .previews,
             systemImage: "person.crop.rectangle.stack",
             destination: .profiles
         ),
@@ -129,6 +138,7 @@ enum AdvancedFeatureDirectory {
             title: "Smart Triggers",
             subtitle: "Optional automation that can apply profiles.",
             status: .preview,
+            category: .previews,
             systemImage: "link",
             destination: .profiles
         ),
@@ -136,6 +146,7 @@ enum AdvancedFeatureDirectory {
             title: "Dynamic Hotkeys",
             subtitle: "Advanced command, group, and profile shortcuts.",
             status: .preview,
+            category: .previews,
             systemImage: "keyboard",
             destination: .hotkeys
         ),
@@ -143,6 +154,7 @@ enum AdvancedFeatureDirectory {
             title: "Private Access",
             subtitle: "Local authentication for protected surfaces.",
             status: .preview,
+            category: .previews,
             systemImage: "lock.fill",
             destination: .privateAccess
         ),
@@ -150,6 +162,7 @@ enum AdvancedFeatureDirectory {
             title: "Groups",
             subtitle: "Lightweight collections and protected group actions.",
             status: .preview,
+            category: .previews,
             systemImage: "person.2",
             destination: .groups
         ),
@@ -157,6 +170,7 @@ enum AdvancedFeatureDirectory {
             title: "Automation",
             subtitle: "App Shortcuts and URL command controls.",
             status: .preview,
+            category: .previews,
             systemImage: "app.connected.to.app.below.fill",
             destination: .automation
         ),
@@ -164,6 +178,7 @@ enum AdvancedFeatureDirectory {
             title: "Import / Export",
             subtitle: "Backups, migration, and privacy-safe transfer.",
             status: .preview,
+            category: .previews,
             systemImage: "arrow.up.arrow.down",
             destination: .importExport
         ),
@@ -171,13 +186,15 @@ enum AdvancedFeatureDirectory {
             title: "Diagnostics",
             subtitle: "Health checks, logs, and local support export.",
             status: .stable,
+            category: .stable,
             systemImage: "waveform.path.ecg",
             destination: .diagnostics
         ),
         AdvancedFeatureDirectoryEntry(
             title: "Dogfood",
             subtitle: "Internal QA notes and local dogfood bundles.",
-            status: .internal,
+            status: .labs,
+            category: .labs,
             systemImage: "checklist",
             destination: .diagnostics
         ),
@@ -185,20 +202,48 @@ enum AdvancedFeatureDirectory {
             title: "Spacing Labs",
             subtitle: "Separator geometry, spacer previews, and spacing experiments.",
             status: .labs,
+            category: .labs,
             systemImage: "ruler",
             destination: .layout
         ),
         AdvancedFeatureDirectoryEntry(
             title: "Icon Moving",
             subtitle: "Explicit, confirmed experimental assisted movement.",
-            status: .experimental,
+            status: .labs,
+            category: .labs,
             systemImage: "arrow.up.left.and.arrow.down.right",
+            destination: nil
+        ),
+        AdvancedFeatureDirectoryEntry(
+            title: "Stable Bulk Moving",
+            subtitle: "Future hardened move orchestration once Labs behavior proves reliable.",
+            status: .deferred,
+            category: .deferred,
+            systemImage: "arrow.left.arrow.right.square",
+            destination: nil
+        ),
+        AdvancedFeatureDirectoryEntry(
+            title: "Visual Item Capture",
+            subtitle: "Deferred research. Not used by Basic Mode and not requested today.",
+            status: .deferred,
+            category: .deferred,
+            systemImage: "camera.viewfinder",
             destination: nil
         )
     ]
 
+    static func visibleGroups(showDogfood: Bool) -> [AdvancedFeatureDirectoryGroup] {
+        let visibleEntries = entries.filter { showDogfood || $0.title != "Dogfood" }
+
+        return AdvancedFeatureDirectoryCategory.allCases.compactMap { category in
+            let categoryEntries = visibleEntries.filter { $0.category == category }
+            guard categoryEntries.isEmpty == false else { return nil }
+            return AdvancedFeatureDirectoryGroup(category: category, entries: categoryEntries)
+        }
+    }
+
     static func visibleEntries(showDogfood: Bool) -> [AdvancedFeatureDirectoryEntry] {
-        entries.filter { showDogfood || $0.title != "Dogfood" }
+        visibleGroups(showDogfood: showDogfood).flatMap(\.entries)
     }
 }
 
@@ -206,102 +251,208 @@ struct AdvancedFeatureDirectoryEntry: Identifiable {
     let title: String
     let subtitle: String
     let status: ProductFeatureStatus
+    let category: AdvancedFeatureDirectoryCategory
     let systemImage: String
     let destination: SettingsSection?
 
     var id: String { title }
 }
 
+struct AdvancedFeatureDirectoryGroup: Identifiable {
+    let category: AdvancedFeatureDirectoryCategory
+    let entries: [AdvancedFeatureDirectoryEntry]
+
+    var id: String { category.id }
+}
+
+enum AdvancedFeatureDirectoryCategory: String, CaseIterable, Identifiable {
+    case stable
+    case previews
+    case labs
+    case deferred
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .stable:
+            "Stable"
+        case .previews:
+            "Preview"
+        case .labs:
+            "Labs"
+        case .deferred:
+            "Deferred"
+        }
+    }
+
+    var subtitle: String {
+        switch self {
+        case .stable:
+            "Ready support and diagnostic surfaces."
+        case .previews:
+            "Opt-in surfaces that stay local and reversible."
+        case .labs:
+            "Experimental controls for advanced users."
+        case .deferred:
+            "Tracked ideas with no active control surface yet."
+        }
+    }
+}
+
 private struct AdvancedFeatureDirectorySection: View {
     let showDogfood: Bool
     var onOpenSection: ((SettingsSection) -> Void)?
 
-    private let columns = [
-        GridItem(.adaptive(minimum: 230), spacing: 10)
-    ]
-
     var body: some View {
+        let groups = AdvancedFeatureDirectory.visibleGroups(showDogfood: showDogfood)
+
         ClearGlassSection(
             "Advanced Feature Directory",
             subtitle: "Power-user and experimental surfaces stay available without crowding the main settings flow."
         ) {
-            LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
-                ForEach(AdvancedFeatureDirectory.visibleEntries(showDogfood: showDogfood)) { entry in
-                    AdvancedFeatureDirectoryCard(entry: entry) {
-                        if let destination = entry.destination {
-                            onOpenSection?(destination)
-                        }
+            VStack(spacing: 0) {
+                ForEach(Array(groups.enumerated()), id: \.element.id) { offset, group in
+                    AdvancedFeatureDirectoryGroupView(group: group, onOpenSection: onOpenSection)
+
+                    if offset < groups.count - 1 {
+                        AdvancedPanelDivider()
+                            .padding(.vertical, 4)
                     }
                 }
             }
-            .padding(.vertical, 8)
+            .padding(.vertical, 4)
         }
         .accessibilityIdentifier("advanced.featureDirectory")
     }
 }
 
-private struct AdvancedFeatureDirectoryCard: View {
-    let entry: AdvancedFeatureDirectoryEntry
-    let onOpen: () -> Void
+private struct AdvancedFeatureDirectoryGroupView: View {
+    let group: AdvancedFeatureDirectoryGroup
+    var onOpenSection: ((SettingsSection) -> Void)?
 
     var body: some View {
-        Button(action: onOpen) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: entry.systemImage)
-                        .font(.system(size: 16, weight: .regular))
-                        .foregroundStyle(statusTint)
-                        .frame(width: 22, height: 22)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text(group.category.title)
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
 
-                    VStack(alignment: .leading, spacing: 3) {
-                        HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            Text(entry.title)
-                                .font(.subheadline)
-                                .foregroundStyle(.primary)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.82)
+                Text(group.category.subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.horizontal, 2)
+            .padding(.top, 6)
 
-                            Text(entry.status.title)
-                                .font(.caption2)
-                                .foregroundStyle(statusTint)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(statusTint.opacity(0.12), in: .capsule)
-                        }
+            VStack(spacing: 0) {
+                ForEach(group.entries) { entry in
+                    AdvancedFeatureDirectoryRow(entry: entry, onOpenSection: onOpenSection)
 
-                        Text(entry.subtitle)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
+                    if entry.id != group.entries.last?.id {
+                        AdvancedPanelDivider()
                     }
                 }
-
-                HStack(spacing: 6) {
-                    Text(entry.destination == nil ? "Current Page" : "Open")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    Image(systemName: entry.destination == nil ? "checkmark.circle" : "chevron.right")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, alignment: .trailing)
-            }
-            .padding(12)
-            .frame(maxWidth: .infinity, minHeight: 118, alignment: .topLeading)
-            .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 8))
-            .overlay {
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(Color(nsColor: .separatorColor).opacity(0.46), lineWidth: 0.5)
             }
         }
-        .buttonStyle(.plain)
-        .disabled(entry.destination == nil)
-        .accessibilityLabel(entry.title)
+    }
+}
+
+private struct AdvancedFeatureDirectoryRow: View {
+    let entry: AdvancedFeatureDirectoryEntry
+    var onOpenSection: ((SettingsSection) -> Void)?
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .center, spacing: 12) {
+                rowLabel
+
+                Spacer(minLength: 16)
+
+                actionView
+            }
+
+            VStack(alignment: .leading, spacing: 9) {
+                rowLabel
+                actionView
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+        }
+        .padding(.vertical, 10)
+        .accessibilityElement(children: .contain)
     }
 
-    private var statusTint: Color {
-        switch entry.status {
+    private var rowLabel: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: entry.systemImage)
+                .font(.system(size: 16, weight: .regular))
+                .foregroundStyle(entry.status.directoryTint)
+                .frame(width: 22, height: 22)
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(entry.title)
+                        .font(.body)
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.82)
+
+                    AdvancedDirectoryStatusBadge(status: entry.status)
+                }
+
+                Text(entry.subtitle)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private var actionView: some View {
+        if let destination = entry.destination {
+            Button("Open", systemImage: "arrow.up.right") {
+                onOpenSection?(destination)
+            }
+            .controlSize(.small)
+        } else if entry.status == .deferred {
+            Label("Deferred", systemImage: "clock")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        } else {
+            Label("Current Page", systemImage: "checkmark.circle")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        }
+    }
+}
+
+private struct AdvancedDirectoryStatusBadge: View {
+    let status: ProductFeatureStatus
+
+    var body: some View {
+        Label(status.title, systemImage: status.directorySystemImage)
+            .font(.caption2)
+            .foregroundStyle(status.directoryTint)
+            .labelStyle(.titleAndIcon)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 2)
+            .background(status.directoryTint.opacity(0.10), in: .capsule)
+            .overlay {
+                Capsule()
+                    .stroke(status.directoryTint.opacity(0.22), lineWidth: 0.5)
+            }
+            .fixedSize()
+    }
+}
+
+private extension ProductFeatureStatus {
+    var directoryTint: Color {
+        switch self {
         case .stable:
             .green
         case .preview:
@@ -314,6 +465,23 @@ private struct AdvancedFeatureDirectoryCard: View {
             .secondary
         case .internal:
             .gray
+        }
+    }
+
+    var directorySystemImage: String {
+        switch self {
+        case .stable:
+            "checkmark.circle"
+        case .preview:
+            "sparkles"
+        case .labs:
+            "testtube.2"
+        case .experimental:
+            "exclamationmark.triangle"
+        case .deferred:
+            "clock"
+        case .internal:
+            "checklist"
         }
     }
 }

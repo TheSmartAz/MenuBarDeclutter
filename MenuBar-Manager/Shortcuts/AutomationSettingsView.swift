@@ -21,7 +21,12 @@ struct AutomationSettingsView: View {
         ClearGlassSettingsPage(
             "Automation",
             subtitle: "Configure App Shortcuts and automation boundaries.",
-            badges: [.preview, .privacySafe]
+            badges: [.preview, .privacySafe],
+            sectionAnchors: [
+                ClearGlassPageAnchor("App Shortcuts", systemImage: "link"),
+                ClearGlassPageAnchor("Shortcut Actions", systemImage: "list.bullet.rectangle"),
+                ClearGlassPageAnchor("Safety", systemImage: "checkmark.shield")
+            ]
         ) {
             AutomationOverviewStrip(
                 appIntentsEnabled: settingsStore.appIntentsEnabled,

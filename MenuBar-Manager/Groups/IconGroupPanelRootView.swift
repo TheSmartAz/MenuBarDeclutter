@@ -9,7 +9,7 @@ struct IconGroupPanelRootView: View {
     @State private var searchQuery = ""
     @State private var selectedID: MenuBarItemSnapshot.ID?
     @State private var statusMessage = "Ready"
-    @FocusState private var searchFocused: Bool
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
 
     private let snapshotResolver = IconGroupSnapshotResolver()
 
@@ -31,9 +31,9 @@ struct IconGroupPanelRootView: View {
         }
         .frame(width: 560, height: 420)
         .background(Color(nsColor: .windowBackgroundColor))
+        .accessibilityIdentifier("groupPanel.panel")
         .onAppear {
             selectedID = matchedSnapshots.first?.id
-            searchFocused = true
         }
         .onChange(of: matchedSnapshots) {
             if selectedID == nil || !matchedSnapshots.contains(where: { $0.id == selectedID }) {
@@ -86,7 +86,12 @@ struct IconGroupPanelRootView: View {
                 Spacer()
             }
 
-            SearchField("Search group", text: $searchQuery)
+            SearchField(
+                "Search group",
+                text: $searchQuery,
+                autoFocus: true,
+                accessibilityIdentifier: "groupPanel.search"
+            )
         }
         .controlSize(.small)
         .padding(.horizontal, 16)
@@ -96,8 +101,13 @@ struct IconGroupPanelRootView: View {
     private var content: some View {
         Group {
             if matchedSnapshots.isEmpty {
-                ContentUnavailableView("No Matching Items", systemImage: "menubar.rectangle")
+                UnavailablePanel(
+                    title: emptyStateTitle,
+                    message: emptyStateMessage,
+                    systemImage: searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "menubar.rectangle" : "magnifyingglass"
+                )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .accessibilityIdentifier("groupPanel.empty")
             } else {
                 ScrollViewReader { proxy in
                     ScrollView {
@@ -117,7 +127,13 @@ struct IconGroupPanelRootView: View {
                     }
                     .onChange(of: selectedID) { _, newValue in
                         guard let newValue else { return }
-                        proxy.scrollTo(newValue, anchor: .center)
+                        if accessibilityReduceMotion {
+                            proxy.scrollTo(newValue, anchor: .center)
+                        } else {
+                            withAnimation(.snappy(duration: 0.15)) {
+                                proxy.scrollTo(newValue, anchor: .center)
+                            }
+                        }
                     }
                 }
             }
@@ -136,6 +152,26 @@ struct IconGroupPanelRootView: View {
         .font(.caption)
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
+    }
+
+    private var emptyStateTitle: String {
+        if !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return "No Matching Items"
+        }
+
+        return "No Group Items"
+    }
+
+    private var emptyStateMessage: String {
+        if !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return "Try another app name, item title, or bundle identifier."
+        }
+
+        if group.itemRefs.isEmpty {
+            return "This group has no saved item rules yet. Add items from Find Icon, Second Bar, or Groups settings."
+        }
+
+        return "No current menu bar items match this group. Refresh discovery after the relevant apps are running."
     }
 
     private func moveSelection(by delta: Int) {

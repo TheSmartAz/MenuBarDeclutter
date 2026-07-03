@@ -14,7 +14,8 @@ struct QAScriptsTests {
             "scripts/qa_installed_app_smoke.sh",
             "scripts/verify_privacy_boundary.sh",
             "scripts/test.sh",
-            "scripts/export_visual_smoke_screenshots.sh"
+            "scripts/export_visual_smoke_screenshots.sh",
+            "scripts/qa_capture_ui_screenshots.sh"
         ]
 
         for script in scripts {
@@ -62,7 +63,8 @@ struct QAScriptsTests {
             "scripts/qa_installed_app_smoke.sh",
             "scripts/verify_privacy_boundary.sh",
             "scripts/test.sh",
-            "scripts/export_visual_smoke_screenshots.sh"
+            "scripts/export_visual_smoke_screenshots.sh",
+            "scripts/qa_capture_ui_screenshots.sh"
         ]
 
         for script in scripts {
@@ -152,6 +154,34 @@ struct QAScriptsTests {
         #expect(text.contains("app_uses_sandbox"))
         #expect(text.contains("com.apple.security.app-sandbox"))
         #expect(text.contains("consumed the expected one-shot Safe Mode flag"))
+    }
+
+    @Test func screenshotCaptureTargetsFloatingPanelTitles() throws {
+        let root = Self.repositoryRoot()
+        let text = try String(
+            contentsOf: root.appendingPathComponent("scripts/qa_capture_ui_screenshots.sh"),
+            encoding: .utf8
+        )
+
+        #expect(text.contains("--title-contains"))
+        #expect(text.contains("--pid \"$owner_pid\""))
+        #expect(text.contains("panel|21-floating-find-icon|Floating Find Icon|optional|--ui-testing-show-search|Find Icon"))
+        #expect(text.contains("panel|22-floating-second-bar|Floating Second Bar|optional|--ui-testing-show-second-bar|Second Bar"))
+        #expect(text.contains("panel|23-floating-group-panel|Floating Group Panel|optional|--ui-testing-show-group-panel|Focus Apps"))
+        #expect(text.contains("window_id\\tx\\ty\\twidth\\theight\\tlayer\\ttitle\\tpath\\targs"))
+    }
+
+    @Test func screenshotCaptureRetriesWindowRegistrationMisses() throws {
+        let root = Self.repositoryRoot()
+        let text = try String(
+            contentsOf: root.appendingPathComponent("scripts/qa_capture_ui_screenshots.sh"),
+            encoding: .utf8
+        )
+
+        #expect(text.contains("CAPTURE_ATTEMPTS=\"${CAPTURE_ATTEMPTS:-2}\""))
+        #expect(text.contains("while (( attempt <= CAPTURE_ATTEMPTS ))"))
+        #expect(text.contains("captured $label after retry attempt $attempt"))
+        #expect(text.contains("no capturable window found for $label after $CAPTURE_ATTEMPTS attempt(s)"))
     }
 
     @Test func fixtureTargetIsMarkedSkipInstall() throws {

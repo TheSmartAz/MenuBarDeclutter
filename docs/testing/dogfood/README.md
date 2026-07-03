@@ -2,6 +2,8 @@
 
 Phase 9.2 turns MenuBarDeclutter validation into repeatable private dogfood runs.
 
+Dogfood is conditional QA. Use the lane policy in `docs/testing/qa-process.md` to decide when these gates are required; do not run every gate for unrelated patches.
+
 Start here:
 
 1. Read `dogfood-plan.md`.
@@ -20,11 +22,11 @@ Privacy boundary:
 
 Gate order:
 
-1. Gate A: Basic Mode Daily Use.
-2. Gate B: Pro Read-only.
-3. Gate C: Pro Assisted.
-4. Gate D: Icon Moving Experimental.
-5. Gate E: Installed Release.
+1. Gate A: Basic Mode Daily Use. Blocks Basic stability claims.
+2. Gate B: Pro Read-only. Blocks Accessibility discovery and read-only Pro claims.
+3. Gate C: Pro Assisted. Blocks Second Bar, profiles, triggers, and assisted Pro claims.
+4. Gate D: Icon Moving Experimental. Blocks only Labs/Icon Moving claims.
+5. Gate E: Installed Release. Blocks installed-app release claims.
 
 Phase 9.4 triage:
 

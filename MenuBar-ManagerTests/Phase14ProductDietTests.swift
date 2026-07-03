@@ -114,10 +114,16 @@ struct Phase14ProductDietTests {
         let bulkMoving = FeatureVisibility.visibility(for: .stableBulkMoving)
         let visualCapture = FeatureVisibility.visibility(for: .visualItemCapture)
 
-        #expect(bulkMoving.summary.contains("v0.1.9"))
-        #expect(visualCapture.summary.contains("v0.1.9"))
-        #expect(!bulkMoving.summary.contains("v0.1.1"))
-        #expect(!visualCapture.summary.contains("v0.1.1"))
+        #expect(containsReleaseToken(bulkMoving.summary, "v0.1.10"))
+        #expect(containsReleaseToken(visualCapture.summary, "v0.1.10"))
+        #expect(!containsReleaseToken(bulkMoving.summary, "v0.1.1"))
+        #expect(!containsReleaseToken(visualCapture.summary, "v0.1.1"))
+    }
+
+    private func containsReleaseToken(_ summary: String, _ release: String) -> Bool {
+        let escapedRelease = NSRegularExpression.escapedPattern(for: release)
+        let pattern = "(^|[^A-Za-z0-9])\(escapedRelease)($|[^A-Za-z0-9])"
+        return summary.range(of: pattern, options: .regularExpression) != nil
     }
 
     @Test func guidedArrangeStepsMatchPhase15Cards() {

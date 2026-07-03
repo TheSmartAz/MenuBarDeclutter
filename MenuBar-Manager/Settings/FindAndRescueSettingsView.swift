@@ -24,7 +24,15 @@ struct FindAndRescueSettingsView: View {
         ClearGlassSettingsPage(
             "Find & Rescue",
             subtitle: "Find hidden icons, review new items, and recover when inline reveal is crowded.",
-            badges: [.preview, .proMode, .accessibilityRequired]
+            badges: [.preview, .proMode, .accessibilityRequired],
+            sectionAnchors: [
+                ClearGlassPageAnchor("Requirements", systemImage: "lock", targetID: "Pro Discovery Requirements"),
+                ClearGlassPageAnchor("Surfaces", systemImage: "rectangle.on.rectangle", targetID: "Find Icon and Second Bar"),
+                ClearGlassPageAnchor("New Items", systemImage: "tray.full"),
+                ClearGlassPageAnchor("Collections", systemImage: "tag"),
+                ClearGlassPageAnchor("Rescue", systemImage: "lifepreserver", targetID: "Crowded menu rescue"),
+                ClearGlassPageAnchor("Actions", systemImage: "link", targetID: "Item Actions")
+            ]
         ) {
             FindRescueOverviewStrip(
                 scannedCount: liveStatus?.scannedMenuBarItems.count ?? 0,
@@ -81,6 +89,13 @@ struct FindAndRescueSettingsView: View {
 
     private var primaryWorkflowSection: some View {
         ClearGlassSection("Find Icon and Second Bar", subtitle: "The two main rescue surfaces now live together.") {
+            FindRescueFlowPreview(
+                findIconAvailable: findIconAvailability?.tone == .success,
+                secondBarAvailable: secondBarAvailability?.tone == .success
+            )
+
+            ClearGlassDivider()
+
             FindRescueCard(
                 title: "Find Icon",
                 status: .preview,
@@ -442,6 +457,103 @@ private struct FindRescueOverviewStrip: View {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
         }
+    }
+}
+
+private struct FindRescueFlowPreview: View {
+    let findIconAvailable: Bool
+    let secondBarAvailable: Bool
+
+    private let sourceIcons = ["wifi", "battery.100", "cloud", "moon"]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Label("Rescue Flow Preview", systemImage: "point.3.connected.trianglepath.dotted")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                ClearGlassStatusValue(
+                    text: findIconAvailable || secondBarAvailable ? "Ready" : "Gated",
+                    style: findIconAvailable || secondBarAvailable ? .info : .secondary
+                )
+            }
+
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) {
+                    sourceCluster
+                    flowConnector
+                    rescueNode("Find Icon", systemImage: "magnifyingglass", isAvailable: findIconAvailable)
+                    flowConnector
+                    rescueNode("Second Bar", systemImage: "rectangle.bottomthird.inset.filled", isAvailable: secondBarAvailable)
+                }
+
+                VStack(alignment: .leading, spacing: 9) {
+                    sourceCluster
+                    rescueNode("Find Icon", systemImage: "magnifyingglass", isAvailable: findIconAvailable)
+                    rescueNode("Second Bar", systemImage: "rectangle.bottomthird.inset.filled", isAvailable: secondBarAvailable)
+                }
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 8))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color(nsColor: .separatorColor).opacity(0.62), lineWidth: 0.5)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Find and Rescue flow preview")
+    }
+
+    private var sourceCluster: some View {
+        HStack(spacing: 7) {
+            ForEach(sourceIcons, id: \.self) { icon in
+                Image(systemName: icon)
+                    .font(.system(size: 15, weight: .regular))
+                    .foregroundStyle(.secondary)
+            }
+
+            Image(systemName: "eye.slash")
+                .font(.system(size: 15, weight: .regular))
+                .foregroundStyle(.orange)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 7))
+    }
+
+    private var flowConnector: some View {
+        Image(systemName: "chevron.right")
+            .font(.caption)
+            .foregroundStyle(.tertiary)
+    }
+
+    private func rescueNode(
+        _ title: String,
+        systemImage: String,
+        isAvailable: Bool
+    ) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: systemImage)
+                .font(.system(size: 15, weight: .regular))
+                .foregroundStyle(isAvailable ? Color.accentColor : .secondary)
+                .frame(width: 18)
+
+            Text(title)
+                .font(.caption)
+                .lineLimit(1)
+
+            ClearGlassStatusValue(
+                text: isAvailable ? "Ready" : "Needs Pro",
+                style: isAvailable ? .info : .secondary
+            )
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 7))
     }
 }
 

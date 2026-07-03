@@ -58,8 +58,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let shouldSeedMenuBarItems = launchArguments.contains("--ui-testing-seed-menu-bar-items")
 
-        if launchArguments.contains("--ui-testing-show-diagnostics") {
+        if launchArguments.contains("--ui-testing-show-onboarding-privacy") {
+            environment.showOnboarding(stepID: "privacy")
+        } else if launchArguments.contains("--ui-testing-show-onboarding") {
+            environment.showOnboarding()
+        } else if launchArguments.contains("--ui-testing-show-diagnostics") {
             environment.showDiagnostics()
+        } else if launchArguments.contains("--ui-testing-show-settings-search-privacy") {
+            environment.showSettings(section: .general, searchText: "privacy")
         } else if launchArguments.contains("--ui-testing-show-general") {
             environment.showSettings(section: .general)
         } else if launchArguments.contains("--ui-testing-show-hide-reveal") {

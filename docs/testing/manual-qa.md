@@ -24,7 +24,7 @@ Manual QA is required for behavior that depends on macOS menu bar state, app act
 - Launch the app and confirm two new menu bar items appear: a square control toggle and a thin separator.
 - Confirm the control icon is `chevron.left` while expanded.
 - Confirm the separator icon is `chevron.left.2` while expanded.
-- Open the menu (right-click the control item on macOS 26+); confirm these items are present: Expand Hidden Items, Collapse Hidden Items, Toggle Hidden Items, Reset Separator Length, Show Drag Hint, Settings…, Diagnostics…, About MenuBarDeclutter, Quit.
+- Open the menu (right-click the control item on macOS 26+); confirm the status and privacy rows appear above these commands: Reveal Hidden Items, Collapse Hidden Items, Reveal All Items, Workspaces…, Find Icon…, Show Second Bar, Arrange Items…, Full Menu Bar Mode, Recovery…, Settings…, Diagnostics…, and Quit.
 
 ### Drag hint
 
@@ -760,7 +760,8 @@ This checklist verifies the Phase 1 hiding MVP. Later-phase features such as glo
 ### Native status menu
 
 - Open the status menu from the control item and separator right-click path.
+- Confirm the top of the menu shows the current visibility state and "Privacy: no sensitive permissions requested here".
 - Confirm command groups are visually separated: Visibility, Find & Bars, Pro Features, Layout, Recovery, and app-level commands.
-- Confirm key equivalents still work for Toggle Hidden Items, Find Icon, Toggle Second Bar, Refresh Menu Bar Items, Settings, and Quit.
+- Confirm key equivalents still work for Find Icon, Toggle Second Bar, Refresh Menu Bar Items, Settings, and Quit.
 - Pause and resume automation from the menu and confirm the dynamic title updates without changing Basic Mode behavior.
 - In a fresh Basic Mode profile, complete onboarding, use the status menu to expand/collapse hidden items, open Settings, open Diagnostics, show the drag hint, and quit/relaunch without any sensitive permission prompts.

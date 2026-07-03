@@ -18,7 +18,18 @@ struct WorkspacePreviewSettingsView: View {
         ClearGlassSettingsPage(
             "Workspaces",
             subtitle: "Preview workspace sets for MenuBarDeclutter-owned surfaces.",
-            badges: [.experimental, .privacySafe, .diagnostics]
+            badges: [.experimental, .privacySafe, .diagnostics],
+            sectionAnchors: [
+                ClearGlassPageAnchor("Integration", systemImage: "point.3.connected.trianglepath.dotted", targetID: "Workspace Integration"),
+                ClearGlassPageAnchor("Gates", systemImage: "switch.2", targetID: "Preview Gates"),
+                ClearGlassPageAnchor("Active", systemImage: "rectangle.3.group", targetID: "Active Workspace"),
+                ClearGlassPageAnchor("Actions", systemImage: "bolt", targetID: "Quick Actions"),
+                ClearGlassPageAnchor("List", systemImage: "list.bullet.rectangle", targetID: "Workspace List"),
+                ClearGlassPageAnchor("Function Bar", systemImage: "menubar.rectangle", targetID: "Preview Controls"),
+                ClearGlassPageAnchor("Info Strip", systemImage: "info.circle", targetID: "Info Strip Preview"),
+                ClearGlassPageAnchor("Set Builder", systemImage: "slider.horizontal.3"),
+                ClearGlassPageAnchor("Diagnostics", systemImage: "waveform.path.ecg")
+            ]
         ) {
             integrationOverviewSection
             previewGatesSection
@@ -59,17 +70,64 @@ struct WorkspacePreviewSettingsView: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Toggle("Enable Workspaces Preview", isOn: $settingsStore.workspacesPreviewEnabled)
-            Toggle("Enable Function Bar Preview", isOn: $settingsStore.functionBarPreviewEnabled)
-                .disabled(!settingsStore.workspacesPreviewEnabled)
-            Toggle("Enable Set Builder Preview", isOn: $settingsStore.setBuilderPreviewEnabled)
-                .disabled(!settingsStore.workspacesPreviewEnabled)
-            Toggle("Enable Info Strip Preview", isOn: $settingsStore.infoStripPreviewEnabled)
-                .disabled(!settingsStore.workspacesPreviewEnabled)
-            Toggle("Use Function Bar on primary status-item click", isOn: $settingsStore.functionBarPrimaryClickEnabled)
-                .disabled(!settingsStore.workspacesPreviewEnabled || !settingsStore.functionBarPreviewEnabled)
-            Toggle("Auto-show Info Strip for enabled workspaces", isOn: $settingsStore.infoStripAutoShowEnabled)
-                .disabled(!settingsStore.workspacesPreviewEnabled || !settingsStore.infoStripPreviewEnabled)
+            ClearGlassDivider()
+
+            workspaceToggleRow(
+                "Enable Workspaces Preview",
+                subtitle: "Unlock local Workspace records and app-owned preview surfaces.",
+                systemImage: "rectangle.3.group",
+                isOn: $settingsStore.workspacesPreviewEnabled
+            )
+
+            ClearGlassDivider()
+
+            workspaceToggleRow(
+                "Enable Function Bar Preview",
+                subtitle: "Show an app-owned strip for Workspace shortcuts.",
+                systemImage: "menubar.rectangle",
+                isOn: $settingsStore.functionBarPreviewEnabled,
+                disabled: !settingsStore.workspacesPreviewEnabled
+            )
+
+            ClearGlassDivider()
+
+            workspaceToggleRow(
+                "Enable Set Builder Preview",
+                subtitle: "Edit local Workspace sets inside Settings.",
+                systemImage: "slider.horizontal.3",
+                isOn: $settingsStore.setBuilderPreviewEnabled,
+                disabled: !settingsStore.workspacesPreviewEnabled
+            )
+
+            ClearGlassDivider()
+
+            workspaceToggleRow(
+                "Enable Info Strip Preview",
+                subtitle: "Show a local idle strip for selected Workspace tiles.",
+                systemImage: "info.circle",
+                isOn: $settingsStore.infoStripPreviewEnabled,
+                disabled: !settingsStore.workspacesPreviewEnabled
+            )
+
+            ClearGlassDivider()
+
+            workspaceToggleRow(
+                "Use Function Bar on status-item click",
+                subtitle: "Route the primary status-item click to the Function Bar.",
+                systemImage: "cursorarrow.click",
+                isOn: $settingsStore.functionBarPrimaryClickEnabled,
+                disabled: !settingsStore.workspacesPreviewEnabled || !settingsStore.functionBarPreviewEnabled
+            )
+
+            ClearGlassDivider()
+
+            workspaceToggleRow(
+                "Auto-show Info Strip",
+                subtitle: "Show the Info Strip automatically for enabled Workspaces.",
+                systemImage: "sparkles",
+                isOn: $settingsStore.infoStripAutoShowEnabled,
+                disabled: !settingsStore.workspacesPreviewEnabled || !settingsStore.infoStripPreviewEnabled
+            )
         }
     }
 
@@ -123,24 +181,18 @@ struct WorkspacePreviewSettingsView: View {
             subtitle: "\(snapshot.workspaces.filter { !$0.isArchived }.count) available, \(snapshot.workspaces.filter(\.isArchived).count) archived."
         ) {
             VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 12) {
-                    Image(systemName: active.iconName)
-                        .font(.system(size: 24, weight: .regular))
-                        .foregroundStyle(Color.accentColor)
-                        .frame(width: 34, height: 34)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(WorkspaceDiagnosticsRedactor.displayName(for: active))
-                            .font(.headline)
-                        Text("App-owned \(active.displayMode.rawValue) Workspace")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 12) {
+                        activeWorkspaceIdentity(active)
+
+                        Spacer(minLength: 12)
+
+                        switchDefaultWorkspaceButton(snapshot)
                     }
-                    Spacer()
-                    Button("Switch Default", systemImage: "rectangle.3.group") {
-                        if let first = snapshot.workspaces.first(where: { !$0.isArchived }) {
-                            _ = switchingService.switchWorkspace(id: first.id, source: .settings)
-                            setBuilderViewModel.refresh()
-                        }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        activeWorkspaceIdentity(active)
+                        switchDefaultWorkspaceButton(snapshot)
                     }
                 }
 
@@ -163,7 +215,7 @@ struct WorkspacePreviewSettingsView: View {
             "Quick Actions",
             subtitle: "Local app-owned shortcuts for the active Workspace."
         ) {
-            HStack(spacing: 10) {
+            ClearGlassButtonGrid(minimumItemWidth: 150) {
                 Button("Show Function Bar", systemImage: "menubar.rectangle") {
                     showFunctionBar()
                 }
@@ -194,7 +246,6 @@ struct WorkspacePreviewSettingsView: View {
                     refreshAfterWorkspaceMutation()
                 }
             }
-            .buttonStyle(.bordered)
 
             if let result = setBuilderViewModel.lastCommitResult {
                 Text(result)
@@ -295,7 +346,14 @@ struct WorkspacePreviewSettingsView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-            HStack(spacing: 10) {
+            WorkspaceFunctionBarPreview(
+                showLabels: settingsStore.functionBarShowLabels,
+                density: FunctionBarDensity(rawValue: settingsStore.functionBarDensity) ?? .regular,
+                infoStripEnabled: settingsStore.infoStripPreviewEnabled,
+                functionBarEnabled: settingsStore.functionBarPreviewEnabled
+            )
+
+            ClearGlassButtonGrid(minimumItemWidth: 150) {
                 Button("Show Function Bar", systemImage: "menubar.rectangle") {
                     showFunctionBar()
                 }
@@ -320,7 +378,7 @@ struct WorkspacePreviewSettingsView: View {
                     Text(preference.displayName).tag(preference.rawValue)
                 }
             }
-            .pickerStyle(.segmented)
+            .pickerStyle(.menu)
 
             Toggle("Show Set Switcher", isOn: $settingsStore.functionBarShowSetSwitcher)
                 .disabled(functionBarControlsDisabled)
@@ -331,7 +389,7 @@ struct WorkspacePreviewSettingsView: View {
                     Text(density.displayName).tag(density.rawValue)
                 }
             }
-            .pickerStyle(.segmented)
+            .pickerStyle(.menu)
             .disabled(functionBarControlsDisabled)
             Toggle("Close Function Bar on outside click", isOn: $settingsStore.functionBarCloseOnOutsideClick)
                 .disabled(functionBarControlsDisabled)
@@ -344,6 +402,7 @@ struct WorkspacePreviewSettingsView: View {
                     Text(preference.displayName).tag(preference.rawValue)
                 }
             }
+            .pickerStyle(.menu)
             .disabled(!settingsStore.workspacesPreviewEnabled)
         }
     }
@@ -368,50 +427,90 @@ struct WorkspacePreviewSettingsView: View {
                     .foregroundStyle(settingsStore.infoStripShowPreviewBadge ? Color.accentColor : .secondary)
             }
 
+            WorkspaceInfoStripPreview(
+                selectedProviderIDs: config.selectedTileProviderIDs,
+                compactMode: config.compactMode,
+                showTileLabels: config.showTileLabels,
+                idleDelaySeconds: config.idleDelaySeconds,
+                rotationIntervalSeconds: config.rotationIntervalSeconds,
+                isEnabled: config.isEnabled && settingsStore.infoStripPreviewEnabled
+            )
+
             Toggle("Enable Info Strip for active Workspace", isOn: Binding(
                 get: { activeInfoStripConfig.isEnabled },
                 set: { setActiveInfoStripEnabled($0) }
             ))
             .disabled(infoStripControlsDisabled)
 
-            Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 10) {
-                GridRow {
-                    Stepper(
-                        "Idle delay: \(config.idleDelaySeconds)s",
-                        value: Binding(
-                            get: { activeInfoStripConfig.idleDelaySeconds },
-                            set: { setActiveInfoStripIdleDelay($0) }
-                        ),
-                        in: WorkspaceValidationConstants.minIdleDelaySeconds...WorkspaceValidationConstants.maxIdleDelaySeconds
-                    )
-                    Stepper(
-                        "Rotation: \(config.rotationIntervalSeconds)s",
-                        value: Binding(
-                            get: { activeInfoStripConfig.rotationIntervalSeconds },
-                            set: { setActiveInfoStripRotationInterval($0) }
-                        ),
-                        in: WorkspaceValidationConstants.minRotationIntervalSeconds...WorkspaceValidationConstants.maxRotationIntervalSeconds
-                    )
-                }
-
-                GridRow {
-                    Picker("Hover behavior", selection: Binding(
-                        get: { activeInfoStripConfig.hoverBehavior },
-                        set: { setActiveInfoStripHoverBehavior($0) }
-                    )) {
-                        ForEach(WorkspaceInfoStripHoverBehavior.allCases) { behavior in
-                            Text(infoStripHoverBehaviorLabel(behavior)).tag(behavior)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-
-                    Toggle("Compact mode", isOn: Binding(
-                        get: { activeInfoStripConfig.compactMode },
-                        set: { setActiveInfoStripCompactMode($0) }
-                    ))
-                }
+            ClearGlassControlRow(
+                systemImage: "timer",
+                title: "Idle delay",
+                subtitle: "Idle delay: \(config.idleDelaySeconds) seconds before showing the strip."
+            ) {
+                Stepper(
+                    "Idle delay",
+                    value: Binding(
+                        get: { activeInfoStripConfig.idleDelaySeconds },
+                        set: { setActiveInfoStripIdleDelay($0) }
+                    ),
+                    in: WorkspaceValidationConstants.minIdleDelaySeconds...WorkspaceValidationConstants.maxIdleDelaySeconds
+                )
+                .labelsHidden()
+                .accessibilityLabel("Idle delay")
             }
             .disabled(infoStripControlsDisabled)
+
+            ClearGlassDivider()
+
+            ClearGlassControlRow(
+                systemImage: "arrow.triangle.2.circlepath",
+                title: "Rotation interval",
+                subtitle: "Rotation: \(config.rotationIntervalSeconds) seconds between selected tiles."
+            ) {
+                Stepper(
+                    "Rotation interval",
+                    value: Binding(
+                        get: { activeInfoStripConfig.rotationIntervalSeconds },
+                        set: { setActiveInfoStripRotationInterval($0) }
+                    ),
+                    in: WorkspaceValidationConstants.minRotationIntervalSeconds...WorkspaceValidationConstants.maxRotationIntervalSeconds
+                )
+                .labelsHidden()
+                .accessibilityLabel("Rotation interval")
+            }
+            .disabled(infoStripControlsDisabled)
+
+            ClearGlassDivider()
+
+            ClearGlassControlRow(
+                systemImage: "hand.point.up.left",
+                title: "Hover behavior",
+                subtitle: "Choose what happens when the pointer reaches the strip."
+            ) {
+                Picker("Hover behavior", selection: Binding(
+                    get: { activeInfoStripConfig.hoverBehavior },
+                    set: { setActiveInfoStripHoverBehavior($0) }
+                )) {
+                    ForEach(WorkspaceInfoStripHoverBehavior.allCases) { behavior in
+                        Text(infoStripHoverBehaviorLabel(behavior)).tag(behavior)
+                    }
+                }
+                .pickerStyle(.menu)
+            }
+            .disabled(infoStripControlsDisabled)
+
+            ClearGlassDivider()
+
+            workspaceToggleRow(
+                "Compact mode",
+                subtitle: "Use a tighter tile layout for this Workspace.",
+                systemImage: "rectangle.compress.vertical",
+                isOn: Binding(
+                    get: { activeInfoStripConfig.compactMode },
+                    set: { setActiveInfoStripCompactMode($0) }
+                ),
+                disabled: infoStripControlsDisabled
+            )
 
             Toggle("Show tile labels", isOn: Binding(
                 get: { activeInfoStripConfig.showTileLabels },
@@ -473,7 +572,7 @@ struct WorkspacePreviewSettingsView: View {
             }
             .disabled(infoStripControlsDisabled)
 
-            HStack(spacing: 10) {
+            ClearGlassButtonGrid(minimumItemWidth: 170) {
                 Button("Open Info Strip Preview", systemImage: "info.circle") {
                     showInfoStrip()
                 }
@@ -510,27 +609,69 @@ struct WorkspacePreviewSettingsView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 10) {
-                GridRow {
-                    Toggle("Enable library drag and drop", isOn: $settingsStore.setBuilderDragDropEnabled)
-                    Toggle("Show advanced library items", isOn: $settingsStore.setBuilderShowAdvancedLibraryItems)
-                }
-                GridRow {
-                    Toggle("Show Function Bar preview from Set Builder", isOn: $settingsStore.setBuilderShowFunctionBarPreview)
-                        .disabled(!settingsStore.functionBarPreviewEnabled)
-                    Toggle("Autosave drafts while switching Workspaces", isOn: $settingsStore.setBuilderAutosaveDrafts)
-                }
-                GridRow {
-                    Toggle("Warn before linked Group edits", isOn: $settingsStore.setBuilderWarnBeforeLinkedGroupEdits)
-                    Picker("Default Group insertion", selection: $settingsStore.setBuilderDefaultGroupReferenceMode) {
-                        ForEach(WorkspaceGroupReferenceMode.allCases) { mode in
-                            Text(mode.displayName).tag(mode.rawValue)
-                        }
+            workspaceToggleRow(
+                "Enable library drag and drop",
+                subtitle: "Allow dragging local library items into the draft set.",
+                systemImage: "hand.draw",
+                isOn: $settingsStore.setBuilderDragDropEnabled,
+                disabled: !settingsStore.workspacesPreviewEnabled
+            )
+
+            ClearGlassDivider()
+
+            workspaceToggleRow(
+                "Show advanced library items",
+                subtitle: "Include lower-level builder blocks in the item library.",
+                systemImage: "square.grid.3x3",
+                isOn: $settingsStore.setBuilderShowAdvancedLibraryItems,
+                disabled: !settingsStore.workspacesPreviewEnabled
+            )
+
+            ClearGlassDivider()
+
+            workspaceToggleRow(
+                "Show Function Bar preview",
+                subtitle: "Open the Function Bar from Set Builder while editing.",
+                systemImage: "menubar.rectangle",
+                isOn: $settingsStore.setBuilderShowFunctionBarPreview,
+                disabled: !settingsStore.workspacesPreviewEnabled || !settingsStore.functionBarPreviewEnabled
+            )
+
+            ClearGlassDivider()
+
+            workspaceToggleRow(
+                "Autosave drafts while switching",
+                subtitle: "Preserve local Set Builder edits when changing Workspaces.",
+                systemImage: "square.and.arrow.down",
+                isOn: $settingsStore.setBuilderAutosaveDrafts,
+                disabled: !settingsStore.workspacesPreviewEnabled
+            )
+
+            ClearGlassDivider()
+
+            workspaceToggleRow(
+                "Warn before linked Group edits",
+                subtitle: "Confirm edits that affect linked Groups in multiple Workspaces.",
+                systemImage: "exclamationmark.triangle",
+                isOn: $settingsStore.setBuilderWarnBeforeLinkedGroupEdits,
+                disabled: !settingsStore.workspacesPreviewEnabled
+            )
+
+            ClearGlassDivider()
+
+            ClearGlassControlRow(
+                systemImage: "person.2",
+                title: "Default Group insertion",
+                subtitle: "Choose how Groups are inserted into new Workspace items."
+            ) {
+                Picker("Default Group insertion", selection: $settingsStore.setBuilderDefaultGroupReferenceMode) {
+                    ForEach(WorkspaceGroupReferenceMode.allCases) { mode in
+                        Text(mode.displayName).tag(mode.rawValue)
                     }
-                    .pickerStyle(.segmented)
                 }
+                .pickerStyle(.menu)
+                .disabled(!settingsStore.workspacesPreviewEnabled)
             }
-            .disabled(!settingsStore.workspacesPreviewEnabled)
 
             if settingsStore.setBuilderPreviewEnabled {
                 SetBuilderView(viewModel: setBuilderViewModel)
@@ -612,6 +753,56 @@ struct WorkspacePreviewSettingsView: View {
                 .font(.caption)
                 .textSelection(.enabled)
         }
+    }
+
+    private func activeWorkspaceIdentity(_ workspace: MenuBarWorkspace) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: workspace.iconName)
+                .font(.system(size: 24, weight: .regular))
+                .foregroundStyle(Color.accentColor)
+                .frame(width: 34, height: 34)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(WorkspaceDiagnosticsRedactor.displayName(for: workspace))
+                    .font(.headline)
+                    .lineLimit(1)
+
+                Text("App-owned \(workspace.displayMode.rawValue) Workspace")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func switchDefaultWorkspaceButton(_ snapshot: WorkspaceStoreSnapshot) -> some View {
+        Button("Switch Default", systemImage: "rectangle.3.group") {
+            if let first = snapshot.workspaces.first(where: { !$0.isArchived }) {
+                _ = switchingService.switchWorkspace(id: first.id, source: .settings)
+                setBuilderViewModel.refresh()
+            }
+        }
+    }
+
+    private func workspaceToggleRow(
+        _ title: String,
+        subtitle: String,
+        systemImage: String,
+        isOn: Binding<Bool>,
+        disabled: Bool = false
+    ) -> some View {
+        ClearGlassControlRow(
+            systemImage: systemImage,
+            title: title,
+            subtitle: subtitle
+        ) {
+            Toggle(title, isOn: isOn)
+                .labelsHidden()
+                .accessibilityLabel(Text(title))
+        }
+        .disabled(disabled)
     }
 
     private func showFunctionBar() {
@@ -789,5 +980,228 @@ struct WorkspacePreviewSettingsView: View {
             return providerID
         }
         return nil
+    }
+}
+
+private struct WorkspaceFunctionBarPreview: View {
+    let showLabels: Bool
+    let density: FunctionBarDensity
+    let infoStripEnabled: Bool
+    let functionBarEnabled: Bool
+
+    private let workspaces = [
+        ("Focus", "moon"),
+        ("Live", "dot.radiowaves.left.and.right"),
+        ("Travel", "airplane")
+    ]
+    private let actions = [
+        ("Reveal", "eye"),
+        ("Find", "magnifyingglass"),
+        ("Groups", "person.2"),
+        ("Info", "info.circle")
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Label("Function Bar Preview", systemImage: "menubar.rectangle")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                ClearGlassStatusValue(
+                    text: functionBarEnabled ? "Ready" : "Off",
+                    style: functionBarEnabled ? .info : .secondary
+                )
+            }
+
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) {
+                    workspaceSwitcher
+                    Divider().frame(height: 28)
+                    actionStrip
+                }
+
+                VStack(alignment: .leading, spacing: 10) {
+                    workspaceSwitcher
+                    actionStrip
+                }
+            }
+
+            HStack(spacing: 8) {
+                Label(density.displayName, systemImage: "rectangle.compress.vertical")
+                Label(showLabels ? "Labels" : "Icons only", systemImage: "textformat")
+                Label(infoStripEnabled ? "Info Strip linked" : "Info Strip off", systemImage: "info.circle")
+            }
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.82)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 8))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color(nsColor: .separatorColor).opacity(0.62), lineWidth: 0.5)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Function Bar preview")
+    }
+
+    private var workspaceSwitcher: some View {
+        HStack(spacing: 6) {
+            ForEach(workspaces, id: \.0) { workspace in
+                Label(workspace.0, systemImage: workspace.1)
+                    .font(.caption)
+                    .lineLimit(1)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(
+                        workspace.0 == "Focus" ? Color.accentColor.opacity(0.13) : Color(nsColor: .controlBackgroundColor),
+                        in: .rect(cornerRadius: 6)
+                    )
+                    .foregroundStyle(workspace.0 == "Focus" ? Color.accentColor : .secondary)
+            }
+        }
+    }
+
+    private var actionStrip: some View {
+        HStack(spacing: density == .compact ? 8 : 12) {
+            ForEach(actions, id: \.0) { action in
+                VStack(spacing: 4) {
+                    Image(systemName: action.1)
+                        .font(.system(size: density == .compact ? 15 : 17, weight: .regular))
+                        .frame(width: 22, height: 22)
+
+                    if showLabels {
+                        Text(action.0)
+                            .font(.caption2)
+                            .lineLimit(1)
+                    }
+                }
+                .frame(minWidth: showLabels ? 42 : 26)
+                .foregroundStyle(functionBarEnabled ? .primary : .secondary)
+            }
+        }
+        .opacity(functionBarEnabled ? 1 : 0.58)
+    }
+}
+
+private struct WorkspaceInfoStripPreview: View {
+    let selectedProviderIDs: [String]
+    let compactMode: Bool
+    let showTileLabels: Bool
+    let idleDelaySeconds: Int
+    let rotationIntervalSeconds: Int
+    let isEnabled: Bool
+
+    private var previewIDs: [String] {
+        let selected = Array(selectedProviderIDs.prefix(4))
+        return selected.isEmpty ? [
+            InfoTileProviderID.currentWorkspace.rawValue,
+            InfoTileProviderID.hiddenCount.rawValue,
+            InfoTileProviderID.recoveryWarning.rawValue
+        ] : selected
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Label("Info Strip Preview", systemImage: "info.circle")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                ClearGlassStatusValue(
+                    text: isEnabled ? "Auto-show" : "Off",
+                    style: isEnabled ? .info : .secondary
+                )
+            }
+
+            HStack(spacing: compactMode ? 8 : 12) {
+                ForEach(previewIDs, id: \.self) { providerID in
+                    infoTile(providerID)
+                }
+
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, compactMode ? 8 : 12)
+            .padding(.vertical, compactMode ? 6 : 9)
+            .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 7))
+
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) {
+                    timingLabel("Idle", value: "\(idleDelaySeconds)s", systemImage: "timer")
+                    timingLabel("Rotate", value: "\(rotationIntervalSeconds)s", systemImage: "arrow.triangle.2.circlepath")
+                    timingLabel(compactMode ? "Compact" : "Regular", value: showTileLabels ? "Labels" : "Icons", systemImage: "rectangle.compress.vertical")
+                }
+
+                VStack(alignment: .leading, spacing: 5) {
+                    timingLabel("Idle", value: "\(idleDelaySeconds)s", systemImage: "timer")
+                    timingLabel("Rotate", value: "\(rotationIntervalSeconds)s", systemImage: "arrow.triangle.2.circlepath")
+                    timingLabel(compactMode ? "Compact" : "Regular", value: showTileLabels ? "Labels" : "Icons", systemImage: "rectangle.compress.vertical")
+                }
+            }
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 8))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color(nsColor: .separatorColor).opacity(0.62), lineWidth: 0.5)
+        }
+        .opacity(isEnabled ? 1 : 0.68)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Info Strip preview")
+    }
+
+    private func infoTile(_ providerID: String) -> some View {
+        let title = InfoTileProviderID(rawValue: providerID).displayName
+        return VStack(spacing: showTileLabels ? 4 : 0) {
+            Image(systemName: tileIcon(for: providerID))
+                .font(.system(size: compactMode ? 15 : 17, weight: .regular))
+                .frame(width: 22, height: 22)
+
+            if showTileLabels {
+                Text(title)
+                    .font(.caption2)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
+            }
+        }
+        .frame(minWidth: showTileLabels ? 58 : 28)
+        .foregroundStyle(isEnabled ? .primary : .secondary)
+    }
+
+    private func timingLabel(_ title: String, value: String, systemImage: String) -> some View {
+        Label("\(title): \(value)", systemImage: systemImage)
+            .lineLimit(1)
+            .minimumScaleFactor(0.82)
+    }
+
+    private func tileIcon(for providerID: String) -> String {
+        switch providerID {
+        case InfoTileProviderID.currentWorkspace.rawValue:
+            "rectangle.3.group"
+        case InfoTileProviderID.hiddenCount.rawValue:
+            "eye.slash"
+        case InfoTileProviderID.newItemCount.rawValue:
+            "tray"
+        case InfoTileProviderID.recoveryWarning.rawValue:
+            "heart.text.square"
+        case InfoTileProviderID.staleScanWarning.rawValue:
+            "clock.badge.exclamationmark"
+        case InfoTileProviderID.clock.rawValue:
+            "clock"
+        case InfoTileProviderID.battery.rawValue:
+            "battery.100"
+        default:
+            "info.circle"
+        }
     }
 }

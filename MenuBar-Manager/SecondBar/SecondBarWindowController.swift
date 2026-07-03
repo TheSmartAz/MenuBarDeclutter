@@ -278,7 +278,9 @@ final class SecondBarWindowController: NSWindowController, NSWindowDelegate {
 
     private static func contentSize(showLabels: Bool, showsUnavailableState: Bool) -> CGSize {
         let height: CGFloat = showsUnavailableState ? 274 : (showLabels ? 274 : 228)
-        return CGSize(width: 760, height: height)
+        let width: CGFloat = showsUnavailableState ? 660 : 760
+        let unavailableHeight: CGFloat = 238
+        return CGSize(width: width, height: showsUnavailableState ? unavailableHeight : height)
     }
 
     private static func showsUnavailableState(

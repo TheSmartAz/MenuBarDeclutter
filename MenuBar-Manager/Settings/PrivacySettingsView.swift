@@ -189,6 +189,7 @@ struct PrivacySettingsView: View {
                 proModeMessage
             }
         }
+        .accessibilityIdentifier("privacy.proDiscovery.section")
     }
 
     private var accessibilityButtons: some View {
@@ -198,11 +199,13 @@ struct PrivacySettingsView: View {
                 notifyPrivacyChanged()
             }
             .disabled(!settingsStore.proModeEnabled || permissionService == nil || permissionService?.status == .granted)
+            .accessibilityIdentifier("privacy.action.requestPermission")
 
             Button("Open Settings", systemImage: "gearshape") {
                 permissionService?.openSystemSettingsPrivacyPane()
             }
             .disabled(!settingsStore.proModeEnabled || permissionService == nil)
+            .accessibilityIdentifier("privacy.action.openAccessibilitySettings")
         }
         .controlSize(.small)
     }
@@ -435,6 +438,7 @@ private struct PrivacyProModeRow: View {
             } else {
                 Button("Enable Pro Mode", systemImage: "lock.open", action: enableAction)
                     .controlSize(.small)
+                    .accessibilityIdentifier("privacy.action.enableProMode")
             }
         }
     }

@@ -1516,8 +1516,8 @@ final class AppEnvironment {
         settingsRuntimeCoordinator.resetAllSettings()
     }
 
-    func showOnboarding() {
-        onboardingWindowController.show()
+    func showOnboarding(stepID: String? = nil) {
+        onboardingWindowController.show(stepID: stepID)
     }
 
     private func refreshAfterOnboarding() {
@@ -1762,8 +1762,8 @@ final class AppEnvironment {
 
     // MARK: UI surfaces
 
-    func showSettings(section: SettingsSection = .general) {
-        settingsWindowController.show(section: section)
+    func showSettings(section: SettingsSection = .general, searchText: String? = nil) {
+        settingsWindowController.show(section: section, searchText: searchText)
     }
 
     func showDiagnostics() {

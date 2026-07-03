@@ -250,4 +250,54 @@ struct ProtectedActionGateTests {
         #expect(event.metadata["resource"] == "protectedGroup")
         #expect(!eventText.contains(groupID.uuidString))
     }
+
+    @Test func enablePrivateAccessAfterAuthenticationTurnsPolicyOnAndUnlocksSession() async {
+        let suiteName = "pa-tests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let store = SettingsStore(defaults: defaults)
+        store.privateAccessEnabled = false
+
+        let logger = DiagnosticsLogger()
+        let mockAuth = MockAuthenticationService()
+        mockAuth.result = .success
+        let coordinator = PrivateAccessCoordinator(
+            settingsStore: store,
+            diagnosticsLogger: logger,
+            authService: mockAuth
+        )
+
+        let result = await coordinator.enablePrivateAccessAfterAuthentication(reason: "Enable")
+
+        #expect(result == .success)
+        #expect(store.privateAccessEnabled)
+        #expect(coordinator.isUnlocked)
+        #expect(store.privateAccessLastAuthStatus == "success")
+    }
+
+    @Test func canceledEnablePrivateAccessAuthenticationLeavesPolicyOff() async {
+        let suiteName = "pa-tests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let store = SettingsStore(defaults: defaults)
+        store.privateAccessEnabled = false
+
+        let logger = DiagnosticsLogger()
+        let mockAuth = MockAuthenticationService()
+        mockAuth.result = .cancel
+        let coordinator = PrivateAccessCoordinator(
+            settingsStore: store,
+            diagnosticsLogger: logger,
+            authService: mockAuth
+        )
+
+        let result = await coordinator.enablePrivateAccessAfterAuthentication(reason: "Enable")
+
+        #expect(result == .cancel)
+        #expect(!store.privateAccessEnabled)
+        #expect(!coordinator.isUnlocked)
+        #expect(store.privateAccessLastAuthStatus == "cancel")
+    }
 }

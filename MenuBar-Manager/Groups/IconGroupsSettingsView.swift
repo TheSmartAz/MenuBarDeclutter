@@ -32,7 +32,11 @@ struct IconGroupsSettingsView: View {
         ClearGlassSettingsPage(
             "Groups",
             subtitle: "Organize related menu bar items without adding permissions.",
-            badges: [.preview, .basicMode, .privacySafe]
+            badges: [.preview, .basicMode, .privacySafe],
+            sectionAnchors: [
+                ClearGlassPageAnchor("Groups", systemImage: "person.2"),
+                ClearGlassPageAnchor("Manage Groups", systemImage: "sidebar.left")
+            ]
         ) {
             ClearGlassSection("Groups") {
                 FeatureGateNotice(
@@ -79,28 +83,25 @@ struct IconGroupsSettingsView: View {
 
             ClearGlassSection("Manage Groups", subtitle: "Create local groups manually or from the current Pro snapshot.") {
                 VStack(alignment: .leading, spacing: 12) {
-                    HStack(alignment: .top, spacing: 14) {
+                    ClearGlassPaneLayout(primaryWidth: 280) {
                         groupList
-                            .frame(width: 300)
-
+                    } detail: {
                         selectedGroupDetail
-                            .frame(minWidth: 360, maxWidth: .infinity)
                     }
 
                     if !proModeAvailable {
-                        HStack(alignment: .top, spacing: 10) {
-                            ClearGlassInlineMessage(
-                                text: "Manual bundle ID, app name, and title groups work in Basic Mode. Enable Pro Mode for the current menu bar item picker.",
-                                systemImage: "star",
-                                style: .info
-                            )
+                        ViewThatFits(in: .horizontal) {
+                            HStack(alignment: .top, spacing: 10) {
+                                basicModeGroupMessage
 
-                            Button("Open Privacy Settings", systemImage: "hand.raised") {
-                                onOpenPrivacySettings()
+                                openPrivacyButton
+                                    .padding(.top, 2)
                             }
-                            .controlSize(.small)
-                            .fixedSize()
-                            .padding(.top, 2)
+
+                            VStack(alignment: .leading, spacing: 8) {
+                                basicModeGroupMessage
+                                openPrivacyButton
+                            }
                         }
                     }
 
@@ -126,6 +127,22 @@ struct IconGroupsSettingsView: View {
                 }
             )
         }
+    }
+
+    private var basicModeGroupMessage: some View {
+        ClearGlassInlineMessage(
+            text: "Manual bundle ID, app name, and title groups work in Basic Mode. Enable Pro Mode for the current menu bar item picker.",
+            systemImage: "star",
+            style: .info
+        )
+    }
+
+    private var openPrivacyButton: some View {
+        Button("Open Privacy Settings", systemImage: "hand.raised") {
+            onOpenPrivacySettings()
+        }
+        .controlSize(.small)
+        .fixedSize()
     }
 
     private var selectedGroupDetail: some View {
@@ -178,7 +195,17 @@ struct IconGroupsSettingsView: View {
                     }
                 }
             } else {
-                ContentUnavailableView("No Groups", systemImage: "person.2", description: Text("Create a group to organize menu bar items."))
+                SettingsUnavailableGate(
+                    .emptyData,
+                    title: "No Groups",
+                    message: "Create a group to organize related menu bar items locally.",
+                    systemImage: "person.2",
+                    minHeight: 220
+                ) {
+                    Button("Add Group", systemImage: "plus") {
+                        editingGroup = newGroup()
+                    }
+                }
                     .frame(maxWidth: .infinity, minHeight: 220)
             }
         }
@@ -260,11 +287,17 @@ struct IconGroupsSettingsView: View {
 
             ScrollView {
                 if groups.isEmpty {
-                    ContentUnavailableView(
-                        "No Groups",
+                    SettingsUnavailableGate(
+                        .emptyData,
+                        title: "No Groups",
+                        message: "Create a group to collect related menu bar items.",
                         systemImage: "person.2",
-                        description: Text("Create a group to collect related menu bar items.")
-                    )
+                        minHeight: 170
+                    ) {
+                        Button("Add Group", systemImage: "plus") {
+                            editingGroup = newGroup()
+                        }
+                    }
                     .frame(maxWidth: .infinity, minHeight: 170)
                 } else {
                     LazyVStack(spacing: 6) {

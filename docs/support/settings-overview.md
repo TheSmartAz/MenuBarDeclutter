@@ -1,6 +1,6 @@
 # Settings Overview
 
-MenuBarDeclutter `v0.1.9` uses eight top-level Settings areas.
+MenuBarDeclutter `v0.1.10` uses eight top-level Settings areas.
 
 | Area | Use It For |
 | --- | --- |

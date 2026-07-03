@@ -24,6 +24,7 @@ struct DiagnosticsSettingsView: View {
     @State private var severityFilter: DiagnosticSeverityFilter = .all
     @State private var selectedCategory: DiagnosticCategory?
     @State private var selectedEventID: DiagnosticEvent.ID?
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
 
     private var filteredEvents: [DiagnosticEvent] {
         diagnosticsLogger.events.matching(
@@ -57,68 +58,111 @@ struct DiagnosticsSettingsView: View {
 
             Divider()
 
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 14) {
-                    if let exportError {
-                        ExportErrorBanner(message: exportError)
+            ScrollViewReader { proxy in
+                VStack(spacing: 0) {
+                    ClearGlassPageAnchorBar(anchors: Self.sectionAnchors) { anchor in
+                        scroll(to: anchor, using: proxy)
                     }
+                    .padding(.horizontal, 22)
+                    .padding(.vertical, 8)
 
-                    if let lastExportedURL {
-                        ExportSuccessBanner(url: lastExportedURL)
-                    }
+                    Divider()
 
-                    if let liveStatus {
-                        DiagnosticsSummaryStrip(liveStatus: liveStatus, settingsStore: settingsStore)
-                    }
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 14) {
+                            Color.clear
+                                .frame(height: 0)
+                                .id(ClearGlassPageAnchor.top.targetID)
+                                .accessibilityHidden(true)
 
-                    VStack(alignment: .leading, spacing: 12) {
-                        if let liveStatus {
-                            HealthStatusSection(
-                                liveStatus: liveStatus,
-                                onRefresh: onRunHealthCheck,
-                                onFixAutomatically: onFixHealthIssues,
-                                onResetBasicMode: onResetBasicMode,
-                                onDisableProMode: onDisableProMode,
-                                onExportHealthReport: exportHealthReport,
-                                onEnterSafeModeNextLaunch: onEnterSafeModeNextLaunch
+                            if let exportError {
+                                ExportErrorBanner(message: exportError)
+                            }
+
+                            if let lastExportedURL {
+                                ExportSuccessBanner(url: lastExportedURL)
+                            }
+
+                            if let liveStatus {
+                                DiagnosticsSummaryStrip(liveStatus: liveStatus, settingsStore: settingsStore)
+                                    .id("Summary")
+                            }
+
+                            VStack(alignment: .leading, spacing: 12) {
+                                if let liveStatus {
+                                    HealthStatusSection(
+                                        liveStatus: liveStatus,
+                                        onRefresh: onRunHealthCheck,
+                                        onFixAutomatically: onFixHealthIssues,
+                                        onResetBasicMode: onResetBasicMode,
+                                        onDisableProMode: onDisableProMode,
+                                        onExportHealthReport: exportHealthReport,
+                                        onEnterSafeModeNextLaunch: onEnterSafeModeNextLaunch
+                                    )
+                                    .id("Health")
+                                }
+
+                                ScreenStatusSection(screensProvider: exporter.screensProvider)
+                                    .id("Screens")
+                            }
+
+                            if showsDogfoodPanel {
+                                DiagnosticsPanel("Dogfood", systemImage: "checklist") {
+                                    DogfoodNotesView(
+                                        settingsStore: settingsStore,
+                                        dogfoodStore: dogfoodStore,
+                                        onExportBundle: exportDogfoodBundle
+                                    )
+                                }
+                                .id("Dogfood")
+                            }
+
+                            if let liveStatus {
+                                LiveStatusSection(
+                                    liveStatus: liveStatus,
+                                    settingsStore: settingsStore,
+                                    launchAtLoginService: launchAtLoginService,
+                                    scanCoordinator: scanCoordinator
+                                )
+                                .id("Live Status")
+                            }
+
+                            DiagnosticEventList(
+                                diagnosticsLogger: diagnosticsLogger,
+                                severityFilter: severityFilter,
+                                selectedCategory: selectedCategory,
+                                selectedEventID: $selectedEventID
                             )
+                            .id("Events")
                         }
-
-                        ScreenStatusSection(screensProvider: exporter.screensProvider)
+                        .padding(.horizontal, 22)
+                        .padding(.vertical, 16)
                     }
-
-                    if showsDogfoodPanel {
-                        DiagnosticsPanel("Dogfood", systemImage: "checklist") {
-                            DogfoodNotesView(
-                                settingsStore: settingsStore,
-                                dogfoodStore: dogfoodStore,
-                                onExportBundle: exportDogfoodBundle
-                            )
-                        }
-                    }
-
-                    if let liveStatus {
-                        LiveStatusSection(
-                            liveStatus: liveStatus,
-                            settingsStore: settingsStore,
-                            launchAtLoginService: launchAtLoginService,
-                            scanCoordinator: scanCoordinator
-                        )
-                    }
-
-                    DiagnosticEventList(
-                        diagnosticsLogger: diagnosticsLogger,
-                        severityFilter: severityFilter,
-                        selectedCategory: selectedCategory,
-                        selectedEventID: $selectedEventID
-                    )
                 }
-                .padding(.horizontal, 22)
-                .padding(.vertical, 16)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .windowBackgroundColor))
+    }
+
+    private static let sectionAnchors = [
+        ClearGlassPageAnchor("Summary", systemImage: "chart.bar.doc.horizontal"),
+        ClearGlassPageAnchor("Health", systemImage: "stethoscope"),
+        ClearGlassPageAnchor("Screens", systemImage: "display.2"),
+        ClearGlassPageAnchor("Dogfood", systemImage: "checklist"),
+        ClearGlassPageAnchor("Live Status", systemImage: "waveform.path.ecg"),
+        ClearGlassPageAnchor("Items", systemImage: "menubar.rectangle", targetID: "Scanned Items"),
+        ClearGlassPageAnchor("Events", systemImage: "list.bullet.rectangle")
+    ]
+
+    private func scroll(to anchor: ClearGlassPageAnchor, using proxy: ScrollViewProxy) {
+        if accessibilityReduceMotion {
+            proxy.scrollTo(anchor.targetID, anchor: .top)
+        } else {
+            withAnimation(.easeInOut(duration: 0.22)) {
+                proxy.scrollTo(anchor.targetID, anchor: .top)
+            }
+        }
     }
 
     private func exportCurrent() {
@@ -680,6 +724,10 @@ private struct DiagnosticEventList: View {
         )
     }
 
+    private var newestEventsFirst: [DiagnosticEvent] {
+        Array(filteredEvents.reversed())
+    }
+
     var body: some View {
         DiagnosticsPanel("Diagnostic Events", systemImage: "list.bullet.rectangle") {
             if diagnosticsLogger.events.isEmpty {
@@ -699,17 +747,24 @@ private struct DiagnosticEventList: View {
             } else {
                 VStack(spacing: 0) {
                     DiagnosticEventTableHeader()
+                        .accessibilityHidden(true)
 
-                    ForEach(Array(filteredEvents.reversed())) { event in
-                        Button {
-                            selectedEventID = event.id
-                        } label: {
-                            DiagnosticEventRow(
-                                event: event,
-                                isSelected: selectedEventID == event.id
-                            )
+                    LazyVStack(spacing: 0) {
+                        ForEach(newestEventsFirst) { event in
+                            Button {
+                                selectedEventID = event.id
+                            } label: {
+                                DiagnosticEventRow(
+                                    event: event,
+                                    isSelected: selectedEventID == event.id
+                                )
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel(event.accessibilitySummary)
+                            .accessibilityValue(selectedEventID == event.id ? "Selected" : "")
+                            .accessibilityHint("Selects this diagnostics event.")
                         }
-                        .buttonStyle(.plain)
                     }
                 }
                 .clipShape(.rect(cornerRadius: 7))
@@ -799,13 +854,31 @@ private struct HealthStatusSection: View {
                         .foregroundStyle(.secondary)
                 }
 
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 8) {
-                        healthButtons
+                VStack(alignment: .leading, spacing: 6) {
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 8) {
+                            fixButton
+                            resetButton
+                            disableProButton
+                        }
+
+                        VStack(alignment: .leading, spacing: 6) {
+                            fixButton
+                            resetButton
+                            disableProButton
+                        }
                     }
 
-                    VStack(alignment: .leading, spacing: 6) {
-                        healthButtons
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 8) {
+                            exportButton
+                            safeModeButton
+                        }
+
+                        VStack(alignment: .leading, spacing: 6) {
+                            exportButton
+                            safeModeButton
+                        }
                     }
                 }
                 .buttonStyle(.bordered)
@@ -1023,6 +1096,7 @@ private struct LiveStatusSection: View {
                 }
 
                 LiveMenuBarSnapshotSection(liveStatus: liveStatus)
+                    .id("Scanned Items")
             }
         )
     }
@@ -1419,7 +1493,7 @@ private struct DiagnosticEventTableHeader: View {
         .font(.caption)
         .foregroundStyle(.secondary)
         .padding(.horizontal, 10)
-        .padding(.vertical, 6)
+        .padding(.vertical, 5)
         .background(.quaternary)
     }
 }
@@ -1429,7 +1503,19 @@ private struct DiagnosticEventRow: View {
     var isSelected = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(spacing: 0) {
+            rowContent
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(rowBackground)
+
+            Divider()
+        }
+    }
+
+    private var rowContent: some View {
+        VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(event.timestamp, format: Date.FormatStyle(date: .omitted, time: .standard))
                     .font(.caption.monospacedDigit())
@@ -1448,8 +1534,9 @@ private struct DiagnosticEventRow: View {
                     .frame(width: 110, alignment: .leading)
 
                 Text(event.message)
+                    .font(.callout)
                     .foregroundStyle(.primary)
-                    .lineLimit(3)
+                    .lineLimit(2)
                     .truncationMode(.tail)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -1457,27 +1544,30 @@ private struct DiagnosticEventRow: View {
 
             if !event.metadata.isEmpty {
                 HStack(spacing: 10) {
-                    Text("")
+                    Color.clear
                         .frame(width: 96)
-                    Text("")
+                    Color.clear
                         .frame(width: 82)
-                    Text("")
+                    Color.clear
                         .frame(width: 110)
                     Text(event.metadata.description)
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                        .lineLimit(3)
+                        .lineLimit(2)
                         .truncationMode(.tail)
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(isSelected ? Color.accentColor.opacity(0.14) : Color(nsColor: .controlBackgroundColor).opacity(0.22))
-        Divider()
+    }
+
+    private var rowBackground: Color {
+        if isSelected {
+            Color.accentColor.opacity(0.14)
+        } else {
+            Color(nsColor: .controlBackgroundColor).opacity(0.22)
+        }
     }
 
     private var levelStyle: Color {

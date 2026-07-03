@@ -19,6 +19,7 @@ struct SecondBarRootView: View {
     @State private var searchQuery = ""
     @State private var selectedFilter: MenuBarItemCollectionFilter = .all
     @FocusState private var searchFocused: Bool
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
 
     /// Cached filtered+sorted item list. The previous implementation recomputed `items`
     /// on every body evaluation, and `hiddenItems`/`alwaysHiddenItems`/`itemIDs` each
@@ -37,30 +38,32 @@ struct SecondBarRootView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            header
             if secondBarIsAvailable {
+                header
                 filterBar
-            }
-            Divider()
+                Divider()
 
-            if let unavailableState {
+                if items.isEmpty {
+                    ContentUnavailableView(
+                        emptyStateTitle,
+                        systemImage: searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? selectedFilter.systemImage : "magnifyingglass",
+                        description: Text(emptyStateDescription)
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .accessibilityIdentifier("secondBar.empty")
+                } else {
+                    content
+                }
+
+                Divider()
+                footer
+            } else if let unavailableState {
                 SecondBarUnavailableView(state: unavailableState)
-            } else if items.isEmpty {
-                ContentUnavailableView(
-                    emptyStateTitle,
-                    systemImage: searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? selectedFilter.systemImage : "magnifyingglass",
-                    description: Text(emptyStateDescription)
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                content
             }
-
-            Divider()
-            footer
         }
-        .frame(width: 760, height: panelHeight)
+        .frame(width: panelWidth, height: panelHeight)
         .background(Color(nsColor: .windowBackgroundColor))
+        .accessibilityIdentifier("secondBar.panel")
         .onAppear {
             onRefresh()
             refreshItems()
@@ -105,9 +108,13 @@ struct SecondBarRootView: View {
         }
     }
 
+    private var panelWidth: CGFloat {
+        secondBarIsAvailable ? 760 : 660
+    }
+
     private var panelHeight: CGFloat {
         if !secondBarIsAvailable {
-            return 274
+            return 238
         }
         return settingsStore.secondBarShowLabels ? 274 : 228
     }
@@ -126,6 +133,8 @@ struct SecondBarRootView: View {
                     .textFieldStyle(.plain)
                     .focused($searchFocused)
                     .disabled(!secondBarIsAvailable)
+                    .accessibilityLabel("Search hidden items")
+                    .accessibilityIdentifier("secondBar.search")
 
                 if !searchQuery.isEmpty {
                     Button("Clear Search", systemImage: "xmark.circle.fill") {
@@ -136,6 +145,7 @@ struct SecondBarRootView: View {
                     .buttonStyle(.plain)
                     .foregroundStyle(.secondary)
                     .help("Clear Search")
+                    .accessibilityIdentifier("secondBar.clearSearch")
                 }
             }
             .padding(.horizontal, 10)
@@ -147,31 +157,34 @@ struct SecondBarRootView: View {
                     .stroke(searchFocused ? Color.accentColor.opacity(0.45) : Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
             }
 
-            HStack(spacing: 6) {
-                Image(systemName: "menubar.rectangle")
-                    .foregroundStyle(.secondary)
+            if secondBarIsAvailable {
+                HStack(spacing: 6) {
+                    Image(systemName: "menubar.rectangle")
+                        .foregroundStyle(.secondary)
 
-                Text(items.count, format: .number)
-                    .font(.caption.monospacedDigit())
-                    .bold()
-            }
-            .padding(.horizontal, 9)
-            .padding(.vertical, 6)
-            .background(Color(nsColor: .controlBackgroundColor), in: .capsule)
-            .overlay {
-                Capsule()
-                    .stroke(Color(nsColor: .separatorColor).opacity(0.45), lineWidth: 0.5)
-            }
+                    Text(items.count, format: .number)
+                        .font(.caption.monospacedDigit())
+                        .bold()
+                }
+                .padding(.horizontal, 9)
+                .padding(.vertical, 6)
+                .background(Color(nsColor: .controlBackgroundColor), in: .capsule)
+                .overlay {
+                    Capsule()
+                        .stroke(Color(nsColor: .separatorColor).opacity(0.45), lineWidth: 0.5)
+                }
+                .accessibilityLabel("\(items.count) hidden item\(items.count == 1 ? "" : "s") available")
+                .accessibilityIdentifier("secondBar.itemCount")
 
-            Button("Refresh", systemImage: "arrow.clockwise") {
-                onRefresh()
-            }
-            .labelStyle(.iconOnly)
-            .buttonStyle(.bordered)
-            .help("Refresh Menu Bar Items")
-            .disabled(!secondBarIsAvailable)
+                Button("Refresh", systemImage: "arrow.clockwise") {
+                    onRefresh()
+                }
+                .labelStyle(.iconOnly)
+                .buttonStyle(.bordered)
+                .help("Refresh Menu Bar Items")
 
-            ClearGlassBadge(style: .privacySafe)
+                ClearGlassBadge(style: .privacySafe)
+            }
         }
         .controlSize(.small)
         .padding(.horizontal, 18)
@@ -257,8 +270,12 @@ struct SecondBarRootView: View {
                 .scrollIndicators(.hidden)
                 .onChange(of: viewModel.selectedID) { _, newValue in
                     guard let newValue else { return }
-                    withAnimation(.snappy(duration: 0.15)) {
+                    if accessibilityReduceMotion {
                         proxy.scrollTo(newValue, anchor: .center)
+                    } else {
+                        withAnimation(.snappy(duration: 0.15)) {
+                            proxy.scrollTo(newValue, anchor: .center)
+                        }
                     }
                 }
             }
@@ -294,7 +311,7 @@ struct SecondBarRootView: View {
 
     private var footerMessage: String {
         if !secondBarIsAvailable {
-            return "Enable the requirements above to use the optional secondary bar."
+            return "Enable requirements above to use Second Bar."
         }
         if let scanWarning {
             return scanWarning
@@ -728,17 +745,18 @@ private struct SecondBarUnavailableView: View {
     let state: SecondBarUnavailableState
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: state.systemImage)
-                    .font(.system(size: 28, weight: .regular))
+                    .font(.system(size: 24, weight: .regular))
                     .foregroundStyle(.orange)
-                    .frame(width: 34)
+                    .frame(width: 30)
 
                 VStack(alignment: .leading, spacing: 6) {
                     Text(state.title)
                         .font(.title3)
                         .bold()
+                        .accessibilityIdentifier("secondBar.unavailable")
 
                     Text(state.message)
                         .foregroundStyle(.secondary)
@@ -746,13 +764,13 @@ private struct SecondBarUnavailableView: View {
                 }
             }
 
-            HStack(spacing: 10) {
-                Button(state.primaryButtonTitle, action: state.primaryAction)
-                    .buttonStyle(.borderedProminent)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) {
+                    unavailableButtons
+                }
 
-                if let secondaryButtonTitle = state.secondaryButtonTitle,
-                   let secondaryAction = state.secondaryAction {
-                    Button(secondaryButtonTitle, action: secondaryAction)
+                VStack(alignment: .leading, spacing: 8) {
+                    unavailableButtons
                 }
             }
 
@@ -762,14 +780,27 @@ private struct SecondBarUnavailableView: View {
                 style: .success
             )
         }
-        .padding(24)
-        .frame(maxWidth: 620, alignment: .leading)
+        .padding(20)
+        .frame(maxWidth: 520, alignment: .leading)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("secondBar.unavailable")
         .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
         .overlay {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    @ViewBuilder
+    private var unavailableButtons: some View {
+        Button(state.primaryButtonTitle, action: state.primaryAction)
+            .buttonStyle(.borderedProminent)
+
+        if let secondaryButtonTitle = state.secondaryButtonTitle,
+           let secondaryAction = state.secondaryAction {
+            Button(secondaryButtonTitle, action: secondaryAction)
+        }
     }
 }
 

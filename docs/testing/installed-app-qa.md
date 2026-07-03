@@ -1,5 +1,7 @@
 # Installed-App QA
 
+Installed-app QA is required for release candidates and installed-app behavior claims. It is not required for ordinary patch-lane changes; see `docs/testing/qa-process.md`.
+
 Allowed results: PASS, FAIL, BLOCKED, NOT TESTED.
 
 ## Install

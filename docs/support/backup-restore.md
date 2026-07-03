@@ -4,7 +4,7 @@ MenuBarDeclutter can export a local JSON settings package and can restore from M
 
 ## What Export Includes
 
-The v0.1.9 package schema records:
+The v0.1.10 package schema records:
 
 - app name
 - app version
@@ -63,7 +63,7 @@ Launch at Login system state, permission grants, dogfood state, active unlock se
 
 ## Not Supported as Stable
 
-These remain Preview or deferred in v0.1.9:
+These remain Preview or deferred in v0.1.10:
 
 - selective UI import beyond the supported safe sections
 - profile packs

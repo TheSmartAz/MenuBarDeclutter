@@ -42,11 +42,24 @@ struct MigrationAssistantRootView: View {
         )
     }
 
+    private var pageSectionAnchors: [ClearGlassPageAnchor] {
+        var anchors = [
+            ClearGlassPageAnchor("Transfer Assistant", systemImage: "arrow.left.arrow.right")
+        ]
+
+        if statusMessage != nil {
+            anchors.append(ClearGlassPageAnchor("Status", systemImage: "info.circle"))
+        }
+
+        return anchors
+    }
+
     var body: some View {
         ClearGlassSettingsPage(
             "Import / Export",
             subtitle: "Move local MenuBarDeclutter configuration explicitly and safely.",
-            badges: [.preview, .privacySafe]
+            badges: [.preview, .privacySafe],
+            sectionAnchors: pageSectionAnchors
         ) {
             MigrationOverviewStrip(
                 hasPendingImport: pendingPackage != nil,

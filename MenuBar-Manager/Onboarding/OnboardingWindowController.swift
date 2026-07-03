@@ -85,8 +85,12 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
         return true
     }
 
-    func show() {
+    func show(stepID: String? = nil) {
         navigationModel.reset()
+        if let stepID,
+           let stepIndex = OnboardingStep.allSteps.firstIndex(where: { $0.id == stepID }) {
+            navigationModel.currentIndex = stepIndex
+        }
         if window?.isVisible != true {
             window?.center()
         }

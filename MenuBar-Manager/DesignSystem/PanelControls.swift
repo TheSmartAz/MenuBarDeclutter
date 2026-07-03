@@ -99,6 +99,8 @@ struct SearchField: View {
 
     let placeholder: String
     let width: CGFloat?
+    let autoFocus: Bool
+    let accessibilityIdentifier: String
     let onSubmit: () -> Void
 
     @FocusState private var isFocused: Bool
@@ -107,11 +109,15 @@ struct SearchField: View {
         _ placeholder: String,
         text: Binding<String>,
         width: CGFloat? = nil,
+        autoFocus: Bool = false,
+        accessibilityIdentifier: String = "",
         onSubmit: @escaping () -> Void = {}
     ) {
         self.placeholder = placeholder
         _text = text
         self.width = width
+        self.autoFocus = autoFocus
+        self.accessibilityIdentifier = accessibilityIdentifier
         self.onSubmit = onSubmit
     }
 
@@ -124,6 +130,8 @@ struct SearchField: View {
                 .textFieldStyle(.plain)
                 .focused($isFocused)
                 .onSubmit(onSubmit)
+                .accessibilityLabel(placeholder)
+                .accessibilityIdentifier(accessibilityIdentifier)
 
             Button("Clear Search", systemImage: "xmark.circle.fill") {
                 text = ""
@@ -144,6 +152,11 @@ struct SearchField: View {
         .overlay {
             RoundedRectangle(cornerRadius: DesignTokens.Radius.control)
                 .strokeBorder(isFocused ? Color.accentColor.opacity(0.45) : Color.secondary.opacity(0.16), lineWidth: DesignTokens.Stroke.hairline)
+        }
+        .task {
+            if autoFocus {
+                isFocused = true
+            }
         }
         .accessibilityElement(children: .contain)
     }

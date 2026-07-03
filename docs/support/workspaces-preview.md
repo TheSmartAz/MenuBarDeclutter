@@ -1,6 +1,6 @@
 # Workspaces Preview Support
 
-Workspaces is now a top-level Settings section in v0.1.9. This compatibility page is retained for older links.
+Workspaces is now a top-level Settings section in v0.1.10. This compatibility page is retained for older links.
 
 Use `docs/support/workspaces.md` for current Workspaces support.
 

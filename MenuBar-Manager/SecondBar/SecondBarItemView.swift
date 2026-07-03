@@ -58,6 +58,7 @@ struct SecondBarItemView: View {
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(displayTitle), \(snapshot.zone.displayName)")
+        .accessibilityValue(isSelected ? "Selected" : "Not selected")
     }
 
     private var itemBackground: Color {

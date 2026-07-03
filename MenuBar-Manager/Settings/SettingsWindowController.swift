@@ -131,8 +131,11 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         fatalError("SettingsWindowController does not support storyboards.")
     }
 
-    func show(section: SettingsSection = .general) {
+    func show(section: SettingsSection = .general, searchText: String? = nil) {
         navigationModel.selectedSection = section
+        if let searchText {
+            navigationModel.searchText = searchText
+        }
 
         if window?.isVisible != true {
             window?.center()

@@ -92,6 +92,42 @@ final class PrivateAccessCoordinator {
         }
     }
 
+    /// Authenticate before enabling Private Access so the lock cannot be
+    /// armed without a successful device-owner check.
+    func enablePrivateAccessAfterAuthentication(reason: String) async -> AuthenticationResult {
+        guard !settingsStore.privateAccessEnabled else { return .success }
+
+        let result = await authService.authenticate(reason: reason)
+        settingsStore.privateAccessLastAuthStatus = result.statusString
+
+        switch result {
+        case .success:
+            settingsStore.privateAccessEnabled = true
+            unlockSession.unlock()
+            diagnosticsLogger.log("Private Access: enabled after authentication.", category: .privacy)
+        case .failure:
+            diagnosticsLogger.log(
+                "Private Access: enable authentication failed.",
+                level: .warning,
+                category: .privacy
+            )
+        case .cancel:
+            diagnosticsLogger.log(
+                "Private Access: enable authentication cancelled.",
+                level: .info,
+                category: .privacy
+            )
+        case .unavailable:
+            diagnosticsLogger.log(
+                "Private Access: enable authentication unavailable.",
+                level: .warning,
+                category: .privacy
+            )
+        }
+
+        return result
+    }
+
     /// Clear the unlock session.
     func clearUnlock() {
         unlockSession.clear()

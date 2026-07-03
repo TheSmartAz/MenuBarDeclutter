@@ -37,7 +37,15 @@ struct RecoverySettingsView: View {
         ClearGlassSettingsPage(
             "Recovery",
             subtitle: "Repair layout, export diagnostics, and keep Basic Mode reachable when optional features fail.",
-            badges: [.stable, .diagnostics, .privacySafe]
+            badges: [.stable, .diagnostics, .privacySafe],
+            sectionAnchors: [
+                ClearGlassPageAnchor("Lost Icons", systemImage: "lifepreserver", targetID: "I can't find my icons"),
+                ClearGlassPageAnchor("Health", systemImage: "stethoscope"),
+                ClearGlassPageAnchor("Workspaces", systemImage: "rectangle.3.group", targetID: "Workspaces Recovery"),
+                ClearGlassPageAnchor("Reset", systemImage: "arrow.counterclockwise"),
+                ClearGlassPageAnchor("Backups", systemImage: "doc.badge.gearshape", targetID: "Diagnostics and Backups"),
+                ClearGlassPageAnchor("Safe Mode", systemImage: "checkmark.shield")
+            ]
         ) {
             RecoveryOverviewStrip(
                 healthStatus: liveStatus?.healthReport?.status.displayName ?? "Unknown",
