@@ -30,6 +30,8 @@ struct SettingsExportImportTests {
         #expect(package.redactionMode == .privacySafe)
         #expect(Set(package.includedSections) == Set(SettingsExportSection.defaultIncludedSections))
         #expect(!package.settings.isEmpty)
+        #expect(package.settings[SettingsStore.Key.launchAtLoginEnabled.rawValue] == nil)
+        #expect(package.omittedSettings.contains(SettingsStore.Key.launchAtLoginEnabled.rawValue))
         #expect(package.omittedSettings.contains(SettingsStore.Key.showPrimarySeparator.rawValue))
         #expect(package.omittedSettings.contains(SettingsStore.Key.privateAccessLastAuthStatus.rawValue))
 
@@ -48,6 +50,7 @@ struct SettingsExportImportTests {
         store.searchHotkeyKeyCode = 3
         store.searchHotkeyModifiersRaw = 0x0900
         store.lastAccessibilityPermissionStatus = AccessibilityPermissionStatus.granted.rawValue
+        store.launchAtLoginEnabled = true
         store.privateAccessLastAuthStatus = "unlocked"
         store.dogfoodRunID = "private-run-id"
 
@@ -61,6 +64,7 @@ struct SettingsExportImportTests {
         #expect(package.settings[SettingsStore.Key.autoRehideDelaySeconds.rawValue] == "42.0")
         #expect(package.settings[SettingsStore.Key.searchHotkeyKeyCode.rawValue] == "3")
         #expect(package.settings[SettingsStore.Key.searchHotkeyModifiersRaw.rawValue] == "2304")
+        #expect(package.settings[SettingsStore.Key.launchAtLoginEnabled.rawValue] == nil)
         #expect(package.settings[SettingsStore.Key.showPrimarySeparator.rawValue] == nil)
         #expect(package.settings[SettingsStore.Key.lastAccessibilityPermissionStatus.rawValue] == nil)
         #expect(package.settings[SettingsStore.Key.privateAccessLastAuthStatus.rawValue] == nil)
@@ -138,6 +142,64 @@ struct SettingsExportImportTests {
 
         #expect(package.profiles == [profile])
         #expect(decoded.profiles == [profile])
+    }
+
+    @Test func legacyMetadataOnlyProfilesDecodeAsEmptyPayload() throws {
+        let json = """
+        {
+          "packageVersion": 1,
+          "appVersion": "0.1.0",
+          "createdAt": "2026-06-29T00:00:00Z",
+          "settings": {},
+          "profiles": [
+            {
+              "id": "00000000-0000-0000-0000-000000000301",
+              "name": "Legacy Summary",
+              "isReadOnly": false,
+              "createdAt": "2026-06-29T00:00:00Z",
+              "updatedAt": "2026-06-29T00:00:00Z"
+            }
+          ]
+        }
+        """
+        let importService = SettingsImportService(diagnosticsLogger: DiagnosticsLogger())
+
+        let package = try importService.decode(data: Data(json.utf8))
+
+        #expect(package.profiles.isEmpty)
+    }
+
+    @Test func malformedCurrentProfilePayloadThrows() throws {
+        let json = """
+        {
+          "packageVersion": 1,
+          "appVersion": "0.1.0",
+          "createdAt": "2026-06-29T00:00:00Z",
+          "settings": {},
+          "profiles": [
+            {
+              "schemaVersion": 2,
+              "id": "00000000-0000-0000-0000-000000000302",
+              "name": "Broken Current Profile",
+              "createdAt": "2026-06-29T00:00:00Z",
+              "updatedAt": "2026-06-29T00:00:00Z",
+              "preferredVisibilityState": "expanded",
+              "autoRehideEnabled": true,
+              "hoverRevealEnabled": false,
+              "targetZonesByBundleID": {},
+              "notes": ""
+            }
+          ]
+        }
+        """
+        let importService = SettingsImportService(diagnosticsLogger: DiagnosticsLogger())
+
+        do {
+            _ = try importService.decode(data: Data(json.utf8))
+            Issue.record("Expected malformed current profile payload to fail decoding.")
+        } catch {
+            #expect(error is DecodingError)
+        }
     }
 
     @Test func exportAndImportPreservesWorkspaceSnapshot() throws {
@@ -796,8 +858,32 @@ struct ProfilePackTests {
         let savedURL = try store.save(pack)
 
         let loaded = try store.load(from: savedURL)
+        #expect(loaded.packVersion == 1)
         #expect(loaded.name == "Work Setup")
         #expect(loaded.description == "My work configuration")
+    }
+
+    @Test func legacySparsePackDecodesWithEmptyObjectCollections() throws {
+        let dir = makeTempDir()
+        let store = ProfilePackStore(directory: dir)
+        let createdAt = "2026-07-03T12:00:00Z"
+        let url = dir.appendingPathComponent("legacy.json")
+        try Data("""
+        {
+          "name": "Legacy Pack",
+          "description": "Old export",
+          "createdAt": "\(createdAt)"
+        }
+        """.utf8).write(to: url)
+
+        let loaded = try store.load(from: url)
+
+        #expect(loaded.packVersion == 1)
+        #expect(loaded.name == "Legacy Pack")
+        #expect(loaded.profiles.isEmpty)
+        #expect(loaded.groups.isEmpty)
+        #expect(loaded.hotkeyBindings.isEmpty)
+        #expect(loaded.spacerItems.isEmpty)
     }
 
     @Test func listPacks() throws {

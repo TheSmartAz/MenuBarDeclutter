@@ -294,16 +294,23 @@ struct DiagnosticsExportTests {
             level: .info,
             category: .trigger
         )
+        logger.log(
+            "Disabled unsupported trigger rules: Imported Focus, Imported Wi-Fi.",
+            level: .warning,
+            category: .trigger
+        )
 
         let snapshot = exporter.makeSnapshot(settingsStore: store, logger: logger)
         let data = try exporter.serialize(snapshot, format: .json)
         let object = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
         let logs = try #require(object["logs"] as? [[String: Any]])
         let profileLog = try #require(logs.first)
-        let triggerLog = try #require(logs.last)
+        let triggerLog = try #require(logs.dropFirst().first)
+        let unsupportedTriggerLog = try #require(logs.last)
         let profileMessage = try #require(profileLog["message"] as? String)
         let profileMetadata = try #require(profileLog["metadata"] as? [String: String])
         let triggerMessage = try #require(triggerLog["message"] as? String)
+        let unsupportedTriggerMessage = try #require(unsupportedTriggerLog["message"] as? String)
 
         #expect(profileMessage.contains("Applied profile [redacted-profile]:"))
         #expect(profileMessage.contains("[redacted-path]"))
@@ -315,13 +322,17 @@ struct DiagnosticsExportTests {
         #expect(profileMetadata["owner"] == "[redacted-email]")
         #expect(profileMetadata["url"] == "menubardeclutter://apply-profile?[redacted-query]")
         #expect(triggerMessage == "Smart trigger fired: [redacted-trigger] -> [redacted-profile].")
+        #expect(unsupportedTriggerMessage == "Disabled unsupported trigger rules: [redacted-trigger-list].")
 
         let text = String(data: try exporter.serialize(snapshot, format: .txt), encoding: .utf8) ?? ""
         #expect(text.contains("Applied profile [redacted-profile]:"))
         #expect(text.contains("Smart trigger fired: [redacted-trigger] -> [redacted-profile]."))
+        #expect(text.contains("Disabled unsupported trigger rules: [redacted-trigger-list]."))
         #expect(!text.contains("Weekend Focus"))
         #expect(!text.contains("Work Hours"))
         #expect(!text.contains("Deep Work"))
+        #expect(!text.contains("Imported Focus"))
+        #expect(!text.contains("Imported Wi-Fi"))
         #expect(!text.contains("/Users/alex"))
         #expect(!text.contains("alex@example.com"))
     }

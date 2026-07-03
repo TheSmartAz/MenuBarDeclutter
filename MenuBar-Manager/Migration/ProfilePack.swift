@@ -2,6 +2,9 @@ import Foundation
 
 /// A reusable profile pack that can be exported and imported independently
 /// of global settings.
+///
+/// This is a legacy compatibility format kept for older local exports. New
+/// whole-app backup/restore flows should use `SettingsExportPackage`.
 nonisolated struct ProfilePack: Codable, Equatable, Sendable {
     let packVersion: Int
     let name: String
@@ -31,9 +34,34 @@ nonisolated struct ProfilePack: Codable, Equatable, Sendable {
         self.hotkeyBindings = hotkeyBindings
         self.spacerItems = spacerItems
     }
+
+    private enum CodingKeys: String, CodingKey {
+        case packVersion
+        case name
+        case description
+        case createdAt
+        case profiles
+        case groups
+        case hotkeyBindings
+        case spacerItems
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            packVersion: try container.decodeIfPresent(Int.self, forKey: .packVersion) ?? 1,
+            name: try container.decode(String.self, forKey: .name),
+            description: try container.decodeIfPresent(String.self, forKey: .description),
+            createdAt: try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date(),
+            profiles: try container.decodeIfPresent([ProfileExportEntry].self, forKey: .profiles) ?? [],
+            groups: try container.decodeIfPresent([IconGroup].self, forKey: .groups) ?? [],
+            hotkeyBindings: try container.decodeIfPresent([HotkeyBinding].self, forKey: .hotkeyBindings) ?? [],
+            spacerItems: try container.decodeIfPresent([SpacerItemModel].self, forKey: .spacerItems) ?? []
+        )
+    }
 }
 
-/// Store for profile packs.
+/// Store for legacy profile packs.
 @MainActor
 final class ProfilePackStore {
     private let directory: URL
@@ -54,10 +82,7 @@ final class ProfilePackStore {
     func save(_ pack: ProfilePack) throws -> URL {
         try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
         let url = directory.appendingPathComponent("\(pack.name.replacingOccurrences(of: " ", with: "-")).json")
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        encoder.dateEncodingStrategy = .iso8601
-        let data = try encoder.encode(pack)
+        let data = try JSONCoding.encodePrettySorted(pack)
         try data.write(to: url, options: .atomic)
         return url
     }
@@ -65,9 +90,7 @@ final class ProfilePackStore {
     /// Load a profile pack from a file.
     func load(from url: URL) throws -> ProfilePack {
         let data = try Data(contentsOf: url)
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return try decoder.decode(ProfilePack.self, from: data)
+        return try JSONCoding.decode(ProfilePack.self, from: data)
     }
 
     /// List all saved profile packs.

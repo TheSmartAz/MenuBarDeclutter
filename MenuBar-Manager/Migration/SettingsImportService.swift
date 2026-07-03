@@ -373,6 +373,10 @@ final class SettingsImportService {
         to settingsStore: SettingsStore,
         importExperimentalSettings: Bool
     ) -> SettingApplyOutcome {
+        if SettingsStore.importSkippedKeys.contains(key) {
+            return .skipped
+        }
+
         switch key {
         case .lastKnownAppVersion,
              .settingsMigrationVersion,

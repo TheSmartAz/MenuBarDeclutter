@@ -520,6 +520,11 @@ struct DiagnosticsExporter {
         )
         output = replacingMatches(
             in: output,
+            pattern: "Disabled unsupported trigger rules: .+?\\.",
+            with: "Disabled unsupported trigger rules: [redacted-trigger-list]."
+        )
+        output = replacingMatches(
+            in: output,
             pattern: "\\b([a-z][a-z0-9+.-]*://[^\\s?]+)\\?[^\\s]+",
             options: [.caseInsensitive],
             with: "$1?[redacted-query]"
@@ -768,12 +773,12 @@ struct DiagnosticsExporter {
             .optionalString($0.lastAccessibilityPermissionStatus, emptyText: "(none)")
         },
         SettingsField(key: "menuBarScanIntervalSeconds", label: "Menu Bar Scan Interval (s)") { .double($0.menuBarScanIntervalSeconds) },
-        SettingsField(key: "searchEnabled", label: "Find Icon Enabled") { .bool($0.searchEnabled) },
+        SettingsField(key: "searchEnabled", label: "Find Icon Status Menu Visible") { .bool($0.searchEnabled) },
         SettingsField(key: "searchHotkeyEnabled", label: "Find Icon Hotkey Enabled") { .bool($0.searchHotkeyEnabled) },
         SettingsField(key: "searchHotkeyDisplayName", label: "Find Icon Hotkey") { .string($0.searchHotkeyDisplayName) },
         SettingsField(key: "searchRevealOnSelection", label: "Find Icon Reveal on Selection") { .bool($0.searchRevealOnSelection) },
         SettingsField(key: "searchHighlightOnSelection", label: "Find Icon Highlight on Selection") { .bool($0.searchHighlightOnSelection) },
-        SettingsField(key: "secondBarEnabled", label: "Second Bar Enabled") { .bool($0.secondBarEnabled) },
+        SettingsField(key: "secondBarEnabled", label: "Second Bar Status Menu Visible") { .bool($0.secondBarEnabled) },
         SettingsField(key: "secondBarShowHiddenItems", label: "Second Bar Show Hidden Items") { .bool($0.secondBarShowHiddenItems) },
         SettingsField(key: "secondBarShowAlwaysHiddenItems", label: "Second Bar Show Always-Hidden Items") { .bool($0.secondBarShowAlwaysHiddenItems) },
         SettingsField(key: "secondBarAutoCloseAfterSelection", label: "Second Bar Auto-close") { .bool($0.secondBarAutoCloseAfterSelection) },

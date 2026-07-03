@@ -435,9 +435,7 @@ struct DynamicHotkeysSettingsView: View {
     }
 
     private func disableAllDynamicHotkeys() {
-        for binding in bindings {
-            bindingStore.update(id: binding.id) { $0.isEnabled = false }
-        }
+        bindingStore.update(ids: bindings.map(\.id)) { $0.isEnabled = false }
         notifyChanged()
     }
 

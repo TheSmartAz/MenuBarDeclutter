@@ -76,6 +76,44 @@ struct HotkeyBindingStoreTests {
         store.reset()
         #expect(store.count == 0)
     }
+
+    @Test func batchUpdateSavesOnceForMultipleBindings() {
+        let dir = makeTempDir()
+        let backups = dir.appendingPathComponent("backups", isDirectory: true)
+        let saveCounter = SaveCounter()
+        let store = HotkeyBindingStore(
+            directory: dir,
+            backupsDirectory: backups,
+            now: { Date(timeIntervalSince1970: 10) },
+            didSave: { saveCounter.increment() }
+        )
+        let first = HotkeyBinding(action: .pauseAutomation, keyCode: 1, modifiersRaw: 0)
+        let second = HotkeyBinding(action: .resumeAutomation, keyCode: 2, modifiersRaw: 0)
+        store.add(binding: first)
+        store.add(binding: second)
+        saveCounter.reset()
+
+        let updatedCount = store.update(ids: store.bindings.map(\.id)) { binding in
+            binding.isEnabled = false
+        }
+
+        #expect(updatedCount == 2)
+        #expect(store.bindings.allSatisfy { !$0.isEnabled })
+        #expect(store.bindings.allSatisfy { $0.updatedAt == Date(timeIntervalSince1970: 10) })
+        #expect(saveCounter.count == 1)
+    }
+
+    private final class SaveCounter {
+        private(set) var count = 0
+
+        func increment() {
+            count += 1
+        }
+
+        func reset() {
+            count = 0
+        }
+    }
 }
 
 @Suite("GroupHotkeyAssignmentPlanner")
