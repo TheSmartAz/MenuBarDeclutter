@@ -1,13 +1,13 @@
 //
-//  MenuBar_ManagerUITests.swift
-//  MenuBar-ManagerUITests
+//  MenuBarDeclutterUITests.swift
+//  MenuBarDeclutterUITests
 //
 //  Created by Yongjun Zhang on 2026-06-28.
 //
 
 import XCTest
 
-final class MenuBar_ManagerUITests: XCTestCase {
+final class MenuBarDeclutterUITests: XCTestCase {
     private static let targetBundleIdentifier = "Yongjun-Zhang.MenuBarDeclutter"
 
     private struct VisualSmokePage {
@@ -85,8 +85,70 @@ final class MenuBar_ManagerUITests: XCTestCase {
     func testSearchUnavailableStateIsVisibleWithoutProMode() throws {
         let app = launchApp(opening: "--ui-testing-show-search")
 
-        assertStaticText("Find Icon Disabled", in: app)
-        assertButton("Enable Find Icon", in: app)
+        assertStaticText("Pro Mode Required", in: app)
+        assertButton("Enable Pro Mode", in: app)
+        XCTAssertFalse(app.staticTexts["Find Icon Disabled"].waitForExistence(timeout: 1))
+        XCTAssertFalse(app.buttons["Enable Find Icon"].exists)
+    }
+
+    @MainActor
+    func testDefaultGatedFeaturePanelsSkipLegacyEnableState() throws {
+        let searchApp = launchApp(opening: "--ui-testing-show-search")
+        assertStaticText("Pro Mode Required", in: searchApp)
+        XCTAssertFalse(searchApp.staticTexts["Find Icon Disabled"].waitForExistence(timeout: 1))
+        XCTAssertFalse(searchApp.buttons["Enable Find Icon"].exists)
+        terminateApplication(searchApp)
+
+        let secondBarApp = launchApp(opening: "--ui-testing-show-second-bar")
+        assertElement("secondBar.unavailable", in: secondBarApp)
+        assertStaticText("Pro Mode Required", in: secondBarApp)
+        XCTAssertFalse(secondBarApp.staticTexts["Second Bar Disabled"].waitForExistence(timeout: 1))
+        XCTAssertFalse(secondBarApp.buttons["Enable Second Bar"].exists)
+    }
+
+    @MainActor
+    func testGrantedProDiscoveryShowsDeeperFeatureContent() throws {
+        let grantedArguments = [
+            "--ui-testing-pro-discovery-enabled",
+            "--ui-testing-accessibility-granted",
+            "--ui-testing-seed-menu-bar-items"
+        ]
+
+        let searchApp = launchApp(opening: ["--ui-testing-show-search"] + grantedArguments)
+        assertElement("search.panel", in: searchApp)
+        XCTAssertFalse(searchApp.staticTexts["Pro Mode Required"].waitForExistence(timeout: 1))
+        XCTAssertFalse(searchApp.staticTexts["Accessibility Discovery Off"].exists)
+        XCTAssertFalse(searchApp.staticTexts["Accessibility Permission Needed"].exists)
+        assertStaticText("Results", in: searchApp)
+        terminateApplication(searchApp)
+
+        let secondBarApp = launchApp(opening: ["--ui-testing-show-second-bar"] + grantedArguments)
+        assertElement("secondBar.panel", in: secondBarApp)
+        XCTAssertFalse(secondBarApp.descendants(matching: .any)["secondBar.unavailable"].waitForExistence(timeout: 1))
+        assertStaticText("Hidden", in: secondBarApp, timeout: 8)
+    }
+
+    @MainActor
+    func testStatusMenuShortcutVisibilityDoesNotBlockDirectPanels() throws {
+        let hiddenShortcutArguments = [
+            "--ui-testing-hide-status-shortcuts",
+            "--ui-testing-pro-discovery-enabled",
+            "--ui-testing-accessibility-granted",
+            "--ui-testing-seed-menu-bar-items"
+        ]
+
+        let searchApp = launchApp(opening: ["--ui-testing-show-search"] + hiddenShortcutArguments)
+        assertElement("search.panel", in: searchApp)
+        XCTAssertFalse(searchApp.staticTexts["Pro Mode Required"].waitForExistence(timeout: 1))
+        XCTAssertFalse(searchApp.staticTexts["Accessibility Discovery Off"].exists)
+        XCTAssertFalse(searchApp.staticTexts["Accessibility Permission Needed"].exists)
+        assertStaticText("Results", in: searchApp)
+        terminateApplication(searchApp)
+
+        let secondBarApp = launchApp(opening: ["--ui-testing-show-second-bar"] + hiddenShortcutArguments)
+        assertElement("secondBar.panel", in: secondBarApp)
+        XCTAssertFalse(secondBarApp.descendants(matching: .any)["secondBar.unavailable"].waitForExistence(timeout: 1))
+        assertStaticText("Hidden", in: secondBarApp, timeout: 8)
     }
 
     @MainActor
@@ -298,12 +360,12 @@ final class MenuBar_ManagerUITests: XCTestCase {
     func testSearchPanelEscapeDismisses() throws {
         let app = launchApp(opening: "--ui-testing-show-search")
 
-        assertStaticText("Find Icon Disabled", in: app)
+        assertStaticText("Pro Mode Required", in: app)
         RunLoop.current.run(until: Date().addingTimeInterval(0.25))
         app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
 
         XCTAssertFalse(
-            app.staticTexts["Find Icon Disabled"].waitForExistence(timeout: 3),
+            app.staticTexts["Pro Mode Required"].waitForExistence(timeout: 3),
             "Expected Escape to dismiss the floating Find Icon panel."
         )
     }
@@ -311,10 +373,10 @@ final class MenuBar_ManagerUITests: XCTestCase {
     @MainActor
     func testFloatingPanelsVisualSmoke() throws {
         let searchApp = launchApp(opening: "--ui-testing-show-search")
-        assertStaticText("Find Icon Disabled", in: searchApp, timeout: 10)
+        assertStaticText("Pro Mode Required", in: searchApp, timeout: 10)
 
         let searchAttachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-        searchAttachment.name = "Floating Panel - Find Icon Disabled"
+        searchAttachment.name = "Floating Panel - Find Icon Pro Mode Required"
         searchAttachment.lifetime = .keepAlways
         add(searchAttachment)
         terminateApplication(searchApp)

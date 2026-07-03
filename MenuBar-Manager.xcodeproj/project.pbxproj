@@ -46,9 +46,9 @@
 			path = "MenuBar-ManagerTests";
 			sourceTree = "<group>";
 		};
-		D50216F92FF1001500C9EAC2 /* MenuBar-ManagerUITests */ = {
+		D50216F92FF1001500C9EAC2 /* MenuBarDeclutterUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "MenuBar-ManagerUITests";
+			path = MenuBarDeclutterUITests;
 			sourceTree = "<group>";
 		};
 		D5F920032FF9200000C9EAC2 /* Tools/MenuBarFixtureApp */ = {
@@ -96,7 +96,7 @@
 				D5A000042FF9A00000C9EAC2 /* Config */,
 				D50216DF2FF1001400C9EAC2 /* MenuBar-Manager */,
 				D50216EF2FF1001500C9EAC2 /* MenuBar-ManagerTests */,
-				D50216F92FF1001500C9EAC2 /* MenuBar-ManagerUITests */,
+				D50216F92FF1001500C9EAC2 /* MenuBarDeclutterUITests */,
 				D5F920032FF9200000C9EAC2 /* Tools/MenuBarFixtureApp */,
 				D50216DE2FF1001400C9EAC2 /* Products */,
 			);
@@ -187,7 +187,7 @@
 				D50216F82FF1001500C9EAC2 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				D50216F92FF1001500C9EAC2 /* MenuBar-ManagerUITests */,
+				D50216F92FF1001500C9EAC2 /* MenuBarDeclutterUITests */,
 			);
 			name = MenuBarDeclutterUITests;
 			packageProductDependencies = (
@@ -467,7 +467,8 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				COMBINE_HIDPI_IMAGES = YES;
-					ENABLE_APP_SANDBOX = NO;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_DEBUG_DYLIB = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readwrite;
@@ -492,7 +493,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				COMBINE_HIDPI_IMAGES = YES;
-					ENABLE_APP_SANDBOX = NO;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readwrite;

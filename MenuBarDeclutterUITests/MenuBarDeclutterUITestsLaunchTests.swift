@@ -1,13 +1,13 @@
 //
-//  MenuBar_ManagerUITestsLaunchTests.swift
-//  MenuBar-ManagerUITests
+//  MenuBarDeclutterUITestsLaunchTests.swift
+//  MenuBarDeclutterUITests
 //
 //  Created by Yongjun Zhang on 2026-06-28.
 //
 
 import XCTest
 
-final class MenuBar_ManagerUITestsLaunchTests: XCTestCase {
+final class MenuBarDeclutterUITestsLaunchTests: XCTestCase {
     private static let targetBundleIdentifier = "Yongjun-Zhang.MenuBarDeclutter"
 
     override class var runsForEachTargetApplicationUIConfiguration: Bool {
