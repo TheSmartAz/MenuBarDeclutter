@@ -53,6 +53,14 @@ struct ArrangeSettingsView: View {
             "Placement Test",
             subtitle: "Use these Basic Mode actions after Command-dragging items into place."
         ) {
+            let readiness = basicModeReadiness
+
+            ClearGlassInlineMessage(
+                text: readiness.message,
+                systemImage: readiness.systemImage,
+                style: readiness.clearGlassStyle
+            )
+
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 10) {
                     Button("Expand", systemImage: "eye") {
@@ -87,11 +95,13 @@ struct ArrangeSettingsView: View {
             .controlSize(.regular)
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            ClearGlassInlineMessage(
-                text: "These actions use MenuBarDeclutter's own status items and public macOS behavior. They do not request Pro permissions.",
-                systemImage: "checkmark.shield",
-                style: .success
-            )
+            if readiness.status != .ready {
+                ClearGlassInlineMessage(
+                    text: "These actions still use only MenuBarDeclutter's own status items and public macOS behavior. They do not request Pro permissions.",
+                    systemImage: "checkmark.shield",
+                    style: .success
+                )
+            }
         }
     }
 
@@ -204,6 +214,16 @@ struct ArrangeSettingsView: View {
         placementPreferenceStore?.preferences ?? localPlacementPreferences
     }
 
+    private var basicModeReadiness: BasicModeReadiness {
+        BasicModeReadiness.evaluate(
+            visibilityState: liveStatus?.visibilityState,
+            primarySeparatorLength: liveStatus?.primarySeparatorLength,
+            alwaysHiddenEnabled: settingsStore.alwaysHiddenEnabled,
+            alwaysHiddenSeparatorInstalled: liveStatus?.alwaysHiddenSeparatorInstalled == true,
+            alwaysHiddenSeparatorLength: liveStatus?.alwaysHiddenSeparatorLength
+        )
+    }
+
     private func setPreference(_ preference: PlacementItemPreference, for storageKey: String) {
         if let placementPreferenceStore {
             placementPreferenceStore.setPreference(preference, for: storageKey)
@@ -245,6 +265,19 @@ struct ArrangeSettingsView: View {
             "No Discovered Items"
         default:
             "Planner Unavailable"
+        }
+    }
+}
+
+private extension BasicModeReadiness {
+    var clearGlassStyle: ClearGlassStatusStyle {
+        switch tone {
+        case .ready:
+            .success
+        case .info:
+            .info
+        case .warning:
+            .warning
         }
     }
 }

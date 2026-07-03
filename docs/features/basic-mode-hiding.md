@@ -12,6 +12,7 @@ Basic Mode is the default menu bar decluttering workflow. It hides and reveals m
 - Recomputes separator length after display changes.
 - Offers emergency recovery from the status menu: Reveal All + Reset Separators.
 - Shows a first-run drag hint and lets the user show it again from the status menu.
+- Shows a permission-free readiness summary in Arrange > Placement Test using only MenuBarDeclutter-owned separator state.
 
 The hiding mechanism is separator-based: when collapsed, the separator grows wide enough to push later menu bar items off the visible menu bar. When expanded, the separator returns to a short length.
 
@@ -20,7 +21,8 @@ The hiding mechanism is separator-based: when collapsed, the separator grows wid
 1. Launch the app and look for the MenuBarDeclutter menu bar control.
 2. Command-drag the separator so the icons to its right are the ones to hide.
 3. Click the control item to toggle hidden items.
-4. Use the status menu for Expand, Collapse, Toggle, Reveal All, Reset Separator Length, Show Drag Hint, and emergency recovery.
+4. Open Arrange > Placement Test to confirm the app sees a usable local separator state.
+5. Use the status menu for Expand, Collapse, Toggle, Reveal All, Reset Separator Length, Show Drag Hint, and emergency recovery.
 
 ## Privacy And Permissions
 
@@ -35,6 +37,8 @@ Basic Mode does not request Accessibility, Screen Recording, Apple Events, Input
 - `MenuBar-Manager/Hiding/HidingService.swift`
 - `MenuBar-Manager/Hiding/ScreenGeometryService.swift`
 - `MenuBar-Manager/Hiding/HidingVisibilityState.swift`
+
+`BasicModeReadiness` lives beside `HidingVisibilityState` because it is pure presentation logic over the same visibility and separator-length model. It deliberately does not read Accessibility metadata, screen pixels, network state, or other apps' menu bar items.
 
 ## Verification
 
