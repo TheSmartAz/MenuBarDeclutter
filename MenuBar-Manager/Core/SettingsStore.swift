@@ -98,6 +98,7 @@ final class SettingsStore {
         case fullMenuBarModeShowsSpacerMarkers
         case crowdedRevealAutoOpenSecondBar
         case crowdedRevealAskBeforeSwitching
+        case crowdedRescueWorkspaceFallbackPreference
         case crowdedRevealThresholdRatio
         case crowdedRevealRequireProEstimate
         case spacerItemsEnabled
@@ -159,6 +160,33 @@ final class SettingsStore {
         case infoStripShowPreviewBadge
     }
 
+    static let privacySafeExportOmittedKeys: Set<Key> = [
+        .launchAtLoginEnabled,
+        .lastKnownAppVersion,
+        .settingsMigrationVersion,
+        .v01SafeDefaultsNoticePending,
+        .showPrimarySeparator,
+        .lastAccessibilityPermissionStatus,
+        .iconMovingConfirmationSuppressed,
+        .dogfoodModeEnabled,
+        .dogfoodRunID,
+        .dogfoodNotesEnabled,
+        .menuBarSpacingHasBackup,
+        .menuBarSpacingLastApplyStatus,
+        .menuBarSpacingLastApplyDate,
+        .privateAccessLastAuthStatus
+    ]
+
+    static let importSkippedKeys: Set<Key> = privacySafeExportOmittedKeys
+
+    static var privacySafeExportKeys: [Key] {
+        Key.allCases.filter { !privacySafeExportOmittedKeys.contains($0) }
+    }
+
+    static var migrationSnapshotKeys: [Key] {
+        Key.allCases.filter { $0 != .showPrimarySeparator }
+    }
+
     @ObservationIgnored private let defaults: UserDefaults
 
     private static let registeredDefaults: [Key: Any] = [
@@ -176,11 +204,11 @@ final class SettingsStore {
         .proModeEnabled: false,
         .accessibilityDiscoveryEnabled: false,
         .menuBarScanIntervalSeconds: AppConstants.defaultMenuBarScanIntervalSeconds,
-        .searchEnabled: false,
+        .searchEnabled: true,
         .searchHotkeyEnabled: false,
         .searchRevealOnSelection: true,
         .searchHighlightOnSelection: true,
-        .secondBarEnabled: false,
+        .secondBarEnabled: true,
         .secondBarShowHiddenItems: true,
         .secondBarShowAlwaysHiddenItems: true,
         .secondBarAutoCloseAfterSelection: true,
@@ -221,6 +249,7 @@ final class SettingsStore {
         .fullMenuBarModeShowsSpacerMarkers: true,
         .crowdedRevealAutoOpenSecondBar: true,
         .crowdedRevealAskBeforeSwitching: false,
+        .crowdedRescueWorkspaceFallbackPreference: CrowdedRescueWorkspaceFallbackPreference.preferSecondBar.rawValue,
         .crowdedRevealThresholdRatio: AppConstants.defaultCrowdedRevealThresholdRatio,
         .crowdedRevealRequireProEstimate: false,
         .spacerItemsEnabled: true,
@@ -620,6 +649,15 @@ final class SettingsStore {
 
     var crowdedRevealAskBeforeSwitching: Bool {
         didSet { persist(crowdedRevealAskBeforeSwitching, for: .crowdedRevealAskBeforeSwitching) }
+    }
+
+    var crowdedRescueWorkspaceFallbackPreference: String {
+        didSet {
+            if CrowdedRescueWorkspaceFallbackPreference(rawValue: crowdedRescueWorkspaceFallbackPreference) == nil {
+                crowdedRescueWorkspaceFallbackPreference = CrowdedRescueWorkspaceFallbackPreference.preferSecondBar.rawValue
+            }
+            persist(crowdedRescueWorkspaceFallbackPreference, for: .crowdedRescueWorkspaceFallbackPreference)
+        }
     }
 
     private var crowdedRevealThresholdRatioStorage: Double
@@ -1154,6 +1192,14 @@ final class SettingsStore {
         self.fullMenuBarModeShowsSpacerMarkers = Self.value(for: .fullMenuBarModeShowsSpacerMarkers, default: Self.registeredDefault(.fullMenuBarModeShowsSpacerMarkers), in: defaults)
         self.crowdedRevealAutoOpenSecondBar = Self.value(for: .crowdedRevealAutoOpenSecondBar, default: Self.registeredDefault(.crowdedRevealAutoOpenSecondBar), in: defaults)
         self.crowdedRevealAskBeforeSwitching = Self.value(for: .crowdedRevealAskBeforeSwitching, default: Self.registeredDefault(.crowdedRevealAskBeforeSwitching), in: defaults)
+        let storedCrowdedWorkspaceFallback = Self.string(
+            for: .crowdedRescueWorkspaceFallbackPreference,
+            default: Self.registeredDefault(.crowdedRescueWorkspaceFallbackPreference),
+            in: defaults
+        )
+        self.crowdedRescueWorkspaceFallbackPreference = CrowdedRescueWorkspaceFallbackPreference(rawValue: storedCrowdedWorkspaceFallback) == nil
+            ? CrowdedRescueWorkspaceFallbackPreference.preferSecondBar.rawValue
+            : storedCrowdedWorkspaceFallback
         self.crowdedRevealThresholdRatioStorage = Self.clampedDouble(
             for: .crowdedRevealThresholdRatio,
             default: Self.registeredDefault(.crowdedRevealThresholdRatio),
@@ -1393,6 +1439,7 @@ final class SettingsStore {
         fullMenuBarModeShowsSpacerMarkers = Self.registeredDefault(.fullMenuBarModeShowsSpacerMarkers)
         crowdedRevealAutoOpenSecondBar = Self.registeredDefault(.crowdedRevealAutoOpenSecondBar)
         crowdedRevealAskBeforeSwitching = Self.registeredDefault(.crowdedRevealAskBeforeSwitching)
+        crowdedRescueWorkspaceFallbackPreference = Self.registeredDefault(.crowdedRescueWorkspaceFallbackPreference)
         crowdedRevealThresholdRatio = Self.registeredDefault(.crowdedRevealThresholdRatio)
         crowdedRevealRequireProEstimate = Self.registeredDefault(.crowdedRevealRequireProEstimate)
         spacerItemsEnabled = Self.registeredDefault(.spacerItemsEnabled)

@@ -133,6 +133,7 @@ final class InfoStripController: NSObject, NSWindowDelegate, InfoTileContextProv
     private let rotationService: InfoStripRotationService
     private let placementService: InfoStripPlacementService
     private let safeModeActive: () -> Bool
+    private let statusItemAnchorProvider: () -> CGRect?
     private let contextBuilder: () -> InfoTileContext
     private let actionDispatcher: (InfoTileAction) -> Void
     private let showFunctionBar: () -> Void
@@ -155,6 +156,7 @@ final class InfoStripController: NSObject, NSWindowDelegate, InfoTileContextProv
         registry: InfoTileProviderRegistry = InfoTileProviderRegistry(),
         placementService: InfoStripPlacementService = InfoStripPlacementService(),
         safeModeActive: @escaping () -> Bool,
+        statusItemAnchorProvider: @escaping () -> CGRect? = { nil },
         contextBuilder: @escaping () -> InfoTileContext,
         actionDispatcher: @escaping (InfoTileAction) -> Void,
         showFunctionBar: @escaping () -> Void,
@@ -166,6 +168,7 @@ final class InfoStripController: NSObject, NSWindowDelegate, InfoTileContextProv
         self.rotationService = InfoStripRotationService(registry: registry)
         self.placementService = placementService
         self.safeModeActive = safeModeActive
+        self.statusItemAnchorProvider = statusItemAnchorProvider
         self.contextBuilder = contextBuilder
         self.actionDispatcher = actionDispatcher
         self.showFunctionBar = showFunctionBar
@@ -301,7 +304,12 @@ final class InfoStripController: NSObject, NSWindowDelegate, InfoTileContextProv
             lastPlacementFailed = true
             return false
         }
-        guard let placement = placementService.placement(panelSize: panel.frame.size, preference: .alignWithFunctionBar, lastPosition: lastPosition) else {
+        guard let placement = placementService.placement(
+            panelSize: panel.frame.size,
+            preference: .alignWithFunctionBar,
+            statusItemAnchor: statusItemAnchorProvider(),
+            lastPosition: lastPosition
+        ) else {
             setState(.unavailable(.noDisplayAvailable))
             lastPlacementFailed = true
             lastPlacement = nil

@@ -53,7 +53,8 @@ final class SecondBarWindowController: NSWindowController, NSWindowDelegate {
                     showLabels: settingsStore.secondBarShowLabels,
                     showsUnavailableState: Self.showsUnavailableState(
                         settingsStore: settingsStore,
-                        permissionService: permissionService
+                        permissionService: permissionService,
+                        liveStatus: liveStatus
                     )
                 )
             ),
@@ -190,11 +191,6 @@ final class SecondBarWindowController: NSWindowController, NSWindowDelegate {
     }
 
     func show() {
-        guard settingsStore.secondBarEnabled else {
-            diagnosticsLogger.log("Second Bar show requested while disabled.", level: .debug)
-            return
-        }
-
         positionPanel()
         updatePanelBehaviorFromSettings()
         showWindow(nil)
@@ -262,7 +258,8 @@ final class SecondBarWindowController: NSWindowController, NSWindowDelegate {
                 showLabels: settingsStore.secondBarShowLabels,
                 showsUnavailableState: Self.showsUnavailableState(
                     settingsStore: settingsStore,
-                    permissionService: permissionService
+                    permissionService: permissionService,
+                    liveStatus: liveStatus
                 )
             )
         }
@@ -270,7 +267,8 @@ final class SecondBarWindowController: NSWindowController, NSWindowDelegate {
             showLabels: settingsStore.secondBarShowLabels,
             showsUnavailableState: Self.showsUnavailableState(
                 settingsStore: settingsStore,
-                permissionService: permissionService
+                permissionService: permissionService,
+                liveStatus: liveStatus
             )
         ))
         return window.frameRect(forContentRect: contentRect).size
@@ -278,14 +276,17 @@ final class SecondBarWindowController: NSWindowController, NSWindowDelegate {
 
     private static func contentSize(showLabels: Bool, showsUnavailableState: Bool) -> CGSize {
         let height: CGFloat = showsUnavailableState ? 274 : (showLabels ? 274 : 228)
-        return CGSize(width: 760, height: height)
+        let width: CGFloat = showsUnavailableState ? 660 : 760
+        let unavailableHeight: CGFloat = 238
+        return CGSize(width: width, height: showsUnavailableState ? unavailableHeight : height)
     }
 
     private static func showsUnavailableState(
         settingsStore: SettingsStore,
-        permissionService: AccessibilityPermissionService
+        permissionService: AccessibilityPermissionService,
+        liveStatus: LiveDiagnosticsStatus
     ) -> Bool {
-        !settingsStore.secondBarEnabled
+        liveStatus.safeModeActive
             || !settingsStore.proModeEnabled
             || !settingsStore.accessibilityDiscoveryEnabled
             || permissionService.status != .granted

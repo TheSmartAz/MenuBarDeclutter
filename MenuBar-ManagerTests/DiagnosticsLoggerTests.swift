@@ -67,4 +67,23 @@ struct DiagnosticsLoggerTests {
         #expect(event.metadata["source"] == "test case")
         #expect(event.formattedSummary.contains("Automation paused for QA."))
     }
+
+    @Test func accessibilitySummaryUsesStableMetadataOrder() {
+        let event = DiagnosticEvent(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000003")!,
+            timestamp: Date(timeIntervalSince1970: 2),
+            category: .scan,
+            level: .warning,
+            message: "Scan paused.",
+            metadata: [
+                "window": "Settings",
+                "app": "MenuBarDeclutter"
+            ]
+        )
+
+        #expect(
+            event.accessibilitySummary ==
+                "Warning, Scan. Scan paused. Metadata: app: MenuBarDeclutter, window: Settings"
+        )
+    }
 }

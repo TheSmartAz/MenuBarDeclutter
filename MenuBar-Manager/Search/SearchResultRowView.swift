@@ -30,6 +30,14 @@ struct SearchResultRowView: View {
                         color: zoneColor,
                         isSelected: isSelected
                     )
+
+                    ForEach(Array(result.workspaceBadges.prefix(2)), id: \.rawValue) { badge in
+                        SearchZoneBadge(
+                            title: badge.title,
+                            color: .blue,
+                            isSelected: isSelected
+                        )
+                    }
                 }
 
                 HStack(spacing: 8) {
@@ -62,6 +70,10 @@ struct SearchResultRowView: View {
         }
         .foregroundStyle(isSelected ? .white : .primary)
         .contentShape(.rect)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(result.displayTitle), \(result.snapshot.zone.displayName), \(result.matchReason.displayName)")
+        .accessibilityValue(isSelected ? "Selected" : "Not selected")
+        .accessibilityHint(isSelected ? "Press Return to reveal and highlight this menu bar item." : "Use the arrow keys to select this result.")
     }
 
     private var rowBackground: Color {

@@ -14,6 +14,7 @@ final class SearchWindowController: NSWindowController, NSWindowDelegate {
         itemMemoryStore: MenuBarItemMemoryStore,
         diagnosticsLogger: DiagnosticsLogger,
         newItemStorageKeysProvider: @escaping () -> Set<String>,
+        workspaceUsageProvider: @escaping () -> WorkspaceUsageIndexSnapshot? = { nil },
         onRefresh: @escaping () -> Void,
         onCommand: @escaping (MenuBarCommand) -> MenuBarCommandResult,
         onMove: @escaping @MainActor (MenuBarSearchResult, IconMoveCommand) async -> IconMoveResult,
@@ -24,7 +25,12 @@ final class SearchWindowController: NSWindowController, NSWindowDelegate {
         self.diagnosticsLogger = diagnosticsLogger
         self.liveStatus = liveStatus
 
-        let panel = NSPanel(
+        let showsUnavailableState = Self.showsUnavailableState(
+            settingsStore: settingsStore,
+            permissionService: permissionService,
+            liveStatus: liveStatus
+        )
+        let panel = SearchPanel(
             contentRect: NSRect(x: 0, y: 0, width: 620, height: 440),
             styleMask: [.titled, .closable, .utilityWindow],
             backing: .buffered,
@@ -40,8 +46,10 @@ final class SearchWindowController: NSWindowController, NSWindowDelegate {
         panel.backgroundColor = .windowBackgroundColor
         panel.isOpaque = true
         panel.hasShadow = true
-        panel.minSize = NSSize(width: 560, height: 380)
+        panel.setContentSize(Self.contentSize(showsUnavailableState: showsUnavailableState))
+        panel.minSize = NSSize(width: 520, height: 340)
         panel.collectionBehavior = [.moveToActiveSpace, .transient]
+        panel.animationBehavior = .utilityWindow
         panel.standardWindowButton(.miniaturizeButton)?.isHidden = true
         panel.standardWindowButton(.zoomButton)?.isHidden = true
 
@@ -55,6 +63,7 @@ final class SearchWindowController: NSWindowController, NSWindowDelegate {
             itemMemoryStore: itemMemoryStore,
             diagnosticsLogger: diagnosticsLogger,
             newItemStorageKeysProvider: newItemStorageKeysProvider,
+            workspaceUsageProvider: workspaceUsageProvider,
             onRefresh: onRefresh,
             onCommand: onCommand,
             onMove: onMove,
@@ -99,5 +108,31 @@ final class SearchWindowController: NSWindowController, NSWindowDelegate {
 
     private static func formattedMilliseconds(_ value: Double) -> String {
         value.formatted(.number.precision(.fractionLength(2)))
+    }
+
+    private static func contentSize(showsUnavailableState: Bool) -> CGSize {
+        showsUnavailableState
+            ? CGSize(width: 560, height: 340)
+            : CGSize(width: 600, height: 400)
+    }
+
+    private static func showsUnavailableState(
+        settingsStore: SettingsStore,
+        permissionService: AccessibilityPermissionService,
+        liveStatus: LiveDiagnosticsStatus
+    ) -> Bool {
+        liveStatus.safeModeActive
+            || !settingsStore.proModeEnabled
+            || !settingsStore.accessibilityDiscoveryEnabled
+            || permissionService.status != .granted
+    }
+}
+
+private final class SearchPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { false }
+
+    override func cancelOperation(_ sender: Any?) {
+        close()
     }
 }

@@ -8,6 +8,7 @@ final class HotkeyBindingStore {
     private let fileManager: FileManager
     private let diagnosticsLogger: DiagnosticsLogger?
     private let now: () -> Date
+    private let didSave: () -> Void
 
     private(set) var bindings: [HotkeyBinding] = []
 
@@ -16,13 +17,15 @@ final class HotkeyBindingStore {
         backupsDirectory: URL,
         fileManager: FileManager = .default,
         diagnosticsLogger: DiagnosticsLogger? = nil,
-        now: @escaping () -> Date = { Date() }
+        now: @escaping () -> Date = { Date() },
+        didSave: @escaping () -> Void = {}
     ) {
         self.fileURL = directory.appendingPathComponent("hotkeys.json")
         self.backupsDirectory = backupsDirectory
         self.fileManager = fileManager
         self.diagnosticsLogger = diagnosticsLogger
         self.now = now
+        self.didSave = didSave
     }
 
     func load() {
@@ -33,7 +36,8 @@ final class HotkeyBindingStore {
 
         do {
             let data = try Data(contentsOf: fileURL)
-            let container = try JSONDecoder().decode(HotkeyBindingContainer.self, from: data)
+            let decoder = JSONCoding.makeDecoder(dateDecodingStrategy: .deferredToDate)
+            let container = try decoder.decode(HotkeyBindingContainer.self, from: data)
             bindings = container.bindings
         } catch {
             diagnosticsLogger?.log(
@@ -50,10 +54,10 @@ final class HotkeyBindingStore {
         do {
             try fileManager.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
             let container = HotkeyBindingContainer(bindings: bindings)
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            let encoder = JSONCoding.makeEncoder(dateEncodingStrategy: .deferredToDate)
             let data = try encoder.encode(container)
             try data.write(to: fileURL, options: .atomic)
+            didSave()
         } catch {
             diagnosticsLogger?.log(
                 "Failed to save hotkey binding store: \(error.localizedDescription)",
@@ -82,6 +86,24 @@ final class HotkeyBindingStore {
         transform(&bindings[index])
         bindings[index].updatedAt = now()
         save()
+    }
+
+    @discardableResult
+    func update(ids: [UUID], transform: (inout HotkeyBinding) -> Void) -> Int {
+        let ids = Set(ids)
+        guard !ids.isEmpty else { return 0 }
+
+        let updatedAt = now()
+        var updatedCount = 0
+        for index in bindings.indices where ids.contains(bindings[index].id) {
+            transform(&bindings[index])
+            bindings[index].updatedAt = updatedAt
+            updatedCount += 1
+        }
+
+        guard updatedCount > 0 else { return 0 }
+        save()
+        return updatedCount
     }
 
     /// Replace the in-memory binding list with a validated imported list.

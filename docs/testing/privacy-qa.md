@@ -1,6 +1,15 @@
 # Privacy QA
 
-Use this checklist for Alpha RC validation. Mark each item PASS, FAIL, BLOCKED, or NOT TESTED.
+Use this checklist for Alpha RC validation and privacy-sensitive changes. For
+routine patch scope, first choose the appropriate lane in
+`docs/testing/qa-process.md`.
+
+`scripts/verify_privacy_boundary.sh` is the source of truth for
+static/source/bundle privacy checks. Manual privacy QA should focus on runtime
+prompts, explicit opt-in, permission revocation, degraded states, diagnostics
+export review, and network observation.
+
+Mark each item PASS, FAIL, BLOCKED, or NOT TESTED.
 
 ## Static Verification
 

@@ -63,6 +63,7 @@ final class TriggerService {
 
     var triggers: [TriggerModel] = []
     private(set) var lastError: String?
+    private(set) var lastUnsupportedRuleWarning: String?
 
     init(
         settingsStore: SettingsStore,
@@ -106,26 +107,24 @@ final class TriggerService {
             let url = storageURL
             guard fileManager.fileExists(atPath: url.path) else {
                 triggers = []
+                lastUnsupportedRuleWarning = nil
                 return
             }
 
             let data = try Data(contentsOf: url)
-            let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
-            triggers = try decoder.decode([TriggerModel].self, from: data)
+            triggers = try JSONCoding.decode([TriggerModel].self, from: data)
+            disableUnsupportedRuntimeRulesAfterLoad()
             lastError = nil
         } catch {
             lastError = error.localizedDescription
+            lastUnsupportedRuleWarning = nil
         }
     }
 
     func save() {
         do {
             try appSupportPaths.ensureDirectoriesExist()
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            encoder.dateEncodingStrategy = .iso8601
-            let data = try encoder.encode(triggers)
+            let data = try JSONCoding.encodePrettySorted(triggers)
             try data.write(to: storageURL, options: .atomic)
             didSave()
             lastError = nil
@@ -257,7 +256,8 @@ final class TriggerService {
         // is sufficient for the current Basic-Mode-only trigger surface.
         let currentDate = now()
         guard let matchingTrigger = triggers.first(where: {
-            evaluator.shouldFire(trigger: $0, context: context, now: currentDate)
+            $0.rule.isSupportedByCurrentRuntime
+                && evaluator.shouldFire(trigger: $0, context: context, now: currentDate)
         }) else {
             liveStatus.triggerEvaluationLog = "No triggers matched (\(reason))."
             return
@@ -375,6 +375,29 @@ final class TriggerService {
         )
     }
 
+    private func disableUnsupportedRuntimeRulesAfterLoad() {
+        let unsupportedEnabledRules = triggers.filter {
+            $0.isEnabled && !$0.rule.isSupportedByCurrentRuntime
+        }
+        guard !unsupportedEnabledRules.isEmpty else {
+            lastUnsupportedRuleWarning = nil
+            return
+        }
+
+        for index in triggers.indices where !triggers[index].rule.isSupportedByCurrentRuntime {
+            triggers[index].isEnabled = false
+        }
+        let disabledCount = unsupportedEnabledRules.count
+        lastUnsupportedRuleWarning = "Disabled \(disabledCount) unsupported trigger rule(s)."
+        diagnosticsLogger.log(
+            lastUnsupportedRuleWarning ?? "Disabled unsupported trigger rules.",
+            level: .warning,
+            category: .trigger,
+            metadata: ["disabledCount": "\(disabledCount)"]
+        )
+        save()
+    }
+
     private static func currentBatteryPercent() -> Int? {
         guard let snapshot = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(),
               let sources = IOPSCopyPowerSourcesList(snapshot)?.takeRetainedValue() as? [CFTypeRef] else {
@@ -411,6 +434,10 @@ final class TriggerService {
 
     func scheduleEvaluationForTesting(reason: String) {
         scheduleEvaluation(reason: reason)
+    }
+
+    func waitForPendingEvaluationForTesting() async {
+        await pendingEvaluationTask?.value
     }
     #endif
 }

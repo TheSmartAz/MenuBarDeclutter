@@ -5,7 +5,8 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 requested_scheme="${SCHEME:-MenuBarDeclutter}"
 fallback_scheme="MenuBar-Manager"
 scheme="$requested_scheme"
-DRY_RUN=0
+DRY_RUN=1
+DEVELOPER_ID=0
 NOTARIZE=0
 STAPLE=0
 INSTALL=0
@@ -19,18 +20,19 @@ ZIP_PATH="${ZIP_PATH:-}"
 
 usage() {
   cat <<EOF
-Usage: scripts/build_release.sh [--dry-run] [--notarize] [--staple] [--install] [--verify-installed] [--version VERSION]
+Usage: scripts/build_release.sh [--dry-run] [--developer-id] [--notarize] [--staple] [--install] [--verify-installed] [--version VERSION]
 
 Modes:
-  --dry-run          Build/archive/export/package locally without Developer ID export or notarization credentials.
-  --notarize        Submit the release zip with notarytool. Requires credentials unless --dry-run is also set.
-  --staple          Staple and validate the exported app after notarization.
+  --dry-run          Build/archive/export/package locally without Developer ID export or notarization credentials. This is the default.
+  --developer-id     Opt into the future Developer ID export path. Out of current scope unless explicitly requested.
+  --notarize        Submit the release zip with notarytool only in --developer-id mode. In dry-run mode, records a notarization dry run.
+  --staple          Staple and validate the exported app after real notarization.
   --install         Install the exported app locally.
   --verify-installed
                     Verify the installed app after install.
   --version VERSION Override MARKETING_VERSION-derived release version.
 
-This release line is v0.1.7. The script refuses future-release artifact names.
+This release line is v0.1.10. The script refuses future-release artifact names.
 EOF
 }
 
@@ -46,6 +48,12 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run)
       DRY_RUN=1
+      DEVELOPER_ID=0
+      shift
+      ;;
+    --developer-id)
+      DRY_RUN=0
+      DEVELOPER_ID=1
       shift
       ;;
     --notarize)
@@ -117,14 +125,21 @@ echo "MenuBarDeclutter release build"
 echo "Scheme: $scheme"
 echo "Version: $VERSION"
 echo "Dry run: $DRY_RUN"
+echo "Developer ID opt-in: $DEVELOPER_ID"
 echo "Archive: $ARCHIVE_PATH"
 echo "Exported app: $APP_PATH"
 echo "Zip: $ZIP_PATH"
 echo
 
-SCHEME="$scheme" ARCHIVE_PATH="$ARCHIVE_PATH" bash scripts/release_archive.sh
-DRY_RUN="$DRY_RUN" ARCHIVE_PATH="$ARCHIVE_PATH" EXPORT_DIR="$EXPORT_DIR" APP_PATH="$APP_PATH" bash scripts/release_export_app.sh
-VERSION="$VERSION" APP_PATH="$APP_PATH" ZIP_PATH="$ZIP_PATH" bash scripts/release_package_zip.sh
+if [[ "$DRY_RUN" -eq 1 ]]; then
+  archive_signing_overrides=1
+else
+  archive_signing_overrides=0
+fi
+
+SCHEME="$scheme" ARCHIVE_PATH="$ARCHIVE_PATH" AD_HOC_SIGNING_OVERRIDES="$archive_signing_overrides" bash scripts/release_archive.sh
+DRY_RUN="$DRY_RUN" DEVELOPER_ID_EXPORT="$DEVELOPER_ID" ARCHIVE_PATH="$ARCHIVE_PATH" EXPORT_DIR="$EXPORT_DIR" APP_PATH="$APP_PATH" bash scripts/release_export_app.sh
+DRY_RUN="$DRY_RUN" VERSION="$VERSION" APP_PATH="$APP_PATH" ZIP_PATH="$ZIP_PATH" bash scripts/release_package_zip.sh
 APP_PATH="$APP_PATH" EXPECTED_MARKETING_VERSION="$VERSION" EXPECTED_BUILD_VERSION="$EXPECTED_BUILD_VERSION" bash scripts/verify_release_artifact.sh
 
 if [[ "$NOTARIZE" -eq 1 ]]; then

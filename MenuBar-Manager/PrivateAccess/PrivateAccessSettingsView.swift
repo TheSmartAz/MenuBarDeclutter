@@ -7,6 +7,7 @@ struct PrivateAccessSettingsView: View {
     var onChange: (() -> Void)?
 
     @State private var testStatus: String?
+    @State private var isEnablingPrivateAccess = false
 
     var body: some View {
         ClearGlassSettingsPage(
@@ -49,9 +50,9 @@ struct PrivateAccessSettingsView: View {
             PrivateAccessToggleRow(
                 systemImage: "lock.fill",
                 title: "Enable Private Access",
-                subtitle: "Require Touch ID or device password before protected MenuBarDeclutter actions.",
-                isOn: $settingsStore.privateAccessEnabled,
-                onChange: notifyChanged
+                subtitle: "Authenticate with Touch ID or device password before turning Private Access on.",
+                isOn: privateAccessEnabledBinding,
+                isEnabled: !isEnablingPrivateAccess
             )
 
             ClearGlassDivider()
@@ -256,6 +257,22 @@ struct PrivateAccessSettingsView: View {
         }
     }
 
+    private var privateAccessEnabledBinding: Binding<Bool> {
+        Binding(
+            get: { settingsStore.privateAccessEnabled },
+            set: { isEnabled in
+                if isEnabled {
+                    enablePrivateAccess()
+                } else {
+                    settingsStore.privateAccessEnabled = false
+                    coordinator?.clearUnlock()
+                    testStatus = "Private Access disabled."
+                    notifyChanged()
+                }
+            }
+        )
+    }
+
     private var protectedSurfaceCount: Int {
         [
             settingsStore.privateAccessProtectAlwaysHidden,
@@ -268,6 +285,34 @@ struct PrivateAccessSettingsView: View {
         ]
         .filter { $0 }
         .count
+    }
+
+    private func enablePrivateAccess() {
+        guard !isEnablingPrivateAccess else { return }
+        guard let coordinator else {
+            testStatus = "Authentication service unavailable."
+            return
+        }
+
+        isEnablingPrivateAccess = true
+        testStatus = "Authentication required to enable Private Access."
+        Task { @MainActor in
+            let result = await coordinator.enablePrivateAccessAfterAuthentication(
+                reason: "Enable Private Access for protected MenuBarDeclutter actions."
+            )
+            isEnablingPrivateAccess = false
+            switch result {
+            case .success:
+                testStatus = "Private Access enabled."
+                notifyChanged()
+            case .failure:
+                testStatus = "Private Access stayed off because authentication failed."
+            case .cancel:
+                testStatus = "Private Access stayed off because authentication was canceled."
+            case .unavailable:
+                testStatus = "Private Access stayed off because authentication is unavailable."
+            }
+        }
     }
 
     private func notifyChanged() {

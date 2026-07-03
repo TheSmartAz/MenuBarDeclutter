@@ -33,6 +33,7 @@ final class IconGroupPanelWindowController: NSWindowController, NSWindowDelegate
         panel.isOpaque = true
         panel.hasShadow = true
         panel.minSize = NSSize(width: 500, height: 360)
+        panel.animationBehavior = .utilityWindow
 
         super.init(window: panel)
         panel.delegate = self

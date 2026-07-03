@@ -28,9 +28,9 @@ struct SettingsMigrationServiceTests {
         store.proModeEnabled = true
         store.accessibilityDiscoveryEnabled = true
         store.lastAccessibilityPermissionStatus = AccessibilityPermissionStatus.granted.rawValue
-        store.searchEnabled = true
+        store.searchEnabled = false
         store.searchHotkeyEnabled = true
-        store.secondBarEnabled = true
+        store.secondBarEnabled = false
         store.iconMovingEnabled = true
         store.iconMovingConfirmationSuppressed = true
         store.iconMovingAllowSystemItems = true
@@ -46,7 +46,7 @@ struct SettingsMigrationServiceTests {
         ).migrateIfNeeded()
 
         #expect(result.didMigrate)
-        #expect(store.settingsMigrationVersion == "0.1.0")
+        #expect(store.settingsMigrationVersion == "0.1.1")
         #expect(store.v01SafeDefaultsNoticePending)
         #expect(store.launchAtLoginEnabled == false)
         #expect(store.isCollapsed == false)
@@ -59,9 +59,9 @@ struct SettingsMigrationServiceTests {
         #expect(store.proModeEnabled == false)
         #expect(store.accessibilityDiscoveryEnabled == false)
         #expect(store.lastAccessibilityPermissionStatus == nil)
-        #expect(store.searchEnabled == false)
+        #expect(store.searchEnabled == true)
         #expect(store.searchHotkeyEnabled == false)
-        #expect(store.secondBarEnabled == false)
+        #expect(store.secondBarEnabled == true)
         #expect(store.iconMovingEnabled == false)
         #expect(store.iconMovingConfirmationSuppressed == false)
         #expect(store.iconMovingAllowSystemItems == false)
@@ -72,7 +72,7 @@ struct SettingsMigrationServiceTests {
         #expect(FileManager.default.fileExists(atPath: backupURL.path))
         let backupText = try String(contentsOf: backupURL, encoding: .utf8)
         #expect(backupText.contains("\"iconMovingEnabled\" : \"true\""))
-        #expect(backupText.contains("\"migrationTargetVersion\" : \"0.1.0\""))
+        #expect(backupText.contains("\"migrationTargetVersion\" : \"0.1.1\""))
     }
 
     @Test func currentMigrationVersionDoesNotRewriteSettings() throws {
@@ -86,7 +86,9 @@ struct SettingsMigrationServiceTests {
         defer { try? FileManager.default.removeItem(at: baseURL) }
 
         let store = SettingsStore(defaults: defaults)
-        store.settingsMigrationVersion = "0.1.0"
+        store.settingsMigrationVersion = "0.1.1"
+        store.searchEnabled = false
+        store.secondBarEnabled = false
         store.iconMovingEnabled = true
 
         let result = SettingsMigrationService(
@@ -96,8 +98,59 @@ struct SettingsMigrationServiceTests {
         ).migrateIfNeeded()
 
         #expect(result.didMigrate == false)
+        #expect(store.searchEnabled == false)
+        #expect(store.secondBarEnabled == false)
         #expect(store.iconMovingEnabled == true)
         #expect(store.v01SafeDefaultsNoticePending == false)
+    }
+
+    @Test func previousV010MigrationRepairsShortcutVisibilityDefaultsOnlyOnce() throws {
+        let suiteName = "SettingsMigrationServiceTests.currentRepair.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let baseURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("SettingsMigrationServiceTests.currentRepair.\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: baseURL) }
+
+        let store = SettingsStore(defaults: defaults)
+        store.settingsMigrationVersion = "0.1.0"
+        store.searchEnabled = false
+        store.secondBarEnabled = false
+        store.iconMovingEnabled = true
+        store.autoRehideEnabled = true
+        store.launchAtLoginEnabled = true
+
+        let result = SettingsMigrationService(
+            settingsStore: store,
+            appSupportPaths: AppSupportPaths(baseURL: baseURL),
+            diagnosticsLogger: DiagnosticsLogger()
+        ).migrateIfNeeded()
+
+        #expect(result.didMigrate)
+        #expect(result.backupURL == nil)
+        #expect(store.settingsMigrationVersion == "0.1.1")
+        #expect(result.repairedKeys == [.searchEnabled, .secondBarEnabled])
+        #expect(store.searchEnabled == true)
+        #expect(store.secondBarEnabled == true)
+        #expect(store.iconMovingEnabled == true)
+        #expect(store.autoRehideEnabled == true)
+        #expect(store.launchAtLoginEnabled == true)
+        #expect(store.v01SafeDefaultsNoticePending == false)
+
+        store.searchEnabled = false
+        store.secondBarEnabled = false
+
+        let secondResult = SettingsMigrationService(
+            settingsStore: store,
+            appSupportPaths: AppSupportPaths(baseURL: baseURL),
+            diagnosticsLogger: DiagnosticsLogger()
+        ).migrateIfNeeded()
+
+        #expect(secondResult.didMigrate == false)
+        #expect(store.searchEnabled == false)
+        #expect(store.secondBarEnabled == false)
     }
 
     @Test func freshInstallIsStampedWithoutShowingUpdateNotice() throws {
@@ -119,7 +172,7 @@ struct SettingsMigrationServiceTests {
         ).migrateIfNeeded()
 
         #expect(result.didMigrate == false)
-        #expect(store.settingsMigrationVersion == "0.1.0")
+        #expect(store.settingsMigrationVersion == "0.1.1")
         #expect(store.v01SafeDefaultsNoticePending == false)
     }
 }

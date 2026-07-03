@@ -28,5 +28,5 @@ Assisted Move is Experimental. It can try one confirmed move only after Pro, Acc
 1. Open MenuBarDeclutter again from Applications.
 2. Open the status menu if visible and choose Arrange Items or Recovery.
 3. Use Reveal All and Reset Layout.
-4. Request Safe Mode next launch from Recovery if the layout still seems broken. Option-launch Safe Mode is intended as a fallback, but its v0.1.3 physical QA pass is still pending.
+4. Request Safe Mode next launch from Recovery if the layout still seems broken. Option-launch Safe Mode remains a hands-on fallback path.
 5. Export diagnostics from Recovery if you need to report a problem.

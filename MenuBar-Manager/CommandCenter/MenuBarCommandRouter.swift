@@ -31,6 +31,8 @@ struct MenuBarCommandHandlers {
     var showLayoutSuggestions: () -> Void = {}
     var enterFullMenuBarMode: () -> Void = {}
     var exitFullMenuBarMode: () -> Void = {}
+    var previewSpacingPreset: (String) -> Bool = { _ in false }
+    var showAssistedMoveGuide: () -> Bool = { false }
     var pauseAutomation: () -> Void = {}
     var resumeAutomation: () -> Void = {}
     var revealItem: (String) -> Bool = { _ in false }
@@ -310,7 +312,7 @@ final class MenuBarCommandRouter {
         case .dryRunProfile:
             return executeProfile(command, dryRun: true)
         case .spacingPresetDryRun:
-            return .success(command, message: "Spacing preset preview generated.", diagnosticReason: "dryRun")
+            return executeSpacingPresetPreview(command)
         case .spacingPresetApply:
             return .stopped(
                 command,
@@ -339,12 +341,15 @@ final class MenuBarCommandRouter {
                 diagnosticReason: "cancelled"
             )
         case .showAssistedMoveGuide:
-            return .stopped(
-                command,
-                status: .noOp,
-                message: "Open Arrange for the Assisted Move guide.",
-                diagnosticReason: "guide"
-            )
+            guard handlers.showAssistedMoveGuide() else {
+                return .stopped(
+                    command,
+                    status: .unavailable,
+                    message: "Assisted Move guide is unavailable.",
+                    diagnosticReason: "guideUnavailable"
+                )
+            }
+            return .success(command, message: "Assisted Move guide opened.", diagnosticReason: "guide")
         case .revealItem:
             return executeItem(command, message: "Menu bar item revealed.") { id in
                 handlers.revealItem(id)
@@ -403,6 +408,29 @@ final class MenuBarCommandRouter {
             )
         }
         return .success(command, message: message)
+    }
+
+    private func executeSpacingPresetPreview(_ command: MenuBarCommand) -> MenuBarCommandResult {
+        guard case .spacingPreset(let preset) = command.target else {
+            return .stopped(
+                command,
+                status: .unavailable,
+                message: "Spacing preset target is unavailable.",
+                diagnosticReason: "spacingPresetUnavailable"
+            )
+        }
+
+        // Status-menu preview opens the Labs surface only; apply remains dry-run-only.
+        guard command.source != .statusMenu || handlers.previewSpacingPreset(preset) else {
+            return .stopped(
+                command,
+                status: .unavailable,
+                message: "Spacing preset preview is unavailable.",
+                diagnosticReason: "spacingPreviewUnavailable"
+            )
+        }
+
+        return .success(command, message: "Spacing preset preview generated.", diagnosticReason: "dryRun")
     }
 
     private func executeGroup(
@@ -481,7 +509,7 @@ final class MenuBarCommandRouter {
     private func isFeatureEnabled(_ feature: MenuBarCommandFeature, for command: MenuBarCommand) -> Bool {
         switch feature {
         case .findIcon:
-            return settingsStore.searchEnabled || command.source == .settings
+            return true
         case .secondBar:
             return true
         case .iconPanel:
@@ -520,9 +548,9 @@ final class MenuBarCommandRouter {
     private func featureUnavailableMessage(_ feature: MenuBarCommandFeature) -> String {
         switch feature {
         case .findIcon:
-            "Find Icon is disabled."
+            "Find Icon is unavailable."
         case .secondBar:
-            "Second Bar is disabled."
+            "Second Bar is unavailable."
         case .iconPanel:
             "Icon Panel is not available yet."
         case .groups:

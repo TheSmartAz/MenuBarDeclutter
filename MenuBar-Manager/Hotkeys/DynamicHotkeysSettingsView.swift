@@ -167,7 +167,12 @@ struct DynamicHotkeysSettingsView: View {
         ClearGlassSettingsPage(
             "Hotkeys",
             subtitle: "Create optional local shortcuts for groups, profiles, and layout actions.",
-            badges: [.preview, .privacySafe]
+            badges: [.preview, .privacySafe],
+            sectionAnchors: [
+                ClearGlassPageAnchor("Dynamic Hotkeys", systemImage: "keyboard"),
+                ClearGlassPageAnchor("New Binding", systemImage: "plus.circle"),
+                ClearGlassPageAnchor("Bindings", systemImage: "list.bullet.rectangle")
+            ]
         ) {
             DynamicHotkeyOverviewStrip(
                 totalCount: bindings.count,
@@ -254,7 +259,7 @@ struct DynamicHotkeysSettingsView: View {
                         searchText: searchText
                     )
                 } else {
-                    HStack(spacing: 0) {
+                    ClearGlassPaneLayout(primaryWidth: 430, spacing: 0) {
                         DynamicHotkeyBindingsList(
                             bindings: filteredBindings,
                             selectedBindingID: $selectedBindingID,
@@ -263,10 +268,8 @@ struct DynamicHotkeysSettingsView: View {
                             shortcutProvider: hotkeyDisplayName(for:),
                             onEnabledChanged: updateBindingEnabled
                         )
-                        .frame(minWidth: 430, maxWidth: .infinity, minHeight: 360)
-
-                        Divider()
-
+                        .frame(minHeight: 360)
+                    } detail: {
                         DynamicHotkeyBindingInspector(
                             binding: selectedBinding,
                             status: selectedBinding.map(bindingStatus(for:)),
@@ -278,7 +281,7 @@ struct DynamicHotkeysSettingsView: View {
                             onDisable: disableBinding,
                             onDelete: deleteBinding
                         )
-                        .frame(width: 300)
+                        .frame(minHeight: 360)
                     }
                     .frame(minHeight: 360)
                     .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 8))
@@ -432,9 +435,7 @@ struct DynamicHotkeysSettingsView: View {
     }
 
     private func disableAllDynamicHotkeys() {
-        for binding in bindings {
-            bindingStore.update(id: binding.id) { $0.isEnabled = false }
-        }
+        bindingStore.update(ids: bindings.map(\.id)) { $0.isEnabled = false }
         notifyChanged()
     }
 
@@ -962,10 +963,12 @@ private struct DynamicHotkeyBindingInspector: View {
                 }
                 .controlSize(.small)
             } else {
-                ContentUnavailableView(
-                    "No Binding Selected",
+                SettingsUnavailableGate(
+                    .emptyData,
+                    title: "No Binding Selected",
+                    message: "Select a binding to inspect registration status and actions.",
                     systemImage: "keyboard",
-                    description: Text("Select a binding to inspect registration status and actions.")
+                    minHeight: 300
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -1069,10 +1072,12 @@ private struct DynamicHotkeyUnavailableView: View {
     let searchText: String
 
     var body: some View {
-        ContentUnavailableView(
-            title,
+        SettingsUnavailableGate(
+            hasBindings ? .noMatches : .emptyData,
+            title: title,
+            message: message,
             systemImage: systemImage,
-            description: Text(message)
+            minHeight: 320
         )
         .frame(maxWidth: .infinity, minHeight: 320)
     }

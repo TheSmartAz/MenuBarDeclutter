@@ -1,6 +1,9 @@
 # Alpha RC QA Matrix
 
-Use this matrix for real macOS validation. Automated tests do not replace these checks.
+Use this matrix as the broad coverage catalog for real macOS validation.
+Automated tests do not replace checks that depend on system behavior, but this
+whole catalog is not required for every patch. Choose the appropriate lane in
+`docs/testing/qa-process.md` first.
 
 v0.1 note: defaults are frozen in `docs/release/v0.1-defaults.md`. Auto-rehide, hover reveal, hotkeys, Pro Mode, Find Icon, Second Bar, Icon Moving, Smart Triggers, and bulk automation are optional or disabled by default unless the tester explicitly enables them.
 

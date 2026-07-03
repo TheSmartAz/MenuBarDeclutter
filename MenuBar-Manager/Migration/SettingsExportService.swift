@@ -76,28 +76,14 @@ final class SettingsExportService {
 
     private func exportSettingsDict() -> [String: String] {
         Dictionary(
-            uniqueKeysWithValues: SettingsStore.Key.allCases.compactMap { key in
+            uniqueKeysWithValues: SettingsStore.privacySafeExportKeys.compactMap { key in
                 guard let value = exportedValue(for: key) else { return nil }
                 return (key.rawValue, value)
             }
         )
     }
 
-    private static let intentionallyOmittedSettings: Set<SettingsStore.Key> = [
-        .lastKnownAppVersion,
-        .settingsMigrationVersion,
-        .v01SafeDefaultsNoticePending,
-        .showPrimarySeparator,
-        .lastAccessibilityPermissionStatus,
-        .iconMovingConfirmationSuppressed,
-        .dogfoodModeEnabled,
-        .dogfoodRunID,
-        .dogfoodNotesEnabled,
-        .menuBarSpacingHasBackup,
-        .menuBarSpacingLastApplyStatus,
-        .menuBarSpacingLastApplyDate,
-        .privateAccessLastAuthStatus
-    ]
+    private static let intentionallyOmittedSettings = SettingsStore.privacySafeExportOmittedKeys
 
     private static func privacySafeWorkspaceSnapshot(_ snapshot: WorkspaceStoreSnapshot?) -> WorkspaceStoreSnapshot? {
         guard var snapshot else { return nil }
@@ -133,9 +119,10 @@ final class SettingsExportService {
         switch key {
         case .hasCompletedOnboarding:
             return settingsStore.hasCompletedOnboarding.description
-        case .launchAtLoginEnabled:
-            return settingsStore.launchAtLoginEnabled.description
-        case .lastKnownAppVersion, .settingsMigrationVersion, .v01SafeDefaultsNoticePending:
+        case .launchAtLoginEnabled,
+             .lastKnownAppVersion,
+             .settingsMigrationVersion,
+             .v01SafeDefaultsNoticePending:
             return nil
         case .appMode:
             return settingsStore.appMode.rawValue
@@ -251,6 +238,8 @@ final class SettingsExportService {
             return settingsStore.crowdedRevealAutoOpenSecondBar.description
         case .crowdedRevealAskBeforeSwitching:
             return settingsStore.crowdedRevealAskBeforeSwitching.description
+        case .crowdedRescueWorkspaceFallbackPreference:
+            return settingsStore.crowdedRescueWorkspaceFallbackPreference
         case .crowdedRevealThresholdRatio:
             return settingsStore.crowdedRevealThresholdRatio.description
         case .crowdedRevealRequireProEstimate:

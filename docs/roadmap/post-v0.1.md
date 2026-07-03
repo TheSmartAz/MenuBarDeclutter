@@ -1,6 +1,8 @@
 # Post-v0.1 Roadmap
 
-Current hardening target: `v0.1.7`. This release line is not `v0.2`.
+Current hardening target: `v0.1.10`. This release line is not `v0.2`.
+
+`v0.2` remains draft-only until explicitly started. Current docs may mention future v0.2 planning, but the shipped/current implementation status is v0.1.10.
 
 Moved out of v0.1 scope:
 

@@ -13,7 +13,7 @@ MenuBarDeclutter uses your menu bar layout. If items appear missing, start with 
 ## If The Control Item Is Hard To Reach
 
 1. Open MenuBarDeclutter again from Applications.
-2. Request Safe Mode next launch from Recovery if you can reach it. Option-launch Safe Mode is intended as a fallback, but its v0.1.3 physical QA pass is still pending.
+2. Request Safe Mode next launch from Recovery if you can reach it. Option-launch Safe Mode remains a hands-on fallback path.
 3. Safe Mode starts expanded and disables optional behaviors.
 4. Use Reset Layout.
 5. Quit and relaunch normally when the control item is reachable again.

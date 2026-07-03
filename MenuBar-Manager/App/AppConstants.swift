@@ -4,7 +4,7 @@ import Foundation
 enum AppConstants {
     static let displayName = "MenuBarDeclutter"
     static let defaultAppMode = "basic"
-    static let currentSettingsMigrationVersion = "0.1.0"
+    static let currentSettingsMigrationVersion = "0.1.1"
     static let diagnosticsRingBufferLimit = 200
 
     // MARK: Separator geometry

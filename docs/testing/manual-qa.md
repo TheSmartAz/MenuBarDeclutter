@@ -24,7 +24,7 @@ Manual QA is required for behavior that depends on macOS menu bar state, app act
 - Launch the app and confirm two new menu bar items appear: a square control toggle and a thin separator.
 - Confirm the control icon is `chevron.left` while expanded.
 - Confirm the separator icon is `chevron.left.2` while expanded.
-- Open the menu (right-click the control item on macOS 26+); confirm these items are present: Expand Hidden Items, Collapse Hidden Items, Toggle Hidden Items, Reset Separator Length, Show Drag Hint, Settings…, Diagnostics…, About MenuBarDeclutter, Quit.
+- Open the menu (right-click the control item on macOS 26+); confirm the status and privacy rows appear above these commands: Reveal Hidden Items, Collapse Hidden Items, Reveal All Items, Workspaces…, Find Icon…, Show Second Bar, Arrange Items…, Full Menu Bar Mode, Recovery…, Settings…, Diagnostics…, and Quit.
 
 ### Drag hint
 
@@ -408,8 +408,9 @@ This checklist verifies the Phase 1 hiding MVP. Later-phase features such as glo
 - Open Settings → Search.
 - Disable "Highlight selected item"; select a visible result and confirm no overlay appears.
 - Disable "Reveal item when selected"; select a hidden/always-hidden result and confirm visibility is not changed automatically.
-- Disable "Enable Find Icon"; open Find Icon from the status menu and confirm the panel explains that Find Icon is disabled.
-- Re-enable Find Icon.
+- Open Find Icon with Pro Mode off and confirm the panel shows "Pro Mode Required" with no Accessibility prompt.
+- Confirm no "Find Icon Disabled" enabling page appears in the default gated flow.
+- Disable "Show Find Icon in status menu"; confirm the status menu hides "Find Icon..." while direct Settings and hotkey opens still show the normal gated panel.
 
 ### Find Icon hotkey
 
@@ -445,6 +446,7 @@ This checklist verifies the Phase 1 hiding MVP. Later-phase features such as glo
 - With Pro Mode disabled, confirm the Second Bar opens with a Pro Mode requirement state and Basic Mode collapse/expand still works.
 - Enable Pro Mode but leave Accessibility permission missing; confirm the Second Bar shows the permission-required state and offers explicit settings actions.
 - Confirm no Accessibility prompt appears merely from opening the Second Bar.
+- Disable "Show Second Bar in status menu"; confirm the status menu hides "Show Second Bar" while direct Settings, Shortcuts, or recovery routes still show the normal gated panel.
 
 ### Show, hide, and toggle
 
@@ -760,7 +762,8 @@ This checklist verifies the Phase 1 hiding MVP. Later-phase features such as glo
 ### Native status menu
 
 - Open the status menu from the control item and separator right-click path.
+- Confirm the top of the menu shows the current visibility state and "Privacy: no sensitive permissions requested here".
 - Confirm command groups are visually separated: Visibility, Find & Bars, Pro Features, Layout, Recovery, and app-level commands.
-- Confirm key equivalents still work for Toggle Hidden Items, Find Icon, Toggle Second Bar, Refresh Menu Bar Items, Settings, and Quit.
+- Confirm key equivalents still work for Find Icon, Toggle Second Bar, Refresh Menu Bar Items, Settings, and Quit.
 - Pause and resume automation from the menu and confirm the dynamic title updates without changing Basic Mode behavior.
 - In a fresh Basic Mode profile, complete onboarding, use the status menu to expand/collapse hidden items, open Settings, open Diagnostics, show the drag hint, and quit/relaunch without any sensitive permission prompts.

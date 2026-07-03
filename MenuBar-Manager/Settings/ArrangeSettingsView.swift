@@ -443,6 +443,8 @@ private struct ArrangeDiagramView: View {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Menu bar layout diagram")
         .accessibilityIdentifier("arrange.diagram")
     }
 

@@ -29,10 +29,11 @@ struct ProfileApplicationDryRunTests {
 
     @Test func applyBasicSettingsDoesNotRunZoneMoves() {
         let harness = makeHarness()
+        harness.store.secondBarEnabled = true
         let profile = ProfileModel(
             name: "Focus",
             preferredVisibilityState: .collapsed,
-            showSecondBar: true,
+            showSecondBar: false,
             autoRehideEnabled: false,
             hoverRevealEnabled: true,
             targetZonesByBundleID: ["com.example.sync": .visible]
@@ -45,10 +46,11 @@ struct ProfileApplicationDryRunTests {
             allowProMoves: false
         )
 
-        #expect(harness.store.secondBarEnabled)
+        #expect(harness.store.secondBarEnabled == false)
         #expect(harness.store.autoRehideEnabled == false)
         #expect(harness.store.hoverRevealEnabled)
         #expect(harness.appliedVisibility == .collapsed)
+        #expect(summary.layoutChanges.contains("Hide Second Bar shortcut"))
         #expect(summary.permissionRequirements.contains("Zone moves require explicit confirmation and are not run by normal profile apply."))
     }
 

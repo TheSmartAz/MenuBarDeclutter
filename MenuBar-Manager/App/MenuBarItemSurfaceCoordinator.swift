@@ -65,6 +65,9 @@ final class MenuBarItemSurfaceCoordinator {
         newItemStorageKeysProvider: { [weak self] in
             Set(self?.newItemInboxStore?.inbox.items.map(\.id) ?? [])
         },
+        workspaceUsageProvider: { [weak self] in
+            self?.workspaceUsageProvider()
+        },
         onRefresh: { [weak self] in
             self?.refreshMenuBarItems()
         },
@@ -107,8 +110,7 @@ final class MenuBarItemSurfaceCoordinator {
             self?.hidingService.setVisibility(state)
         },
         refreshSnapshots: { [weak self] in
-            self?.refreshMenuBarItems()
-            return self?.liveStatus.scannedMenuBarItems ?? []
+            await self?.refreshMenuBarItemsForMoveVerification() ?? []
         },
         suspendRuntimeBehaviors: { [weak self] in
             self?.suspendRuntimeForIconMove()
@@ -122,6 +124,7 @@ final class MenuBarItemSurfaceCoordinator {
     private let separatorFramesProvider: () -> MenuBarSeparatorFrames
     private let refreshSearchSettings: () -> Void
     private let refreshSecondBarSettings: () -> Void
+    private let workspaceUsageProvider: () -> WorkspaceUsageIndexSnapshot?
     private let openPrivacySettings: () -> Void
     private let routeCommand: (MenuBarCommand) -> MenuBarCommandResult
 
@@ -145,6 +148,7 @@ final class MenuBarItemSurfaceCoordinator {
         isHoverRevealSuppressed: @escaping () -> Bool,
         refreshSearchSettings: @escaping () -> Void,
         refreshSecondBarSettings: @escaping () -> Void,
+        workspaceUsageProvider: @escaping () -> WorkspaceUsageIndexSnapshot? = { nil },
         openPrivacySettings: @escaping () -> Void,
         routeCommand: @escaping (MenuBarCommand) -> MenuBarCommandResult
     ) {
@@ -167,6 +171,7 @@ final class MenuBarItemSurfaceCoordinator {
         self.isHoverRevealSuppressed = isHoverRevealSuppressed
         self.refreshSearchSettings = refreshSearchSettings
         self.refreshSecondBarSettings = refreshSecondBarSettings
+        self.workspaceUsageProvider = workspaceUsageProvider
         self.openPrivacySettings = openPrivacySettings
         self.routeCommand = routeCommand
     }
@@ -177,8 +182,6 @@ final class MenuBarItemSurfaceCoordinator {
     }
 
     func showSecondBar() {
-        settingsStore.secondBarEnabled = true
-        refreshSecondBarSettings()
         refreshMenuBarItems()
         secondBarWindowController.show()
     }
@@ -188,10 +191,6 @@ final class MenuBarItemSurfaceCoordinator {
     }
 
     func toggleSecondBar() {
-        if !settingsStore.secondBarEnabled {
-            settingsStore.secondBarEnabled = true
-            refreshSecondBarSettings()
-        }
         refreshMenuBarItems()
         secondBarWindowController.toggle()
     }
@@ -207,6 +206,20 @@ final class MenuBarItemSurfaceCoordinator {
             menuBarScanCoordinator.requestManualRefresh()
         }
         liveStatusSynchronizer.refreshSearchAndSecondBarItemCounts()
+    }
+
+    func refreshMenuBarItemsForMoveVerification() async -> [MenuBarItemSnapshot] {
+        guard !safeModeLaunchState.isSafeModeActive else {
+            diagnosticsLogger.log("Safe Mode skipped Assisted Move verification scan.", level: .warning)
+            liveStatusSynchronizer.refreshSearchAndSecondBarItemCounts()
+            return liveStatus.scannedMenuBarItems
+        }
+
+        let result = await menuBarScanCoordinator.requestManualRefreshAndWait(
+            reason: "assisted move verification"
+        )
+        liveStatusSynchronizer.refreshSearchAndSecondBarItemCounts()
+        return result?.snapshots ?? liveStatus.scannedMenuBarItems
     }
 
     func resetMovingWarnings() {

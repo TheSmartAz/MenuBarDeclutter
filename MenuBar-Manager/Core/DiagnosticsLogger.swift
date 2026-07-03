@@ -109,6 +109,24 @@ struct DiagnosticEvent: Identifiable, Equatable, Sendable {
         let metadataText = metadata.isEmpty ? "" : " \(metadata)"
         return "[\(level.rawValue.uppercased())] [\(category.displayName)] \(message)\(metadataText)"
     }
+
+    var accessibilitySummary: String {
+        let trimmedMessage = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        let metadataText = metadata
+            .sorted { first, second in
+                first.key.localizedStandardCompare(second.key) == .orderedAscending
+            }
+            .map { "\($0.key): \($0.value)" }
+            .joined(separator: ", ")
+        let metadataSeparator = trimmedMessage.hasSuffix(".")
+            || trimmedMessage.hasSuffix("!")
+            || trimmedMessage.hasSuffix("?")
+            ? " Metadata: "
+            : ". Metadata: "
+        let metadataSuffix = metadataText.isEmpty ? "" : "\(metadataSeparator)\(metadataText)"
+
+        return "\(level.displayName), \(category.displayName). \(trimmedMessage)\(metadataSuffix)"
+    }
 }
 
 private struct DiagnosticEventRingBuffer {

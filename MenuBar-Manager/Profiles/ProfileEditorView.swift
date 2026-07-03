@@ -110,7 +110,7 @@ struct ProfileEditorView: View {
     private var behaviorSection: some View {
         ProfileEditorSection("Behavior") {
             ProfileEditorToggleRow(
-                title: "Show Second Bar",
+                title: "Show Second Bar shortcut",
                 systemImage: "rectangle.bottomthird.inset.filled",
                 isOn: $profile.showSecondBar
             )

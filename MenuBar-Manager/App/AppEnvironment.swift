@@ -1,4 +1,7 @@
 import AppKit
+import ApplicationServices
+
+private let appEnvironmentAccessibilityPromptOptionKey = "AXTrustedCheckOptionPrompt"
 
 @MainActor
 final class AppEnvironment {
@@ -24,10 +27,16 @@ final class AppEnvironment {
     private let shouldCollapseAfterStartupHealth: Bool
     private let reflectLaunchAtLoginOnStart: Bool
     private let presentMigrationNoticeOnStart: Bool
+    private let accessibilityTrustProvider: AccessibilityPermissionService.TrustProvider
+    private let accessibilityPromptTrustProvider: AccessibilityPermissionService.TrustProvider
+    private let accessibilitySystemSettingsOpener: AccessibilityPermissionService.SystemSettingsOpener
 
     lazy var accessibilityPermissionService = AccessibilityPermissionService(
         settingsStore: settingsStore,
-        diagnosticsLogger: diagnosticsLogger
+        diagnosticsLogger: diagnosticsLogger,
+        trustProvider: accessibilityTrustProvider,
+        promptTrustProvider: accessibilityPromptTrustProvider,
+        systemSettingsOpener: accessibilitySystemSettingsOpener
     )
 
     private lazy var axMenuBarScanner = AXMenuBarScanner(
@@ -242,6 +251,9 @@ final class AppEnvironment {
             disableFunctionBarPreview: { [weak self] in
                 self?.performRecoveryAction(.disableFunctionBarPreview)
             },
+            disableInfoStripPreview: { [weak self] in
+                self?.performRecoveryAction(.disableInfoStripPreview)
+            },
             disableSetBuilderPreview: { [weak self] in
                 self?.performRecoveryAction(.disableSetBuilderPreview)
             },
@@ -265,6 +277,18 @@ final class AppEnvironment {
         diagnosticsLogger: diagnosticsLogger,
         onComplete: { [weak self] in
             self?.refreshAfterOnboarding()
+        },
+        onOpenSettings: { [weak self] in
+            self?.showSettings()
+        },
+        onOpenArrange: { [weak self] in
+            self?.showSettings(section: .arrange)
+        },
+        onOpenWorkspaces: { [weak self] in
+            self?.showSettings(section: .workspacesPreview)
+        },
+        onCreateSampleWorkspace: { [weak self] in
+            self?.createSampleWorkspaceFromOnboarding()
         }
     )
 
@@ -312,6 +336,12 @@ final class AppEnvironment {
             },
             secondBarVisible: { [weak self] in
                 self?.liveStatus.secondBarVisible == true
+            },
+            findIconStatusMenuEnabled: { [weak self] in
+                self?.settingsStore.searchEnabled == true
+            },
+            secondBarStatusMenuEnabled: { [weak self] in
+                self?.settingsStore.secondBarEnabled == true
             },
             safeModeActive: { [weak self] in
                 self?.safeModeLaunchState.isSafeModeActive == true
@@ -431,7 +461,6 @@ final class AppEnvironment {
         diagnosticsLogger: diagnosticsLogger,
         factory: statusItemFactory,
         settingsStore: settingsStore,
-        screenGeometry: screenGeometry,
         hidingService: hidingService,
         primarySeparatorController: primarySeparatorController,
         alwaysHiddenSeparatorController: alwaysHiddenSeparatorController,
@@ -492,6 +521,14 @@ final class AppEnvironment {
         },
         refreshSecondBarSettings: { [weak self] in
             self?.refreshSecondBarSettings()
+        },
+        workspaceUsageProvider: { [weak self] in
+            guard let self else { return nil }
+            return WorkspaceUsageIndex().rebuild(
+                snapshot: self.workspaceSwitchingService.currentSnapshot(),
+                groups: self.groupStore.groups,
+                discoveredSnapshots: self.liveStatus.scannedMenuBarItems
+            )
         },
         openPrivacySettings: { [weak self] in
             self?.settingsWindowController.show(section: SettingsSection.privacy)
@@ -682,6 +719,9 @@ final class AppEnvironment {
                 target: .secondBar
             )
         },
+        openFunctionBar: { [weak self] in
+            self?.showFunctionBarPreview(source: .commandCenter)
+        },
         enterFullMenuBarMode: { [weak self] in
             self?.enterFullMenuBarMode()
         },
@@ -766,6 +806,9 @@ final class AppEnvironment {
         safeModeActive: { [weak self] in
             self?.safeModeLaunchState.isSafeModeActive == true
         },
+        statusItemAnchorProvider: { [weak self] in
+            self?.currentSeparatorFrames().primary
+        },
         diagnosticsLogger: diagnosticsLogger
     )
 
@@ -774,6 +817,9 @@ final class AppEnvironment {
         switchingService: workspaceSwitchingService,
         safeModeActive: { [weak self] in
             self?.safeModeLaunchState.isSafeModeActive == true
+        },
+        statusItemAnchorProvider: { [weak self] in
+            self?.currentSeparatorFrames().primary
         },
         contextBuilder: { [weak self] in
             self?.currentInfoTileContext() ?? InfoTileContext.empty
@@ -803,6 +849,7 @@ final class AppEnvironment {
         let model = SetBuilderViewModel(
             switchingService: workspaceSwitchingService,
             groupStore: groupStore,
+            newItemInboxStore: newMenuBarItemInboxStore,
             snapshotsProvider: { [weak self] in
                 self?.liveStatus.scannedMenuBarItems ?? []
             },
@@ -923,7 +970,23 @@ final class AppEnvironment {
         screenGeometry: ScreenGeometryService = ScreenGeometryService(),
         launchAtLoginService: LaunchAtLoginService? = nil,
         reflectLaunchAtLoginOnStart: Bool = true,
-        presentMigrationNoticeOnStart: Bool = true
+        presentMigrationNoticeOnStart: Bool = true,
+        accessibilityTrustProvider: @escaping AccessibilityPermissionService.TrustProvider = {
+            AXIsProcessTrustedWithOptions([
+                appEnvironmentAccessibilityPromptOptionKey: false
+            ] as CFDictionary)
+        },
+        accessibilityPromptTrustProvider: @escaping AccessibilityPermissionService.TrustProvider = {
+            AXIsProcessTrustedWithOptions([
+                appEnvironmentAccessibilityPromptOptionKey: true
+            ] as CFDictionary)
+        },
+        accessibilitySystemSettingsOpener: @escaping AccessibilityPermissionService.SystemSettingsOpener = {
+            guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") else {
+                return false
+            }
+            return NSWorkspace.shared.open(url)
+        }
     ) {
         self.settingsStore = settingsStore
         self.diagnosticsLogger = diagnosticsLogger
@@ -931,6 +994,9 @@ final class AppEnvironment {
         self.screenGeometry = screenGeometry
         self.reflectLaunchAtLoginOnStart = reflectLaunchAtLoginOnStart
         self.presentMigrationNoticeOnStart = presentMigrationNoticeOnStart
+        self.accessibilityTrustProvider = accessibilityTrustProvider
+        self.accessibilityPromptTrustProvider = accessibilityPromptTrustProvider
+        self.accessibilitySystemSettingsOpener = accessibilitySystemSettingsOpener
         self.liveStatus = LiveDiagnosticsStatus()
         self.settingsMigrationResult = SettingsMigrationService(
             settingsStore: settingsStore,
@@ -1342,6 +1408,9 @@ final class AppEnvironment {
                 action: .showSecondBar,
                 target: .secondBar
             ),
+            functionBarAvailable: settingsStore.workspacesPreviewEnabled
+                && settingsStore.functionBarPreviewEnabled
+                && !safeModeLaunchState.isSafeModeActive,
             fullMenuBarModeAvailable: crowdedRescueCommandAvailable(
                 action: .enterFullMenuBarMode,
                 target: .fullMenuBarMode
@@ -1356,7 +1425,7 @@ final class AppEnvironment {
         switch result {
         case .proceedInline, .inlineOverride:
             inlineAction()
-        case .openedSecondBar, .enteredFullMenuBarMode, .suggestedOnly, .noOp:
+        case .openedSecondBar, .openedFunctionBar, .enteredFullMenuBarMode, .suggestedOnly, .noOp:
             break
         }
     }
@@ -1487,14 +1556,48 @@ final class AppEnvironment {
         settingsRuntimeCoordinator.resetAllSettings()
     }
 
-    func showOnboarding() {
-        onboardingWindowController.show()
+    func showOnboarding(stepID: String? = nil) {
+        onboardingWindowController.show(stepID: stepID)
     }
 
     private func refreshAfterOnboarding() {
         // Currently a no-op beyond logging; kept as a hook so future phases can
         // react when the user first completes onboarding (e.g. show drag hint).
         diagnosticsLogger.log("Post-onboarding refresh applied.")
+    }
+
+    private func createSampleWorkspaceFromOnboarding() {
+        let snapshot = workspaceSwitchingService.currentSnapshot()
+        if let existing = snapshot.workspaces.first(where: { !$0.isArchived && $0.name == "Focus" }) {
+            _ = workspaceSwitchingService.switchWorkspace(id: existing.id, source: .settings)
+            refreshWorkspacePreviewRuntime()
+            showSettings(section: .workspacesPreview)
+            diagnosticsLogger.log("Onboarding sample Workspace already exists; opened Workspaces.", level: .info)
+            return
+        }
+
+        let result = workspaceSwitchingService.createWorkspace(WorkspaceDraft(name: "Focus", iconName: "moon"))
+        guard result.status == .success,
+              let workspaceID = result.activeWorkspaceID,
+              var workspace = workspaceSwitchingService.currentSnapshot().workspaces.first(where: { $0.id == workspaceID }) else {
+            diagnosticsLogger.log("Onboarding sample Workspace could not be created: \(result.message)", level: .warning)
+            showSettings(section: .workspacesPreview)
+            return
+        }
+
+        let now = Date()
+        workspace.functionItems = [
+            .command(.findIcon, now: now),
+            .command(.showSecondBar, now: now),
+            .divider(now: now),
+            .command(.revealAll, now: now),
+            .command(.openRecovery, now: now)
+        ]
+        workspace.updatedAt = now
+        _ = workspaceSwitchingService.updateWorkspace(workspace)
+        refreshWorkspacePreviewRuntime()
+        showSettings(section: .workspacesPreview)
+        diagnosticsLogger.log("Onboarding created a local sample Workspace with safe commands only.", level: .info)
     }
 
     // MARK: Health and recovery
@@ -1699,8 +1802,8 @@ final class AppEnvironment {
 
     // MARK: UI surfaces
 
-    func showSettings(section: SettingsSection = .general) {
-        settingsWindowController.show(section: section)
+    func showSettings(section: SettingsSection = .general, searchText: String? = nil) {
+        settingsWindowController.show(section: section, searchText: searchText)
     }
 
     func showDiagnostics() {
@@ -2030,6 +2133,16 @@ final class AppEnvironment {
         handlers.showLayoutSuggestions = { [weak self] in self?.showLayoutSuggestions() }
         handlers.enterFullMenuBarMode = { [weak self] in self?.enterFullMenuBarMode() }
         handlers.exitFullMenuBarMode = { [weak self] in self?.exitFullMenuBarMode() }
+        handlers.previewSpacingPreset = { [weak self] _ in
+            guard let self else { return false }
+            self.showSettings(section: .layout)
+            return true
+        }
+        handlers.showAssistedMoveGuide = { [weak self] in
+            guard let self else { return false }
+            self.showSettings(section: .arrange)
+            return true
+        }
         handlers.pauseAutomation = { [weak self] in
             self?.settingsStore.automationPaused = true
             self?.refreshTriggerSettings()

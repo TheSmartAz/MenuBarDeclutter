@@ -9,6 +9,7 @@ struct SearchRootView: View {
     @Bindable var itemMemoryStore: MenuBarItemMemoryStore
     let diagnosticsLogger: DiagnosticsLogger
     let newItemStorageKeysProvider: () -> Set<String>
+    let workspaceUsageProvider: () -> WorkspaceUsageIndexSnapshot?
     let onRefresh: () -> Void
     let onCommand: (MenuBarCommand) -> MenuBarCommandResult
     let onMove: @MainActor (MenuBarSearchResult, IconMoveCommand) async -> IconMoveResult
@@ -40,6 +41,8 @@ struct SearchRootView: View {
 
     @State private var searchDebounceTask: Task<Void, Never>?
     @State private var latestIndexRebuildDurationMilliseconds: Double?
+    @State private var providerInvalidationSignature: SearchProviderInvalidationSignature?
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
 
     private let keyboardRouter = SearchKeyboardActionRouter()
 
@@ -59,8 +62,9 @@ struct SearchRootView: View {
             Divider()
             searchFooter
         }
-        .frame(width: 620, height: 440)
+        .frame(width: panelWidth, height: panelHeight)
         .background(Color(nsColor: .windowBackgroundColor))
+        .accessibilityIdentifier("search.panel")
         .onAppear {
             onRefresh()
             rebuildSearchIndex(from: liveStatus.scannedMenuBarItems)
@@ -79,9 +83,23 @@ struct SearchRootView: View {
         .onChange(of: itemMemoryStore.favoriteCount) {
             refreshResults()
         }
+        .onChange(of: searchAvailabilitySignature) {
+            refreshProviderBackedResultsIfNeeded()
+        }
+        .onChange(of: liveStatus.newMenuBarItemReviewCount) {
+            refreshProviderBackedResultsIfNeeded()
+        }
         .onChange(of: liveStatus.scannedMenuBarItems) { _, newSnapshots in
             rebuildSearchIndex(from: newSnapshots)
             scheduleSearch()
+        }
+        .task {
+            refreshProviderBackedResultsIfNeeded()
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                guard !Task.isCancelled else { return }
+                refreshProviderBackedResultsIfNeeded()
+            }
         }
         .onKeyPress(.downArrow) {
             moveSelection(by: 1)
@@ -107,20 +125,29 @@ struct SearchRootView: View {
         }
     }
 
+    private var panelWidth: CGFloat {
+        searchIsAvailable ? 600 : 560
+    }
+
+    private var panelHeight: CGFloat {
+        searchIsAvailable ? 400 : 340
+    }
+
     private var searchHeader: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {
                 searchInputBar
 
-                Button("Refresh", systemImage: "arrow.clockwise") {
-                    onRefresh()
-                }
-                .labelStyle(.iconOnly)
-                .buttonStyle(.bordered)
-                .help("Refresh Menu Bar Items")
-                .disabled(!searchIsAvailable)
+                if searchIsAvailable {
+                    Button("Refresh", systemImage: "arrow.clockwise") {
+                        onRefresh()
+                    }
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.bordered)
+                    .help("Refresh Menu Bar Items")
 
-                ClearGlassBadge(style: .privacySafe)
+                    ClearGlassBadge(style: .privacySafe)
+                }
             }
 
             if searchIsAvailable {
@@ -141,6 +168,9 @@ struct SearchRootView: View {
                 .textFieldStyle(.plain)
                 .font(.body)
                 .focused($searchFieldFocused)
+                .disabled(!searchIsAvailable)
+                .accessibilityLabel("Find menu bar icon")
+                .accessibilityIdentifier("search.field")
                 .onSubmit {
                     activateSelectedResult()
                 }
@@ -154,6 +184,7 @@ struct SearchRootView: View {
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
                 .help("Clear Search")
+                .accessibilityIdentifier("search.clear")
             }
         }
         .padding(.horizontal, 12)
@@ -239,6 +270,7 @@ struct SearchRootView: View {
                     description: Text(emptyResultsDescription)
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .accessibilityIdentifier("search.empty")
             } else {
                 ScrollViewReader { proxy in
                     ScrollView {
@@ -302,8 +334,12 @@ struct SearchRootView: View {
                     }
                     .onChange(of: selectedID) { _, newValue in
                         guard let newValue else { return }
-                        withAnimation(.snappy(duration: 0.15)) {
+                        if accessibilityReduceMotion {
                             proxy.scrollTo(newValue, anchor: .center)
+                        } else {
+                            withAnimation(.snappy(duration: 0.15)) {
+                                proxy.scrollTo(newValue, anchor: .center)
+                            }
                         }
                     }
                 }
@@ -320,7 +356,7 @@ struct SearchRootView: View {
             Spacer()
 
             if !searchIsAvailable {
-                Text("Enable the requirements above to use local menu bar search.")
+                Text("Enable requirements above to use local search.")
                     .lineLimit(1)
                     .foregroundStyle(.secondary)
             } else if let activationMessage {
@@ -355,12 +391,26 @@ struct SearchRootView: View {
             return "No Recent Items"
         case .favorites:
             return "No Favorites"
+        case .currentWorkspace:
+            return "No Current Workspace Items"
+        case .anyWorkspace:
+            return "No Workspace Items"
+        case .unassigned:
+            return "No Unassigned Items"
+        case .usedInOtherWorkspace:
+            return "No Other Workspace Items"
+        case .groups:
+            return "No Group Items"
+        case .newItems:
+            return "No New Items"
         case .visible:
             return "No Visible Items"
         case .hidden:
             return "No Hidden Items"
         case .alwaysHidden:
             return "No Always Hidden Items"
+        case .stale:
+            return "No Stale Items"
         }
     }
 
@@ -384,17 +434,23 @@ struct SearchRootView: View {
         unavailableState == nil
     }
 
+    private var searchAvailabilitySignature: SearchAvailabilitySignature {
+        SearchAvailabilitySignature(
+            safeModeActive: liveStatus.safeModeActive,
+            proModeEnabled: settingsStore.proModeEnabled,
+            accessibilityDiscoveryEnabled: settingsStore.accessibilityDiscoveryEnabled,
+            permissionStatus: permissionService.status
+        )
+    }
+
     private var unavailableState: SearchUnavailableState? {
-        if !settingsStore.searchEnabled {
+        if liveStatus.safeModeActive {
             return SearchUnavailableState(
-                title: "Find Icon Disabled",
-                systemImage: "magnifyingglass.circle",
-                message: "Enable Find Icon in Search settings to use the panel.",
-                primaryButtonTitle: "Enable Find Icon",
-                primaryAction: {
-                    settingsStore.searchEnabled = true
-                    onSettingsChanged()
-                },
+                title: "Safe Mode Active",
+                systemImage: "exclamationmark.triangle",
+                message: "Find Icon is paused while Safe Mode is active. Reason: \(liveStatus.safeModeReasonSummary).",
+                primaryButtonTitle: "Refresh Status",
+                primaryAction: onRefresh,
                 secondaryButtonTitle: nil,
                 secondaryAction: nil
             )
@@ -609,11 +665,9 @@ struct SearchRootView: View {
     /// snapshot evaluation while preserving the perception of immediate feedback.
     private func scheduleSearch() {
         searchDebounceTask?.cancel()
-        let snapshotQuery = query
         searchDebounceTask = Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(100))
             if Task.isCancelled { return }
-            _ = snapshotQuery
             refreshResults()
         }
     }
@@ -626,22 +680,55 @@ struct SearchRootView: View {
 
     /// Re-evaluates `results` against the current `searchIndex` and `query`, then
     /// propagates diagnostics state and reselects the first result as needed.
-    private func refreshResults() {
+    private func refreshResults(providerSignature: SearchProviderInvalidationSignature? = nil) {
+        let signature = providerSignature ?? syncProviderInvalidationSignature()
         guard searchIsAvailable else {
-            results = []
+            if !results.isEmpty {
+                results = []
+            }
+            if selectedID != nil {
+                selectedID = nil
+            }
             return
         }
         let start = Date()
-        results = searchService.results(
+        let refreshedResults = searchService.results(
             from: searchIndex,
             query: query,
             filter: selectedFilter,
             memoryStore: itemMemoryStore,
-            rankingContext: rankingContext()
+            rankingContext: rankingContext(from: signature)
         )
+        if results != refreshedResults {
+            results = refreshedResults
+        }
         let rankingDurationMilliseconds = Date().timeIntervalSince(start) * 1000
         updateSearchDiagnostics(rankingDurationMilliseconds: rankingDurationMilliseconds)
         selectFirstResultIfNeeded()
+    }
+
+    private func refreshProviderBackedResultsIfNeeded() {
+        let signature = currentProviderInvalidationSignature()
+        guard providerInvalidationSignature != signature else { return }
+        providerInvalidationSignature = signature
+        refreshResults(providerSignature: signature)
+    }
+
+    @discardableResult
+    private func syncProviderInvalidationSignature() -> SearchProviderInvalidationSignature {
+        let signature = currentProviderInvalidationSignature()
+        if providerInvalidationSignature != signature {
+            providerInvalidationSignature = signature
+        }
+        return signature
+    }
+
+    private func currentProviderInvalidationSignature() -> SearchProviderInvalidationSignature {
+        SearchProviderInvalidationSignature(
+            availability: searchAvailabilitySignature,
+            newItemStorageKeys: newItemStorageKeysProvider(),
+            workspaceUsageSnapshot: workspaceUsageProvider()
+        )
     }
 
     private func updateSearchDiagnostics(rankingDurationMilliseconds: Double) {
@@ -666,10 +753,12 @@ struct SearchRootView: View {
         )
     }
 
-    private func rankingContext() -> SearchRankingContext {
-        SearchRankingContext(
-            newItemStorageKeys: newItemStorageKeysProvider(),
-            staleBefore: Date().addingTimeInterval(-300)
+    private func rankingContext(from signature: SearchProviderInvalidationSignature? = nil) -> SearchRankingContext {
+        let signature = signature ?? currentProviderInvalidationSignature()
+        return SearchRankingContext(
+            newItemStorageKeys: signature.newItemStorageKeys,
+            staleBefore: Date().addingTimeInterval(-300),
+            workspaceUsageSnapshot: signature.workspaceUsageSnapshot
         )
     }
 
@@ -707,6 +796,19 @@ struct SearchRootView: View {
     }
 }
 
+private struct SearchAvailabilitySignature: Equatable {
+    let safeModeActive: Bool
+    let proModeEnabled: Bool
+    let accessibilityDiscoveryEnabled: Bool
+    let permissionStatus: AccessibilityPermissionStatus
+}
+
+private struct SearchProviderInvalidationSignature: Equatable {
+    let availability: SearchAvailabilitySignature
+    let newItemStorageKeys: Set<String>
+    let workspaceUsageSnapshot: WorkspaceUsageIndexSnapshot?
+}
+
 private struct SearchUnavailableState {
     let title: String
     let systemImage: String
@@ -721,14 +823,14 @@ private struct SearchUnavailableView: View {
     let state: SearchUnavailableState
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: state.systemImage)
-                    .font(.system(size: 28, weight: .regular))
+                    .font(.system(size: 24, weight: .regular))
                     .foregroundStyle(.orange)
-                    .frame(width: 34)
+                    .frame(width: 30)
 
-                VStack(alignment: .leading, spacing: 7) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text(state.title)
                         .font(.title3)
                         .bold()
@@ -739,15 +841,13 @@ private struct SearchUnavailableView: View {
                 }
             }
 
-            HStack(spacing: 10) {
-                Button(state.primaryButtonTitle, action: state.primaryAction)
-                    .buttonStyle(.borderedProminent)
-                    .accessibilityLabel(Text(state.primaryButtonTitle))
-                    .accessibilityIdentifier("search.unavailable.primary")
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) {
+                    unavailableButtons
+                }
 
-                if let secondaryButtonTitle = state.secondaryButtonTitle,
-                   let secondaryAction = state.secondaryAction {
-                    Button(secondaryButtonTitle, action: secondaryAction)
+                VStack(alignment: .leading, spacing: 8) {
+                    unavailableButtons
                 }
             }
 
@@ -757,14 +857,29 @@ private struct SearchUnavailableView: View {
                 style: .success
             )
         }
-        .padding(24)
-        .frame(maxWidth: 440, alignment: .leading)
+        .padding(20)
+        .frame(maxWidth: 400, alignment: .leading)
         .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
         .overlay {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("search.unavailable")
+    }
+
+    @ViewBuilder
+    private var unavailableButtons: some View {
+        Button(state.primaryButtonTitle, action: state.primaryAction)
+            .buttonStyle(.borderedProminent)
+            .accessibilityLabel(Text(state.primaryButtonTitle))
+            .accessibilityIdentifier("search.unavailable.primary")
+
+        if let secondaryButtonTitle = state.secondaryButtonTitle,
+           let secondaryAction = state.secondaryAction {
+            Button(secondaryButtonTitle, action: secondaryAction)
+        }
     }
 }
 
@@ -787,6 +902,7 @@ private struct SearchUnavailableView: View {
         itemMemoryStore: MenuBarItemMemoryStore(fileURL: nil),
         diagnosticsLogger: logger,
         newItemStorageKeysProvider: { [] },
+        workspaceUsageProvider: { nil },
         onRefresh: {},
         onCommand: { command in
             MenuBarCommandResult.success(command, message: "Preview command")

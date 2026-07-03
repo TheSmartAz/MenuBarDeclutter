@@ -34,14 +34,26 @@ struct IconGroupItemPickerView: View {
                     style: .info
                 )
             } else if snapshots.isEmpty {
-                ContentUnavailableView("No Snapshot Items", systemImage: "menubar.rectangle", description: Text("Refresh menu bar items after enabling Pro Mode."))
+                SettingsUnavailableGate(
+                    .emptyData,
+                    title: "No Snapshot Items",
+                    message: "Refresh menu bar items after enabling Pro Mode.",
+                    systemImage: "menubar.rectangle",
+                    minHeight: 110
+                )
                     .frame(maxWidth: .infinity, minHeight: 110)
             } else {
                 VStack(alignment: .leading, spacing: 8) {
                     SearchField("Search items", text: $query, width: nil)
 
                     if filteredSnapshots.isEmpty {
-                        ContentUnavailableView("No Matching Items", systemImage: "magnifyingglass")
+                        SettingsUnavailableGate(
+                            .noMatches,
+                            title: "No Matching Items",
+                            message: "Try another app name, item title, or bundle identifier.",
+                            systemImage: "magnifyingglass",
+                            minHeight: 128
+                        )
                             .frame(maxWidth: .infinity, minHeight: 128)
                     } else {
                         ScrollView {

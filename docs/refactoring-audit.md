@@ -268,7 +268,7 @@ owns the cache.
 
 ### H13 — `SearchService` allocates per-keystroke with no `SearchIndex`
 **Files:** `MenuBar-Manager/Search/SearchService.swift:112-178`;
-         `MenuBar-Manager/Search/SearchRootView.dart:21-31`
+         `MenuBar-Manager/Search/SearchRootView.swift:21-31`
 **Categories:** P
 **Issue:** For each snapshot × keystroke, `bestMatch` calls `normalize(name)`,
 `normalize(title)`, `normalize(bundleIdentifier)` — each does `.trimmingCharacters` +

@@ -33,6 +33,9 @@ struct IconGroupPanelItemRowView: View {
             }
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(displayTitle), \(snapshot.zone.displayName)")
+        .accessibilityValue(isSelected ? "Selected" : "Not selected")
     }
 
     private var rowBackground: Color {

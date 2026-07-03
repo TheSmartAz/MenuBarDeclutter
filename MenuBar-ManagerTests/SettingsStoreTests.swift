@@ -5,6 +5,23 @@ import Testing
 @Suite("SettingsStore")
 @MainActor
 struct SettingsStoreTests {
+    @Test func keyPoliciesKeepSensitiveAndLocalStateOutOfPortableSettings() {
+        #expect(SettingsStore.privacySafeExportOmittedKeys.contains(.dogfoodRunID))
+        #expect(SettingsStore.privacySafeExportOmittedKeys.contains(.launchAtLoginEnabled))
+        #expect(SettingsStore.privacySafeExportOmittedKeys.contains(.privateAccessLastAuthStatus))
+        #expect(SettingsStore.privacySafeExportOmittedKeys.contains(.menuBarSpacingLastApplyStatus))
+        #expect(!SettingsStore.privacySafeExportKeys.contains(.dogfoodRunID))
+        #expect(!SettingsStore.privacySafeExportKeys.contains(.launchAtLoginEnabled))
+        #expect(!SettingsStore.privacySafeExportKeys.contains(.showPrimarySeparator))
+        #expect(SettingsStore.privacySafeExportKeys.contains(.proModeEnabled))
+
+        #expect(SettingsStore.importSkippedKeys.isSuperset(of: SettingsStore.privacySafeExportOmittedKeys))
+        #expect(SettingsStore.importSkippedKeys.contains(.launchAtLoginEnabled))
+
+        #expect(!SettingsStore.migrationSnapshotKeys.contains(.showPrimarySeparator))
+        #expect(SettingsStore.migrationSnapshotKeys.contains(.launchAtLoginEnabled))
+    }
+
     @Test func defaultValuesAreRegistered() {
         let suiteName = "SettingsStoreTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
@@ -24,6 +41,7 @@ struct SettingsStoreTests {
         #expect(store.collapsedSeparatorLengthOverride == nil)
         #expect(store.hasSeenDragHint == false)
         #expect(store.showPrimarySeparator == true)
+        #expect(store.searchEnabled == true)
         #expect(store.dogfoodModeEnabled == false)
         #expect(store.dogfoodRunID == nil)
         #expect(store.dogfoodNotesEnabled == true)
@@ -384,7 +402,7 @@ struct SettingsStoreTests {
 
         let store = SettingsStore(defaults: defaults)
 
-        #expect(store.secondBarEnabled == false)
+        #expect(store.secondBarEnabled == true)
         #expect(store.secondBarShowHiddenItems == true)
         #expect(store.secondBarShowAlwaysHiddenItems == true)
         #expect(store.secondBarAutoCloseAfterSelection == true)
@@ -406,7 +424,7 @@ struct SettingsStoreTests {
         defer { defaults.removePersistentDomain(forName: suiteName) }
 
         let store = SettingsStore(defaults: defaults)
-        store.secondBarEnabled = true
+        store.secondBarEnabled = false
         store.secondBarPositionModeRaw = SecondBarPositionMode.nearMouse.rawValue
         store.secondBarIconSize = 999
         store.iconMovingEnabled = true
@@ -417,7 +435,7 @@ struct SettingsStoreTests {
 
         let reloaded = SettingsStore(defaults: defaults)
 
-        #expect(reloaded.secondBarEnabled == true)
+        #expect(reloaded.secondBarEnabled == false)
         #expect(reloaded.effectiveSecondBarPositionMode() == .nearMouse)
         #expect(reloaded.secondBarIconSize == AppConstants.maxSecondBarIconSize)
         #expect(reloaded.iconMovingEnabled == true)
@@ -434,7 +452,7 @@ struct SettingsStoreTests {
         defer { defaults.removePersistentDomain(forName: suiteName) }
 
         let store = SettingsStore(defaults: defaults)
-        store.secondBarEnabled = true
+        store.secondBarEnabled = false
         store.secondBarPositionModeRaw = SecondBarPositionMode.lastPosition.rawValue
         store.secondBarIconSize = 60
         store.iconMovingEnabled = true
@@ -445,7 +463,7 @@ struct SettingsStoreTests {
 
         store.restoreDefaults()
 
-        #expect(store.secondBarEnabled == false)
+        #expect(store.secondBarEnabled == true)
         #expect(store.effectiveSecondBarPositionMode() == .belowMenuBar)
         #expect(store.secondBarIconSize == AppConstants.defaultSecondBarIconSize)
         #expect(store.iconMovingEnabled == false)

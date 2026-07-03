@@ -10,6 +10,9 @@ nonisolated enum CrowdedRevealIntent: String, Equatable, Sendable {
 nonisolated enum CrowdedRevealDecision: Equatable, Sendable {
     case inlineReveal
     case secondBar
+    case functionBar
+    case functionBarThenSecondBar
+    case askFunctionBarOrSecondBar
     case fullMenuBarMode
     case showLayoutSuggestion
     case noOp
@@ -31,6 +34,8 @@ nonisolated struct CrowdedRevealDecisionInput: Equatable, Sendable {
     let requireProEstimate: Bool
     let proDiscoveryAvailable: Bool
     let secondBarAvailable: Bool
+    let functionBarAvailable: Bool
+    let workspaceFallbackPreference: CrowdedRescueWorkspaceFallbackPreference
     let fullMenuBarModeAvailable: Bool
     let layoutSuggestionsAvailable: Bool
     let safeModeActive: Bool
@@ -81,12 +86,36 @@ nonisolated struct CrowdedRevealDecisionEngine {
             return .inlineReveal
         }
 
-        if input.askBeforeSwitching {
+        if input.askBeforeSwitching || input.workspaceFallbackPreference == .askEveryTime {
+            if input.functionBarAvailable && input.secondBarAvailable {
+                return .askFunctionBarOrSecondBar
+            }
             return input.layoutSuggestionsAvailable ? .showLayoutSuggestion : .inlineReveal
+        }
+
+        if input.workspaceFallbackPreference == .preferInlineOnly {
+            return .inlineReveal
+        }
+
+        if input.workspaceFallbackPreference == .preferFunctionBar,
+           input.functionBarAvailable {
+            return .functionBar
+        }
+
+        if input.workspaceFallbackPreference == .preferFunctionBar,
+           !input.functionBarAvailable,
+           input.proDiscoveryAvailable,
+           input.secondBarAvailable {
+            return .functionBarThenSecondBar
         }
 
         if input.autoOpenSecondBar, input.proDiscoveryAvailable, input.secondBarAvailable {
             return .secondBar
+        }
+
+        if input.workspaceFallbackPreference == .preferFullMenuBarMode,
+           input.fullMenuBarModeAvailable {
+            return .fullMenuBarMode
         }
 
         if input.fullMenuBarModeAvailable {

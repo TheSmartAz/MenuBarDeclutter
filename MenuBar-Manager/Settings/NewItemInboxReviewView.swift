@@ -11,6 +11,12 @@ struct NewItemInboxReviewView: View {
     var onOpenGroups: (() -> Void)?
     var onOpenInspector: (() -> Void)?
     var onOpenPrivacy: (() -> Void)?
+    var workspaceOptions: [WorkspaceAssignmentOption] = []
+    var groupOptions: [WorkspaceAssignmentOption] = []
+    var onAssignToCurrentWorkspace: (String) -> Void = { _ in }
+    var onAssignToWorkspace: (String, UUID) -> Void = { _, _ in }
+    var onAssignToGroup: (String, UUID) -> Void = { _, _ in }
+    var onCreateGroup: (String) -> Void = { _ in }
 
     var body: some View {
         switch state.status {
@@ -70,7 +76,13 @@ struct NewItemInboxReviewView: View {
                     onOpenSecondBar: onOpenSecondBar,
                     onOpenArrange: onOpenArrange,
                     onOpenGroups: onOpenGroups,
-                    onOpenInspector: onOpenInspector
+                    onOpenInspector: onOpenInspector,
+                    workspaceOptions: workspaceOptions,
+                    groupOptions: groupOptions,
+                    onAssignToCurrentWorkspace: onAssignToCurrentWorkspace,
+                    onAssignToWorkspace: onAssignToWorkspace,
+                    onAssignToGroup: onAssignToGroup,
+                    onCreateGroup: onCreateGroup
                 )
 
                 if offset < state.rows.count - 1 {
@@ -136,6 +148,12 @@ private struct NewItemInboxReviewRowView: View {
     var onOpenArrange: (() -> Void)?
     var onOpenGroups: (() -> Void)?
     var onOpenInspector: (() -> Void)?
+    var workspaceOptions: [WorkspaceAssignmentOption]
+    var groupOptions: [WorkspaceAssignmentOption]
+    var onAssignToCurrentWorkspace: (String) -> Void
+    var onAssignToWorkspace: (String, UUID) -> Void
+    var onAssignToGroup: (String, UUID) -> Void
+    var onCreateGroup: (String) -> Void
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
@@ -184,6 +202,43 @@ private struct NewItemInboxReviewRowView: View {
                     }
                 }
                 .accessibilityIdentifier("newItemInbox.row.reviewMenu")
+
+                Menu("Workspace", systemImage: "rectangle.3.group") {
+                    Button("Assign to Current Workspace", systemImage: "rectangle.3.group") {
+                        onAssignToCurrentWorkspace(row.id)
+                    }
+
+                    if !workspaceOptions.isEmpty {
+                        Divider()
+                        ForEach(workspaceOptions) { workspace in
+                            Button(workspace.title, systemImage: "rectangle.3.group") {
+                                onAssignToWorkspace(row.id, workspace.id)
+                            }
+                        }
+                    }
+                }
+                .accessibilityIdentifier("newItemInbox.row.workspaceMenu")
+
+                Menu("Group", systemImage: "person.2") {
+                    if groupOptions.isEmpty {
+                        Button("Open Groups", systemImage: "person.2") {
+                            onOpenGroups?()
+                        }
+                    } else {
+                        ForEach(groupOptions) { group in
+                            Button(group.title, systemImage: "person.2") {
+                                onAssignToGroup(row.id, group.id)
+                            }
+                        }
+                    }
+
+                    Divider()
+
+                    Button("Create Group with Item", systemImage: "plus") {
+                        onCreateGroup(row.id)
+                    }
+                }
+                .accessibilityIdentifier("newItemInbox.row.groupMenu")
 
                 Button("Dismiss", systemImage: "checkmark.circle") {
                     onDismiss(row.id)

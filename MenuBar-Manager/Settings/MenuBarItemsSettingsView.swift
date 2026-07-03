@@ -10,27 +10,15 @@ struct MenuBarItemsSettingsView: View {
     @State private var selectedSnapshotID: MenuBarItemSnapshot.ID?
     @State private var searchText = ""
     @State private var selectedFilter: MenuBarItemsFilter = .all
+    @State private var visibleSnapshots: [MenuBarItemSnapshot] = []
 
     private var snapshots: [MenuBarItemSnapshot] {
         liveStatus?.scannedMenuBarItems ?? []
     }
 
-    private var filteredSnapshots: [MenuBarItemSnapshot] {
-        let filteredByZone = snapshots.filter { selectedFilter.includes($0) }
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        guard !query.isEmpty else {
-            return filteredByZone
-        }
-
-        return filteredByZone.filter { snapshot in
-            snapshot.searchText.localizedStandardContains(query)
-        }
-    }
-
     private var selectedSnapshot: MenuBarItemSnapshot? {
-        guard let selectedSnapshotID else { return filteredSnapshots.first }
-        return filteredSnapshots.first { $0.id == selectedSnapshotID }
+        guard let selectedSnapshotID else { return visibleSnapshots.first }
+        return visibleSnapshots.first { $0.id == selectedSnapshotID }
     }
 
     private var permissionStatus: AccessibilityPermissionStatus {
@@ -85,7 +73,11 @@ struct MenuBarItemsSettingsView: View {
         ClearGlassSettingsPage(
             "Menu Bar Items",
             subtitle: "Inspect the current local Accessibility discovery snapshot.",
-            badges: [.stable, .proMode, .accessibilityRequired]
+            badges: [.stable, .proMode, .accessibilityRequired],
+            sectionAnchors: [
+                ClearGlassPageAnchor("Snapshot", systemImage: "camera.metering.matrix"),
+                ClearGlassPageAnchor("Items", systemImage: "list.bullet.rectangle")
+            ]
         ) {
             MenuBarItemsSummaryStrip(liveStatus: liveStatus, snapshots: snapshots)
 
@@ -134,25 +126,23 @@ struct MenuBarItemsSettingsView: View {
                         onOpenPrivacySettings: onOpenPrivacySettings
                     )
                 } else {
-                    HStack(spacing: 0) {
-                        MenuBarItemsSourcePane(
-                            snapshots: filteredSnapshots,
-                            totalCount: snapshots.count,
-                            searchText: $searchText,
-                            selectedFilter: $selectedFilter,
-                            selectedSnapshotID: $selectedSnapshotID
+                        ClearGlassPaneLayout(primaryWidth: 280, spacing: 0) {
+                            MenuBarItemsSourcePane(
+                                snapshots: visibleSnapshots,
+                                totalCount: snapshots.count,
+                                searchText: $searchText,
+                                selectedFilter: $selectedFilter,
+                                selectedSnapshotID: $selectedSnapshotID
                         )
-                        .frame(width: 330)
-
-                        Divider()
-
+                        .frame(minHeight: 320, maxHeight: 430)
+                    } detail: {
                         MenuBarItemInspector(
                             snapshot: selectedSnapshot,
                             onRefresh: {
                                 scanCoordinator?.requestManualRefresh()
                             }
                         )
-                        .frame(minWidth: 360, maxWidth: .infinity)
+                        .frame(minHeight: 320)
                     }
                     .frame(minHeight: 430)
                     .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 8))
@@ -163,9 +153,15 @@ struct MenuBarItemsSettingsView: View {
                 }
             }
         }
-        .onAppear(perform: reconcileSelection)
-        .onChange(of: filteredSnapshots.map(\.id)) {
-            reconcileSelection()
+        .onAppear(perform: refreshVisibleSnapshots)
+        .onChange(of: snapshots) { _, _ in
+            refreshVisibleSnapshots()
+        }
+        .onChange(of: searchText) { _, _ in
+            refreshVisibleSnapshots()
+        }
+        .onChange(of: selectedFilter) { _, _ in
+            refreshVisibleSnapshots()
         }
     }
 
@@ -198,18 +194,47 @@ struct MenuBarItemsSettingsView: View {
         }
     }
 
-    private func reconcileSelection() {
-        guard !filteredSnapshots.isEmpty else {
+    private func refreshVisibleSnapshots() {
+        let nextSnapshots = Self.filteredSnapshots(
+            from: snapshots,
+            selectedFilter: selectedFilter,
+            searchText: searchText
+        )
+        if visibleSnapshots != nextSnapshots {
+            visibleSnapshots = nextSnapshots
+        }
+        reconcileSelection(in: nextSnapshots)
+    }
+
+    private func reconcileSelection(in snapshots: [MenuBarItemSnapshot]) {
+        guard !snapshots.isEmpty else {
             selectedSnapshotID = nil
             return
         }
 
         if let selectedSnapshotID,
-           filteredSnapshots.contains(where: { $0.id == selectedSnapshotID }) {
+           snapshots.contains(where: { $0.id == selectedSnapshotID }) {
             return
         }
 
-        selectedSnapshotID = filteredSnapshots.first?.id
+        selectedSnapshotID = snapshots.first?.id
+    }
+
+    private static func filteredSnapshots(
+        from snapshots: [MenuBarItemSnapshot],
+        selectedFilter: MenuBarItemsFilter,
+        searchText: String
+    ) -> [MenuBarItemSnapshot] {
+        let filteredByZone = snapshots.filter { selectedFilter.includes($0) }
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !query.isEmpty else {
+            return filteredByZone
+        }
+
+        return filteredByZone.filter { snapshot in
+            snapshot.searchText.localizedStandardContains(query)
+        }
     }
 }
 
@@ -368,10 +393,12 @@ private struct MenuBarItemsSourcePane: View {
 
             ScrollView {
                 if snapshots.isEmpty {
-                    ContentUnavailableView(
-                        "No Matching Items",
+                    SettingsUnavailableGate(
+                        .noMatches,
+                        title: "No Matching Items",
+                        message: "Try a different filter or search term.",
                         systemImage: "line.3.horizontal.decrease.circle",
-                        description: Text("Try a different filter or search term.")
+                        minHeight: 260
                     )
                     .frame(maxWidth: .infinity, minHeight: 260)
                 } else {
@@ -525,10 +552,12 @@ private struct MenuBarItemInspector: View {
                 Button("Refresh Snapshot", systemImage: "arrow.clockwise", action: onRefresh)
                     .controlSize(.small)
             } else {
-                ContentUnavailableView(
-                    "No Item Selected",
+                SettingsUnavailableGate(
+                    .emptyData,
+                    title: "No Item Selected",
+                    message: "Select an item in the source list to inspect its owner, zone, and geometry.",
                     systemImage: "sidebar.right",
-                    description: Text("Select an item in the source list to inspect its owner, zone, and geometry.")
+                    minHeight: 260
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -538,6 +567,21 @@ private struct MenuBarItemInspector: View {
     }
 
     private func inspectorHeader(_ snapshot: MenuBarItemSnapshot) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: 12) {
+                inspectorIdentity(snapshot)
+
+                ClearGlassStatusValue(text: snapshot.zone.displayName, style: snapshot.zone.statusStyle)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                inspectorIdentity(snapshot)
+                ClearGlassStatusValue(text: snapshot.zone.displayName, style: snapshot.zone.statusStyle)
+            }
+        }
+    }
+
+    private func inspectorIdentity(_ snapshot: MenuBarItemSnapshot) -> some View {
         HStack(alignment: .top, spacing: 12) {
             AppIconView(snapshot: snapshot, size: 40, cornerRadius: 9)
 
@@ -553,9 +597,8 @@ private struct MenuBarItemInspector: View {
                     .truncationMode(.tail)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-
-            ClearGlassStatusValue(text: snapshot.zone.displayName, style: snapshot.zone.statusStyle)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -639,11 +682,14 @@ private struct MenuBarItemsUnavailableView: View {
     var onOpenPrivacySettings: (() -> Void)?
 
     var body: some View {
-        ContentUnavailableView {
-            Label(title, systemImage: systemImage)
-        } description: {
-            Text(message)
-        } actions: {
+        SettingsUnavailableGate(
+            hasSnapshots ? .noMatches : unavailableReason,
+            title: title,
+            message: message,
+            systemImage: systemImage,
+            minHeight: 320,
+            showsActions: onOpenPrivacySettings != nil
+        ) {
             if onOpenPrivacySettings != nil {
                 Button("Open Privacy Settings", systemImage: "hand.raised") {
                     onOpenPrivacySettings?()
@@ -651,6 +697,22 @@ private struct MenuBarItemsUnavailableView: View {
             }
         }
         .frame(maxWidth: .infinity, minHeight: 320)
+    }
+
+    private var unavailableReason: SettingsUnavailableReason {
+        if !proModeEnabled {
+            return .proModeDisabled
+        }
+
+        if !discoveryEnabled {
+            return .previewDisabled
+        }
+
+        if permissionStatus != .granted {
+            return .permissionMissing(status: permissionStatus.displayName)
+        }
+
+        return .emptyData
     }
 
     private var title: String {

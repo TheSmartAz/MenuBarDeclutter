@@ -2,7 +2,7 @@ import Foundation
 
 /// Kind of action a suggestion can trigger.
 nonisolated enum LayoutSuggestionActionKind: String, CaseIterable, Sendable {
-    case enableSecondBar
+    case showSecondBarInStatusMenu
     case useFullMenuBarMode
     case addAlwaysHiddenZone
     case reduceAutoRehideAggressiveness

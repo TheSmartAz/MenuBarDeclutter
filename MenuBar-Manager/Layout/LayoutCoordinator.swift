@@ -38,6 +38,7 @@ final class LayoutCoordinator {
         resumeAutoRehide: @escaping () -> Void,
         showSpacerMarkers: @escaping (Bool) -> Void,
         openSecondBar: @escaping () -> Void,
+        openFunctionBar: @escaping () -> Void = {},
         enterFullMenuBarMode: @escaping () -> Void,
         showLayoutSuggestions: @escaping () -> Void = {}
     ) {
@@ -79,6 +80,7 @@ final class LayoutCoordinator {
             diagnosticsLogger: diagnosticsLogger,
             settingsStore: settingsStore,
             openSecondBar: openSecondBar,
+            openFunctionBar: openFunctionBar,
             enterFullMenuBarMode: enterFullMenuBarMode,
             showLayoutSuggestions: showLayoutSuggestions
         )

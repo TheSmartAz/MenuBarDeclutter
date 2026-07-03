@@ -197,7 +197,7 @@ final class SettingsRuntimeCoordinator {
             return
         }
 
-        if settingsStore.searchEnabled && settingsStore.searchHotkeyEnabled {
+        if settingsStore.searchHotkeyEnabled {
             hotkeyManager.register(
                 identifier: .findIcon,
                 hotkey: settingsStore.effectiveSearchHotkey()

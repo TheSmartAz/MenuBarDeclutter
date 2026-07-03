@@ -24,10 +24,10 @@ nonisolated struct LayoutSuggestionService {
                 suggestions.append(
                     LayoutSuggestion(
                         id: "enable-second-bar",
-                        title: "Enable Second Bar",
-                        message: "Your menu bar appears crowded. Second Bar can show hidden items in a separate window.",
+                        title: "Show Second Bar in Status Menu",
+                        message: "Your menu bar appears crowded. Keep the Second Bar shortcut visible for quick access to hidden items.",
                         severity: .warning,
-                        actionKind: .enableSecondBar,
+                        actionKind: .showSecondBarInStatusMenu,
                         createdAt: timestamp
                     )
                 )
@@ -52,7 +52,7 @@ nonisolated struct LayoutSuggestionService {
                     title: "Consider Second Bar for Notch Displays",
                     message: estimate.warnings.first(where: { $0 == .notchConstrained })?.message ?? "Second Bar is recommended for notch displays.",
                     severity: .info,
-                    actionKind: .enableSecondBar,
+                    actionKind: .showSecondBarInStatusMenu,
                     createdAt: timestamp
                 )
             )

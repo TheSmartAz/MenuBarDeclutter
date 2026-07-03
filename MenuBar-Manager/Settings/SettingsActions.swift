@@ -29,6 +29,7 @@ struct SettingsActions {
     var removeMissingWorkspaceGroupReferences: (() -> Void)?
     var discardSetBuilderDraft: (() -> Void)?
     var disableFunctionBarPreview: (() -> Void)?
+    var disableInfoStripPreview: (() -> Void)?
     var disableSetBuilderPreview: (() -> Void)?
     var resetBasicMode: (() -> Void)?
     var disableProMode: (() -> Void)?
@@ -64,6 +65,7 @@ struct SettingsActions {
         removeMissingWorkspaceGroupReferences: (() -> Void)? = nil,
         discardSetBuilderDraft: (() -> Void)? = nil,
         disableFunctionBarPreview: (() -> Void)? = nil,
+        disableInfoStripPreview: (() -> Void)? = nil,
         disableSetBuilderPreview: (() -> Void)? = nil,
         resetBasicMode: (() -> Void)? = nil,
         disableProMode: (() -> Void)? = nil,
@@ -98,6 +100,7 @@ struct SettingsActions {
         self.removeMissingWorkspaceGroupReferences = removeMissingWorkspaceGroupReferences
         self.discardSetBuilderDraft = discardSetBuilderDraft
         self.disableFunctionBarPreview = disableFunctionBarPreview
+        self.disableInfoStripPreview = disableInfoStripPreview
         self.disableSetBuilderPreview = disableSetBuilderPreview
         self.resetBasicMode = resetBasicMode
         self.disableProMode = disableProMode

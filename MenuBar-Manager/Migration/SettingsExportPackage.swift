@@ -94,18 +94,64 @@ nonisolated struct SettingsExportPackage: Codable, Equatable, Sendable {
         ) ?? SettingsExportSection.defaultIncludedSections
         self.settings = try container.decode([String: String].self, forKey: .settings)
         self.omittedSettings = try container.decodeIfPresent([String].self, forKey: .omittedSettings) ?? []
-        do {
-            self.profiles = try container.decodeIfPresent([ProfileModel].self, forKey: .profiles) ?? []
-        } catch {
-            _ = try? container.decodeIfPresent([ProfileExportEntry].self, forKey: .profiles)
-            self.profiles = []
-        }
+        self.profiles = try Self.decodeProfiles(from: container)
         self.groups = try container.decodeIfPresent([IconGroup].self, forKey: .groups) ?? []
         self.hotkeyBindings = try container.decodeIfPresent([HotkeyBinding].self, forKey: .hotkeyBindings) ?? []
         self.spacerItems = try container.decodeIfPresent([SpacerItemModel].self, forKey: .spacerItems) ?? []
         self.workspaceSnapshot = try container.decodeIfPresent(WorkspaceStoreSnapshot.self, forKey: .workspaceSnapshot)
         self.privateAccessPolicy = try container.decodeIfPresent(PrivateAccessPolicyExport.self, forKey: .privateAccessPolicy)
         self.includeAXSnapshots = try container.decodeIfPresent(Bool.self, forKey: .includeAXSnapshots) ?? false
+    }
+
+    private static func decodeProfiles(
+        from container: KeyedDecodingContainer<CodingKeys>
+    ) throws -> [ProfileModel] {
+        guard container.contains(.profiles) else { return [] }
+
+        do {
+            return try container.decodeIfPresent([ProfileModel].self, forKey: .profiles) ?? []
+        } catch {
+            guard try isLegacyMetadataOnlyProfileArray(in: container) else {
+                throw error
+            }
+            return []
+        }
+    }
+
+    private static func isLegacyMetadataOnlyProfileArray(
+        in container: KeyedDecodingContainer<CodingKeys>
+    ) throws -> Bool {
+        guard (try? container.decode([ProfileExportEntry].self, forKey: .profiles)) != nil else {
+            return false
+        }
+
+        let probes = try container.decode([ProfileEntryKeyProbe].self, forKey: .profiles)
+        let legacyKeys: Set<String> = ["id", "name", "isReadOnly", "createdAt", "updatedAt"]
+        return probes.allSatisfy { probe in
+            probe.keys == legacyKeys
+        }
+    }
+}
+
+private struct ProfileEntryKeyProbe: Decodable {
+    let keys: Set<String>
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: DynamicProfileCodingKey.self)
+        keys = Set(container.allKeys.map(\.stringValue))
+    }
+}
+
+private struct DynamicProfileCodingKey: CodingKey {
+    let stringValue: String
+    let intValue: Int? = nil
+
+    init(stringValue: String) {
+        self.stringValue = stringValue
+    }
+
+    init?(intValue: Int) {
+        return nil
     }
 }
 

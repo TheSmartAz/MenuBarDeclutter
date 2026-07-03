@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import CoreGraphics
 import Testing
@@ -95,6 +96,35 @@ struct WorkspacesFunctionBarInfoStripTests {
 
         #expect(controller.activeState() == .unavailable(.noDisplayAvailable))
         #expect(controller.lastShowResult == FunctionBarUnavailableReason.noDisplayAvailable.rawValue)
+    }
+
+    @Test func placementServicesUseStatusItemAnchorWhenAvailable() throws {
+        let screen = try #require(NSScreen.screens.first)
+        let visibleFrame = screen.visibleFrame
+        let panelSize = CGSize(width: 200, height: 80)
+        let anchor = CGRect(x: visibleFrame.midX + 60, y: visibleFrame.maxY - 24, width: 24, height: 18)
+        let expectedX = anchor.midX - panelSize.width / 2
+        let functionPlacementService = FunctionBarPlacementService(
+            screensProvider: { [screen] },
+            mouseLocationProvider: { CGPoint(x: visibleFrame.midX, y: visibleFrame.midY) }
+        )
+        let functionPlacement = try #require(functionPlacementService.placement(
+            panelSize: panelSize,
+            preference: .belowMenuBarIcon,
+            statusItemAnchor: anchor
+        ))
+        let infoStripPlacement = try #require(InfoStripPlacementService(
+            functionBarPlacementService: functionPlacementService
+        ).placement(
+            panelSize: panelSize,
+            preference: .alignWithFunctionBar,
+            statusItemAnchor: anchor
+        ))
+
+        #expect(functionPlacement.reason == .preferred)
+        #expect(functionPlacement.origin.x == expectedX)
+        #expect(infoStripPlacement.origin.x == expectedX)
+        #expect(infoStripPlacement.placementMode == .alignWithFunctionBar)
     }
 
     @Test func validationRecreatesDefaultWorkspacesWhenStoreIsEmpty() {
@@ -235,6 +265,113 @@ struct WorkspacesFunctionBarInfoStripTests {
         #expect(itemIDs.contains("command.\(WorkspaceCommandReference.nextInfoStripTile.actionID)"))
         #expect(itemIDs.contains("command.\(WorkspaceCommandReference.openInfoStripSettings.actionID)"))
         #expect(itemIDs.contains("command.\(WorkspaceCommandReference.showFunctionBarFromInfoStrip.actionID)"))
+    }
+
+    @Test func setBuilderExposesNewAndUnassignedItemLibrariesWithoutMovingIcons() throws {
+        let suiteName = "SetBuilderNewUnassigned.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let settings = SettingsStore(defaults: defaults)
+        settings.proModeEnabled = true
+        settings.accessibilityDiscoveryEnabled = true
+        settings.lastAccessibilityPermissionStatus = AccessibilityPermissionStatus.granted.rawValue
+
+        let inboxStore = NewMenuBarItemInboxStore(fileURL: nil)
+        let newItem = NewMenuBarItem(
+            id: "new-item-hash",
+            firstSeenAt: Date(timeIntervalSince1970: 1),
+            lastSeenAt: Date(timeIntervalSince1970: 2),
+            seenCount: 2
+        )
+        inboxStore.apply(update: NewMenuBarItemInboxUpdate(
+            inbox: NewMenuBarItemInbox(
+                schemaVersion: 1,
+                knownItemKeys: ["new-item-hash"],
+                dismissedItemKeys: [],
+                items: [newItem]
+            ),
+            addedItemIDs: ["new-item-hash"]
+        ))
+
+        var workspace = MenuBarWorkspace(name: "Builder")
+        workspace.functionItems = [
+            WorkspaceItem(kind: .menuBarItem(MenuBarItemReference(stableHash: "assigned"))),
+            WorkspaceItem(kind: .menuBarItem(MenuBarItemReference(stableHash: "grouped")))
+        ]
+
+        let snapshot = WorkspaceStoreSnapshot(activeWorkspaceID: workspace.id, workspaces: [workspace])
+        let service = WorkspaceSwitchingService(
+            store: MemoryWorkspaceStore(snapshot: snapshot),
+            initialSnapshot: snapshot
+        )
+        let discovered = [
+            TestSnapshots.makeSnapshot(id: "assigned", title: "Assigned", owningApplicationName: "Assigned"),
+            TestSnapshots.makeSnapshot(id: "grouped", title: "Grouped", owningApplicationName: "Grouped"),
+            TestSnapshots.makeSnapshot(id: "free", title: "Free", owningApplicationName: "Free")
+        ]
+        let viewModel = SetBuilderViewModel(
+            switchingService: service,
+            groupStore: nil,
+            newItemInboxStore: inboxStore,
+            snapshotsProvider: { discovered },
+            settingsStore: settings
+        )
+
+        let newLibraryItem = try #require(viewModel.newItemLibrary.first)
+        #expect(newLibraryItem.badge == "New")
+        #expect(newLibraryItem.subtitle?.contains("no icon is moved") == true)
+        if case .menuBarItem(let reference) = newLibraryItem.kind {
+            #expect(reference.stableHash == "new-item-hash")
+            #expect(reference.source == .itemMemory)
+        } else {
+            Issue.record("Expected New Item library entry to create a menu bar item proxy.")
+        }
+
+        let unassignedLibraryItems = viewModel.unassignedItemLibrary
+        #expect(unassignedLibraryItems.map(\.id) == ["unassigned.free"])
+        #expect(unassignedLibraryItems.first?.badge == "Unassigned")
+        #expect(unassignedLibraryItems.first?.subtitle?.contains("no icon is moved") == true)
+    }
+
+    @Test func functionBarBadgesExposeWorkspaceReferenceState() {
+        let group = IconGroup(name: "Utilities")
+        let snapshot = TestSnapshots.makeSnapshot(id: "proxy", title: "Proxy", owningApplicationName: "Proxy")
+        let resolver = FunctionBarItemResolver(
+            groupsProvider: { [group] },
+            snapshotsProvider: { [snapshot] },
+            proDiscoveryAvailable: { true },
+            accessibilityAvailable: { true }
+        )
+
+        let linkedGroup = resolver.resolve(item: WorkspaceItem(kind: .group(WorkspaceGroupReference(groupID: group.id, referenceMode: .linked))))
+        let detachedGroup = resolver.resolve(item: WorkspaceItem(kind: .group(WorkspaceGroupReference(groupID: group.id, referenceMode: .detached))))
+        let missingGroup = resolver.resolve(item: WorkspaceItem(kind: .group(WorkspaceGroupReference(groupID: UUID(), referenceMode: .linked))))
+        let newProxy = resolver.resolve(item: WorkspaceItem(kind: .menuBarItem(MenuBarItemReference(
+            stableHash: "proxy",
+            source: .itemMemory
+        ))))
+        let protectedProxy = resolver.resolve(item: WorkspaceItem(kind: .menuBarItem(MenuBarItemReference(
+            stableHash: "proxy",
+            redactionPolicy: .protected
+        ))))
+        let missingProxy = resolver.resolve(item: WorkspaceItem(kind: .menuBarItem(MenuBarItemReference(stableHash: "missing"))))
+        let gatedResolver = FunctionBarItemResolver(
+            groupsProvider: { [] },
+            snapshotsProvider: { [] },
+            proDiscoveryAvailable: { false },
+            accessibilityAvailable: { false }
+        )
+        let proGatedProxy = gatedResolver.resolve(item: WorkspaceItem(kind: .menuBarItem(MenuBarItemReference(stableHash: "proxy"))))
+
+        #expect(linkedGroup.badge?.title == "Linked Group")
+        #expect(detachedGroup.badge?.title == "Detached")
+        #expect(missingGroup.badge?.title == "Missing")
+        #expect(newProxy.badge?.title == "New Item")
+        #expect(protectedProxy.badge?.title == "Protected")
+        #expect(missingProxy.badge?.title == "Missing")
+        #expect(proGatedProxy.badge?.title == "Requires Pro")
     }
 
     @Test func validationClampsInfoStripTimingToPhase20Bounds() throws {
@@ -656,12 +793,14 @@ struct WorkspacesFunctionBarInfoStripTests {
         )
 
         #expect(viewModel.linkedGroupUsageCount(for: item) == 2)
+        #expect(viewModel.linkedGroupUsageCountsByItemID[item.id] == 2)
         #expect(viewModel.showsLinkedGroupWarnings)
 
         settings.setBuilderWarnBeforeLinkedGroupEdits = false
 
         #expect(!viewModel.showsLinkedGroupWarnings)
         #expect(viewModel.linkedGroupUsageCount(for: item) == 2)
+        #expect(viewModel.linkedGroupUsageCountsByItemID[item.id] == 2)
     }
 
     @Test func functionBarStateMachineSuppressesSafeMode() {

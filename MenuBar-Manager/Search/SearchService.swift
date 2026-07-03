@@ -30,6 +30,7 @@ struct MenuBarSearchResult: Identifiable, Equatable, Sendable {
     let snapshot: MenuBarItemSnapshot
     let score: Int
     let matchReason: MenuBarSearchMatchReason
+    let workspaceBadges: [WorkspaceUsageBadge]
 
     /// Pre-computed display fields. The previous implementation rebuilt these on every
     /// read — and the sort comparator (`isHigherRanked`) re-derived `displayTitle`
@@ -45,11 +46,13 @@ struct MenuBarSearchResult: Identifiable, Equatable, Sendable {
     init(
         snapshot: MenuBarItemSnapshot,
         score: Int,
-        matchReason: MenuBarSearchMatchReason
+        matchReason: MenuBarSearchMatchReason,
+        workspaceBadges: [WorkspaceUsageBadge] = []
     ) {
         self.snapshot = snapshot
         self.score = score
         self.matchReason = matchReason
+        self.workspaceBadges = workspaceBadges
         self.appName = DisplayString.firstNonEmpty([
             snapshot.owningApplicationName,
             snapshot.bundleIdentifier,
@@ -142,7 +145,7 @@ struct SearchService {
         let normalizedQuery = Self.normalize(trimmedQuery)
 
         let entries = index.entries.filter { entry in
-            filter.includes(entry.snapshot, memoryStore: memoryStore)
+            filter.includes(entry.snapshot, memoryStore: memoryStore, rankingContext: rankingContext)
         }
 
         let results = entries.compactMap { entry -> MenuBarSearchResult? in
@@ -150,7 +153,8 @@ struct SearchService {
                 return MenuBarSearchResult(
                     snapshot: entry.snapshot,
                     score: 100 + rankingBoost(for: entry.snapshot, memoryStore: memoryStore, context: rankingContext),
-                    matchReason: .recent
+                    matchReason: .recent,
+                    workspaceBadges: rankingContext.workspaceBadges(for: entry.snapshot)
                 )
             }
 
@@ -164,7 +168,8 @@ struct SearchService {
             return MenuBarSearchResult(
                 snapshot: entry.snapshot,
                 score: match.score + rankingBoost(for: entry.snapshot, memoryStore: memoryStore, context: rankingContext),
-                matchReason: match.reason
+                matchReason: match.reason,
+                workspaceBadges: rankingContext.workspaceBadges(for: entry.snapshot)
             )
         }
 
@@ -306,6 +311,16 @@ struct SearchService {
             boost += 70
         }
 
+        let workspaceUsage = context.workspaceUsage(for: snapshot)
+        if workspaceUsage.isUsedInActiveWorkspace {
+            boost += 85
+        } else if !workspaceUsage.workspaceIDs.isEmpty {
+            boost += 25
+        }
+        if !workspaceUsage.groupIDs.isEmpty {
+            boost += 20
+        }
+
         if context.isStale(snapshot) {
             boost -= 160
         }
@@ -317,13 +332,16 @@ struct SearchService {
 nonisolated struct SearchRankingContext: Equatable, Sendable {
     var newItemStorageKeys: Set<String>
     var staleBefore: Date?
+    var workspaceUsageSnapshot: WorkspaceUsageIndexSnapshot?
 
     init(
         newItemStorageKeys: Set<String> = [],
-        staleBefore: Date? = nil
+        staleBefore: Date? = nil,
+        workspaceUsageSnapshot: WorkspaceUsageIndexSnapshot? = nil
     ) {
         self.newItemStorageKeys = newItemStorageKeys
         self.staleBefore = staleBefore
+        self.workspaceUsageSnapshot = workspaceUsageSnapshot
     }
 
     func isNewItem(_ snapshot: MenuBarItemSnapshot) -> Bool {
@@ -334,6 +352,41 @@ nonisolated struct SearchRankingContext: Equatable, Sendable {
     func isStale(_ snapshot: MenuBarItemSnapshot) -> Bool {
         guard let staleBefore else { return false }
         return snapshot.scanTimestamp < staleBefore
+    }
+
+    func workspaceUsage(for snapshot: MenuBarItemSnapshot) -> WorkspaceItemUsage {
+        guard let workspaceUsageSnapshot else {
+            return .empty(itemHash: snapshot.id, isUnassigned: false)
+        }
+
+        let hashes = [
+            snapshot.id,
+            NewMenuBarItemInboxDetector.storageKey(for: snapshot),
+            NewMenuBarItemInboxDetector.reviewID(for: snapshot)
+        ]
+        for hash in hashes {
+            let usage = workspaceUsageSnapshot.usage(for: hash)
+            if !usage.isUnassigned {
+                return usage
+            }
+        }
+        return .empty(itemHash: snapshot.id)
+    }
+
+    func isUsedInOtherWorkspace(_ snapshot: MenuBarItemSnapshot) -> Bool {
+        let usage = workspaceUsage(for: snapshot)
+        guard let activeWorkspaceID = workspaceUsageSnapshot?.activeWorkspaceID else {
+            return !usage.workspaceIDs.isEmpty
+        }
+        return usage.workspaceIDs.contains { $0 != activeWorkspaceID }
+    }
+
+    func workspaceBadges(for snapshot: MenuBarItemSnapshot) -> [WorkspaceUsageBadge] {
+        WorkspaceRecommendationEngine().badges(
+            usage: workspaceUsage(for: snapshot),
+            isNew: isNewItem(snapshot),
+            isStale: isStale(snapshot)
+        )
     }
 }
 

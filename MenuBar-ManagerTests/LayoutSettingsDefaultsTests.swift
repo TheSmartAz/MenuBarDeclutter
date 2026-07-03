@@ -25,6 +25,7 @@ struct LayoutSettingsDefaultsTests {
         #expect(store.fullMenuBarModeShowsSpacerMarkers)
         #expect(store.crowdedRevealAutoOpenSecondBar)
         #expect(!store.crowdedRevealAskBeforeSwitching)
+        #expect(store.crowdedRescueWorkspaceFallbackPreference == CrowdedRescueWorkspaceFallbackPreference.preferSecondBar.rawValue)
         #expect(store.crowdedRevealThresholdRatio == 0.85)
         #expect(!store.crowdedRevealRequireProEstimate)
         #expect(store.spacerItemsEnabled)
@@ -107,6 +108,7 @@ struct LayoutSettingsDefaultsTests {
         store.menuBarSpacingPreset = "compact"
         store.fullMenuBarModeAutoExitSeconds = 60
         store.crowdedRevealAskBeforeSwitching = true
+        store.crowdedRescueWorkspaceFallbackPreference = CrowdedRescueWorkspaceFallbackPreference.preferFunctionBar.rawValue
         store.crowdedRevealThresholdRatio = 0.7
 
         // Reset
@@ -118,6 +120,7 @@ struct LayoutSettingsDefaultsTests {
         #expect(store.menuBarSpacingPreset == "system")
         #expect(store.fullMenuBarModeAutoExitSeconds == 30)
         #expect(!store.crowdedRevealAskBeforeSwitching)
+        #expect(store.crowdedRescueWorkspaceFallbackPreference == CrowdedRescueWorkspaceFallbackPreference.preferSecondBar.rawValue)
         #expect(store.crowdedRevealThresholdRatio == 0.85)
     }
 
@@ -130,6 +133,7 @@ struct LayoutSettingsDefaultsTests {
         store.layoutFeaturesEnabled = false
         store.fullMenuBarModeAutoExitSeconds = 120
         store.crowdedRevealAskBeforeSwitching = true
+        store.crowdedRescueWorkspaceFallbackPreference = CrowdedRescueWorkspaceFallbackPreference.preferFunctionBar.rawValue
         store.menuBarSpacingPreset = "dense"
         store.menuBarSpacingLastApplyStatus = "applied"
 
@@ -137,6 +141,7 @@ struct LayoutSettingsDefaultsTests {
         #expect(reloaded.layoutFeaturesEnabled == false)
         #expect(reloaded.fullMenuBarModeAutoExitSeconds == 120)
         #expect(reloaded.crowdedRevealAskBeforeSwitching)
+        #expect(reloaded.crowdedRescueWorkspaceFallbackPreference == CrowdedRescueWorkspaceFallbackPreference.preferFunctionBar.rawValue)
         #expect(reloaded.menuBarSpacingPreset == "dense")
         #expect(reloaded.menuBarSpacingLastApplyStatus == "applied")
     }

@@ -23,7 +23,15 @@ struct GeneralSettingsView: View {
         ClearGlassSettingsPage(
             "General",
             subtitle: "App identity, startup behavior, setup state, and maintenance actions.",
-            badges: [.stable, .basicMode, .privacySafe]
+            badges: [.stable, .basicMode, .privacySafe],
+            sectionAnchors: [
+                ClearGlassPageAnchor("About", systemImage: "info.circle"),
+                ClearGlassPageAnchor("Startup", systemImage: "power"),
+                ClearGlassPageAnchor("Location", systemImage: "folder", targetID: "App Location"),
+                ClearGlassPageAnchor("Setup", systemImage: "play.circle"),
+                ClearGlassPageAnchor("Maintenance", systemImage: "wrench.and.screwdriver"),
+                ClearGlassPageAnchor("Version", systemImage: "number")
+            ]
         ) {
             safeDefaultsNotice
 

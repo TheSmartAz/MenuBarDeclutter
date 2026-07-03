@@ -115,6 +115,9 @@ final class ProfileApplicationService {
         }
 
         var layoutChanges: [String] = []
+        if profile.showSecondBar != settingsStore.secondBarEnabled {
+            layoutChanges.append(profile.showSecondBar ? "Show Second Bar shortcut" : "Hide Second Bar shortcut")
+        }
         if let layoutModePreference = profile.layoutModePreference {
             layoutChanges.append("Layout mode preference: \(layoutModePreference.displayName)")
         }
@@ -164,9 +167,9 @@ final class ProfileApplicationService {
             allowProMoves: allowProMoves
         )
 
-        settingsStore.secondBarEnabled = profile.showSecondBar
         settingsStore.autoRehideEnabled = profile.autoRehideEnabled
         settingsStore.hoverRevealEnabled = profile.hoverRevealEnabled
+        settingsStore.secondBarEnabled = profile.showSecondBar
         setVisibility(profile.preferredVisibilityState)
 
         if let fullMenuBarModePreference = profile.fullMenuBarModePreference {

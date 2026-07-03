@@ -144,6 +144,36 @@ final class MenuBarScanCoordinator {
 
     @discardableResult
     func scanIfAllowed(reason: String, force: Bool = false) -> MenuBarScanResult? {
+        switch prepareScan(reason: reason, force: force) {
+        case .start(let context):
+            startScan(context: context, reason: reason)
+            return lastResult
+        case .finished(let result):
+            return result
+        }
+    }
+
+    @discardableResult
+    func scanIfAllowedAndWait(reason: String, force: Bool = false) async -> MenuBarScanResult? {
+        switch prepareScan(reason: reason, force: force) {
+        case .start(let context):
+            return await runScanAndWait(context: context, reason: reason)
+        case .finished(let result):
+            return result
+        }
+    }
+
+    @discardableResult
+    func requestManualRefreshAndWait(reason: String = "manual refresh") async -> MenuBarScanResult? {
+        await scanIfAllowedAndWait(reason: reason, force: true)
+    }
+
+    private enum ScanStartDecision {
+        case start(MenuBarScanContext)
+        case finished(MenuBarScanResult?)
+    }
+
+    private func prepareScan(reason: String, force: Bool) -> ScanStartDecision {
         let status = permissionService.refreshStatus()
         setLiveStatus(\.accessibilityPermissionStatus, to: status)
         setLiveStatus(\.menuBarScanLifecycleState, to: .requested)
@@ -158,17 +188,17 @@ final class MenuBarScanCoordinator {
 
         guard settingsStore.proModeEnabled else {
             clearScanState(skipReason: "Pro Mode disabled")
-            return nil
+            return .finished(nil)
         }
 
         guard settingsStore.accessibilityDiscoveryEnabled else {
             clearScanState(skipReason: "Accessibility discovery disabled")
-            return nil
+            return .finished(nil)
         }
 
         guard status == .granted else {
             clearScanState(skipReason: "Accessibility permission \(status.displayName.lowercased())")
-            return nil
+            return .finished(nil)
         }
 
         let currentDate = now()
@@ -179,39 +209,53 @@ final class MenuBarScanCoordinator {
             setLiveStatus(\.menuBarScanLifecycleState, to: .skipped)
             setLiveStatus(\.menuBarScanLastSkipReason, to: "Throttled")
             diagnosticsLogger.log("AX scan skipped for \(reason): throttled.", level: .debug)
-            return lastResult
+            return .finished(lastResult)
         }
 
         let context = makeScanContext()
         lastScanDate = currentDate
         lastSkipReason = nil
-        startScan(context: context, reason: reason)
-        return lastResult
+        return .start(context)
     }
 
     private func startScan(context: MenuBarScanContext, reason: String) {
-        scanRequestID += 1
-        let requestID = scanRequestID
-        let scanner = scanner
-
-        pendingScanTask?.cancel()
-        setLiveStatus(\.menuBarScanLifecycleState, to: .running)
-        diagnosticsLogger.log(
-            "AX scan started for \(reason): apps=\(context.runningApplications.count), screens=\(context.screenFrames.count).",
-            level: .debug,
-            category: .scan
-        )
+        let (requestID, scanner) = beginScan(context: context, reason: reason)
         pendingScanTask = Task { @MainActor [weak self] in
             let result = await scanner.scan(context: context)
             self?.completeScan(result: result, requestID: requestID, reason: reason)
         }
     }
 
-    private func completeScan(result: MenuBarScanResult, requestID: Int, reason: String) {
-        guard scanRequestID == requestID,
-              pendingScanTask?.isCancelled == false else {
+    private func runScanAndWait(context: MenuBarScanContext, reason: String) async -> MenuBarScanResult? {
+        let (requestID, scanner) = beginScan(context: context, reason: reason)
+        let result = await scanner.scan(context: context)
+        return completeScan(result: result, requestID: requestID, reason: reason) ? result : nil
+    }
+
+    private func beginScan(
+        context: MenuBarScanContext,
+        reason: String
+    ) -> (requestID: Int, scanner: any MenuBarScanning) {
+        scanRequestID += 1
+        let requestID = scanRequestID
+        let scanner = scanner
+
+        pendingScanTask?.cancel()
+        pendingScanTask = nil
+        setLiveStatus(\.menuBarScanLifecycleState, to: .running)
+        diagnosticsLogger.log(
+            "AX scan started for \(reason): apps=\(context.runningApplications.count), screens=\(context.screenFrames.count).",
+            level: .debug,
+            category: .scan
+        )
+        return (requestID, scanner)
+    }
+
+    @discardableResult
+    private func completeScan(result: MenuBarScanResult, requestID: Int, reason: String) -> Bool {
+        guard scanRequestID == requestID else {
             diagnosticsLogger.log("AX scan result ignored for \(reason): stale request.", level: .debug)
-            return
+            return false
         }
 
         lastResult = result
@@ -224,6 +268,7 @@ final class MenuBarScanCoordinator {
             "AX scan completed for \(reason): \(result.snapshots.count) items, \(result.axFailuresCount) AX failures."
         )
         pendingScanTask = nil
+        return true
     }
 
     private func makeScanContext() -> MenuBarScanContext {

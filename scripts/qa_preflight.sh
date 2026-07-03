@@ -237,7 +237,9 @@ run_build_for_testing() {
     -destination "$DESTINATION" \
     -derivedDataPath "$XCODE_DERIVED_DATA_PATH" \
     -enableCodeCoverage NO \
-    "ENABLE_DEBUG_DYLIB=$XCODE_ENABLE_DEBUG_DYLIB" 2>&1 | tee "$log_file"
+    "ENABLE_DEBUG_DYLIB=$XCODE_ENABLE_DEBUG_DYLIB" \
+    CODE_SIGN_IDENTITY=- \
+    CODE_SIGNING_REQUIRED=NO 2>&1 | tee "$log_file"
   local rc="${PIPESTATUS[0]}"
   set -e
 

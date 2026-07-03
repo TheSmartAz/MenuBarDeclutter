@@ -11,15 +11,27 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
     private let settingsStore: SettingsStore
     private let diagnosticsLogger: DiagnosticsLogger
     private let onComplete: () -> Void
+    private let onOpenSettings: () -> Void
+    private let onOpenArrange: () -> Void
+    private let onOpenWorkspaces: () -> Void
+    private let onCreateSampleWorkspace: () -> Void
 
     init(
         settingsStore: SettingsStore,
         diagnosticsLogger: DiagnosticsLogger,
-        onComplete: @escaping () -> Void
+        onComplete: @escaping () -> Void,
+        onOpenSettings: @escaping () -> Void = {},
+        onOpenArrange: @escaping () -> Void = {},
+        onOpenWorkspaces: @escaping () -> Void = {},
+        onCreateSampleWorkspace: @escaping () -> Void = {}
     ) {
         self.settingsStore = settingsStore
         self.diagnosticsLogger = diagnosticsLogger
         self.onComplete = onComplete
+        self.onOpenSettings = onOpenSettings
+        self.onOpenArrange = onOpenArrange
+        self.onOpenWorkspaces = onOpenWorkspaces
+        self.onCreateSampleWorkspace = onCreateSampleWorkspace
 
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 740, height: 620),
@@ -43,6 +55,18 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
             navigationModel: navigationModel,
             onComplete: { [weak self] in
                 self?.complete()
+            },
+            onOpenSettings: { [weak self] in
+                self?.onOpenSettings()
+            },
+            onOpenArrange: { [weak self] in
+                self?.onOpenArrange()
+            },
+            onOpenWorkspaces: { [weak self] in
+                self?.onOpenWorkspaces()
+            },
+            onCreateSampleWorkspace: { [weak self] in
+                self?.onCreateSampleWorkspace()
             }
         )
 
@@ -61,8 +85,12 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
         return true
     }
 
-    func show() {
+    func show(stepID: String? = nil) {
         navigationModel.reset()
+        if let stepID,
+           let stepIndex = OnboardingStep.allSteps.firstIndex(where: { $0.id == stepID }) {
+            navigationModel.currentIndex = stepIndex
+        }
         if window?.isVisible != true {
             window?.center()
         }

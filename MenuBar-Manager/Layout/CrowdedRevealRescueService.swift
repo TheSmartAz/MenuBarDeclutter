@@ -7,6 +7,8 @@ nonisolated enum CrowdedRevealRescueResult: Equatable, Sendable {
     case proceedInline
     /// The menu bar is crowded and Second Bar was opened.
     case openedSecondBar
+    /// The menu bar is crowded and the active Workspace Function Bar was opened.
+    case openedFunctionBar
     /// The menu bar is crowded and Full Menu Bar Mode was entered.
     case enteredFullMenuBarMode
     /// The menu bar is crowded but no rescue was available; a suggestion was logged.
@@ -27,6 +29,7 @@ final class CrowdedRevealRescueService {
     private let capacityService: LayoutCapacityService
     private let now: () -> Date
     private let openSecondBar: () -> Void
+    private let openFunctionBar: () -> Void
     private let enterFullMenuBarMode: () -> Void
     private let showLayoutSuggestions: () -> Void
     private let decisionEngine: CrowdedRevealDecisionEngine
@@ -45,6 +48,7 @@ final class CrowdedRevealRescueService {
         capacityService: LayoutCapacityService = LayoutCapacityService(),
         now: @escaping () -> Date = { Date() },
         openSecondBar: @escaping () -> Void,
+        openFunctionBar: @escaping () -> Void = {},
         enterFullMenuBarMode: @escaping () -> Void,
         showLayoutSuggestions: @escaping () -> Void = {},
         decisionEngine: CrowdedRevealDecisionEngine = CrowdedRevealDecisionEngine()
@@ -54,6 +58,7 @@ final class CrowdedRevealRescueService {
         self.capacityService = capacityService
         self.now = now
         self.openSecondBar = openSecondBar
+        self.openFunctionBar = openFunctionBar
         self.enterFullMenuBarMode = enterFullMenuBarMode
         self.showLayoutSuggestions = showLayoutSuggestions
         self.decisionEngine = decisionEngine
@@ -66,6 +71,7 @@ final class CrowdedRevealRescueService {
         currentVisibility: HidingVisibilityState,
         estimate: LayoutCapacityEstimate,
         secondBarAvailable: Bool,
+        functionBarAvailable: Bool = false,
         fullMenuBarModeAvailable: Bool,
         layoutSuggestionsAvailable: Bool,
         safeModeActive: Bool,
@@ -83,6 +89,8 @@ final class CrowdedRevealRescueService {
             requireProEstimate: settingsStore.crowdedRevealRequireProEstimate,
             proDiscoveryAvailable: proDiscoveryAvailable,
             secondBarAvailable: secondBarAvailable,
+            functionBarAvailable: functionBarAvailable,
+            workspaceFallbackPreference: CrowdedRescueWorkspaceFallbackPreference(rawValue: settingsStore.crowdedRescueWorkspaceFallbackPreference) ?? .preferSecondBar,
             fullMenuBarModeAvailable: fullMenuBarModeAvailable,
             layoutSuggestionsAvailable: layoutSuggestionsAvailable,
             safeModeActive: safeModeActive,
@@ -102,22 +110,43 @@ final class CrowdedRevealRescueService {
             lastResult = .noOp
             lastExplanation = nil
             return .noOp
-        case .secondBar, .fullMenuBarMode, .showLayoutSuggestion:
+        case .secondBar, .functionBar, .functionBarThenSecondBar, .askFunctionBarOrSecondBar, .fullMenuBarMode, .showLayoutSuggestion:
             lastRevealIntercepted = true
             rescueCount += 1
             lastRescueAt = now()
         }
 
-        if decision == .secondBar {
+        if decision == .functionBar {
+            openFunctionBar()
+            lastExplanation = "Opened Function Bar because inline reveal may not fit."
+            diagnosticsLogger.log(
+                lastExplanation ?? "Opened Function Bar for crowded reveal rescue.",
+                category: .layout,
+                metadata: decisionMetadata(
+                    for: estimate,
+                    intent: intent,
+                    fallback: "functionBar",
+                    proDiscoveryAvailable: proDiscoveryAvailable,
+                    activeDisplayID: activeDisplayID,
+                    activeAppMenuPressure: activeAppMenuPressure
+                )
+            )
+            lastResult = .openedFunctionBar
+            return .openedFunctionBar
+        }
+
+        if decision == .secondBar || decision == .functionBarThenSecondBar {
             openSecondBar()
-            lastExplanation = "Opened Second Bar because inline reveal may not fit."
+            lastExplanation = decision == .functionBarThenSecondBar
+                ? "Function Bar was unavailable, so Second Bar opened because inline reveal may not fit."
+                : "Opened Second Bar because inline reveal may not fit."
             diagnosticsLogger.log(
                 lastExplanation ?? "Opened Second Bar for crowded reveal rescue.",
                 category: .layout,
                 metadata: decisionMetadata(
                     for: estimate,
                     intent: intent,
-                    fallback: "secondBar",
+                    fallback: decision == .functionBarThenSecondBar ? "functionBarThenSecondBar" : "secondBar",
                     proDiscoveryAvailable: proDiscoveryAvailable,
                     activeDisplayID: activeDisplayID,
                     activeAppMenuPressure: activeAppMenuPressure

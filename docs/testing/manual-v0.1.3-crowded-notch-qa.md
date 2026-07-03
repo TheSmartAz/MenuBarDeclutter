@@ -33,5 +33,5 @@ Use this checklist for the v0.1.3 crowded reveal and notch recovery claim. Recor
 - Display count, resolution, scaling, and main-display assignment.
 - Active app and whether its menu titles are unusually long.
 - Approximate third-party status item count.
-- Current rescue settings: Second Bar enabled, Full Menu Bar Mode enabled, Ask Before Switching, Pro Mode, Accessibility Discovery.
+- Current rescue settings: Second Bar status-menu shortcut visible, Full Menu Bar Mode enabled, Ask Before Switching, Pro Mode, Accessibility Discovery.
 - Diagnostics export with privacy-safe aggregate capacity metadata only.

@@ -1,5 +1,7 @@
 # Alpha RC QA Run
 
+Use this template for Release Candidate lane work from `docs/testing/qa-process.md`. For patch or risk-lane work, record only the relevant commands and manual rows.
+
 Date:
 Tester:
 Machine:

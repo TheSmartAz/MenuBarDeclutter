@@ -20,58 +20,64 @@ struct OnboardingStep: Identifiable, Equatable, Sendable {
 }
 
 extension OnboardingStep {
-    /// The ordered set of first-run onboarding steps introduced in Phase 3.
+    /// The ordered set of first-run onboarding steps for the v0.1.10 product story.
     /// These live as a static list so the order can be unit-tested and the
     /// content reviewed in one place.
     static let allSteps: [OnboardingStep] = [
         OnboardingStep(
-            id: "intro",
-            title: "Set up a quieter menu bar",
+            id: "welcome",
+            title: "Quiet your menu bar",
             symbol: "menubar.rectangle",
-            body: "\(AppConstants.displayName) gives you a small native menu bar control for expanding and collapsing hidden icons. Basic Mode uses app-owned status items and public macOS behavior, without sensitive permissions."
+            body: "\(AppConstants.displayName) starts in Basic Mode: local settings, app-owned controls, and no sensitive permissions. You can hide clutter first and decide later whether any optional Pro tools are worth enabling."
         ),
         OnboardingStep(
             id: "nativeCleanup",
             title: "Use Control Center first",
             symbol: "switch.2",
-            body: "Move rarely used system controls into Control Center first. Then use \(AppConstants.displayName) for third-party icons, separators, and crowded menu bar workflows. It complements Apple's settings rather than replacing them."
+            body: "Move rarely used system controls into Control Center first. Then use \(AppConstants.displayName) for third-party icons and separator-based cleanup. It complements Apple's settings rather than replacing them."
         ),
         OnboardingStep(
-            id: "commandDrag",
-            title: "Command-drag the separator",
+            id: "basicHideReveal",
+            title: "Basic Hide & Reveal",
+            symbol: "eye",
+            body: "Place the control and separator, then collapse the items to the right of the separator. Expand or Reveal All brings them back in Basic Mode, without Accessibility, Screen Recording, or Pro Mode."
+        ),
+        OnboardingStep(
+            id: "arrange",
+            title: "Arrange with Command-drag",
             symbol: "hand.point.up.left",
-            body: "Hold Command (⌘) and drag the separator in the menu bar to choose which icons are hidden. Items past the separator disappear when the bar is collapsed."
+            body: "Hold Command (⌘) and drag the control item and separator into reachable positions. Use Arrange to test Collapse, Reveal All, and Reset Layout."
         ),
         OnboardingStep(
-            id: "hiddenVsAlwaysHidden",
-            title: "Hidden vs Always-Hidden",
-            symbol: "rectangle.split.2x1",
-            body: "Hidden icons come back when you expand the bar. Always-Hidden is optional: it adds a second separator for items that should stay tucked away even during a normal reveal."
+            id: "findRescue",
+            title: "Optional rescue tools",
+            symbol: "lifepreserver",
+            body: "Later, Find Icon, Second Bar, and New Item Inbox can help recover hidden or newly discovered items. They stay optional and use Pro Discovery only after explicit opt-in."
         ),
         OnboardingStep(
-            id: "testArrange",
-            title: "Test collapse and reveal",
-            symbol: "checkmark.circle",
-            body: "After Command-dragging the control item and separator, test Collapse, Reveal All, and Reset Layout from Arrange. This stable flow stays in Basic Mode and does not request Pro permissions."
-        ),
-        OnboardingStep(
-            id: "hotkeyAutoRehide",
-            title: "Hotkey & Auto-Rehide",
-            symbol: "rectangle.rightthird.inset.filled",
-            body: "You can enable a global hotkey, Option+Command+B by default, and optionally let the bar collapse itself again with Auto-Rehide. The hotkey is off by default; Auto-Rehide is off by default and adjustable in Settings → Hide & Reveal."
+            id: "workspaces",
+            title: "Workspaces are app-owned",
+            symbol: "rectangle.3.group",
+            body: "Workspaces organize local Function Bar, Linked Groups, and Info Strip previews for different contexts. They are app-owned views and do not replace, capture, or control the macOS system menu bar."
         ),
         OnboardingStep(
             id: "privacy",
-            title: "Privacy",
+            title: "Privacy boundary",
             symbol: "hand.raised",
-            body: "Basic Mode does not request Accessibility, Screen Recording, Apple Events, Input Monitoring, or network access. Pro features are opt-in and keep Basic Mode usable when permissions are missing."
+            body: "Basic Mode does not request Accessibility, Screen Recording, screen capture APIs, Apple Events, Input Monitoring, or network access. Optional Pro Discovery is separate, explicit, and never turns on silently."
         ),
         OnboardingStep(
-            id: "macOS26Note",
-            title: "macOS 26 note",
-            symbol: "rectangle.dashed",
-            body: "The transparent menu bar in macOS 26 can make separators harder to see on some wallpapers. Separator visuals stay adjustable without changing the Basic Mode permission boundary.",
-            callout: "Use Settings → Hide & Reveal if a separator is too subtle on your wallpaper."
+            id: "recovery",
+            title: "Recovery stays nearby",
+            symbol: "cross.case",
+            body: "Recovery keeps Safe Mode, Reset Layout, Reveal All, and diagnostics export reachable when optional Preview features or layout choices get confusing."
+        ),
+        OnboardingStep(
+            id: "finish",
+            title: "Choose your next step",
+            symbol: "checkmark.circle",
+            body: "Open Settings, test Arrange, create a local sample Workspace, or skip advanced setup. Preview, Labs, Experimental, and Pro features remain off until you explicitly enable them.",
+            callout: "Creating a sample Workspace uses local app-owned commands only and requests no permissions."
         )
     ]
 }

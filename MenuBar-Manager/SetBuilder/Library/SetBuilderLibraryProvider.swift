@@ -133,6 +133,113 @@ struct MenuBarItemLibraryProvider: SetBuilderLibraryProviding {
 }
 
 @MainActor
+struct NewItemLibraryProvider: SetBuilderLibraryProviding {
+    var inbox: NewMenuBarItemInbox?
+
+    func items() -> [SetBuilderLibraryItem] {
+        guard let inbox else {
+            return [unavailable("New Item Inbox", subtitle: "New Item Inbox is unavailable.", badge: "Unavailable")]
+        }
+        guard !inbox.items.isEmpty else {
+            return [unavailable("No New Items", subtitle: "New menu bar items will appear here after a permitted scan.", badge: "Empty")]
+        }
+
+        return inbox.items.enumerated().map { offset, item in
+            let reference = MenuBarItemReference(
+                stableHash: item.id,
+                source: .itemMemory
+            )
+            let seenLabel = item.seenCount == 1 ? "Seen once" : "Seen \(item.seenCount) times"
+            return SetBuilderLibraryItem(
+                id: "newItem.\(item.id)",
+                title: offset == 0 ? "New Menu Bar Item" : "New Menu Bar Item \(offset + 1)",
+                subtitle: "\(seenLabel). App-owned proxy; no icon is moved.",
+                systemImage: "tray",
+                kind: .menuBarItem(reference),
+                isEnabled: true,
+                badge: "New"
+            )
+        }
+    }
+
+    private func unavailable(_ title: String, subtitle: String, badge: String) -> SetBuilderLibraryItem {
+        SetBuilderLibraryItem(
+            id: "newItem.unavailable.\(badge)",
+            title: title,
+            subtitle: subtitle,
+            systemImage: "tray",
+            kind: .spacer,
+            isEnabled: false,
+            badge: badge
+        )
+    }
+}
+
+@MainActor
+struct UnassignedMenuBarItemLibraryProvider: SetBuilderLibraryProviding {
+    var snapshots: [MenuBarItemSnapshot]
+    var workspaceSnapshot: WorkspaceStoreSnapshot
+    var groups: [IconGroup]
+    var proDiscoveryAvailable: Bool
+    var accessibilityAvailable: Bool
+
+    func items() -> [SetBuilderLibraryItem] {
+        guard proDiscoveryAvailable else {
+            return [unavailable("Unassigned Items", subtitle: "Enable Pro Discovery to review unassigned menu bar item proxies.", badge: "Requires Pro")]
+        }
+        guard accessibilityAvailable else {
+            return [unavailable("Unassigned Items", subtitle: "Grant Accessibility only from the explicit Privacy setup flow.", badge: "Requires Accessibility")]
+        }
+        guard !snapshots.isEmpty else {
+            return [unavailable("No Discovered Items", subtitle: "Run a menu bar scan from Find & Rescue.", badge: "Unavailable")]
+        }
+
+        let usageIndex = WorkspaceUsageIndex()
+        usageIndex.rebuild(
+            snapshot: workspaceSnapshot,
+            groups: groups,
+            discoveredSnapshots: snapshots
+        )
+        let unassignedSnapshots = snapshots.filter { snapshot in
+            usageIndex.usage(for: snapshot.id).isUnassigned
+        }
+
+        guard !unassignedSnapshots.isEmpty else {
+            return [unavailable("No Unassigned Items", subtitle: "Every discovered item is already used by a Workspace or Group.", badge: "Empty")]
+        }
+
+        return unassignedSnapshots.map { snapshot in
+            let reference = MenuBarItemReference(
+                stableHash: snapshot.id,
+                lastKnownDisplayName: snapshot.owningApplicationName ?? snapshot.title,
+                lastKnownBundleIdentifier: snapshot.bundleIdentifier
+            )
+            return SetBuilderLibraryItem(
+                id: "unassigned.\(snapshot.id)",
+                title: snapshot.owningApplicationName ?? snapshot.title ?? "Menu Bar Item",
+                subtitle: "\(snapshot.zone.rawValue). App-owned proxy; no icon is moved.",
+                systemImage: "app.badge",
+                kind: .menuBarItem(reference),
+                isEnabled: true,
+                badge: "Unassigned"
+            )
+        }
+    }
+
+    private func unavailable(_ title: String, subtitle: String, badge: String) -> SetBuilderLibraryItem {
+        SetBuilderLibraryItem(
+            id: "unassigned.unavailable.\(badge)",
+            title: title,
+            subtitle: subtitle,
+            systemImage: "app.badge",
+            kind: .spacer,
+            isEnabled: false,
+            badge: badge
+        )
+    }
+}
+
+@MainActor
 struct SpacerLibraryProvider: SetBuilderLibraryProviding {
     func items() -> [SetBuilderLibraryItem] {
         [
