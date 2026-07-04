@@ -27,7 +27,7 @@ struct SecondBarItemView: View {
                 cornerRadius: CGFloat(min(8, iconSize / 4))
             )
                 .overlay(alignment: .topTrailing) {
-                    ZoneBadge(zone: snapshot.zone)
+                    ZoneBadge(zone: snapshot.zone, isSelected: isSelected)
                         .offset(x: 5, y: -5)
                 }
 
@@ -35,13 +35,14 @@ struct SecondBarItemView: View {
                 VStack(spacing: 1) {
                     Text(displayTitle)
                         .font(.caption)
+                        .foregroundStyle(PanelSelectionTokens.primaryForeground(isSelected: isSelected))
                         .lineLimit(1)
 
                     if let subtitle {
                         Text(subtitle)
                             .font(.caption2)
                             .lineLimit(1)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(PanelSelectionTokens.secondaryForeground(isSelected: isSelected))
                     }
                 }
                 .frame(width: max(72, iconSize + 36))
@@ -50,24 +51,12 @@ struct SecondBarItemView: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .frame(minWidth: max(72, iconSize + 28), minHeight: showLabels ? 92 : iconSize + 22)
-        .background(itemBackground, in: .rect(cornerRadius: 7))
-        .overlay {
-            RoundedRectangle(cornerRadius: 7)
-                .stroke(itemStroke, lineWidth: 0.5)
-        }
+        .panelSelectableRowBackground(isSelected: isSelected)
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(displayTitle), \(snapshot.zone.displayName)")
         .accessibilityValue(isSelected ? "Selected" : "Not selected")
         .accessibilityHint(isSelected ? "Press Return to reveal and highlight this item." : "Use the left and right arrow keys to select this item.")
-    }
-
-    private var itemBackground: Color {
-        isSelected ? Color.accentColor.opacity(0.16) : Color(nsColor: .controlBackgroundColor).opacity(0.34)
-    }
-
-    private var itemStroke: Color {
-        isSelected ? Color.accentColor.opacity(0.55) : Color(nsColor: .separatorColor).opacity(0.24)
     }
 
     private var displayTitle: String {
@@ -88,6 +77,7 @@ struct SecondBarItemView: View {
 
 private struct ZoneBadge: View {
     let zone: MenuBarZone
+    let isSelected: Bool
 
     var body: some View {
         Text(badgeText)
@@ -95,8 +85,12 @@ private struct ZoneBadge: View {
             .bold()
             .padding(.horizontal, 5)
             .padding(.vertical, 2)
-            .background(zoneColor, in: .capsule)
-            .foregroundStyle(.white)
+            .background(PanelSelectionTokens.badgeFill(zoneColor, isSelected: isSelected), in: .capsule)
+            .overlay {
+                Capsule()
+                    .stroke(PanelSelectionTokens.badgeStroke(zoneColor, isSelected: isSelected), lineWidth: DesignTokens.Stroke.hairline)
+            }
+            .foregroundStyle(PanelSelectionTokens.badgeForeground(zoneColor, isSelected: isSelected))
     }
 
     private var badgeText: String {

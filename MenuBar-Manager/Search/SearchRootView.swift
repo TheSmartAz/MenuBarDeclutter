@@ -22,7 +22,6 @@ struct SearchRootView: View {
     @State private var selectedFilter: MenuBarItemCollectionFilter = .all
     @State private var selectedID: MenuBarSearchResult.ID?
     @State private var activationMessage: String?
-    @FocusState private var searchFieldFocused: Bool
 
     /// Cached search results. The previous design recomputed `results` on every
     /// accessing property read, which is read from `resultList`, `searchFooter`,
@@ -69,7 +68,6 @@ struct SearchRootView: View {
             onRefresh()
             rebuildSearchIndex(from: liveStatus.scannedMenuBarItems)
             refreshResults()
-            searchFieldFocused = true
         }
         .onChange(of: query) {
             scheduleSearch()
@@ -158,54 +156,33 @@ struct SearchRootView: View {
     }
 
     private var searchInputBar: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass")
-                .foregroundStyle(.secondary)
-
-            TextField("Find menu bar icon", text: $query)
-                .textFieldStyle(.plain)
-                .font(.body)
-                .focused($searchFieldFocused)
-                .disabled(!searchIsAvailable)
-                .accessibilityLabel("Find menu bar icon")
-                .accessibilityIdentifier("search.field")
-                .onSubmit {
-                    activateSelectedResult()
-                }
-
-            if !query.isEmpty {
-                Button("Clear Search", systemImage: "xmark.circle.fill") {
-                    query = ""
-                    searchFieldFocused = true
-                }
-                .labelStyle(.iconOnly)
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
-                .help("Clear Search")
-                .accessibilityIdentifier("search.clear")
-            }
+        SearchField(
+            "Find menu bar icon",
+            text: $query,
+            autoFocus: true,
+            isEnabled: searchIsAvailable,
+            accessibilityIdentifier: "search.field",
+            clearAccessibilityIdentifier: "search.clear"
+        ) {
+            activateSelectedResult()
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 7)
-        .frame(maxWidth: .infinity)
-        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 7))
-        .overlay {
-            RoundedRectangle(cornerRadius: 7)
-                .stroke(searchFieldFocused ? Color.accentColor.opacity(0.45) : Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
-        }
-        .opacity(searchIsAvailable ? 1 : 0.52)
     }
 
     private var searchFilterBar: some View {
         HStack(spacing: 10) {
-            Picker("Filter", selection: $selectedFilter) {
-                ForEach(MenuBarItemCollectionFilter.searchFilters) { filter in
-                    Text(filter.shortDisplayName)
-                        .tag(filter)
+            ScrollView(.horizontal) {
+                Picker("Filter", selection: $selectedFilter) {
+                    ForEach(MenuBarItemCollectionFilter.searchFilters) { filter in
+                        Text(filter.shortDisplayName)
+                            .tag(filter)
+                    }
                 }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .fixedSize()
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
+            .scrollIndicators(.hidden)
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             filterResetButton
         }

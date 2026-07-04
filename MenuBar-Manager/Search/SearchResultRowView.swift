@@ -23,6 +23,7 @@ struct SearchResultRowView: View {
                     Text(result.displayTitle)
                         .font(.body)
                         .bold()
+                        .foregroundStyle(PanelSelectionTokens.primaryForeground(isSelected: isSelected))
                         .lineLimit(1)
 
                     SearchZoneBadge(
@@ -51,37 +52,24 @@ struct SearchResultRowView: View {
                         .lineLimit(1)
                 }
                 .font(.caption)
-                .foregroundStyle(isSelected ? .white.opacity(0.78) : .secondary)
+                .foregroundStyle(PanelSelectionTokens.secondaryForeground(isSelected: isSelected))
             }
 
             Spacer(minLength: 8)
 
             Image(systemName: isSelected ? "return.left" : "ellipsis")
                 .font(.callout)
-                .foregroundStyle(isSelected ? .white.opacity(0.78) : .secondary)
+                .foregroundStyle(PanelSelectionTokens.accessoryForeground(isSelected: isSelected))
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(rowBackground, in: .rect(cornerRadius: 7))
-        .overlay {
-            RoundedRectangle(cornerRadius: 7)
-                .stroke(rowStroke, lineWidth: 0.5)
-        }
-        .foregroundStyle(isSelected ? .white : .primary)
+        .panelSelectableRowBackground(isSelected: isSelected)
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(result.displayTitle), \(result.snapshot.zone.displayName), \(result.matchReason.displayName)")
         .accessibilityValue(isSelected ? "Selected" : "Not selected")
         .accessibilityHint(isSelected ? "Press Return to reveal and highlight this menu bar item." : "Use the arrow keys to select this result.")
-    }
-
-    private var rowBackground: Color {
-        isSelected ? Color.accentColor : Color(nsColor: .controlBackgroundColor).opacity(0.45)
-    }
-
-    private var rowStroke: Color {
-        isSelected ? Color.accentColor.opacity(0.55) : Color(nsColor: .separatorColor).opacity(0.24)
     }
 
     private var zoneColor: Color {
@@ -118,15 +106,15 @@ private struct SearchZoneBadge: View {
     }
 
     private var badgeFill: Color {
-        isSelected ? .white.opacity(0.18) : color.opacity(0.14)
+        PanelSelectionTokens.badgeFill(color, isSelected: isSelected)
     }
 
     private var badgeStroke: Color {
-        isSelected ? .white.opacity(0.26) : color.opacity(0.28)
+        PanelSelectionTokens.badgeStroke(color, isSelected: isSelected)
     }
 
     private var badgeForeground: Color {
-        isSelected ? .white : color
+        PanelSelectionTokens.badgeForeground(color, isSelected: isSelected)
     }
 }
 

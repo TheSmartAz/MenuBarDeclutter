@@ -100,7 +100,9 @@ struct SearchField: View {
     let placeholder: String
     let width: CGFloat?
     let autoFocus: Bool
+    let isEnabled: Bool
     let accessibilityIdentifier: String
+    let clearAccessibilityIdentifier: String
     let onSubmit: () -> Void
 
     @FocusState private var isFocused: Bool
@@ -110,14 +112,18 @@ struct SearchField: View {
         text: Binding<String>,
         width: CGFloat? = nil,
         autoFocus: Bool = false,
+        isEnabled: Bool = true,
         accessibilityIdentifier: String = "",
+        clearAccessibilityIdentifier: String = "",
         onSubmit: @escaping () -> Void = {}
     ) {
         self.placeholder = placeholder
         _text = text
         self.width = width
         self.autoFocus = autoFocus
+        self.isEnabled = isEnabled
         self.accessibilityIdentifier = accessibilityIdentifier
+        self.clearAccessibilityIdentifier = clearAccessibilityIdentifier
         self.onSubmit = onSubmit
     }
 
@@ -129,6 +135,7 @@ struct SearchField: View {
             TextField(placeholder, text: $text)
                 .textFieldStyle(.plain)
                 .focused($isFocused)
+                .disabled(!isEnabled)
                 .onSubmit(onSubmit)
                 .accessibilityLabel(placeholder)
                 .accessibilityIdentifier(accessibilityIdentifier)
@@ -141,24 +148,88 @@ struct SearchField: View {
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
             .opacity(text.isEmpty ? 0 : 1)
-            .disabled(text.isEmpty)
+            .disabled(text.isEmpty || !isEnabled)
             .help("Clear Search")
+            .accessibilityIdentifier(clearAccessibilityIdentifier)
         }
         .font(DesignTokens.Typography.body)
         .padding(.horizontal, DesignTokens.Spacing.medium)
         .padding(.vertical, DesignTokens.Spacing.small)
         .frame(width: width)
+        .frame(maxWidth: width == nil ? .infinity : nil)
         .background(.quaternary, in: .rect(cornerRadius: DesignTokens.Radius.control))
         .overlay {
             RoundedRectangle(cornerRadius: DesignTokens.Radius.control)
                 .strokeBorder(isFocused ? Color.accentColor.opacity(0.45) : Color.secondary.opacity(0.16), lineWidth: DesignTokens.Stroke.hairline)
         }
+        .opacity(isEnabled ? 1 : 0.72)
         .task {
-            if autoFocus {
+            if autoFocus && isEnabled {
                 isFocused = true
             }
         }
         .accessibilityElement(children: .contain)
+    }
+}
+
+enum PanelSelectionTokens {
+    static func background(isSelected: Bool) -> Color {
+        isSelected
+            ? Color.accentColor.opacity(0.16)
+            : Color(nsColor: .controlBackgroundColor).opacity(0.45)
+    }
+
+    static func stroke(isSelected: Bool) -> Color {
+        isSelected
+            ? Color.accentColor.opacity(0.58)
+            : Color(nsColor: .separatorColor).opacity(0.24)
+    }
+
+    static func primaryForeground(isSelected: Bool) -> Color {
+        isSelected ? .primary : .primary
+    }
+
+    static func secondaryForeground(isSelected: Bool) -> Color {
+        isSelected ? .primary.opacity(0.78) : .secondary
+    }
+
+    static func accessoryForeground(isSelected: Bool) -> Color {
+        isSelected ? .accentColor : .secondary
+    }
+
+    static func badgeFill(_ color: Color, isSelected: Bool) -> Color {
+        isSelected ? color.opacity(0.18) : color.opacity(0.12)
+    }
+
+    static func badgeStroke(_ color: Color, isSelected: Bool) -> Color {
+        isSelected ? color.opacity(0.34) : color.opacity(0.24)
+    }
+
+    static func badgeForeground(_ color: Color, isSelected: Bool) -> Color {
+        isSelected ? color : color
+    }
+}
+
+private struct PanelSelectableRowBackground: ViewModifier {
+    let isSelected: Bool
+    let cornerRadius: CGFloat
+
+    func body(content: Content) -> some View {
+        content
+            .background(PanelSelectionTokens.background(isSelected: isSelected), in: .rect(cornerRadius: cornerRadius))
+            .overlay {
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .stroke(PanelSelectionTokens.stroke(isSelected: isSelected), lineWidth: DesignTokens.Stroke.hairline)
+            }
+    }
+}
+
+extension View {
+    func panelSelectableRowBackground(
+        isSelected: Bool,
+        cornerRadius: CGFloat = DesignTokens.Radius.control
+    ) -> some View {
+        modifier(PanelSelectableRowBackground(isSelected: isSelected, cornerRadius: cornerRadius))
     }
 }
 

@@ -18,7 +18,6 @@ struct SecondBarRootView: View {
     @State private var statusMessage: String?
     @State private var searchQuery = ""
     @State private var selectedFilter: MenuBarItemCollectionFilter = .all
-    @FocusState private var searchFocused: Bool
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
 
     /// Cached filtered+sorted item list. The previous implementation recomputed `items`
@@ -67,7 +66,6 @@ struct SecondBarRootView: View {
         .onAppear {
             onRefresh()
             refreshItems()
-            searchFocused = true
         }
         .onChange(of: searchQuery) {
             refreshItems()
@@ -137,36 +135,15 @@ struct SecondBarRootView: View {
 
     private var header: some View {
         HStack(spacing: 10) {
-            HStack(spacing: 7) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(.secondary)
-
-                TextField("Search hidden items", text: $searchQuery)
-                    .textFieldStyle(.plain)
-                    .focused($searchFocused)
-                    .disabled(!secondBarIsAvailable)
-                    .accessibilityLabel("Search hidden items")
-                    .accessibilityIdentifier("secondBar.search")
-
-                if !searchQuery.isEmpty {
-                    Button("Clear Search", systemImage: "xmark.circle.fill") {
-                        searchQuery = ""
-                        searchFocused = true
-                    }
-                    .labelStyle(.iconOnly)
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
-                    .help("Clear Search")
-                    .accessibilityIdentifier("secondBar.clearSearch")
-                }
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
-            .frame(maxWidth: .infinity)
-            .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 7))
-            .overlay {
-                RoundedRectangle(cornerRadius: 7)
-                    .stroke(searchFocused ? Color.accentColor.opacity(0.45) : Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
+            SearchField(
+                "Search hidden items",
+                text: $searchQuery,
+                autoFocus: true,
+                isEnabled: secondBarIsAvailable,
+                accessibilityIdentifier: "secondBar.search",
+                clearAccessibilityIdentifier: "secondBar.clearSearch"
+            ) {
+                activateSelected()
             }
 
             if secondBarIsAvailable {

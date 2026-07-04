@@ -104,6 +104,18 @@ private struct SettingsCommandPaletteSearchField: View {
                 .onSubmit(onSubmit)
                 .accessibilityLabel("Find a setting or action")
                 .accessibilityIdentifier("settings.commandPalette.search")
+
+            Button("Clear Search", systemImage: "xmark.circle.fill") {
+                query = ""
+                searchFieldFocused.wrappedValue = true
+            }
+            .labelStyle(.iconOnly)
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .opacity(query.isEmpty ? 0 : 1)
+            .disabled(query.isEmpty)
+            .help("Clear Search")
+            .accessibilityIdentifier("settings.commandPalette.clearSearch")
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 15)
@@ -174,19 +186,19 @@ private struct SettingsCommandPaletteRow: View {
         HStack(alignment: .center, spacing: 12) {
             Image(systemName: entry.systemImage)
                 .font(.system(size: 16, weight: .regular))
-                .foregroundStyle(isSelected ? .white : .secondary)
+                .foregroundStyle(PanelSelectionTokens.accessoryForeground(isSelected: isSelected))
                 .frame(width: 24, height: 24)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(entry.title)
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(isSelected ? .white : .primary)
+                    .foregroundStyle(PanelSelectionTokens.primaryForeground(isSelected: isSelected))
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
 
                 Text(entry.subtitle)
                     .font(.caption)
-                    .foregroundStyle(isSelected ? .white.opacity(0.82) : .secondary)
+                    .foregroundStyle(PanelSelectionTokens.secondaryForeground(isSelected: isSelected))
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -195,23 +207,19 @@ private struct SettingsCommandPaletteRow: View {
 
             Image(systemName: entry.kind == .action ? "return" : "arrow.right")
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(isSelected ? .white.opacity(0.82) : Color.secondary.opacity(0.65))
+                .foregroundStyle(PanelSelectionTokens.accessoryForeground(isSelected: isSelected))
                 .frame(width: 18, height: 18)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 9)
         .frame(maxWidth: .infinity, minHeight: 58, alignment: .leading)
-        .background(rowBackground, in: .rect(cornerRadius: 7))
+        .panelSelectableRowBackground(isSelected: isSelected)
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityValue(isSelected ? "Selected" : "Not selected")
         .accessibilityHint(isSelected ? "Press Return to open this setting or action." : "Use the arrow keys to select this result.")
         .accessibilityIdentifier("settings.commandPalette.row.\(entry.id)")
-    }
-
-    private var rowBackground: Color {
-        isSelected ? .accentColor : .clear
     }
 
     private var accessibilityLabel: String {

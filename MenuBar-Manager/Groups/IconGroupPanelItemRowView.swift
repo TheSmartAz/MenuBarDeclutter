@@ -12,38 +12,27 @@ struct IconGroupPanelItemRowView: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(displayTitle)
+                        .foregroundStyle(PanelSelectionTokens.primaryForeground(isSelected: isSelected))
                         .lineLimit(1)
 
                     Text(snapshot.bundleIdentifier ?? snapshot.title ?? snapshot.zone.displayName)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(PanelSelectionTokens.secondaryForeground(isSelected: isSelected))
                         .lineLimit(1)
                 }
 
                 Spacer()
 
-                ZoneTextBadge(title: snapshot.zone.displayName, color: zoneColor)
+                ZoneTextBadge(title: snapshot.zone.displayName, color: zoneColor, isSelected: isSelected)
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
-            .background(rowBackground, in: .rect(cornerRadius: 7))
-            .overlay {
-                RoundedRectangle(cornerRadius: 7)
-                    .stroke(rowStroke, lineWidth: 0.5)
-            }
+            .panelSelectableRowBackground(isSelected: isSelected)
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(displayTitle), \(snapshot.zone.displayName)")
         .accessibilityValue(isSelected ? "Selected" : "Not selected")
-    }
-
-    private var rowBackground: Color {
-        isSelected ? Color.accentColor.opacity(0.16) : Color(nsColor: .controlBackgroundColor).opacity(0.45)
-    }
-
-    private var rowStroke: Color {
-        isSelected ? Color.accentColor.opacity(0.55) : Color(nsColor: .separatorColor).opacity(0.24)
     }
 
     private var zoneColor: Color {
@@ -71,6 +60,7 @@ struct IconGroupPanelItemRowView: View {
 private struct ZoneTextBadge: View {
     let title: String
     let color: Color
+    let isSelected: Bool
 
     var body: some View {
         Text(title)
@@ -78,11 +68,11 @@ private struct ZoneTextBadge: View {
             .bold()
             .padding(.horizontal, 7)
             .padding(.vertical, 3)
-            .foregroundStyle(color)
-            .background(color.opacity(0.12), in: .capsule)
+            .foregroundStyle(PanelSelectionTokens.badgeForeground(color, isSelected: isSelected))
+            .background(PanelSelectionTokens.badgeFill(color, isSelected: isSelected), in: .capsule)
             .overlay {
                 Capsule()
-                    .stroke(color.opacity(0.24), lineWidth: 0.5)
+                    .stroke(PanelSelectionTokens.badgeStroke(color, isSelected: isSelected), lineWidth: DesignTokens.Stroke.hairline)
             }
     }
 }
