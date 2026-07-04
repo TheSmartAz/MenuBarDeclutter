@@ -11,7 +11,7 @@ MenuBarDeclutter `v0.1.10` uses eight top-level Settings areas.
 | Workspaces | Preview workspace sets, Function Bar, Set Builder, Info Strip, Workspace Integration diagnostics, and Preview gates. |
 | Privacy | Basic Mode boundary, Pro Mode boundary, diagnostics redaction, local data. |
 | Recovery | "I can't find my icons", Safe Mode, reset layout, health, diagnostics export, repair actions. |
-| Advanced | Diagnostics, full Groups, Profiles, Smart Triggers, Dynamic Hotkeys, Private Access, Automation, Import / Export, Spacing Labs, Experimental Icon Moving, and internal Dogfood notes when enabled. |
+| Advanced | Low-level separator geometry, diagnostics folder metadata, Labs recovery, Experimental Icon Moving, and deferred research markers. Deeper pages such as Groups, Profiles, Dynamic Hotkeys, Private Access, Automation, Import / Export, Diagnostics, and Layout live under More. |
 
 Basic hiding and Guided Manual Arrange do not require Pro Mode or Accessibility. Private metadata features show clear unavailable states until macOS Accessibility permission is granted; after macOS reports the grant, Find Icon and Second Bar skip their old app-level enable states.
 

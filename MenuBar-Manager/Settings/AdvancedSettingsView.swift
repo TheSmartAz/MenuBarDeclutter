@@ -35,10 +35,10 @@ struct AdvancedSettingsView: View {
     var body: some View {
         ClearGlassSettingsPage(
             "Advanced",
-            subtitle: "Low-level layout, diagnostics, and Labs automation controls.",
+            subtitle: "Low-level separator, local path, and Labs controls.",
             badges: [.privacySafe, .diagnostics, .labs],
             sectionAnchors: [
-                ClearGlassPageAnchor("Directory", systemImage: "list.bullet.rectangle", targetID: "Advanced Feature Directory"),
+                ClearGlassPageAnchor("Advanced-only", systemImage: "list.bullet.rectangle", targetID: "Advanced-Only Controls"),
                 ClearGlassPageAnchor("Separators", systemImage: "ruler", targetID: "Separator Geometry"),
                 ClearGlassPageAnchor("Diagnostics", systemImage: "waveform.path.ecg", targetID: "Recovery & Diagnostics"),
                 ClearGlassPageAnchor("Labs", systemImage: "testtube.2", targetID: "Labs"),
@@ -238,8 +238,14 @@ enum AdvancedFeatureDirectory {
         )
     ]
 
+    static func searchAliasEntries(showDogfood: Bool) -> [AdvancedFeatureDirectoryEntry] {
+        entries.filter { showDogfood || $0.title != "Dogfood" }
+    }
+
     static func visibleGroups(showDogfood: Bool) -> [AdvancedFeatureDirectoryGroup] {
-        let visibleEntries = entries.filter { showDogfood || $0.title != "Dogfood" }
+        let visibleEntries = entries
+            .filter { showDogfood || $0.title != "Dogfood" }
+            .filter(\.belongsOnAdvancedPage)
 
         return AdvancedFeatureDirectoryCategory.allCases.compactMap { category in
             let categoryEntries = visibleEntries.filter { $0.category == category }
@@ -262,6 +268,12 @@ struct AdvancedFeatureDirectoryEntry: Identifiable {
     let destination: SettingsSection?
 
     var id: String { title }
+
+    var belongsOnAdvancedPage: Bool {
+        guard let destination else { return true }
+        let sidebarSections = SettingsSection.visibleSidebarSections + SettingsSection.moreSidebarSections
+        return !sidebarSections.contains(destination)
+    }
 }
 
 struct AdvancedFeatureDirectoryGroup: Identifiable {
@@ -314,8 +326,8 @@ private struct AdvancedFeatureDirectorySection: View {
         let groups = AdvancedFeatureDirectory.visibleGroups(showDogfood: showDogfood)
 
         ClearGlassSection(
-            "Advanced Feature Directory",
-            subtitle: "Power-user and Labs surfaces stay available without crowding the main settings flow."
+            "Advanced-Only Controls",
+            subtitle: "Sidebar pages now live in their canonical locations; this page keeps only Advanced-owned controls."
         ) {
             VStack(spacing: 0) {
                 ForEach(Array(groups.enumerated()), id: \.element.id) { offset, group in

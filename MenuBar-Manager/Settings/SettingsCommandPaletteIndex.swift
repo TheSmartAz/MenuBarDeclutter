@@ -183,7 +183,7 @@ struct SettingsCommandPaletteIndex {
     }
 
     private static func advancedAliasEntries(includeDogfood: Bool) -> [SettingsCommandPaletteEntry] {
-        AdvancedFeatureDirectory.visibleEntries(showDogfood: includeDogfood)
+        AdvancedFeatureDirectory.searchAliasEntries(showDogfood: includeDogfood)
             .compactMap { entry in
                 let destination = entry.destination ?? SettingsSection.advanced
                 guard entry.title != destination.title else { return nil }

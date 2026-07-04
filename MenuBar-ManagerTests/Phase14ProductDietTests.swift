@@ -71,23 +71,40 @@ struct Phase14ProductDietTests {
         }
     }
 
-    @Test func advancedDirectoryExposesHiddenHeavySurfaces() {
+    @Test func advancedDirectoryExcludesSidebarDuplicatePages() {
         let entries = AdvancedFeatureDirectory.visibleEntries(showDogfood: true)
-        #expect(entries.map(\.title).contains("Groups"))
-        #expect(entries.map(\.title).contains("Dogfood"))
-        #expect(entries.map(\.title).contains("Spacing Labs"))
-        #expect(entries.first { $0.title == "Groups" }?.destination == .groups)
-        #expect(entries.first { $0.title == "Dogfood" }?.destination == .diagnostics)
-        #expect(entries.first { $0.title == "Spacing Labs" }?.destination == .layout)
+        let sidebarSections = Set(SettingsSection.visibleSidebarSections + SettingsSection.moreSidebarSections)
+        let duplicateTitles = [
+            "Workspaces",
+            "Profiles",
+            "Smart Triggers",
+            "Dynamic Hotkeys",
+            "Private Access",
+            "Groups",
+            "Automation",
+            "Import / Export",
+            "Diagnostics",
+            "Dogfood",
+            "Spacing Labs"
+        ]
+
+        #expect(entries.compactMap(\.destination).allSatisfy { !sidebarSections.contains($0) })
+        #expect(duplicateTitles.allSatisfy { !entries.map(\.title).contains($0) })
         #expect(entries.first { $0.title == "Icon Moving" }?.destination == nil)
+        #expect(entries.map(\.title) == [
+            "Icon Moving",
+            "Stable Bulk Moving",
+            "Visual Item Capture"
+        ])
     }
 
-    @Test func advancedDirectoryHidesDogfoodUntilDogfoodStateExists() {
-        let defaultEntries = AdvancedFeatureDirectory.visibleEntries(showDogfood: false)
+    @Test func advancedSearchAliasesHideDogfoodUntilDogfoodStateExists() {
+        let defaultEntries = AdvancedFeatureDirectory.searchAliasEntries(showDogfood: false)
         #expect(!defaultEntries.map(\.title).contains("Dogfood"))
 
-        let dogfoodEntries = AdvancedFeatureDirectory.visibleEntries(showDogfood: true)
+        let dogfoodEntries = AdvancedFeatureDirectory.searchAliasEntries(showDogfood: true)
         #expect(dogfoodEntries.map(\.title).contains("Dogfood"))
+        #expect(dogfoodEntries.first { $0.title == "Dogfood" }?.destination == .diagnostics)
     }
 
     @Test func featureVisibilityClassifiesGuidedPlannerAndAssistedMove() {
