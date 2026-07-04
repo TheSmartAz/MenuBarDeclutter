@@ -1,12 +1,12 @@
 # Second Bar
 
-Second Bar is a private-access floating panel for hidden and always-hidden menu bar items. It opens by default, and uses Accessibility metadata and app/bundle icons when macOS permission is granted.
+Second Bar is a private-access floating panel for hidden and always-hidden menu bar items. It opens by default, uses Accessibility metadata when macOS permission is granted, and can use Accurate Icons rendered thumbnails when that separate opt-in capture path is enabled.
 
 ## What It Does
 
 - Opens a floating, non-activating AppKit `NSPanel`.
 - Displays hidden and always-hidden items from the local Accessibility snapshot.
-- Shows app icons, app names, optional item titles, and zone badges.
+- Shows rendered thumbnails or app fallback icons, app names, optional item titles, and zone badges.
 - Provides a search field for hidden items.
 - Supports keyboard navigation and Escape close.
 - Supports placement below the menu bar, near the mouse, or at the last position.
@@ -28,7 +28,7 @@ Second Bar is a private-access floating panel for hidden and always-hidden menu 
 
 ## Privacy And Permissions
 
-Second Bar requires the Pro Accessibility discovery index. It uses item metadata and app/bundle icons only. It does not request Screen Recording, use ScreenCaptureKit, sample pixels, automate clicks, use private APIs, or use the network.
+Second Bar requires the Pro Accessibility discovery index. It does not request Screen Recording on its own, automate clicks, use private APIs, or use the network. When Accurate Icons is enabled from Privacy settings, shared local rendered thumbnails can replace app-icon fallbacks.
 
 ## Implementation
 
@@ -49,7 +49,7 @@ Second Bar requires the Pro Accessibility discovery index. It uses item metadata
 
 ## Known Limitations
 
-- Second Bar is not a pixel-perfect captured duplicate of the real menu bar.
+- Second Bar is not a pixel-perfect captured duplicate of the real menu bar. Accurate Icons improves individual icon thumbnails when the item is capturable, but offscreen/overflow items can still use stale or fallback images.
 - Some menu bar items may lack useful Accessibility labels or ownership metadata.
 - Display, notch, Spaces, and sleep/wake behavior require hands-on QA.
 - Experimental move attempts remain explicitly gated and are not broad automated clicking.

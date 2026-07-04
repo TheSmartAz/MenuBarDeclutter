@@ -47,6 +47,20 @@ check_absent() {
   fi
 }
 
+check_screen_capturekit_scope() {
+  local output_file="/tmp/menubardeclutter-screencapturekit-match.txt"
+  if search_to_file "import[[:space:]]+ScreenCaptureKit|ScreenCaptureKit" "$output_file" MenuBar-Manager; then
+    if grep -Ev '^MenuBar-Manager/MenuBarIconCapture/' "$output_file" >/tmp/menubardeclutter-screencapturekit-out-of-scope.txt; then
+      fail "ScreenCaptureKit is scoped to the rendered icon capture module"
+      sed -n '1,12p' /tmp/menubardeclutter-screencapturekit-out-of-scope.txt
+    else
+      pass "ScreenCaptureKit is scoped to the rendered icon capture module"
+    fi
+  else
+    fail "Expected ScreenCaptureKit reference for Accurate Icons was not found"
+  fi
+}
+
 cd "$ROOT_DIR"
 
 echo "MenuBarDeclutter privacy boundary verification"
@@ -56,8 +70,12 @@ echo "It does not upload anything and does not inspect screen contents."
 echo
 
 check_absent "No network entitlements are declared" "com\\.apple\\.security\\.network\\.(client|server)" MenuBar-Manager.xcodeproj Config MenuBar-Manager
-check_absent "No ScreenCaptureKit imports are present in app code" "import[[:space:]]+ScreenCaptureKit|ScreenCaptureKit" MenuBar-Manager Config
-check_absent "No Screen Recording usage string is registered" "NSScreenCaptureUsageDescription|Screen Recording" Config MenuBar-Manager.xcodeproj
+check_screen_capturekit_scope
+if /usr/libexec/PlistBuddy -c "Print :NSScreenCaptureUsageDescription" Config/MenuBarDeclutter-Info.plist 2>/dev/null | contains_pattern "Accurate Icons"; then
+  pass "Screen Recording usage string is registered for Accurate Icons"
+else
+  fail "Screen Recording usage string for Accurate Icons is missing"
+fi
 check_absent "No Apple Events usage string is registered" "NSAppleEventsUsageDescription" Config MenuBar-Manager.xcodeproj
 check_absent "No Input Monitoring usage string is registered" "NSInputMonitoringUsageDescription|Input Monitoring" Config MenuBar-Manager.xcodeproj
 check_absent "No direct network client APIs or analytics SDK names are present in app code" "URLSession|NWConnection|import[[:space:]]+Network|Sentry|Firebase|TelemetryDeck|Mixpanel|Amplitude" MenuBar-Manager
@@ -102,7 +120,12 @@ if [[ -n "$APP_PATH" ]]; then
       else
         fail "Built app URL scheme is missing or different"
       fi
-      for key in NSScreenCaptureUsageDescription NSAppleEventsUsageDescription NSInputMonitoringUsageDescription; do
+      if /usr/libexec/PlistBuddy -c "Print :NSScreenCaptureUsageDescription" "$INFO_PLIST" >/dev/null 2>&1; then
+        pass "Built app declares NSScreenCaptureUsageDescription for Accurate Icons"
+      else
+        fail "Built app does not declare NSScreenCaptureUsageDescription"
+      fi
+      for key in NSAppleEventsUsageDescription NSInputMonitoringUsageDescription; do
         if /usr/libexec/PlistBuddy -c "Print :$key" "$INFO_PLIST" >/dev/null 2>&1; then
           fail "Built app declares $key"
         else
@@ -127,9 +150,9 @@ if [[ -n "$APP_PATH" ]]; then
     EXECUTABLE="$APP_PATH/Contents/MacOS/$EXECUTABLE_NAME"
     if [[ -f "$EXECUTABLE" ]]; then
       if otool -L "$EXECUTABLE" | contains_pattern "ScreenCaptureKit"; then
-        fail "Built app executable links ScreenCaptureKit"
+        pass "Built app executable links ScreenCaptureKit for Accurate Icons"
       else
-        pass "Built app executable does not link ScreenCaptureKit"
+        pass "Built app executable does not link ScreenCaptureKit directly"
       fi
     fi
   fi

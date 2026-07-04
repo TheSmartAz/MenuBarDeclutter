@@ -17,8 +17,8 @@ Mark each item PASS, FAIL, BLOCKED, or NOT TESTED.
 | --- | --- | --- |
 | `scripts/verify_privacy_boundary.sh` passes | NOT TESTED | |
 | No network entitlements are present | NOT TESTED | |
-| No ScreenCaptureKit imports are present | NOT TESTED | |
-| No Screen Recording usage string is present | NOT TESTED | |
+| ScreenCaptureKit imports are scoped to `MenuBarIconCapture` | NOT TESTED | |
+| Screen Recording usage string is scoped to Accurate Icons | NOT TESTED | |
 | No Apple Events usage string is present | NOT TESTED | |
 | No Input Monitoring usage string is present | NOT TESTED | |
 | `menubardeclutter://` URL scheme is local and registered | NOT TESTED | |

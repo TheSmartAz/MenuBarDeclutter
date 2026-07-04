@@ -3,25 +3,34 @@ import SwiftUI
 struct PrivacySettingsView: View {
     @Bindable var settingsStore: SettingsStore
     var permissionService: AccessibilityPermissionService?
+    var screenCapturePermissionService: ScreenCapturePermissionService?
+    var iconCaptureCoordinator: MenuBarIconCaptureCoordinator?
     var scanCoordinator: MenuBarScanCoordinator?
     var onChange: (() -> Void)? = nil
+
+    @State private var accurateIconCacheMessage: String?
 
     var body: some View {
         ClearGlassSettingsPage(
             "Privacy",
-            subtitle: "Basic Mode stays permission-free. Optional Pro is explicit and uses only local Accessibility discovery when you enable it.",
+            subtitle: "Basic Mode stays permission-free. Optional capabilities are explicit and local-first when you enable them.",
             badges: [.stable, .privacySafe, .basicMode]
         ) {
             PrivacyStatusOverview(
                 proModeEnabled: settingsStore.proModeEnabled,
                 accessibilityDiscoveryEnabled: settingsStore.accessibilityDiscoveryEnabled,
                 accessibilityStatusText: accessibilityStatusText,
-                accessibilityStatusStyle: accessibilityStatusStyle
+                accessibilityStatusStyle: accessibilityStatusStyle,
+                accurateIconsStatusText: accurateIconsStatusText,
+                accurateIconsStatusStyle: accurateIconsStatusStyle,
+                screenCaptureStatusText: screenCaptureStatusText,
+                screenCaptureStatusStyle: screenCaptureStatusStyle
             )
 
             PrivacyTrustBoundarySummary(accessibilityIdentifier: "privacy.modeBoundary")
             basicModeSection
             proModeSection
+            accurateIconsSection
             localDataSection
             diagnosticsSection
         }
@@ -42,7 +51,7 @@ struct PrivacySettingsView: View {
             PrivacyPermissionRow(
                 systemImage: "rectangle.on.rectangle",
                 title: "Screen Recording",
-                subtitle: "No screenshots, screen contents, or pixel capture are used.",
+                subtitle: "Basic Mode never captures screen contents. Accurate Icons is a separate opt-in below.",
                 status: "Basic Mode",
                 style: .success
             )
@@ -119,7 +128,7 @@ struct PrivacySettingsView: View {
                         notifyPrivacyChanged()
                     }
             }
-            .opacity(settingsStore.proModeEnabled ? 1 : 0.55)
+            .opacity(settingsStore.proModeEnabled ? 1 : 0.72)
 
             ClearGlassDivider()
 
@@ -140,7 +149,7 @@ struct PrivacySettingsView: View {
                     }
                 }
             }
-            .opacity(settingsStore.proModeEnabled ? 1 : 0.55)
+            .opacity(settingsStore.proModeEnabled ? 1 : 0.72)
 
             ClearGlassDivider()
 
@@ -157,7 +166,7 @@ struct PrivacySettingsView: View {
                 .controlSize(.small)
                 .disabled(!canRequestRescan)
             }
-            .opacity(settingsStore.proModeEnabled ? 1 : 0.55)
+            .opacity(settingsStore.proModeEnabled ? 1 : 0.72)
 
             ClearGlassDivider()
 
@@ -193,6 +202,102 @@ struct PrivacySettingsView: View {
         .accessibilityIdentifier("privacy.proDiscovery.section")
     }
 
+    private var accurateIconsSection: some View {
+        ClearGlassSection("Accurate Icons", subtitle: "Optional local rendered thumbnails for item surfaces.") {
+            ClearGlassInlineMessage(
+                text: "Accurate Icons captures small menu bar item thumbnails locally after you enable it and grant Screen Recording. Full screenshots are not exported.",
+                systemImage: "menubar.rectangle",
+                style: .info
+            )
+
+            ClearGlassDivider()
+
+            PrivacyPermissionRow(
+                systemImage: "sparkle.magnifyingglass",
+                title: "Rendered Icon Capture",
+                subtitle: "Use cropped rendered pixels before falling back to app bundle icons.",
+                status: accurateIconsStatusText,
+                style: accurateIconsStatusStyle
+            ) {
+                Toggle("Rendered Icon Capture", isOn: $settingsStore.renderedIconCaptureEnabled)
+                    .labelsHidden()
+                    .onChange(of: settingsStore.renderedIconCaptureEnabled) {
+                        if !settingsStore.renderedIconCaptureEnabled {
+                            settingsStore.renderedIconRevealSweepEnabled = false
+                        }
+                        screenCapturePermissionService?.refreshStatus()
+                        notifyPrivacyChanged()
+                    }
+            }
+
+            ClearGlassDivider()
+
+            PrivacyPermissionRow(
+                systemImage: "rectangle.on.rectangle",
+                title: "Screen Recording Permission",
+                subtitle: "Required only for Accurate Icons. The request is shown from your button press.",
+                status: screenCaptureStatusText,
+                style: screenCaptureStatusStyle
+            ) {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
+                        screenCaptureButtons
+                    }
+
+                    VStack(alignment: .trailing, spacing: 8) {
+                        screenCaptureButtons
+                    }
+                }
+            }
+            .opacity(settingsStore.renderedIconCaptureEnabled ? 1 : 0.72)
+
+            ClearGlassDivider()
+
+            PrivacyPermissionRow(
+                systemImage: "arrow.triangle.2.circlepath",
+                title: "Reveal Sweep",
+                subtitle: "Temporarily reveals our hidden items during user interaction, captures thumbnails, then restores visibility.",
+                status: settingsStore.renderedIconRevealSweepEnabled ? "On" : "Off",
+                style: settingsStore.renderedIconRevealSweepEnabled ? .info : .secondary
+            ) {
+                Toggle("Reveal Sweep", isOn: $settingsStore.renderedIconRevealSweepEnabled)
+                    .labelsHidden()
+                    .disabled(!settingsStore.renderedIconCaptureEnabled)
+                    .onChange(of: settingsStore.renderedIconRevealSweepEnabled) {
+                        notifyPrivacyChanged()
+                    }
+            }
+            .opacity(settingsStore.renderedIconCaptureEnabled ? 1 : 0.72)
+
+            ClearGlassDivider()
+
+            PrivacyPermissionRow(
+                systemImage: "trash",
+                title: "Rendered Icon Cache",
+                subtitle: "Deletes local thumbnail files and in-memory rendered icon images.",
+                status: "Local",
+                style: .secondary
+            ) {
+                Button("Clear Cache", systemImage: "trash") {
+                    let success = iconCaptureCoordinator?.clearCache() ?? false
+                    accurateIconCacheMessage = success ? "Cache cleared." : "Cache unavailable."
+                }
+                .controlSize(.small)
+                .disabled(iconCaptureCoordinator == nil)
+            }
+
+            if let accurateIconCacheMessage {
+                ClearGlassDivider()
+                ClearGlassInlineMessage(
+                    text: accurateIconCacheMessage,
+                    systemImage: "checkmark.circle",
+                    style: .success
+                )
+            }
+        }
+        .accessibilityIdentifier("privacy.accurateIcons.section")
+    }
+
     private var accessibilityButtons: some View {
         Group {
             Button("Request Permission", systemImage: "hand.raised") {
@@ -207,6 +312,25 @@ struct PrivacySettingsView: View {
             }
             .disabled(!canUseAccessibilityPermissionControls)
             .accessibilityIdentifier("privacy.action.openAccessibilitySettings")
+        }
+        .controlSize(.small)
+    }
+
+    private var screenCaptureButtons: some View {
+        Group {
+            Button("Request Permission", systemImage: "rectangle.on.rectangle") {
+                screenCapturePermissionService?.requestPermissionFromUserAction()
+                notifyPrivacyChanged()
+            }
+            .disabled(!canUseScreenCapturePermissionControls || screenCapturePermissionService?.status == .granted)
+            .accessibilityIdentifier("privacy.action.requestScreenCapturePermission")
+
+            Button("Open Settings", systemImage: "gearshape") {
+                screenCapturePermissionService?.openSystemSettingsPrivacyPane()
+                screenCapturePermissionService?.refreshStatus()
+            }
+            .disabled(!canUseScreenCapturePermissionControls)
+            .accessibilityIdentifier("privacy.action.openScreenCaptureSettings")
         }
         .controlSize(.small)
     }
@@ -260,6 +384,11 @@ struct PrivacySettingsView: View {
             && permissionService != nil
     }
 
+    private var canUseScreenCapturePermissionControls: Bool {
+        settingsStore.renderedIconCaptureEnabled
+            && screenCapturePermissionService != nil
+    }
+
     private var localDataSection: some View {
         ClearGlassSection("Local Data Path", subtitle: "The app keeps its processing path on this Mac.") {
             PrivacyLocalDataFlow()
@@ -289,7 +418,7 @@ struct PrivacySettingsView: View {
             PrivacyPermissionRow(
                 systemImage: "eye.slash",
                 title: "Excluded Data",
-                subtitle: "Screenshots, screen contents, personal file paths, and network payloads are excluded.",
+                subtitle: "Screenshots, screen contents, rendered icon thumbnails, personal file paths, and network payloads are excluded.",
                 status: "Excluded",
                 style: .success
             )
@@ -318,6 +447,27 @@ struct PrivacySettingsView: View {
         }
     }
 
+    private var accurateIconsStatusText: String {
+        guard settingsStore.renderedIconCaptureEnabled else { return "Off" }
+        return screenCapturePermissionService?.status == .granted ? "Ready" : "Needs Permission"
+    }
+
+    private var accurateIconsStatusStyle: ClearGlassStatusStyle {
+        guard settingsStore.renderedIconCaptureEnabled else { return .secondary }
+        return screenCapturePermissionService?.status == .granted ? .success : .warning
+    }
+
+    private var screenCaptureStatusText: String {
+        screenCapturePermissionService?.status.displayName
+            ?? ScreenCapturePermissionStatus.notGranted.displayName
+    }
+
+    private var screenCaptureStatusStyle: ClearGlassStatusStyle {
+        guard settingsStore.renderedIconCaptureEnabled else { return .secondary }
+        return screenCapturePermissionService?.status == .granted ? .success : .warning
+    }
+
+
     private func enableProMode() {
         PrivacyProSetupActions.enableProMode(
             settingsStore: settingsStore,
@@ -327,6 +477,7 @@ struct PrivacySettingsView: View {
     }
 
     private func notifyPrivacyChanged() {
+        screenCapturePermissionService?.refreshStatus()
         if let onChange {
             onChange()
         } else {
@@ -356,6 +507,10 @@ private struct PrivacyStatusOverview: View {
     let accessibilityDiscoveryEnabled: Bool
     let accessibilityStatusText: String
     let accessibilityStatusStyle: ClearGlassStatusStyle
+    let accurateIconsStatusText: String
+    let accurateIconsStatusStyle: ClearGlassStatusStyle
+    let screenCaptureStatusText: String
+    let screenCaptureStatusStyle: ClearGlassStatusStyle
 
     private let columns = [
         GridItem(.adaptive(minimum: 150), spacing: 8)
@@ -389,6 +544,20 @@ private struct PrivacyStatusOverview: View {
                 value: accessibilityStatusText,
                 systemImage: "hand.raised",
                 style: accessibilityStatusStyle
+            )
+
+            PrivacyOverviewPill(
+                title: "Accurate Icons",
+                value: accurateIconsStatusText,
+                systemImage: "sparkle.magnifyingglass",
+                style: accurateIconsStatusStyle
+            )
+
+            PrivacyOverviewPill(
+                title: "Screen Recording",
+                value: screenCaptureStatusText,
+                systemImage: "rectangle.on.rectangle",
+                style: screenCaptureStatusStyle
             )
         }
     }
@@ -545,7 +714,7 @@ private struct PrivacyScanThrottleRow: View {
             }
             .disabled(!isEnabled)
         }
-        .opacity(isEnabled ? 1 : 0.55)
+        .opacity(isEnabled ? 1 : 0.72)
     }
 }
 
@@ -625,9 +794,15 @@ private enum PrivacySettingsPreviewFactory {
             promptTrustProvider: { false },
             systemSettingsOpener: { true }
         )
+        let screenCaptureService = ScreenCapturePermissionService(
+            preflightAccess: { false },
+            requestAccess: { false },
+            systemSettingsOpener: { true }
+        )
         return PrivacySettingsView(
             settingsStore: store,
             permissionService: permissionService,
+            screenCapturePermissionService: screenCaptureService,
             scanCoordinator: nil
         )
     }

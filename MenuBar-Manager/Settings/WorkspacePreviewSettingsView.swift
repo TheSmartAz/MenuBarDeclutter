@@ -1168,7 +1168,7 @@ private struct WorkspaceGateCard: View {
                 .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
         }
         .disabled(disabled)
-        .opacity(disabled ? 0.58 : 1)
+        .opacity(disabled ? 0.74 : 1)
         .accessibilityElement(children: .combine)
     }
 
@@ -1325,7 +1325,7 @@ private struct WorkspaceFunctionBarPreview: View {
                 .foregroundStyle(functionBarEnabled ? .primary : .secondary)
             }
         }
-        .opacity(functionBarEnabled ? 1 : 0.58)
+        .opacity(functionBarEnabled ? 1 : 0.74)
     }
 }
 
@@ -1395,7 +1395,7 @@ private struct WorkspaceInfoStripPreview: View {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(Color(nsColor: .separatorColor).opacity(0.62), lineWidth: 0.5)
         }
-        .opacity(isEnabled ? 1 : 0.68)
+        .opacity(isEnabled ? 1 : 0.76)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Info Strip preview")
     }

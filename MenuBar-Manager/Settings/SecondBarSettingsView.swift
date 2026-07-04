@@ -97,7 +97,7 @@ struct SecondBarSettingsView: View {
                 )
 
                 ClearGlassInlineMessage(
-                    text: "Basic Mode hiding stays available without this panel. Optional Pro Second Bar uses Accessibility snapshots and app bundle icons; it does not use Screen Recording or captured menu bar pixels.",
+                    text: "Basic Mode hiding stays available without this panel. Optional Pro Second Bar uses Accessibility snapshots and can use Accurate Icons thumbnails only when you enable that separate permission path.",
                     systemImage: "checkmark.shield",
                     style: .success
                 )

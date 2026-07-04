@@ -24,7 +24,9 @@ Pro Mode is optional. Basic Mode remains fully usable when Pro Mode is disabled,
 
 ## Privacy And Permissions
 
-Pro Mode requests only Accessibility and only after explicit opt-in plus explicit permission request. It does not request Screen Recording, Apple Events, Input Monitoring, or network access. It does not use ScreenCaptureKit, screenshots, pixel sampling, private APIs, click simulation, or drag simulation for discovery.
+Pro Mode discovery requests only Accessibility and only after explicit opt-in plus explicit permission request. Discovery does not request Screen Recording, Apple Events, Input Monitoring, or network access. It does not use ScreenCaptureKit, screenshots, pixel sampling, private APIs, click simulation, or drag simulation.
+
+Accurate Icons is a separate opt-in path that can use Screen Recording and public ScreenCaptureKit visible-region capture for local rendered thumbnails. It is off by default and is documented in `docs/features/rendered-icon-capture.md`.
 
 ## Implementation
 

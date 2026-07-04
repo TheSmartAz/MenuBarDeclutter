@@ -49,6 +49,7 @@ final class MenuBarItemSurfaceCoordinator {
     private let hoverRevealController: HoverRevealController
     private let screenGeometry: ScreenGeometryService
     private let menuBarScanCoordinator: MenuBarScanCoordinator
+    private let iconCaptureCoordinator: MenuBarIconCaptureCoordinator?
     private let liveStatusSynchronizer: AppEnvironmentLiveStatusSynchronizer
     private let secondBarPositioningService: SecondBarPositioningService
     private let isHoverRevealSuppressed: () -> Bool
@@ -142,6 +143,7 @@ final class MenuBarItemSurfaceCoordinator {
         screenGeometry: ScreenGeometryService,
         accessibilityPermissionService: AccessibilityPermissionService,
         menuBarScanCoordinator: MenuBarScanCoordinator,
+        iconCaptureCoordinator: MenuBarIconCaptureCoordinator? = nil,
         liveStatusSynchronizer: AppEnvironmentLiveStatusSynchronizer,
         secondBarPositioningService: SecondBarPositioningService = SecondBarPositioningService(),
         separatorFramesProvider: @escaping () -> MenuBarSeparatorFrames,
@@ -165,6 +167,7 @@ final class MenuBarItemSurfaceCoordinator {
         self.screenGeometry = screenGeometry
         self.accessibilityPermissionService = accessibilityPermissionService
         self.menuBarScanCoordinator = menuBarScanCoordinator
+        self.iconCaptureCoordinator = iconCaptureCoordinator
         self.liveStatusSynchronizer = liveStatusSynchronizer
         self.secondBarPositioningService = secondBarPositioningService
         self.separatorFramesProvider = separatorFramesProvider
@@ -206,6 +209,7 @@ final class MenuBarItemSurfaceCoordinator {
             menuBarScanCoordinator.requestManualRefresh()
         }
         liveStatusSynchronizer.refreshSearchAndSecondBarItemCounts()
+        iconCaptureCoordinator?.refreshHiddenIconsViaRevealSweepIfAllowed(reason: "surface refresh")
     }
 
     func refreshMenuBarItemsForMoveVerification() async -> [MenuBarItemSnapshot] {

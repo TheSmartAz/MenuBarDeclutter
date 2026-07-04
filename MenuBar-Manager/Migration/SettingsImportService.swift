@@ -115,6 +115,9 @@ final class SettingsImportService {
         let previewGateRisks = selectedSections.contains(.settings)
             ? Self.previewGateLabelsEnabled(by: package.settings)
             : []
+        let permissionSensitiveRisks = selectedSections.contains(.settings)
+            ? Self.permissionSensitiveLabelsEnabled(by: package.settings)
+            : []
 
         if wouldEnableIconMoving {
             riskyFlags.append("Icon moving would be enabled.")
@@ -126,6 +129,7 @@ final class SettingsImportService {
             riskyFlags.append("Smart triggers would be enabled.")
         }
         riskyFlags.append(contentsOf: previewGateRisks.map { "\($0) would be enabled." })
+        riskyFlags.append(contentsOf: permissionSensitiveRisks.map { "\($0) would be enabled." })
 
         if !importExperimentalSettings {
             for flag in riskyFlags {
@@ -415,6 +419,23 @@ final class SettingsImportService {
             return applyBool(rawValue) { settingsStore.accessibilityDiscoveryEnabled = $0 }
         case .menuBarScanIntervalSeconds:
             return applyDouble(rawValue) { settingsStore.menuBarScanIntervalSeconds = $0 }
+        case .renderedIconCaptureEnabled:
+            guard let value = bool(from: rawValue) else { return .skipped }
+            if value && !importExperimentalSettings {
+                return .skippedExperimental("Accurate Icons")
+            }
+            settingsStore.renderedIconCaptureEnabled = value
+            if !value {
+                settingsStore.renderedIconRevealSweepEnabled = false
+            }
+            return .applied
+        case .renderedIconRevealSweepEnabled:
+            guard let value = bool(from: rawValue) else { return .skipped }
+            if value && !importExperimentalSettings {
+                return .skippedExperimental("Accurate Icons Reveal Sweep")
+            }
+            settingsStore.renderedIconRevealSweepEnabled = value && settingsStore.renderedIconCaptureEnabled
+            return .applied
         case .searchEnabled:
             return applyBool(rawValue) { settingsStore.searchEnabled = $0 }
         case .searchHotkeyEnabled:
@@ -750,6 +771,17 @@ final class SettingsImportService {
 
     private static func previewGateLabelsEnabled(by settings: [String: String]) -> [String] {
         previewGateImportLabels.compactMap { entry in
+            settings[entry.key.rawValue]?.lowercased() == "true" ? entry.label : nil
+        }
+    }
+
+    private static let permissionSensitiveImportLabels: [(key: SettingsStore.Key, label: String)] = [
+        (.renderedIconCaptureEnabled, "Accurate Icons"),
+        (.renderedIconRevealSweepEnabled, "Accurate Icons Reveal Sweep")
+    ]
+
+    private static func permissionSensitiveLabelsEnabled(by settings: [String: String]) -> [String] {
+        permissionSensitiveImportLabels.compactMap { entry in
             settings[entry.key.rawValue]?.lowercased() == "true" ? entry.label : nil
         }
     }

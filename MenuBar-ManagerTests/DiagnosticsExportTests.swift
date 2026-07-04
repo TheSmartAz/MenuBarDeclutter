@@ -72,6 +72,7 @@ struct DiagnosticsExportTests {
         let excluded = try #require(object["excludedByDesign"] as? [String])
         #expect(excluded.contains("screenshots"))
         #expect(excluded.contains("screenContents"))
+        #expect(excluded.contains("renderedIconThumbnails"))
         #expect(excluded.contains("liveSearchText"))
         #expect(excluded.contains("selectedItemIdentity"))
         #expect(excluded.contains("protectedGroupNames"))
@@ -272,7 +273,7 @@ struct DiagnosticsExportTests {
         #expect(text.contains("Collapsed Separator Override: (none — auto)"))
         #expect(text.contains("warm up"))
         #expect(text.contains("Excluded by design"))
-        #expect(text.contains("Screenshots, screen contents, live search text, selected item identity, personal file paths, network data"))
+        #expect(text.contains("Screenshots, screen contents, rendered icon thumbnails, live search text, selected item identity, personal file paths, network data"))
     }
 
     @Test func exportRedactsSensitiveLogMessageText() throws {
@@ -409,6 +410,8 @@ struct DiagnosticsExportTests {
         store.infoStripPreviewEnabled = true
         store.infoStripAutoShowEnabled = true
         store.infoStripShowPreviewBadge = false
+        store.renderedIconCaptureEnabled = true
+        store.renderedIconRevealSweepEnabled = true
 
         let logger = DiagnosticsLogger()
         let snapshot = exporter.makeSnapshot(settingsStore: store, logger: logger)
@@ -445,6 +448,8 @@ struct DiagnosticsExportTests {
         #expect(snapshot.settings.infoStripPreviewEnabled == true)
         #expect(snapshot.settings.infoStripAutoShowEnabled == true)
         #expect(snapshot.settings.infoStripShowPreviewBadge == false)
+        #expect(snapshot.settings.renderedIconCaptureEnabled == true)
+        #expect(snapshot.settings.renderedIconRevealSweepEnabled == true)
     }
 
     @Test func excludesNetworkDataAndScreenshotsFromSettings() {
@@ -551,6 +556,8 @@ struct DiagnosticsExportTests {
         "privateAccessUnlockDurationSeconds",
         "proModeEnabled",
         "protectedGroupsRequireAuth",
+        "renderedIconCaptureEnabled",
+        "renderedIconRevealSweepEnabled",
         "revealAllOnOptionClick",
         "searchEnabled",
         "searchHighlightOnSelection",

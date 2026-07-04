@@ -492,7 +492,7 @@ struct SearchRootView: View {
             return SearchUnavailableState(
                 title: "Find Icon Unavailable",
                 systemImage: "hand.raised.slash",
-                message: "Grant Accessibility permission to let Optional Pro discovery read menu bar item labels and frames locally. No Screen Recording, clicking, or network access is used.",
+                message: "Grant Accessibility permission to let Optional Pro discovery read menu bar item labels and frames locally. Discovery itself does not use Screen Recording, clicking, or network access.",
                 primaryButtonTitle: "Request Permission",
                 primaryAction: {
                     permissionService.requestPromptFromUserAction()

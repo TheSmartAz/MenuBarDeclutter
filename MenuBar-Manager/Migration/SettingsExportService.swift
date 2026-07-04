@@ -146,6 +146,10 @@ final class SettingsExportService {
             return nil
         case .menuBarScanIntervalSeconds:
             return settingsStore.menuBarScanIntervalSeconds.description
+        case .renderedIconCaptureEnabled:
+            return settingsStore.renderedIconCaptureEnabled.description
+        case .renderedIconRevealSweepEnabled:
+            return settingsStore.renderedIconRevealSweepEnabled.description
         case .searchEnabled:
             return settingsStore.searchEnabled.description
         case .searchHotkeyEnabled:

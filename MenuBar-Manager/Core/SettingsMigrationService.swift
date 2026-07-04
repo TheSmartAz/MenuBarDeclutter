@@ -100,6 +100,12 @@ struct SettingsMigrationService {
         repair(&repairedKeys, .accessibilityDiscoveryEnabled) {
             settingsStore.accessibilityDiscoveryEnabled = false
         }
+        repair(&repairedKeys, .renderedIconCaptureEnabled) {
+            settingsStore.renderedIconCaptureEnabled = false
+        }
+        repair(&repairedKeys, .renderedIconRevealSweepEnabled) {
+            settingsStore.renderedIconRevealSweepEnabled = false
+        }
         if settingsStore.lastAccessibilityPermissionStatus != nil {
             settingsStore.lastAccessibilityPermissionStatus = nil
             repairedKeys.append(.lastAccessibilityPermissionStatus)
@@ -220,6 +226,8 @@ struct SettingsMigrationService {
             settingsStore.proModeEnabled == false &&
             settingsStore.accessibilityDiscoveryEnabled == false &&
             settingsStore.lastAccessibilityPermissionStatus == nil &&
+            settingsStore.renderedIconCaptureEnabled == false &&
+            settingsStore.renderedIconRevealSweepEnabled == false &&
             settingsStore.searchEnabled == true &&
             settingsStore.secondBarEnabled == true &&
             settingsStore.iconMovingEnabled == false &&
@@ -279,6 +287,10 @@ struct SettingsMigrationService {
             return settingsStore.lastAccessibilityPermissionStatus ?? "nil"
         case .menuBarScanIntervalSeconds:
             return settingsStore.menuBarScanIntervalSeconds.description
+        case .renderedIconCaptureEnabled:
+            return settingsStore.renderedIconCaptureEnabled.description
+        case .renderedIconRevealSweepEnabled:
+            return settingsStore.renderedIconRevealSweepEnabled.description
         case .searchEnabled:
             return settingsStore.searchEnabled.description
         case .searchHotkeyEnabled:

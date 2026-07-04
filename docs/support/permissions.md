@@ -16,7 +16,11 @@ Private discovery surfaces can use Accessibility metadata only when all of these
 
 If permission is denied or revoked, Pro surfaces degrade and Basic Mode remains usable.
 
-MenuBarDeclutter does not use Screen Recording, ScreenCaptureKit, Apple Events permission, Apple Events scripting/control of other apps, Input Monitoring, telemetry, analytics, crash upload, cloud sync, or remote config. The local `menubardeclutter://` URL handler only receives commands addressed to this app.
+Accurate Icons is a separate opt-in capability. When enabled, it can request Screen Recording and use ScreenCaptureKit to crop small rendered menu bar item thumbnails locally. It is off by default and is not part of Basic Mode.
+
+MenuBarDeclutter does not use Apple Events permission, Apple Events scripting/control of other apps, Input Monitoring, telemetry, analytics, crash upload, cloud sync, remote config, or private menu bar APIs. The local `menubardeclutter://` URL handler only receives commands addressed to this app.
+
+Rendered icon thumbnails remain local, can be cleared from Privacy settings, and are excluded from diagnostics exports by default.
 
 ## Requesting Accessibility
 

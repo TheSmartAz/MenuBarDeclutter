@@ -8,7 +8,7 @@ struct IconGroupPanelItemRowView: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 10) {
-                AppIconView(snapshot: snapshot, size: 30, cornerRadius: 7)
+                MenuBarItemIconView(snapshot: snapshot, size: 30, cornerRadius: 7)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(displayTitle)

@@ -690,7 +690,8 @@ This checklist verifies the Phase 1 hiding MVP. Later-phase features such as glo
 ### Privacy boundary
 
 - Run `scripts/verify_privacy_boundary.sh`.
-- Confirm no ScreenCaptureKit, Screen Recording usage string, Apple Events usage string, Input Monitoring usage string, or network entitlement is reported.
+- Confirm ScreenCaptureKit is scoped only to `MenuBarIconCapture`, the Screen Recording usage string is scoped to Accurate Icons, and no Apple Events usage string, Input Monitoring usage string, or network entitlement is reported.
+- Confirm Basic Mode and Workspaces Preview do not trigger a Screen Recording prompt unless Accurate Icons is explicitly enabled and the Request Permission button is pressed.
 - Confirm `menubardeclutter://` remains registered.
 - Confirm diagnostics filtered export excludes screenshots, screen contents, live search text, selected item identity, personal file paths, and network data.
 - Run `scripts/qa_network_watch.sh MenuBarDeclutter` while exercising Basic Mode and Pro surfaces; confirm no unexpected network connections.

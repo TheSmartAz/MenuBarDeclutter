@@ -462,7 +462,7 @@ private struct MenuBarItemSourceRow: View {
     var body: some View {
         Button(action: onSelect) {
             HStack(spacing: 10) {
-                AppIconView(snapshot: snapshot, size: 28, cornerRadius: 7)
+                MenuBarItemIconView(snapshot: snapshot, size: 28, cornerRadius: 7)
 
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {
@@ -583,7 +583,7 @@ private struct MenuBarItemInspector: View {
 
     private func inspectorIdentity(_ snapshot: MenuBarItemSnapshot) -> some View {
         HStack(alignment: .top, spacing: 12) {
-            AppIconView(snapshot: snapshot, size: 40, cornerRadius: 9)
+            MenuBarItemIconView(snapshot: snapshot, size: 40, cornerRadius: 9)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(snapshot.displayTitle)

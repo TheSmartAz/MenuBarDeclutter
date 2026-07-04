@@ -2,7 +2,7 @@
 
 Status: Second Bar is Stable/Preview depending on action. Icon Panel is Deferred.
 
-Second Bar is a horizontal, menu-bar-like floating panel for hidden and always-hidden items discovered through the optional Pro Accessibility index. It uses item metadata and app/bundle icons only.
+Second Bar is a horizontal, menu-bar-like floating panel for hidden and always-hidden items discovered through the optional Pro Accessibility index. It uses item metadata plus rendered thumbnails when Accurate Icons is enabled, and falls back to app/bundle icons.
 
 ## Implemented
 
@@ -17,4 +17,3 @@ Second Bar is a horizontal, menu-bar-like floating panel for hidden and always-h
 - Icon Panel grid/list presentation. The `showIconPanel` command currently reports unavailable.
 - Group/protected/stale filters in the Second Bar UI.
 - Full keyboard grid/list navigation and Command+Return/Option+Return action variants.
-

@@ -39,6 +39,8 @@
 	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string></string>
+	<key>NSScreenCaptureUsageDescription</key>
+	<string>MenuBarDeclutter can capture small menu bar icon thumbnails locally when you enable Accurate Icons.</string>
 	<key>NSSupportsAutomaticTermination</key>
 	<false/>
 	<key>NSSupportsSuddenTermination</key>

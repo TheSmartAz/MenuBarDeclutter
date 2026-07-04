@@ -1,6 +1,6 @@
 # Find & Rescue v0.1.3
 
-Find & Rescue is the v0.1.3 daily recovery surface for locating hidden or stale menu bar metadata without Screen Recording, ScreenCaptureKit, network access, or live pixel capture.
+Find & Rescue is the v0.1.3 daily recovery surface for locating hidden or stale menu bar metadata. It can use Accurate Icons rendered thumbnails when that separate opt-in Screen Recording path is enabled; otherwise it falls back to app icons.
 
 ## Current v0.1.3 Focus
 
@@ -17,3 +17,5 @@ Find & Rescue is the v0.1.3 daily recovery surface for locating hidden or stale 
 Find & Rescue remains Pro Discovery gated where it depends on Accessibility metadata. Basic Mode remains usable when Pro Discovery is off or unavailable.
 
 Crowded/notch rescue does not inspect app menus directly. The long-app-menu pressure input is modeled as an aggregate policy signal and remains `.unknown` until a trustworthy public estimate is available.
+
+Accurate Icons uses public ScreenCaptureKit visible-region capture only. Private/offscreen menu bar APIs are out of scope.

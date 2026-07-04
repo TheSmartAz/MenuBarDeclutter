@@ -6,6 +6,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var launchKeepAliveStatusItem: NSStatusItem?
 
     func applicationWillFinishLaunching(_ notification: Notification) {
+        applyUITestingAppearanceOverride()
         NSApp.setActivationPolicy(.accessory)
         ProcessInfo.processInfo.disableAutomaticTermination("MenuBarDeclutter keeps menu bar status items active.")
         installLaunchKeepAliveStatusItem()
@@ -100,6 +101,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         return environment
+    }
+
+    private func applyUITestingAppearanceOverride() {
+        guard launchArguments.contains("--ui-testing") else { return }
+
+        if launchArguments.contains("--ui-testing-appearance-light") {
+            NSApp.appearance = NSAppearance(named: .aqua)
+        } else if launchArguments.contains("--ui-testing-appearance-dark") {
+            NSApp.appearance = NSAppearance(named: .darkAqua)
+        }
     }
 
     private func installLaunchKeepAliveStatusItem() {

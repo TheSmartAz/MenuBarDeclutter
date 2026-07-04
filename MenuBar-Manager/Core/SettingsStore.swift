@@ -36,6 +36,8 @@ final class SettingsStore {
         case accessibilityDiscoveryEnabled
         case lastAccessibilityPermissionStatus
         case menuBarScanIntervalSeconds
+        case renderedIconCaptureEnabled
+        case renderedIconRevealSweepEnabled
 
         // Phase 5 — Find Icon search
         case searchEnabled
@@ -204,6 +206,8 @@ final class SettingsStore {
         .proModeEnabled: false,
         .accessibilityDiscoveryEnabled: false,
         .menuBarScanIntervalSeconds: AppConstants.defaultMenuBarScanIntervalSeconds,
+        .renderedIconCaptureEnabled: false,
+        .renderedIconRevealSweepEnabled: false,
         .searchEnabled: true,
         .searchHotkeyEnabled: false,
         .searchRevealOnSelection: true,
@@ -397,6 +401,14 @@ final class SettingsStore {
             menuBarScanIntervalSecondsStorage = clamped
             persist(clamped, for: .menuBarScanIntervalSeconds)
         }
+    }
+
+    var renderedIconCaptureEnabled: Bool {
+        didSet { persist(renderedIconCaptureEnabled, for: .renderedIconCaptureEnabled) }
+    }
+
+    var renderedIconRevealSweepEnabled: Bool {
+        didSet { persist(renderedIconRevealSweepEnabled, for: .renderedIconRevealSweepEnabled) }
     }
 
     // MARK: Phase 5 Find Icon search settings
@@ -1041,6 +1053,16 @@ final class SettingsStore {
             clamp: Self.clampMenuBarScanInterval,
             in: defaults
         )
+        self.renderedIconCaptureEnabled = Self.value(
+            for: .renderedIconCaptureEnabled,
+            default: Self.registeredDefault(.renderedIconCaptureEnabled),
+            in: defaults
+        )
+        self.renderedIconRevealSweepEnabled = Self.value(
+            for: .renderedIconRevealSweepEnabled,
+            default: Self.registeredDefault(.renderedIconRevealSweepEnabled),
+            in: defaults
+        )
 
         self.searchEnabled = Self.value(
             for: .searchEnabled,
@@ -1388,6 +1410,8 @@ final class SettingsStore {
         accessibilityDiscoveryEnabled = Self.registeredDefault(.accessibilityDiscoveryEnabled)
         lastAccessibilityPermissionStatus = nil
         menuBarScanIntervalSeconds = Self.registeredDefault(.menuBarScanIntervalSeconds)
+        renderedIconCaptureEnabled = Self.registeredDefault(.renderedIconCaptureEnabled)
+        renderedIconRevealSweepEnabled = Self.registeredDefault(.renderedIconRevealSweepEnabled)
         searchEnabled = Self.registeredDefault(.searchEnabled)
         searchHotkeyEnabled = Self.registeredDefault(.searchHotkeyEnabled)
         searchHotkeyKeyCode = nil

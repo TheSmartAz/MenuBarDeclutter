@@ -54,7 +54,7 @@ struct BehaviorSettingsView: View {
                 valueFractionLength: 0
             )
             .disabled(!settingsStore.autoRehideEnabled)
-            .opacity(settingsStore.autoRehideEnabled ? 1 : 0.55)
+            .opacity(settingsStore.autoRehideEnabled ? 1 : 0.72)
 
             ClearGlassDivider()
 
@@ -79,7 +79,7 @@ struct BehaviorSettingsView: View {
                 valueFractionLength: 2
             )
             .disabled(!settingsStore.hoverRevealEnabled)
-            .opacity(settingsStore.hoverRevealEnabled ? 1 : 0.55)
+            .opacity(settingsStore.hoverRevealEnabled ? 1 : 0.72)
 
             ClearGlassDivider()
 
@@ -163,7 +163,7 @@ struct BehaviorSettingsView: View {
                     }
                 }
             }
-            .opacity(settingsStore.globalHotkeyEnabled ? 1 : 0.55)
+            .opacity(settingsStore.globalHotkeyEnabled ? 1 : 0.72)
         }
     }
 

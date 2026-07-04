@@ -242,6 +242,8 @@ struct SettingsRootView: View {
     var itemMemoryStore: MenuBarItemMemoryStore? = nil
     var placementPreferenceStore: PlacementItemPreferenceStore? = nil
     var accessibilityPermissionService: AccessibilityPermissionService?
+    var screenCapturePermissionService: ScreenCapturePermissionService? = nil
+    var iconCaptureCoordinator: MenuBarIconCaptureCoordinator? = nil
     var menuBarScanCoordinator: MenuBarScanCoordinator?
     var profileStore: ProfileStore?
     var triggerService: TriggerService?
@@ -716,6 +718,8 @@ struct SettingsRootView: View {
             PrivacySettingsView(
                 settingsStore: settingsStore,
                 permissionService: accessibilityPermissionService,
+                screenCapturePermissionService: screenCapturePermissionService,
+                iconCaptureCoordinator: iconCaptureCoordinator,
                 scanCoordinator: menuBarScanCoordinator,
                 onChange: actions.privacyChanged
             )

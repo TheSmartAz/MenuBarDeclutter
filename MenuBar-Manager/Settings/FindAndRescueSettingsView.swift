@@ -71,7 +71,7 @@ struct FindAndRescueSettingsView: View {
             FindRescueSetupStepRow(
                 number: 2,
                 title: "Enable Accessibility Discovery",
-                detail: "Build a local item index. No Screen Recording, pixel capture, or network access.",
+                detail: "Build a local item index. Accurate Icons can add local rendered thumbnails when enabled.",
                 statusText: settingsStore.accessibilityDiscoveryEnabled ? "Optional Pro" : "Unavailable",
                 state: discoveryStepState,
                 systemImage: "figure.circle",
@@ -534,7 +534,7 @@ private struct FindRescueSetupStepRow: View {
                 }
             }
         }
-        .opacity(state == .locked ? 0.62 : 1)
+        .opacity(state == .locked ? 0.74 : 1)
         .accessibilityElement(children: .combine)
     }
 

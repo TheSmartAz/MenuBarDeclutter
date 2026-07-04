@@ -7,6 +7,7 @@ import Foundation
 /// - screenshots or screen contents (only screen *frames* are reported),
 /// - personal file paths (the diagnostics directory path is included only when
 ///   the caller explicitly opts in via `includeAppSupportPath`),
+/// - rendered icon thumbnail images,
 /// - network data,
 /// - individual icon identities.
 ///
@@ -119,6 +120,8 @@ struct DiagnosticsExporter {
         let accessibilityDiscoveryEnabled: Bool
         let lastAccessibilityPermissionStatus: String?
         let menuBarScanIntervalSeconds: Double
+        let renderedIconCaptureEnabled: Bool
+        let renderedIconRevealSweepEnabled: Bool
         let searchEnabled: Bool
         let searchHotkeyEnabled: Bool
         let searchHotkeyDisplayName: String
@@ -263,6 +266,8 @@ struct DiagnosticsExporter {
             accessibilityDiscoveryEnabled: store.accessibilityDiscoveryEnabled,
             lastAccessibilityPermissionStatus: store.lastAccessibilityPermissionStatus,
             menuBarScanIntervalSeconds: store.menuBarScanIntervalSeconds,
+            renderedIconCaptureEnabled: store.renderedIconCaptureEnabled,
+            renderedIconRevealSweepEnabled: store.renderedIconRevealSweepEnabled,
             searchEnabled: store.searchEnabled,
             searchHotkeyEnabled: store.searchHotkeyEnabled,
             searchHotkeyDisplayName: store.effectiveSearchHotkey().displayName,
@@ -475,7 +480,7 @@ struct DiagnosticsExporter {
         }
         lines.append("")
         lines.append("== Excluded by design ==")
-        lines.append("Screenshots, screen contents, live search text, selected item identity, personal file paths, network data.")
+        lines.append("Screenshots, screen contents, rendered icon thumbnails, live search text, selected item identity, personal file paths, network data.")
         let text = lines.joined(separator: "\n")
         guard let data = text.data(using: .utf8) else {
             throw DiagnosticsExportError.encodingFailed
@@ -773,6 +778,10 @@ struct DiagnosticsExporter {
             .optionalString($0.lastAccessibilityPermissionStatus, emptyText: "(none)")
         },
         SettingsField(key: "menuBarScanIntervalSeconds", label: "Menu Bar Scan Interval (s)") { .double($0.menuBarScanIntervalSeconds) },
+        SettingsField(key: "renderedIconCaptureEnabled", label: "Accurate Icons Enabled") { .bool($0.renderedIconCaptureEnabled) },
+        SettingsField(key: "renderedIconRevealSweepEnabled", label: "Accurate Icons Reveal Sweep Enabled") {
+            .bool($0.renderedIconRevealSweepEnabled)
+        },
         SettingsField(key: "searchEnabled", label: "Find Icon Status Menu Visible") { .bool($0.searchEnabled) },
         SettingsField(key: "searchHotkeyEnabled", label: "Find Icon Hotkey Enabled") { .bool($0.searchHotkeyEnabled) },
         SettingsField(key: "searchHotkeyDisplayName", label: "Find Icon Hotkey") { .string($0.searchHotkeyDisplayName) },
@@ -990,6 +999,7 @@ struct DiagnosticsExporter {
     private static let excludedByDesign = [
         "screenshots",
         "screenContents",
+        "renderedIconThumbnails",
         "liveSearchText",
         "selectedItemIdentity",
         "protectedGroupNames",

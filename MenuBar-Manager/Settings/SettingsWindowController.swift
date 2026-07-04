@@ -15,6 +15,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private let itemMemoryStore: MenuBarItemMemoryStore?
     private let placementPreferenceStore: PlacementItemPreferenceStore?
     private let accessibilityPermissionService: AccessibilityPermissionService?
+    private let screenCapturePermissionService: ScreenCapturePermissionService?
+    private let iconCaptureCoordinator: MenuBarIconCaptureCoordinator?
     private let menuBarScanCoordinator: MenuBarScanCoordinator?
     private let profileStore: ProfileStore?
     private let triggerService: TriggerService?
@@ -40,6 +42,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         itemMemoryStore: MenuBarItemMemoryStore? = nil,
         placementPreferenceStore: PlacementItemPreferenceStore? = nil,
         accessibilityPermissionService: AccessibilityPermissionService? = nil,
+        screenCapturePermissionService: ScreenCapturePermissionService? = nil,
+        iconCaptureCoordinator: MenuBarIconCaptureCoordinator? = nil,
         menuBarScanCoordinator: MenuBarScanCoordinator? = nil,
         profileStore: ProfileStore? = nil,
         triggerService: TriggerService? = nil,
@@ -64,6 +68,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         self.itemMemoryStore = itemMemoryStore
         self.placementPreferenceStore = placementPreferenceStore
         self.accessibilityPermissionService = accessibilityPermissionService
+        self.screenCapturePermissionService = screenCapturePermissionService
+        self.iconCaptureCoordinator = iconCaptureCoordinator
         self.menuBarScanCoordinator = menuBarScanCoordinator
         self.profileStore = profileStore
         self.triggerService = triggerService
@@ -90,6 +96,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             itemMemoryStore: itemMemoryStore,
             placementPreferenceStore: placementPreferenceStore,
             accessibilityPermissionService: accessibilityPermissionService,
+            screenCapturePermissionService: screenCapturePermissionService,
+            iconCaptureCoordinator: iconCaptureCoordinator,
             menuBarScanCoordinator: menuBarScanCoordinator,
             profileStore: profileStore,
             triggerService: triggerService,

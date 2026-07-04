@@ -2,7 +2,7 @@
 
 Status: Preview, Pro Discovery gated.
 
-Second Bar is a floating metadata/icon browser for hidden and always-hidden menu bar items. It uses Accessibility metadata and bundle/app icons, not captured menu bar pixels.
+Second Bar is a floating metadata/icon browser for hidden and always-hidden menu bar items. It uses Accessibility metadata and prefers Accurate Icons rendered thumbnails when that separate opt-in permission path is enabled; otherwise it falls back to bundle/app icons.
 
 ## v0.1.3 Focus
 
@@ -25,9 +25,9 @@ Second Bar requires:
 
 ## Boundaries
 
-Second Bar does not request Screen Recording, use ScreenCaptureKit, sample pixels, automate broad clicking, use private APIs, or use the network.
+Second Bar does not request Screen Recording on its own, automate broad clicking, use private APIs, or use the network. Accurate Icons may provide local rendered thumbnails only when enabled from Privacy settings.
 
-It is not a pixel-perfect duplicate of the real menu bar. Some menu extras may not expose useful metadata.
+It is not a live system menu bar clone. Some menu extras may not expose useful metadata, and uncapturable items fall back to their last rendered thumbnail or app icon.
 
 ## Verification
 

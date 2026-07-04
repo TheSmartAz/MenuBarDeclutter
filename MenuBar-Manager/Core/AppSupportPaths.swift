@@ -13,8 +13,9 @@ import Foundation
 /// - `Application Support/MenuBarDeclutter/Dogfood/runs/`
 /// - `Application Support/MenuBarDeclutter/Dogfood/exports/`
 /// - `Application Support/MenuBarDeclutter/workspaces/`
+/// - `Application Support/MenuBarDeclutter/rendered-icons/`
 ///
-/// No personal file paths, network data, or screen contents are written here.
+/// No personal file paths, network data, or full screen contents are written here.
 struct AppSupportPaths {
     private let fileManager: FileManager
     /// Optional override for the Application Support base directory. In
@@ -83,6 +84,12 @@ struct AppSupportPaths {
         workspacesDirectory.appendingPathComponent("backups", isDirectory: true)
     }
 
+    /// Local-only rendered menu bar icon thumbnail cache. Stores small cropped
+    /// menu bar item images only when the user opts into Accurate Icons.
+    var renderedIconCacheDirectory: URL {
+        applicationSupportDirectory.appendingPathComponent("rendered-icons", isDirectory: true)
+    }
+
     var localLostIconsGuideURL: URL {
         supportDirectory.appendingPathComponent("i-cant-find-my-icons.md")
     }
@@ -119,7 +126,8 @@ struct AppSupportPaths {
             dogfoodExportsDirectory,
             supportDirectory,
             workspacesDirectory,
-            workspaceBackupsDirectory
+            workspaceBackupsDirectory,
+            renderedIconCacheDirectory
         ]
 
         var created: [URL] = []

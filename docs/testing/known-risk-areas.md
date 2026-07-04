@@ -20,6 +20,12 @@ These areas must be treated as Alpha RC risks until hands-on QA says otherwise.
 - AX item labels, frames, and ownership metadata can be incomplete, stale, or unavailable.
 - Find Icon and Second Bar must degrade cleanly when scans fail or permission is revoked.
 
+## Accurate Icons
+
+- Rendered icon capture depends on Screen Recording permission, current display geometry, appearance, and whether the item is visibly rendered.
+- Hidden items can be refreshed through the reveal sweep only for states MenuBarDeclutter can temporarily reveal with public APIs.
+- Overflow, notch-hidden, or otherwise non-rendered items must fall back to the last rendered thumbnail or app icon.
+
 ## External Displays And Notches
 
 - Display geometry, scaling, primary-display changes, and notch avoidance require real hardware QA.
@@ -38,6 +44,5 @@ These areas must be treated as Alpha RC risks until hands-on QA says otherwise.
 
 ## Deferred Features
 
-- Phase 10 visual icon capture is intentionally not implemented.
-- Second Bar uses app/bundle icons and AX metadata, not captured menu bar pixels.
+- Private/offscreen menu bar item capture is intentionally not implemented.
 - Focus and Wi-Fi trigger providers remain inactive until safe providers are added.

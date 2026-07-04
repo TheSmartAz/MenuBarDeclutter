@@ -383,7 +383,54 @@ struct SettingsExportImportTests {
                 "launchAtLoginEnabled": "true",
                 "maxDynamicHotkeys": "-3",
                 "menuBarSpacingLabsEnabled": "true",
+                "renderedIconCaptureEnabled": "true",
+                "renderedIconRevealSweepEnabled": "true",
                 "smartTriggersEnabled": "true"
+            ]
+        )
+
+        let dryRun = importService.dryRun(package: package, importExperimentalSettings: false)
+        let result = try importService.apply(
+            package: package,
+            settingsStore: store,
+            importExperimentalSettings: false
+        )
+
+        #expect(dryRun.hasRisks)
+        #expect(dryRun.conflicts.contains { $0.description == "Accurate Icons would be enabled." })
+        #expect(dryRun.conflicts.contains { $0.description == "Accurate Icons Reveal Sweep would be enabled." })
+        #expect(store.autoRehideEnabled)
+        #expect(!store.iconMovingEnabled)
+        #expect(!store.launchAtLoginEnabled)
+        #expect(!store.menuBarSpacingLabsEnabled)
+        #expect(!store.renderedIconCaptureEnabled)
+        #expect(!store.renderedIconRevealSweepEnabled)
+        #expect(!store.smartTriggersEnabled)
+        #expect(store.maxDynamicHotkeys == 0)
+        #expect(result.skippedSettings == 6)
+        #expect(result.skippedExperimentalFlags == [
+            "Icon Moving",
+            "Menu Bar Spacing Labs",
+            "Accurate Icons",
+            "Accurate Icons Reveal Sweep",
+            "Smart Triggers"
+        ])
+    }
+
+    @Test func importTurnsOffRevealSweepWhenRenderedCaptureIsDisabled() throws {
+        let suiteName = "accurate-icons-disable-import-tests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let store = SettingsStore(defaults: defaults)
+        store.renderedIconCaptureEnabled = true
+        store.renderedIconRevealSweepEnabled = true
+        let importService = SettingsImportService(diagnosticsLogger: DiagnosticsLogger())
+        let package = SettingsExportPackage(
+            appVersion: "1.0",
+            settings: [
+                "renderedIconCaptureEnabled": "false",
+                "renderedIconRevealSweepEnabled": "true"
             ]
         )
 
@@ -393,18 +440,37 @@ struct SettingsExportImportTests {
             importExperimentalSettings: false
         )
 
-        #expect(store.autoRehideEnabled)
-        #expect(!store.iconMovingEnabled)
-        #expect(!store.launchAtLoginEnabled)
-        #expect(!store.menuBarSpacingLabsEnabled)
-        #expect(!store.smartTriggersEnabled)
-        #expect(store.maxDynamicHotkeys == 0)
-        #expect(result.skippedSettings == 4)
+        #expect(!store.renderedIconCaptureEnabled)
+        #expect(!store.renderedIconRevealSweepEnabled)
         #expect(result.skippedExperimentalFlags == [
-            "Icon Moving",
-            "Menu Bar Spacing Labs",
-            "Smart Triggers"
+            "Accurate Icons Reveal Sweep"
         ])
+    }
+
+    @Test func explicitRestoreCanImportAccurateIconSettings() throws {
+        let suiteName = "accurate-icons-restore-import-tests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let store = SettingsStore(defaults: defaults)
+        let importService = SettingsImportService(diagnosticsLogger: DiagnosticsLogger())
+        let package = SettingsExportPackage(
+            appVersion: "1.0",
+            settings: [
+                "renderedIconCaptureEnabled": "true",
+                "renderedIconRevealSweepEnabled": "true"
+            ]
+        )
+
+        let result = try importService.apply(
+            package: package,
+            settingsStore: store,
+            importExperimentalSettings: true
+        )
+
+        #expect(store.renderedIconCaptureEnabled)
+        #expect(store.renderedIconRevealSweepEnabled)
+        #expect(result.skippedExperimentalFlags.isEmpty)
     }
 
     @Test func safeImportSkipsPreviewRuntimeEnablers() throws {
@@ -597,6 +663,8 @@ struct SettingsExportImportTests {
             settings: [
                 "iconMovingEnabled": "true",
                 "menuBarSpacingLabsEnabled": "true",
+                "renderedIconCaptureEnabled": "true",
+                "renderedIconRevealSweepEnabled": "true",
                 "smartTriggersEnabled": "true"
             ]
         )
@@ -607,6 +675,8 @@ struct SettingsExportImportTests {
         #expect(dryRun.wouldEnableSpacingLabs)
         #expect(dryRun.wouldEnableSmartTriggers)
         #expect(dryRun.hasRisks)
+        #expect(dryRun.conflicts.contains { $0.description == "Accurate Icons would be enabled." })
+        #expect(dryRun.conflicts.contains { $0.description == "Accurate Icons Reveal Sweep would be enabled." })
     }
 
     @Test func legacyPreviewPackageDecodesWithMetadataDefaults() throws {

@@ -8,6 +8,7 @@ The current release target is `v0.1.10`. This is a release-hardening checkpoint 
 
 - Hide clutter without sensitive permissions, arrange icons safely, find hidden items when needed, and recover if layout breaks.
 - Basic Mode works without Accessibility, Screen Recording, Apple Events permission or other-app control, Input Monitoring, network access, telemetry, cloud sync, or ScreenCaptureKit.
+- Accurate Icons is a separate opt-in capability that can request Screen Recording to cache local rendered menu bar thumbnails. It is off by default and Basic Mode does not depend on it.
 - Pro metadata remains gated by macOS Accessibility. The app never prompts automatically; after the user grants macOS Accessibility permission, private discovery surfaces default on and Basic Mode still works if permission is missing or revoked.
 - Labs and Experimental features are off by default and must fail closed when permissions or gates are missing.
 
@@ -26,10 +27,10 @@ These are the intended stable product surfaces for `v0.1.10`. Current release co
 
 ## Preview, Labs, Or Experimental
 
-- Preview: Workspaces, Function Bar, Set Builder, Info Strip, Workspace Integration, Find Icon, Second Bar, Placement Planner, New Item Inbox, Crowded Reveal Rescue, Profiles, Smart Triggers, Dynamic Hotkeys, Private Access, groups, App Intents automation, URL automation, and broader import/export migration assistant workflows.
+- Preview: Workspaces, Function Bar, Set Builder, Info Strip, Workspace Integration, Find Icon, Second Bar, Accurate Icons, Placement Planner, New Item Inbox, Crowded Reveal Rescue, Profiles, Smart Triggers, Dynamic Hotkeys, Private Access, groups, App Intents automation, URL automation, and broader import/export migration assistant workflows.
 - Labs: Menu Bar Spacing Labs.
 - Experimental: Assisted Move / Icon Moving.
-- Deferred: ScreenCaptureKit visual capture, Screen Recording, Apple Events scripting, Input Monitoring, network/cloud sync, telemetry, broad third-party import promises, and stable automated icon moving.
+- Deferred: offscreen/private menu bar item capture, Apple Events scripting, Input Monitoring, network/cloud sync, telemetry, broad third-party import promises, and stable automated icon moving.
 
 ## User Docs
 
@@ -56,6 +57,7 @@ These are the intended stable product surfaces for `v0.1.10`. Current release co
 - Lost icons recovery: `docs/support/i-cant-find-my-icons.md`
 - Troubleshooting: `docs/support/troubleshooting.md`
 - Permissions: `docs/support/permissions.md`
+- Accurate Icons: `docs/features/rendered-icon-capture.md`
 - Safe Mode: `docs/support/safe-mode.md`
 - Uninstall: `docs/support/uninstall.md`
 - Release notes: `docs/release/v0.1.10-release-notes.md`

@@ -226,7 +226,7 @@ struct SettingsRow<Trailing: View>: View {
         }
         .padding(.horizontal, DesignTokens.Spacing.large)
         .padding(.vertical, DesignTokens.Spacing.medium)
-        .opacity(isEnabled ? 1 : 0.62)
+        .opacity(isEnabled ? 1 : 0.72)
         .accessibilityElement(children: .combine)
     }
 }

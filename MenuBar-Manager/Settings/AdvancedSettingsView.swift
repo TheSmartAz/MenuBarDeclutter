@@ -1009,7 +1009,7 @@ private struct IconMovingControlsPanel: View {
                         .labelsHidden()
                         .disabled(!settingsStore.iconMovingEnabled)
                 }
-                .opacity(settingsStore.iconMovingEnabled ? 1 : 0.55)
+                .opacity(settingsStore.iconMovingEnabled ? 1 : 0.72)
 
                 ClearGlassDivider()
 
@@ -1033,7 +1033,7 @@ private struct IconMovingControlsPanel: View {
                     }
                     .disabled(!settingsStore.iconMovingEnabled)
                 }
-                .opacity(settingsStore.iconMovingEnabled ? 1 : 0.55)
+                .opacity(settingsStore.iconMovingEnabled ? 1 : 0.72)
 
                 ClearGlassDivider()
 
@@ -1047,7 +1047,7 @@ private struct IconMovingControlsPanel: View {
                     valueFractionLength: 2
                 )
                 .disabled(!settingsStore.iconMovingEnabled)
-                .opacity(settingsStore.iconMovingEnabled ? 1 : 0.55)
+                .opacity(settingsStore.iconMovingEnabled ? 1 : 0.72)
 
                 ClearGlassDivider()
 
@@ -1060,7 +1060,7 @@ private struct IconMovingControlsPanel: View {
                         .labelsHidden()
                         .disabled(!settingsStore.iconMovingEnabled)
                 }
-                .opacity(settingsStore.iconMovingEnabled ? 1 : 0.55)
+                .opacity(settingsStore.iconMovingEnabled ? 1 : 0.72)
             }
         }
     }

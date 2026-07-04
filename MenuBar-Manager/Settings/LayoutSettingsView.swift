@@ -635,7 +635,7 @@ private struct SpacerItemsSection: View {
                             controller: spacerController
                         )
                         .disabled(!settingsStore.spacerItemsEnabled)
-                        .opacity(settingsStore.spacerItemsEnabled ? 1 : 0.55)
+                        .opacity(settingsStore.spacerItemsEnabled ? 1 : 0.72)
                     } else {
                         ContentUnavailableView(
                             "Spacer Store Unavailable",

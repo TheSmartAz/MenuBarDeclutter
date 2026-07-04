@@ -8,6 +8,7 @@ DESTINATION="${DESTINATION:-platform=macOS}"
 CONFIGURATION="${CONFIGURATION:-Debug}"
 DERIVED_DATA_PATH="${DERIVED_DATA_PATH:-$ROOT_DIR/build/DerivedData/screenshot-qa}"
 XCODE_ENABLE_DEBUG_DYLIB="${XCODE_ENABLE_DEBUG_DYLIB:-NO}"
+APPEARANCE="${APPEARANCE:-system}"
 OUTPUT_DIR="${OUTPUT_DIR:-$ROOT_DIR/docs/testing/screenshot-qa/$STAMP}"
 APP_PATH="${APP_PATH:-}"
 APP_EXECUTABLE_NAME="${APP_EXECUTABLE_NAME:-MenuBarDeclutter}"
@@ -22,6 +23,8 @@ INCLUDE_DEEP_SETTINGS=1
 INCLUDE_PANELS=1
 KEEP_RUNNING_APP=0
 STRICT_OPTIONAL=0
+UI_TESTING_APPEARANCE_ARGS=()
+UI_TESTING_ARG_PREFIX="--ui-testing"
 
 ORIGINAL_COMMAND="$(printf '%q ' "$0" "$@")"
 
@@ -42,7 +45,8 @@ Options:
 
 Environment overrides:
   SCHEME, DESTINATION, CONFIGURATION, DERIVED_DATA_PATH, APP_PATH, OUTPUT_DIR,
-  XCODE_ENABLE_DEBUG_DYLIB, CAPTURE_WAIT_SECONDS, CAPTURE_SETTLE_SECONDS, CAPTURE_ATTEMPTS,
+  XCODE_ENABLE_DEBUG_DYLIB, APPEARANCE=system|light|dark,
+  CAPTURE_WAIT_SECONDS, CAPTURE_SETTLE_SECONDS, CAPTURE_ATTEMPTS,
   WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT
 USAGE
 }
@@ -88,6 +92,24 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+case "$APPEARANCE" in
+  system|"")
+    APPEARANCE="system"
+    ;;
+  light)
+    UI_TESTING_APPEARANCE_ARGS=(--ui-testing-appearance-light)
+    UI_TESTING_ARG_PREFIX="$UI_TESTING_ARG_PREFIX --ui-testing-appearance-light"
+    ;;
+  dark)
+    UI_TESTING_APPEARANCE_ARGS=(--ui-testing-appearance-dark)
+    UI_TESTING_ARG_PREFIX="$UI_TESTING_ARG_PREFIX --ui-testing-appearance-dark"
+    ;;
+  *)
+    echo "Unknown APPEARANCE: $APPEARANCE (expected system, light, or dark)" >&2
+    exit 2
+    ;;
+esac
 
 cd "$ROOT_DIR"
 
@@ -292,7 +314,7 @@ launch_surface() {
   shift
 
   local executable="$APP_PATH/Contents/MacOS/$APP_EXECUTABLE_NAME"
-  local command=("$executable" --ui-testing "$@")
+  local command=("$executable" --ui-testing "${UI_TESTING_APPEARANCE_ARGS[@]}" "$@")
 
   print_command "${command[@]}"
   "${command[@]}" > "$log_file" 2>&1 &
@@ -354,7 +376,7 @@ capture_surface() {
 
   if [[ "$helper_rc" -ne 0 ]]; then
     echo "WARN: no capturable window found for $label after $CAPTURE_ATTEMPTS attempt(s)."
-    append_manifest "skipped" "$slug" "$label" "$kind" "" "" "" "" "" "" "" "" "--ui-testing $args_string"
+    append_manifest "skipped" "$slug" "$label" "$kind" "" "" "" "" "" "" "" "" "$UI_TESTING_ARG_PREFIX $args_string"
     if [[ "$required" == "required" || "$STRICT_OPTIONAL" -eq 1 ]]; then
       OVERALL_RC=1
     fi
@@ -367,15 +389,15 @@ capture_surface() {
   if screencapture -x -l "$window_id" "$screenshot_path"; then
     if [[ -s "$screenshot_path" ]]; then
       echo "PASS: captured $label -> $screenshot_path"
-      append_manifest "captured" "$slug" "$label" "$kind" "$window_id" "$x" "$y" "$width" "$height" "$layer" "$title" "screenshots/$slug.png" "--ui-testing $args_string"
+      append_manifest "captured" "$slug" "$label" "$kind" "$window_id" "$x" "$y" "$width" "$height" "$layer" "$title" "screenshots/$slug.png" "$UI_TESTING_ARG_PREFIX $args_string"
     else
       echo "WARN: screencapture wrote an empty file for $label." >&2
-      append_manifest "failed" "$slug" "$label" "$kind" "$window_id" "$x" "$y" "$width" "$height" "$layer" "$title" "screenshots/$slug.png" "--ui-testing $args_string"
+      append_manifest "failed" "$slug" "$label" "$kind" "$window_id" "$x" "$y" "$width" "$height" "$layer" "$title" "screenshots/$slug.png" "$UI_TESTING_ARG_PREFIX $args_string"
       OVERALL_RC=1
     fi
   else
     echo "WARN: screencapture failed for $label." >&2
-    append_manifest "failed" "$slug" "$label" "$kind" "$window_id" "$x" "$y" "$width" "$height" "$layer" "$title" "screenshots/$slug.png" "--ui-testing $args_string"
+    append_manifest "failed" "$slug" "$label" "$kind" "$window_id" "$x" "$y" "$width" "$height" "$layer" "$title" "screenshots/$slug.png" "$UI_TESTING_ARG_PREFIX $args_string"
     if [[ "$required" == "required" || "$STRICT_OPTIONAL" -eq 1 ]]; then
       OVERALL_RC=1
     fi
@@ -407,6 +429,7 @@ write_summary() {
     echo "Scheme: \`$SCHEME\`"
     echo "Destination: \`$DESTINATION\`"
     echo "Configuration: \`$CONFIGURATION\`"
+    echo "Appearance: \`$APPEARANCE\`"
     echo
     echo "Results:"
     echo

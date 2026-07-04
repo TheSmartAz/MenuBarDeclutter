@@ -48,6 +48,7 @@ final class MenuBarScanCoordinator {
     @ObservationIgnored private let workspaceNotificationCenter: NotificationCenter
     @ObservationIgnored private let visibilityScanDebounceNanoseconds: UInt64
     @ObservationIgnored private let now: () -> Date
+    @ObservationIgnored var scanCompleted: @MainActor (MenuBarScanResult) -> Void = { _ in }
 
     @ObservationIgnored nonisolated(unsafe) private var visibilityObserver: NSObjectProtocol?
     @ObservationIgnored nonisolated(unsafe) private var workspaceLifecycleObservers: [NSObjectProtocol] = []
@@ -277,6 +278,7 @@ final class MenuBarScanCoordinator {
         setLiveStatus(\.menuBarScanLifecycleState, to: .completed)
         setLiveStatus(\.menuBarScanLastSkipReason, to: nil)
         apply(result: result)
+        scanCompleted(result)
 
         diagnosticsLogger.log(
             "AX scan completed for \(reason): \(result.snapshots.count) items, \(result.axFailuresCount) AX failures."

@@ -21,7 +21,7 @@ struct SecondBarItemView: View {
 
     var body: some View {
         VStack(spacing: 6) {
-            AppIconView(
+            MenuBarItemIconView(
                 snapshot: snapshot,
                 size: CGFloat(iconSize),
                 cornerRadius: CGFloat(min(8, iconSize / 4))

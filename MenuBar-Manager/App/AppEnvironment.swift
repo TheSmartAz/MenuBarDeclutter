@@ -39,6 +39,34 @@ final class AppEnvironment {
         systemSettingsOpener: accessibilitySystemSettingsOpener
     )
 
+    lazy var screenCapturePermissionService = ScreenCapturePermissionService()
+
+    private lazy var menuBarRenderedIconCache: MenuBarRenderedIconCache = {
+        let cache = MenuBarRenderedIconCache.shared
+        cache.configure(directoryURL: appSupportPaths.renderedIconCacheDirectory)
+        return cache
+    }()
+
+    private lazy var menuBarIconCaptureCoordinator: MenuBarIconCaptureCoordinator = MenuBarIconCaptureCoordinator(
+        settingsStore: settingsStore,
+        permissionService: screenCapturePermissionService,
+        diagnosticsLogger: diagnosticsLogger,
+        cache: menuBarRenderedIconCache,
+        currentVisibilityProvider: { [weak self] in
+            self?.hidingService.visibilityState ?? .expanded
+        },
+        setVisibility: { [weak self] state in
+            self?.hidingService.setVisibility(state)
+        },
+        refreshSnapshots: { [weak self] in
+            guard let self else { return [] }
+            let result = await self.menuBarScanCoordinator.requestManualRefreshAndWait(
+                reason: "rendered icon reveal sweep"
+            )
+            return result?.snapshots ?? self.liveStatus.scannedMenuBarItems
+        }
+    )
+
     private lazy var axMenuBarScanner = AXMenuBarScanner(
         diagnosticsLogger: diagnosticsLogger
     )
@@ -55,7 +83,7 @@ final class AppEnvironment {
         fileURL: appSupportPaths.placementItemPreferencesFileURL
     )
 
-    lazy var menuBarScanCoordinator = MenuBarScanCoordinator(
+    lazy var menuBarScanCoordinator: MenuBarScanCoordinator = MenuBarScanCoordinator(
         settingsStore: settingsStore,
         permissionService: accessibilityPermissionService,
         scanner: axMenuBarScanner,
@@ -119,6 +147,8 @@ final class AppEnvironment {
         itemMemoryStore: menuBarItemMemoryStore,
         placementPreferenceStore: placementItemPreferenceStore,
         accessibilityPermissionService: accessibilityPermissionService,
+        screenCapturePermissionService: screenCapturePermissionService,
+        iconCaptureCoordinator: menuBarIconCaptureCoordinator,
         menuBarScanCoordinator: menuBarScanCoordinator,
         profileStore: profileAutomationCoordinator.profileStore,
         triggerService: profileAutomationCoordinator.triggerService,
@@ -437,10 +467,10 @@ final class AppEnvironment {
             previewSpacingPreset: { [weak self] in self?.showSettings(section: .layout) },
             showAssistedMoveGuide: { [weak self] in self?.showSettings(section: .arrange) },
             addSpacerDivider: { [weak self] in
-                self?.layoutCoordinator.spacerController.add(type: .divider)
+                self?.layoutCoordinator.spacerController.add(type: SpacerItemType.divider)
             },
             addSpacer: { [weak self] in
-                self?.layoutCoordinator.spacerController.add(type: .thinSpacer)
+                self?.layoutCoordinator.spacerController.add(type: SpacerItemType.thinSpacer)
             },
             toggleSpacerMarkers: { [weak self] in
                 guard let self else { return }
@@ -509,6 +539,7 @@ final class AppEnvironment {
         screenGeometry: screenGeometry,
         accessibilityPermissionService: accessibilityPermissionService,
         menuBarScanCoordinator: menuBarScanCoordinator,
+        iconCaptureCoordinator: menuBarIconCaptureCoordinator,
         liveStatusSynchronizer: liveStatusSynchronizer,
         separatorFramesProvider: { [weak self] in
             self?.currentSeparatorFrames() ?? AppEnvironment.emptySeparatorFrames
@@ -1147,6 +1178,12 @@ final class AppEnvironment {
             diagnosticsLogger.log("Safe Mode skipped Optional Pro Accessibility scans.", level: .warning)
             return
         }
+        menuBarScanCoordinator.scanCompleted = { [weak self] result in
+            self?.menuBarIconCaptureCoordinator.refreshVisibleIconsIfAllowed(
+                snapshots: result.snapshots,
+                reason: "AX scan"
+            )
+        }
         menuBarScanCoordinator.start()
     }
 
@@ -1218,6 +1255,7 @@ final class AppEnvironment {
         menuBarItemSurfaceCoordinator.hideSecondBar()
         profileAutomationCoordinator.stop()
         systemRecoveryCoordinator.stopObserving()
+        menuBarIconCaptureCoordinator.stop()
         menuBarScanCoordinator.stop()
         hotkeyManager.invalidate()
         statusBarController.removeStatusItem()

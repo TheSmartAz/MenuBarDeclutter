@@ -269,6 +269,8 @@ struct SettingsStoreTests {
         #expect(store.accessibilityDiscoveryEnabled == false)
         #expect(store.lastAccessibilityPermissionStatus == nil)
         #expect(store.menuBarScanIntervalSeconds == AppConstants.defaultMenuBarScanIntervalSeconds)
+        #expect(store.renderedIconCaptureEnabled == false)
+        #expect(store.renderedIconRevealSweepEnabled == false)
     }
 
     @Test func phase4FieldsPersist() {
@@ -282,12 +284,16 @@ struct SettingsStoreTests {
         store.accessibilityDiscoveryEnabled = true
         store.lastAccessibilityPermissionStatus = AccessibilityPermissionStatus.granted.rawValue
         store.menuBarScanIntervalSeconds = 4.5
+        store.renderedIconCaptureEnabled = true
+        store.renderedIconRevealSweepEnabled = true
 
         let reloaded = SettingsStore(defaults: defaults)
         #expect(reloaded.proModeEnabled == true)
         #expect(reloaded.accessibilityDiscoveryEnabled == true)
         #expect(reloaded.lastAccessibilityPermissionStatus == AccessibilityPermissionStatus.granted.rawValue)
         #expect(reloaded.menuBarScanIntervalSeconds == 4.5)
+        #expect(reloaded.renderedIconCaptureEnabled == true)
+        #expect(reloaded.renderedIconRevealSweepEnabled == true)
     }
 
     @Test func invalidMenuBarScanIntervalClamped() {
@@ -324,6 +330,8 @@ struct SettingsStoreTests {
         store.accessibilityDiscoveryEnabled = true
         store.lastAccessibilityPermissionStatus = AccessibilityPermissionStatus.granted.rawValue
         store.menuBarScanIntervalSeconds = 12
+        store.renderedIconCaptureEnabled = true
+        store.renderedIconRevealSweepEnabled = true
 
         store.restoreDefaults()
 
@@ -331,6 +339,8 @@ struct SettingsStoreTests {
         #expect(store.accessibilityDiscoveryEnabled == false)
         #expect(store.lastAccessibilityPermissionStatus == nil)
         #expect(store.menuBarScanIntervalSeconds == AppConstants.defaultMenuBarScanIntervalSeconds)
+        #expect(store.renderedIconCaptureEnabled == false)
+        #expect(store.renderedIconRevealSweepEnabled == false)
     }
 
     // MARK: Phase 3 fields

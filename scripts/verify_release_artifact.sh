@@ -234,7 +234,13 @@ if [[ -f "$INFO_PLIST" ]]; then
     fail "Build version is $BUILD_VERSION; expected $EXPECTED_BUILD_VERSION"
   fi
 
-  for key in NSScreenCaptureUsageDescription NSAppleEventsUsageDescription NSInputMonitoringUsageDescription; do
+  if /usr/libexec/PlistBuddy -c "Print :NSScreenCaptureUsageDescription" "$INFO_PLIST" 2>/dev/null | rg -q "Accurate Icons"; then
+    pass "NSScreenCaptureUsageDescription is present for Accurate Icons"
+  else
+    fail "NSScreenCaptureUsageDescription is missing or not scoped to Accurate Icons"
+  fi
+
+  for key in NSAppleEventsUsageDescription NSInputMonitoringUsageDescription; do
     if /usr/libexec/PlistBuddy -c "Print :$key" "$INFO_PLIST" >/dev/null 2>&1; then
       fail "$key is present"
     else
@@ -278,9 +284,9 @@ if [[ -d "$APP_PATH" ]]; then
   EXECUTABLE="$APP_PATH/Contents/MacOS/$(/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$INFO_PLIST" 2>/dev/null || true)"
   if [[ -f "$EXECUTABLE" ]]; then
     if otool -L "$EXECUTABLE" | rg -q "ScreenCaptureKit"; then
-      fail "Executable links ScreenCaptureKit"
+      pass "Executable links ScreenCaptureKit for Accurate Icons"
     else
-      pass "Executable does not link ScreenCaptureKit"
+      pass "Executable does not link ScreenCaptureKit directly"
     fi
   else
     fail "Executable could not be found"

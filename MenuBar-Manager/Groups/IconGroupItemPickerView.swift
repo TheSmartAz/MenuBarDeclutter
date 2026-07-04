@@ -112,7 +112,7 @@ private struct IconGroupPickerSnapshotRow: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            AppIconView(snapshot: snapshot, size: 26, cornerRadius: 6)
+            MenuBarItemIconView(snapshot: snapshot, size: 26, cornerRadius: 6)
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(title)

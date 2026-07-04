@@ -318,3 +318,73 @@ struct AppIconView: View {
             }
     }
 }
+
+struct MenuBarItemIconView: View {
+    let snapshot: MenuBarItemSnapshot
+    let size: CGFloat
+    let cornerRadius: CGFloat
+
+    private let renderedIconCache: MenuBarRenderedIconCache
+    private let appIconCache: AppIconCache
+    private let appIconLookup: AppIconCache.Lookup
+
+    @State private var iconImage: NSImage
+    @State private var iconSource: MenuBarIconSource
+
+    @MainActor
+    init(
+        snapshot: MenuBarItemSnapshot,
+        size: CGFloat = 28,
+        cornerRadius: CGFloat? = nil,
+        renderedIconCache: MenuBarRenderedIconCache = .shared,
+        appIconCache: AppIconCache = .shared
+    ) {
+        self.snapshot = snapshot
+        self.size = size
+        self.cornerRadius = cornerRadius ?? min(DesignTokens.Radius.icon, size / 4)
+        self.renderedIconCache = renderedIconCache
+        self.appIconCache = appIconCache
+        self.appIconLookup = AppIconCache.Lookup(snapshot: snapshot)
+
+        if let rendered = renderedIconCache.resolvedImage(for: snapshot) {
+            _iconImage = State(initialValue: rendered.image)
+            _iconSource = State(initialValue: rendered.source)
+        } else {
+            _iconImage = State(initialValue: appIconCache.cachedIcon(for: appIconLookup) ?? appIconCache.placeholderIcon)
+            _iconSource = State(initialValue: .bundleIconFallback)
+        }
+    }
+
+    var body: some View {
+        Image(nsImage: iconImage)
+            .resizable()
+            .frame(width: size, height: size)
+            .clipShape(.rect(cornerRadius: cornerRadius))
+            .overlay {
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .strokeBorder(.white.opacity(iconSource == .renderedCapture ? 0.12 : 0.22), lineWidth: DesignTokens.Stroke.hairline)
+            }
+            .help(iconSource.displayName)
+            .task(id: snapshot.id) { @MainActor in
+                updateIcon(resolveFallback: true)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .menuBarRenderedIconCacheDidChange)) { notification in
+                let identity = notification.userInfo?["identity"] as? String
+                guard identity == nil || identity == snapshot.id else { return }
+                updateIcon(resolveFallback: false)
+            }
+    }
+
+    @MainActor
+    private func updateIcon(resolveFallback: Bool) {
+        if let rendered = renderedIconCache.resolvedImage(for: snapshot) {
+            iconImage = rendered.image
+            iconSource = rendered.source
+            return
+        }
+
+        guard resolveFallback || iconSource != .bundleIconFallback else { return }
+        iconImage = appIconCache.icon(for: appIconLookup, processIdentifier: snapshot.owningProcessIdentifier)
+        iconSource = .bundleIconFallback
+    }
+}

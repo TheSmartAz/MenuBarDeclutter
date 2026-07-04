@@ -1,6 +1,6 @@
 # MenuBarDeclutter Project Summary
 
-Last reviewed: 2026-07-03
+Last reviewed: 2026-07-04
 
 MenuBarDeclutter is a native macOS 26.0+ menu bar decluttering utility built with Swift, AppKit, and SwiftUI. The current Xcode project is `MenuBar-Manager.xcodeproj`; the canonical scheme, app target, product, executable, and display identity are `MenuBarDeclutter`. The older `MenuBar-Manager` scheme is retained as a compatibility fallback, and `MenuBarFixtureApp` is a separate local QA fixture target.
 
@@ -28,7 +28,7 @@ Labs and Experimental features:
 
 Deferred or not claimed:
 
-- ScreenCaptureKit visual capture, Screen Recording, Apple Events scripting/control, Input Monitoring, network/cloud sync, telemetry, analytics, remote config, and stable automated physical menu bar item moving.
+- Private/offscreen menu bar item capture, Apple Events scripting/control, Input Monitoring, network/cloud sync, telemetry, analytics, remote config, and stable automated physical menu bar item moving.
 - Developer ID signing, notarization, stapling, and public distribution are out of scope until explicitly requested.
 
 ## How Features Are Implemented
@@ -40,6 +40,8 @@ Behavior polish is local and permission-free. `RehideController` handles one-sho
 Pro discovery is explicitly gated. `AccessibilityPermissionService` checks Accessibility trust without prompting unless the user clicks the request action. `MenuBarScanCoordinator` scans only when Pro Mode, Accessibility Discovery, and Accessibility permission are all enabled. `AXMenuBarScanner` uses bounded public Accessibility traversal to create `MenuBarItemSnapshot` values and classify them into visible, hidden, always-hidden, or unknown zones.
 
 Find Icon and Second Bar reuse the Pro discovery index. `SearchService` provides pure ranking/filtering, while `SearchWindowController` hosts `SearchRootView` in a floating `NSPanel`. `SecondBarWindowController` hosts `SecondBarRootView` and uses `SecondBarPositioningService` for display-aware placement. Selection reveals or highlights items; it does not click third-party menu bar items.
+
+Accurate Icons is a separate opt-in capture path for visual accuracy. `MenuBarIconCaptureCoordinator` uses public ScreenCaptureKit visible-region capture only after Screen Recording has already been granted, crops small rendered menu bar item thumbnails from currently visible frames, stores them locally through `MenuBarRenderedIconCache`, and lets Search, Second Bar, group panels, and menu item lists prefer captured thumbnails before falling back to app icons. It does not use private menu bar APIs or offscreen item capture.
 
 Layout and rescue behavior live in `LayoutCoordinator`. It coordinates layout capacity estimates, suggestions, Full Menu Bar Mode, crowded reveal fallback, app-owned spacers, and spacing labs. Basic estimates are geometry-only; Pro estimates can use Accessibility snapshots when available.
 
@@ -89,7 +91,7 @@ Data and diagnostics wiring:
 
 ## Privacy Boundary
 
-Basic Mode is usable without Accessibility, Screen Recording, Apple Events, Input Monitoring, network access, telemetry, cloud sync, or ScreenCaptureKit. Pro features are opt-in and degrade to unavailable or explanatory states when Pro Mode, Accessibility Discovery, or Accessibility permission is missing. Diagnostics exclude screenshots, screen contents, live search text, selected item identity, network data, and sensitive file paths by default.
+Basic Mode is usable without Accessibility, Screen Recording, Apple Events, Input Monitoring, network access, telemetry, cloud sync, or ScreenCaptureKit. Pro features are opt-in and degrade to unavailable or explanatory states when Pro Mode, Accessibility Discovery, or Accessibility permission is missing. Accurate Icons is also opt-in and degrades to stale captured thumbnails or app-icon fallbacks if Screen Recording is missing. Diagnostics exclude screenshots, screen contents, rendered icon thumbnails, live search text, selected item identity, network data, and sensitive file paths by default.
 
 ## Tests And QA
 

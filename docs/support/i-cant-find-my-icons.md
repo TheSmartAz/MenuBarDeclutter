@@ -31,8 +31,8 @@ Pro Discovery is optional and uses Accessibility metadata only after explicit op
 
 ## What MenuBarDeclutter Does Not Do
 
-MenuBarDeclutter does not use Screen Recording, ScreenCaptureKit, Apple Events scripting/control, Input Monitoring, network telemetry, analytics, cloud sync, or private Apple menu bar APIs.
+MenuBarDeclutter does not use Apple Events scripting/control, Input Monitoring, network telemetry, analytics, cloud sync, or private Apple menu bar APIs. Accurate Icons can optionally use Screen Recording and ScreenCaptureKit for local rendered icon thumbnails after you enable it.
 
 ## Reporting A Problem
 
-Export diagnostics from Recovery. Diagnostics are local and privacy-safe by default; they do not include screenshots, screen contents, live search text, selected item identity, protected group names, protected hotkey targets, active unlock sessions, or import/export paths unless you explicitly choose related files.
+Export diagnostics from Recovery. Diagnostics are local and privacy-safe by default; they do not include screenshots, screen contents, rendered icon thumbnails, live search text, selected item identity, protected group names, protected hotkey targets, active unlock sessions, or import/export paths unless you explicitly choose related files.

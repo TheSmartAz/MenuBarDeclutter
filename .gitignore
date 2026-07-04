@@ -9,6 +9,14 @@ DerivedData/
 .build/
 build/
 
+# Generated local QA artifacts
+docs/testing/current-ui-review-*/
+docs/testing/screenshot-qa/
+docs/testing/v*-visual-smoke/
+*.xcresult
+*.xcresult/
+*.profraw
+
 # Swift Package Manager workspace metadata
 .swiftpm/
 

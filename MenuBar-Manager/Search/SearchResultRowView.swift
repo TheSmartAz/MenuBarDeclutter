@@ -16,7 +16,7 @@ struct SearchResultRowView: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            AppIconView(snapshot: result.snapshot, size: 32, cornerRadius: 7)
+            MenuBarItemIconView(snapshot: result.snapshot, size: 32, cornerRadius: 7)
 
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 8) {
