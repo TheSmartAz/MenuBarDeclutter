@@ -31,26 +31,18 @@ final class SeparatorController {
 
     /// Current expanded length, sourced from user settings.
     var expandedLength: Double {
-        settingsStore.expandedSeparatorLength
+        lengthPolicy.expandedLength
     }
 
     /// Collapsed length either honoured from the user override or recommended
     /// from the widest screen.
     var collapsedLength: Double {
-        if let override = settingsStore.collapsedSeparatorLengthOverride, override > 0 {
-            return override
-        }
-        return screenGeometry.recommendedCollapsedSeparatorLength()
+        lengthPolicy.collapsedLength
     }
 
     /// Length value expected for a given hiding state.
     func length(for state: HidingState) -> Double {
-        switch state {
-        case .expanded:
-            return expandedLength
-        case .collapsed:
-            return collapsedLength
-        }
+        lengthPolicy.length(for: state)
     }
 
     /// Current length the controller would apply. Surfaced in Diagnostics.
@@ -143,5 +135,13 @@ final class SeparatorController {
         NSStatusBar.system.removeStatusItem(statusItem)
         diagnosticsLogger.log("Removing \(kind) separator status item.")
         self.statusItem = nil
+    }
+
+    private var lengthPolicy: SeparatorLengthPolicy {
+        SeparatorLengthPolicy(
+            expandedLength: settingsStore.expandedSeparatorLength,
+            collapsedLengthOverride: settingsStore.collapsedSeparatorLengthOverride,
+            recommendedCollapsedLength: screenGeometry.recommendedCollapsedSeparatorLength()
+        )
     }
 }

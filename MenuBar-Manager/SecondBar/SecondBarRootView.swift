@@ -194,8 +194,6 @@ struct SecondBarRootView: View {
                 .labelStyle(.iconOnly)
                 .buttonStyle(.bordered)
                 .help("Refresh Menu Bar Items")
-
-                ClearGlassBadge(style: .privacySafe)
             }
         }
         .controlSize(.small)
@@ -797,6 +795,8 @@ private struct SecondBarUnavailableView: View {
         if let secondaryButtonTitle = state.secondaryButtonTitle,
            let secondaryAction = state.secondaryAction {
             Button(secondaryButtonTitle, action: secondaryAction)
+                .buttonStyle(.borderless)
+                .foregroundStyle(.secondary)
         }
     }
 }

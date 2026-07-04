@@ -57,4 +57,32 @@ struct PrivacyProSetupActionsTests {
         #expect(!store.proModeEnabled)
         #expect(!store.accessibilityDiscoveryEnabled)
     }
+
+    @Test func grantedAccessibilityPermissionDoesNotSilentlyEnablePrivateAccessFeatures() {
+        let suiteName = "PrivacyProSetupActionsTests.granted.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let store = SettingsStore(defaults: defaults)
+        store.proModeEnabled = false
+        store.accessibilityDiscoveryEnabled = false
+        store.searchEnabled = false
+        store.secondBarEnabled = false
+
+        let permissionService = AccessibilityPermissionService(
+            settingsStore: store,
+            diagnosticsLogger: DiagnosticsLogger(),
+            trustProvider: { true },
+            promptTrustProvider: { true },
+            systemSettingsOpener: { true },
+            statusCacheDuration: 0
+        )
+
+        #expect(permissionService.status == .granted)
+        #expect(!store.proModeEnabled)
+        #expect(!store.accessibilityDiscoveryEnabled)
+        #expect(!store.searchEnabled)
+        #expect(!store.secondBarEnabled)
+    }
 }

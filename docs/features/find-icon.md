@@ -1,6 +1,6 @@
 # Find Icon
 
-Find Icon is an optional Pro surface for locating menu bar items by app name, title, bundle identifier, zone, and recency. It is disabled by default in v0.1.
+Find Icon is a private-access surface for locating menu bar items by app name, title, bundle identifier, zone, and recency. The panel is available by default, while real results require macOS Accessibility permission.
 
 ## What It Does
 
@@ -11,13 +11,13 @@ Find Icon is an optional Pro surface for locating menu bar items by app name, ti
 - Reveals hidden zones before highlighting when configured.
 - Shows a short-lived transparent highlight overlay around the approximate menu bar item frame.
 - Provides an optional Find Icon hotkey, defaulting to Option + Command + F, disabled by default.
-- Shows clear unavailable states for disabled Find Icon, missing Pro Mode, disabled Accessibility Discovery, or missing Accessibility permission.
+- Shows clear unavailable states for missing private-access requirements without showing a separate Find Icon enable page.
 
 ## User Flow
 
 1. Open Settings -> Find & Rescue.
 2. Use Open Find Icon, or open its detailed settings from the Find Icon card.
-3. Enable Pro Mode, Accessibility Discovery, and Accessibility permission if not already configured.
+3. Grant macOS Accessibility permission if real menu bar metadata is not already available.
 4. Open Find Icon from the status menu or optional hotkey.
 5. Search by app name, item title, or bundle identifier.
 6. Press Return or click a result to reveal and highlight the item.
@@ -48,4 +48,4 @@ Find Icon requires the Pro Accessibility discovery index. It does not click, dra
 
 - Search quality depends on the latest Accessibility scan.
 - Highlighting uses approximate frames and can be stale after movement or display changes.
-- Find Icon is disabled by default and must pass Pro requirements before real results appear.
+- Find Icon no longer has a separate app-level enable gate. Real results appear after macOS Accessibility permission is granted and the local discovery index refreshes.

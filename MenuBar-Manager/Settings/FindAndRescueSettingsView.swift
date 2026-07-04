@@ -26,7 +26,7 @@ struct FindAndRescueSettingsView: View {
             subtitle: "Find hidden icons, review new items, and recover when inline reveal is crowded.",
             badges: [.preview, .proMode, .accessibilityRequired],
             sectionAnchors: [
-                ClearGlassPageAnchor("Requirements", systemImage: "lock", targetID: "Pro Discovery Requirements"),
+                ClearGlassPageAnchor("Setup", systemImage: "lock", targetID: "Setup Checklist"),
                 ClearGlassPageAnchor("Surfaces", systemImage: "rectangle.on.rectangle", targetID: "Find Icon and Second Bar"),
                 ClearGlassPageAnchor("New Items", systemImage: "tray.full"),
                 ClearGlassPageAnchor("Collections", systemImage: "tag"),
@@ -52,37 +52,65 @@ struct FindAndRescueSettingsView: View {
 
     private var proRequirementsSection: some View {
         ClearGlassSection(
-            "Pro Discovery Requirements",
-            subtitle: "Find & Rescue reads local Accessibility metadata only after explicit opt-in."
+            "Setup Checklist",
+            subtitle: "Turn on only the optional local discovery pieces you want."
         ) {
-            SearchRequirementRow(
-                title: "Pro Mode",
-                detail: "Find Icon, Second Bar, item actions, and New Items are Preview workflows behind Pro Mode.",
-                status: settingsStore.proModeEnabled ? "Enabled" : "Disabled",
-                isSatisfied: settingsStore.proModeEnabled,
-                systemImage: "star"
+            FindRescueSetupStepRow(
+                number: 1,
+                title: "Enable Pro Mode",
+                detail: "Unlock optional rescue surfaces and item review.",
+                statusText: settingsStore.proModeEnabled ? "On" : "Next",
+                state: settingsStore.proModeEnabled ? .complete : .current,
+                systemImage: "star",
+                actionTitle: settingsStore.proModeEnabled ? nil : "Enable Pro Mode",
+                action: settingsStore.proModeEnabled ? nil : { enableProMode() }
             )
 
             ClearGlassDivider()
 
-            SearchRequirementRow(
-                title: "Accessibility Discovery",
-                detail: "Discovery is local and does not use Screen Recording, screen capture, or network access.",
-                status: settingsStore.accessibilityDiscoveryEnabled ? "Enabled" : "Disabled",
-                isSatisfied: settingsStore.accessibilityDiscoveryEnabled,
-                systemImage: "figure.circle"
+            FindRescueSetupStepRow(
+                number: 2,
+                title: "Enable Accessibility Discovery",
+                detail: "Build a local item index. No Screen Recording, pixel capture, or network access.",
+                statusText: settingsStore.accessibilityDiscoveryEnabled ? "On" : settingsStore.proModeEnabled ? "Next" : "Locked",
+                state: discoveryStepState,
+                systemImage: "figure.circle",
+                actionTitle: discoveryStepState == .current ? "Enable Discovery" : nil,
+                action: discoveryStepState == .current ? { enableAccessibilityDiscovery() } : nil
             )
 
             ClearGlassDivider()
 
-            SearchRequirementRow(
-                title: "Accessibility Permission",
-                detail: "Grant permission manually before item metadata can be read.",
-                status: permissionService?.status.displayName ?? AccessibilityPermissionStatus.notRequested.displayName,
-                isSatisfied: permissionService?.status == .granted,
+            FindRescueSetupStepRow(
+                number: 3,
+                title: "Grant Accessibility Permission",
+                detail: "Allow local reading of menu bar labels and frames.",
+                statusText: permissionService?.status == .granted
+                    ? "Granted"
+                    : discoveryReady ? "Next" : "Locked",
+                state: permissionStepState,
                 systemImage: "hand.raised",
-                actionTitle: "Open Privacy",
-                action: onOpenPrivacy
+                actionTitle: permissionStepState == .current ? "Open Privacy" : nil,
+                action: permissionStepState == .current ? { openPrivacyForPermission() } : nil
+            )
+
+            ClearGlassDivider()
+
+            FindRescueSetupStepRow(
+                number: 4,
+                title: "Open Find Icon",
+                detail: "Search, reveal, highlight, or hand off to Second Bar.",
+                statusText: findRescueReady ? "Ready" : "Waiting",
+                state: findRescueReady ? .current : .locked,
+                systemImage: "magnifyingglass",
+                actionTitle: findRescueReady ? "Open Find Icon" : nil,
+                action: findRescueReady ? { onOpenFindIcon?() } : nil
+            )
+
+            ClearGlassInlineMessage(
+                text: findRescueSetupMessage,
+                systemImage: findRescueReady ? "checkmark.shield" : "lock.shield",
+                style: findRescueReady ? .success : .secondary
             )
         }
     }
@@ -106,6 +134,8 @@ struct FindAndRescueSettingsView: View {
                     Button("Open Find Icon", systemImage: "magnifyingglass") {
                         onOpenFindIcon?()
                     }
+                    .disabled(findIconAvailability?.tone != .success)
+
                     Button("Settings", systemImage: "gearshape") {
                         onOpenSearchSettings?()
                     }
@@ -124,6 +154,8 @@ struct FindAndRescueSettingsView: View {
                     Button("Show Second Bar", systemImage: "menubar.rectangle") {
                         onOpenSecondBar?()
                     }
+                    .disabled(secondBarAvailability?.tone != .success)
+
                     Button("Settings", systemImage: "gearshape") {
                         onOpenSecondBarSettings?()
                     }
@@ -275,6 +307,58 @@ struct FindAndRescueSettingsView: View {
         }
     }
 
+    private var discoveryReady: Bool {
+        settingsStore.proModeEnabled && settingsStore.accessibilityDiscoveryEnabled
+    }
+
+    private var findRescueReady: Bool {
+        discoveryReady && permissionService?.status == .granted
+    }
+
+    private var discoveryStepState: FindRescueSetupStepState {
+        if settingsStore.accessibilityDiscoveryEnabled {
+            return .complete
+        }
+        return settingsStore.proModeEnabled ? .current : .locked
+    }
+
+    private var permissionStepState: FindRescueSetupStepState {
+        if permissionService?.status == .granted {
+            return .complete
+        }
+        return discoveryReady ? .current : .locked
+    }
+
+    private var findRescueSetupMessage: String {
+        if findRescueReady {
+            return "Find Icon and Second Bar can use local Accessibility metadata. Basic Mode remains available if these previews are turned off later."
+        }
+        return "Basic Mode keeps working while Pro discovery is off, unavailable, or waiting for permission."
+    }
+
+    private func enableProMode() {
+        if let permissionService {
+            PrivacyProSetupActions.enableProMode(
+                settingsStore: settingsStore,
+                permissionService: permissionService
+            )
+        } else {
+            settingsStore.proModeEnabled = true
+        }
+    }
+
+    private func enableAccessibilityDiscovery() {
+        settingsStore.accessibilityDiscoveryEnabled = true
+    }
+
+    private func openPrivacyForPermission() {
+        if let permissionService, permissionService.status != .granted {
+            permissionService.openSystemSettingsPrivacyPane()
+        } else {
+            onOpenPrivacy?()
+        }
+    }
+
     private var visibleNewItemCount: Int {
         guard settingsStore.proModeEnabled,
               settingsStore.accessibilityDiscoveryEnabled,
@@ -395,6 +479,77 @@ struct FindAndRescueSettingsView: View {
 nonisolated struct WorkspaceAssignmentOption: Identifiable, Equatable, Sendable {
     var id: UUID
     var title: String
+}
+
+private enum FindRescueSetupStepState: Equatable {
+    case complete
+    case current
+    case locked
+
+    var style: ClearGlassStatusStyle {
+        switch self {
+        case .complete:
+            .success
+        case .current:
+            .warning
+        case .locked:
+            .secondary
+        }
+    }
+
+    var iconTint: Color {
+        switch self {
+        case .complete:
+            .green
+        case .current:
+            .orange
+        case .locked:
+            .secondary
+        }
+    }
+}
+
+private struct FindRescueSetupStepRow: View {
+    let number: Int
+    let title: String
+    let detail: String
+    let statusText: String
+    let state: FindRescueSetupStepState
+    let systemImage: String
+    var actionTitle: String? = nil
+    var action: (() -> Void)? = nil
+
+    var body: some View {
+        ClearGlassControlRow(
+            systemImage: systemImage,
+            title: "\(number). \(title)",
+            subtitle: detail,
+            iconTint: state.iconTint
+        ) {
+            VStack(alignment: .trailing, spacing: 8) {
+                ClearGlassStatusValue(text: statusText, style: state.style)
+
+                if let actionTitle, let action {
+                    stepButton(title: actionTitle, action: action)
+                }
+            }
+        }
+        .opacity(state == .locked ? 0.62 : 1)
+        .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder
+    private func stepButton(title: String, action: @escaping () -> Void) -> some View {
+        if state == .current {
+            Button(title, action: action)
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+        } else {
+            Button(title, action: action)
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+        }
+    }
 }
 
 private struct CrowdedRescueExplanationRow: View {

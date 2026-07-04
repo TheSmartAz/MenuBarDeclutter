@@ -177,13 +177,16 @@ struct HidingServiceTests {
         configureDefaults: (UserDefaults) -> Void = { _ in },
         _ body: (UserDefaults, SettingsStore, DiagnosticsLogger, HidingService) -> Void
     ) {
-        TestDefaults.withIsolatedDefaults { defaults in
-            configureDefaults(defaults)
-            let store = SettingsStore(defaults: defaults)
-            let logger = DiagnosticsLogger()
-            let service = HidingService(settingsStore: store, diagnosticsLogger: logger)
-            body(defaults, store, logger, service)
-        }
+        let suiteName = "MenuBarDeclutterLogicTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        configureDefaults(defaults)
+        let store = SettingsStore(defaults: defaults)
+        let logger = DiagnosticsLogger()
+        let service = HidingService(settingsStore: store, diagnosticsLogger: logger)
+        body(defaults, store, logger, service)
     }
 }
 

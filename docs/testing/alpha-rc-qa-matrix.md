@@ -5,7 +5,7 @@ Automated tests do not replace checks that depend on system behavior, but this
 whole catalog is not required for every patch. Choose the appropriate lane in
 `docs/testing/qa-process.md` first.
 
-v0.1 note: defaults are frozen in `docs/release/v0.1-defaults.md`. Auto-rehide, hover reveal, hotkeys, Pro Mode, Find Icon, Second Bar, Icon Moving, Smart Triggers, and bulk automation are optional or disabled by default unless the tester explicitly enables them.
+v0.1 note: defaults are tracked in `docs/release/v0.1-defaults.md`. Auto-rehide, hover reveal, hotkeys, Pro Mode, Accessibility Discovery, Icon Moving, Smart Triggers, and bulk automation are optional or disabled by default unless the tester explicitly enables them or macOS Accessibility is already granted. Find Icon and Second Bar panels are default-on but remain metadata-gated by macOS Accessibility.
 
 ## Basic Mode
 

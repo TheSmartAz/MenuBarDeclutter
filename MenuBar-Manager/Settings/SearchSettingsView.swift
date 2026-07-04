@@ -27,14 +27,14 @@ struct SearchSettingsView: View {
     var body: some View {
         ClearGlassSettingsPage(
             "Search",
-            subtitle: "Find Icon controls for locating menu bar items from the local discovery index.",
+            subtitle: "Find Icon preferences for locating menu bar items from the local discovery index.",
             badges: [.preview, .proMode, .accessibilityRequired],
             sectionAnchors: pageSectionAnchors
         ) {
             ClearGlassSection("Find Icon", subtitle: "Status menu entry point and selection behavior.") {
                 FeatureGateNotice(
                     .preview,
-                    text: "Preview in v0.1.3 when Pro Mode, discovery, and Accessibility permission are enabled."
+                    text: "Preview in v0.1.3. The panel is available by default; results require Pro discovery and Accessibility permission."
                 )
 
                 ClearGlassDivider()
@@ -72,7 +72,7 @@ struct SearchSettingsView: View {
                 }
 
                 ClearGlassInlineMessage(
-                    text: "Find Icon uses the local Accessibility discovery index only after Pro Mode is enabled. It does not click, drag, record the screen, or use the network.",
+                    text: "Find Icon uses the local Accessibility discovery index after private access is granted. It does not click, drag, record the screen, or use the network.",
                     systemImage: "checkmark.shield",
                     style: .success
                 )
@@ -111,10 +111,10 @@ struct SearchSettingsView: View {
                 }
             }
 
-            ClearGlassSection("Requirements", subtitle: "Find Icon remains unavailable until all Pro requirements are satisfied.") {
+            ClearGlassSection("Requirements", subtitle: "Find Icon results remain unavailable until these private-access requirements are satisfied.") {
                 SearchRequirementRow(
                     title: "Pro Mode",
-                    detail: "Find Icon is available only in opt-in Pro Mode.",
+                    detail: "Private menu bar item discovery is available only in opt-in Pro Mode.",
                     status: settingsStore.proModeEnabled ? "Enabled" : "Disabled",
                     isSatisfied: settingsStore.proModeEnabled,
                     systemImage: "star"

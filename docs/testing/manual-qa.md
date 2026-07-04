@@ -260,7 +260,9 @@ This checklist verifies the Phase 1 hiding MVP. Later-phase features such as glo
 ### Enable Pro Mode without prompting
 
 - Open Settings → Privacy and click "Enable Pro Mode".
-- Confirm Accessibility Discovery becomes enabled.
+- Confirm no Accessibility prompt appears.
+- If macOS Accessibility is already granted, confirm Accessibility Discovery may become enabled automatically after permission status refresh.
+- If macOS Accessibility is not granted, confirm Accessibility Discovery remains explicit and metadata surfaces stay degraded.
 - Confirm no Accessibility prompt appears yet.
 - Confirm the Accessibility status is either Not Requested, Denied, Granted, or Unknown depending on the current system state.
 - Toggle Accessibility Discovery off and on; confirm no permission prompt appears.
@@ -406,11 +408,14 @@ This checklist verifies the Phase 1 hiding MVP. Later-phase features such as glo
 ### Search settings
 
 - Open Settings → Search.
+- Confirm there is no "Enable Find Icon" master switch.
 - Disable "Highlight selected item"; select a visible result and confirm no overlay appears.
 - Disable "Reveal item when selected"; select a hidden/always-hidden result and confirm visibility is not changed automatically.
 - Open Find Icon with Pro Mode off and confirm the panel shows "Pro Mode Required" with no Accessibility prompt.
 - Confirm no "Find Icon Disabled" enabling page appears in the default gated flow.
 - Disable "Show Find Icon in status menu"; confirm the status menu hides "Find Icon..." while direct Settings and hotkey opens still show the normal gated panel.
+- With macOS Accessibility granted, open Find Icon and confirm it opens directly to Results.
+- With macOS Accessibility missing or revoked, open Find Icon and confirm it shows the private-access requirement state, not an app-level disabled state.
 
 ### Find Icon hotkey
 
@@ -444,9 +449,10 @@ This checklist verifies the Phase 1 hiding MVP. Later-phase features such as glo
 - Start from Settings -> General -> Reset All Settings.
 - Choose "Show Second Bar" from the status menu.
 - With Pro Mode disabled, confirm the Second Bar opens with a Pro Mode requirement state and Basic Mode collapse/expand still works.
-- Enable Pro Mode but leave Accessibility permission missing; confirm the Second Bar shows the permission-required state and offers explicit settings actions.
+- Enable Pro Mode but leave Accessibility permission missing; confirm the Second Bar shows the appropriate private-access requirement state and offers explicit settings actions.
 - Confirm no Accessibility prompt appears merely from opening the Second Bar.
 - Disable "Show Second Bar in status menu"; confirm the status menu hides "Show Second Bar" while direct Settings, Shortcuts, or recovery routes still show the normal gated panel.
+- Confirm the Second Bar page never shows a separate "Enable Second Bar" app-level gate.
 
 ### Show, hide, and toggle
 

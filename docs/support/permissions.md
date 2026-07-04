@@ -8,12 +8,10 @@ Basic Mode should still work when Accessibility is denied, revoked, or never req
 
 ## Pro Mode
 
-Pro Mode can use Accessibility metadata only when all of these are true:
+Private discovery surfaces can use Accessibility metadata only when all of these are true:
 
-- Pro Mode is enabled.
-- Accessibility Discovery is enabled.
-- The user explicitly presses a Request Permission button.
 - macOS Accessibility permission is granted.
+- Pro Mode and Accessibility Discovery are on. If macOS already reports Accessibility as granted, MenuBarDeclutter turns these defaults on automatically for Find Icon and Second Bar.
 - The user refreshes or rescans the local menu bar metadata after permission changes.
 
 If permission is denied or revoked, Pro surfaces degrade and Basic Mode remains usable.
@@ -22,20 +20,18 @@ MenuBarDeclutter does not use Screen Recording, ScreenCaptureKit, Apple Events p
 
 ## Requesting Accessibility
 
-The app must not show an Accessibility prompt automatically. Only use the explicit permission request button from a Pro surface when you want to test Pro metadata features.
+The app must not show an Accessibility prompt automatically. Only use the explicit permission request button from a private-access surface when you want to test metadata features.
 
 Granting Accessibility is optional. Revoking it should disable or degrade Pro metadata features without breaking Basic Mode.
 
 Expected setup order for Pro metadata testing:
 
-1. Enable Pro Mode.
-2. Enable Accessibility Discovery.
-3. Press Request Permission from Privacy, Find Icon, or Second Bar.
-4. Grant MenuBarDeclutter in macOS Privacy & Security -> Accessibility.
-5. Return to MenuBarDeclutter and press Rescan or Refresh.
-6. Confirm Find Icon and Second Bar move from unavailable states to usable Pro metadata states.
+1. Press Request Permission from Privacy, Find Icon, or Second Bar, or open System Settings manually.
+2. Grant MenuBarDeclutter in macOS Privacy & Security -> Accessibility.
+3. Return to MenuBarDeclutter and press Rescan or Refresh.
+4. Confirm Find Icon and Second Bar skip their old app-level enable states and move to usable metadata views.
 
-Pressing only Enable Pro Mode must not enable Accessibility Discovery and must not trigger a permission prompt.
+Pressing only Enable Pro Mode must not trigger a permission prompt. If macOS Accessibility is already granted, refreshing permission status may turn private discovery defaults on.
 
 ## Permission-Free Recovery
 

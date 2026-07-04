@@ -128,6 +128,27 @@ struct StatusBarMenuBuilderTests {
         #expect(privacyItem.toolTip?.contains("network") == true)
     }
 
+    @Test func basicVisibilityActionsDisableOnlyCurrentNoOp() throws {
+        let builder = StatusBarMenuBuilder(actions: Self.makeActions())
+
+        var menu = builder.makeMenu()
+        #expect(try menuItem("Reveal Hidden Items", in: menu).isEnabled == false)
+        #expect(try menuItem("Collapse Hidden Items", in: menu).isEnabled == true)
+        #expect(try menuItem("Reveal All Items", in: menu).isEnabled == true)
+
+        builder.refresh(for: HidingVisibilityState.collapsed)
+        menu = builder.makeMenu()
+        #expect(try menuItem("Reveal Hidden Items", in: menu).isEnabled == true)
+        #expect(try menuItem("Collapse Hidden Items", in: menu).isEnabled == false)
+        #expect(try menuItem("Reveal All Items", in: menu).isEnabled == true)
+
+        builder.refresh(for: HidingVisibilityState.revealAll)
+        menu = builder.makeMenu()
+        #expect(try menuItem("Reveal Hidden Items", in: menu).isEnabled == true)
+        #expect(try menuItem("Collapse Hidden Items", in: menu).isEnabled == true)
+        #expect(try menuItem("Reveal All Items", in: menu).isEnabled == false)
+    }
+
     @Test func menuCommandsDispatchToMatchingActionClosures() throws {
         let recorder = MenuActionRecorder()
         let builder = StatusBarMenuBuilder(
@@ -648,10 +669,14 @@ struct StatusBarMenuBuilderTests {
     }
 
     private func perform(_ title: String, in menu: NSMenu) throws {
-        let item = try #require(actionItems(in: menu).first { $0.title == title })
+        let item = try menuItem(title, in: menu)
         let action = try #require(item.action)
         let didSendAction = NSApplication.shared.sendAction(action, to: item.target, from: item)
         #expect(didSendAction)
+    }
+
+    private func menuItem(_ title: String, in menu: NSMenu) throws -> NSMenuItem {
+        try #require(actionItems(in: menu).first { $0.title == title })
     }
 
     private func actionItems(in menu: NSMenu) -> [NSMenuItem] {

@@ -44,6 +44,16 @@
             skipped = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
+               BlueprintIdentifier = "D5B100032FFB001500C9EAC2"
+               BuildableName = "MenuBarDeclutterLogicTests.xctest"
+               BlueprintName = "MenuBarDeclutterLogicTests"
+               ReferencedContainer = "container:MenuBar-Manager.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
                BlueprintIdentifier = "D50216F52FF1001500C9EAC2"
                BuildableName = "MenuBarDeclutterUITests.xctest"
                BlueprintName = "MenuBarDeclutterUITests"

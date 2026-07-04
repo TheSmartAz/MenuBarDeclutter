@@ -1813,7 +1813,7 @@ private struct ClearGlassPageHeader: View {
             .sorted { $0.headerPriority < $1.headerPriority }
 
         if !actionable.isEmpty {
-            return Array(actionable.prefix(2))
+            return Array(actionable.prefix(1))
         }
 
         for preferred in [ClearGlassBadgeStyle.basicMode, .privacySafe, .stable] where badges.contains(preferred) {

@@ -145,8 +145,6 @@ struct SearchRootView: View {
                     .labelStyle(.iconOnly)
                     .buttonStyle(.bordered)
                     .help("Refresh Menu Bar Items")
-
-                    ClearGlassBadge(style: .privacySafe)
                 }
             }
 
@@ -852,7 +850,7 @@ private struct SearchUnavailableView: View {
             }
 
             ClearGlassInlineMessage(
-                text: "Basic Mode remains usable without Accessibility, Screen Recording, Apple Events, Input Monitoring, or network access.",
+                text: "Basic Mode stays available without Accessibility, Screen Recording, Apple Events, Input Monitoring, or network access.",
                 systemImage: "lock.shield",
                 style: .success
             )
@@ -879,6 +877,8 @@ private struct SearchUnavailableView: View {
         if let secondaryButtonTitle = state.secondaryButtonTitle,
            let secondaryAction = state.secondaryAction {
             Button(secondaryButtonTitle, action: secondaryAction)
+                .buttonStyle(.borderless)
+                .foregroundStyle(.secondary)
         }
     }
 }

@@ -1,0 +1,24 @@
+status	slug	label	kind	window_id	x	y	width	height	layer	title	path	args
+captured	01-general	General	settings	22819	903	305	820	672	0	MenuBarDeclutter Settings	screenshots/01-general.png	--ui-testing --ui-testing-show-general
+captured	02-hide-reveal	Hide & Reveal	settings	22828	903	305	820	672	0	MenuBarDeclutter Settings	screenshots/02-hide-reveal.png	--ui-testing --ui-testing-show-hide-reveal
+captured	03-arrange	Arrange	settings	22835	903	305	820	672	0	MenuBarDeclutter Settings	screenshots/03-arrange.png	--ui-testing --ui-testing-show-arrange --ui-testing-seed-menu-bar-items
+captured	04-find-rescue	Find & Rescue	settings	22843	903	305	820	672	0	MenuBarDeclutter Settings	screenshots/04-find-rescue.png	--ui-testing --ui-testing-show-find-rescue --ui-testing-seed-menu-bar-items
+captured	05-workspaces	Workspaces	settings	22851	903	305	820	672	0	MenuBarDeclutter Settings	screenshots/05-workspaces.png	--ui-testing --ui-testing-show-workspaces
+captured	06-privacy	Privacy	settings	22859	903	305	820	672	0	MenuBarDeclutter Settings	screenshots/06-privacy.png	--ui-testing --ui-testing-show-privacy
+captured	07-recovery	Recovery	settings	22867	903	305	820	672	0	MenuBarDeclutter Settings	screenshots/07-recovery.png	--ui-testing --ui-testing-show-recovery
+captured	08-advanced	Advanced	settings	22875	903	305	820	672	0	MenuBarDeclutter Settings	screenshots/08-advanced.png	--ui-testing --ui-testing-show-advanced
+captured	09-diagnostics	Diagnostics	settings	22883	903	305	820	672	0	MenuBarDeclutter Settings	screenshots/09-diagnostics.png	--ui-testing --ui-testing-show-diagnostics
+captured	10-behavior-legacy	Behavior	settings	22891	903	305	820	672	0	MenuBarDeclutter Settings	screenshots/10-behavior-legacy.png	--ui-testing --ui-testing-show-behavior
+captured	11-layout-legacy	Layout	settings	22899	903	305	820	672	0	MenuBarDeclutter Settings	screenshots/11-layout-legacy.png	--ui-testing --ui-testing-show-layout
+captured	12-menu-bar-items-hidden	Menu Bar Items	settings	22906	903	305	820	672	0	MenuBarDeclutter Settings	screenshots/12-menu-bar-items-hidden.png	--ui-testing --ui-testing-show-menu-bar-items --ui-testing-seed-menu-bar-items
+captured	13-search-settings-hidden	Search Settings	settings	22915	903	305	820	672	0	MenuBarDeclutter Settings	screenshots/13-search-settings-hidden.png	--ui-testing --ui-testing-show-search-settings
+captured	14-second-bar-settings-hidden	Second Bar Settings	settings	22923	903	305	820	672	0	MenuBarDeclutter Settings	screenshots/14-second-bar-settings-hidden.png	--ui-testing --ui-testing-show-second-bar-settings
+captured	15-groups-hidden	Groups	settings	22931	903	305	820	672	0	MenuBarDeclutter Settings	screenshots/15-groups-hidden.png	--ui-testing --ui-testing-show-groups --ui-testing-seed-groups --ui-testing-seed-menu-bar-items
+captured	16-hotkeys-hidden	Hotkeys	settings	22939	903	305	820	672	0	MenuBarDeclutter Settings	screenshots/16-hotkeys-hidden.png	--ui-testing --ui-testing-show-hotkeys
+captured	17-profiles-hidden	Profiles	settings	22947	903	305	820	672	0	MenuBarDeclutter Settings	screenshots/17-profiles-hidden.png	--ui-testing --ui-testing-show-profiles --ui-testing-seed-profiles --ui-testing-seed-menu-bar-items
+captured	18-automation-hidden	Automation	settings	22956	903	305	820	672	0	MenuBarDeclutter Settings	screenshots/18-automation-hidden.png	--ui-testing --ui-testing-show-automation --ui-testing-seed-profiles
+captured	19-private-access-hidden	Private Access	settings	22964	903	305	820	672	0	MenuBarDeclutter Settings	screenshots/19-private-access-hidden.png	--ui-testing --ui-testing-show-private-access
+captured	20-import-export-hidden	Import / Export	settings	22972	903	305	820	672	0	MenuBarDeclutter Settings	screenshots/20-import-export-hidden.png	--ui-testing --ui-testing-show-import-export
+captured	21-floating-find-icon	Floating Find Icon	panel	22980	904	34	560	364	3	Find Icon	screenshots/21-floating-find-icon.png	--ui-testing --ui-testing-show-search
+captured	22-floating-second-bar	Floating Second Bar	panel	22987	574	42	660	262	3	Second Bar	screenshots/22-floating-second-bar.png	--ui-testing --ui-testing-show-second-bar
+captured	23-floating-group-panel	Floating Group Panel	panel	22994	624	194	560	444	3	Focus Apps	screenshots/23-floating-group-panel.png	--ui-testing --ui-testing-show-group-panel

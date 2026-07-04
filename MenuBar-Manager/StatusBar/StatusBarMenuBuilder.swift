@@ -118,14 +118,16 @@ final class StatusBarMenuBuilder {
             command: .expand,
             keyEquivalent: "",
             systemImage: "eye",
-            toolTip: "Show items in the Hidden zone without requesting extra permissions."
+            toolTip: "Show items in the Hidden zone without requesting extra permissions.",
+            isEnabled: visibilityState != .expanded
         ))
         menu.addItem(menuItem(
             title: "Collapse Hidden Items",
             command: .collapse,
             keyEquivalent: "",
             systemImage: "eye.slash",
-            toolTip: "Return Hidden-zone items to the decluttered layout."
+            toolTip: "Return Hidden-zone items to the decluttered layout.",
+            isEnabled: visibilityState != .collapsed
         ))
 
         menu.addItem(
@@ -134,7 +136,8 @@ final class StatusBarMenuBuilder {
                 command: .revealAll,
                 keyEquivalent: "",
                 systemImage: "rectangle.expand.vertical",
-                toolTip: "Reveal Hidden and Always-Hidden items until you collapse again."
+                toolTip: "Reveal Hidden and Always-Hidden items until you collapse again.",
+                isEnabled: visibilityState != .revealAll
             )
         )
 
@@ -458,7 +461,8 @@ final class StatusBarMenuBuilder {
         command: StatusBarMenuCommand,
         keyEquivalent: String,
         systemImage: String? = nil,
-        toolTip: String? = nil
+        toolTip: String? = nil,
+        isEnabled: Bool = true
     ) -> NSMenuItem {
         let item = NSMenuItem(
             title: title,
@@ -467,6 +471,7 @@ final class StatusBarMenuBuilder {
         )
         item.tag = command.rawValue
         item.target = commandTarget
+        item.isEnabled = isEnabled
         if let systemImage {
             item.image = NSImage(systemSymbolName: systemImage, accessibilityDescription: title)
         }

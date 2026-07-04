@@ -21,12 +21,20 @@
 			remoteGlobalIDString = D50216DC2FF1001400C9EAC2;
 			remoteInfo = MenuBarDeclutter;
 		};
+		D5B100072FFB001500C9EAC2 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D50216D52FF1001400C9EAC2 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D50216DC2FF1001400C9EAC2;
+			remoteInfo = MenuBarDeclutter;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		D50216DD2FF1001400C9EAC2 /* MenuBarDeclutter.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MenuBarDeclutter.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D50216EC2FF1001500C9EAC2 /* MenuBarDeclutterTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MenuBarDeclutterTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D50216F62FF1001500C9EAC2 /* MenuBarDeclutterUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MenuBarDeclutterUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D5B100022FFB001500C9EAC2 /* MenuBarDeclutterLogicTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MenuBarDeclutterLogicTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D5A000012FF9A00000C9EAC2 /* Shared.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Shared.xcconfig; sourceTree = "<group>"; };
 		D5A000022FF9A00000C9EAC2 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		D5A000032FF9A00000C9EAC2 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
@@ -49,6 +57,11 @@
 		D50216F92FF1001500C9EAC2 /* MenuBarDeclutterUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = MenuBarDeclutterUITests;
+			sourceTree = "<group>";
+		};
+		D5B100012FFB001500C9EAC2 /* MenuBar-ManagerLogicTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "MenuBar-ManagerLogicTests";
 			sourceTree = "<group>";
 		};
 		D5F920032FF9200000C9EAC2 /* Tools/MenuBarFixtureApp */ = {
@@ -80,6 +93,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D5B100052FFB001500C9EAC2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		D5F920052FF9200000C9EAC2 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -96,6 +116,7 @@
 				D5A000042FF9A00000C9EAC2 /* Config */,
 				D50216DF2FF1001400C9EAC2 /* MenuBar-Manager */,
 				D50216EF2FF1001500C9EAC2 /* MenuBar-ManagerTests */,
+				D5B100012FFB001500C9EAC2 /* MenuBar-ManagerLogicTests */,
 				D50216F92FF1001500C9EAC2 /* MenuBarDeclutterUITests */,
 				D5F920032FF9200000C9EAC2 /* Tools/MenuBarFixtureApp */,
 				D50216DE2FF1001400C9EAC2 /* Products */,
@@ -107,6 +128,7 @@
 			children = (
 				D50216DD2FF1001400C9EAC2 /* MenuBarDeclutter.app */,
 				D50216EC2FF1001500C9EAC2 /* MenuBarDeclutterTests.xctest */,
+				D5B100022FFB001500C9EAC2 /* MenuBarDeclutterLogicTests.xctest */,
 				D50216F62FF1001500C9EAC2 /* MenuBarDeclutterUITests.xctest */,
 				D5F920012FF9200000C9EAC2 /* MenuBarFixtureApp.app */,
 			);
@@ -196,6 +218,29 @@
 			productReference = D50216F62FF1001500C9EAC2 /* MenuBarDeclutterUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		D5B100032FFB001500C9EAC2 /* MenuBarDeclutterLogicTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D5B1000B2FFB001500C9EAC2 /* Build configuration list for PBXNativeTarget "MenuBarDeclutterLogicTests" */;
+			buildPhases = (
+				D5B100042FFB001500C9EAC2 /* Sources */,
+				D5B100052FFB001500C9EAC2 /* Frameworks */,
+				D5B100062FFB001500C9EAC2 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D5B100082FFB001500C9EAC2 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				D5B100012FFB001500C9EAC2 /* MenuBar-ManagerLogicTests */,
+			);
+			name = MenuBarDeclutterLogicTests;
+			packageProductDependencies = (
+			);
+			productName = MenuBarDeclutterLogicTests;
+			productReference = D5B100022FFB001500C9EAC2 /* MenuBarDeclutterLogicTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		D5F920072FF9200000C9EAC2 /* MenuBarFixtureApp */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = D5F9200A2FF9200000C9EAC2 /* Build configuration list for PBXNativeTarget "MenuBarFixtureApp" */;
@@ -239,6 +284,9 @@
 						CreatedOnToolsVersion = 26.3;
 						TestTargetID = D50216DC2FF1001400C9EAC2;
 					};
+					D5B100032FFB001500C9EAC2 = {
+						CreatedOnToolsVersion = 26.3;
+					};
 					D5F920072FF9200000C9EAC2 = {
 						CreatedOnToolsVersion = 26.3;
 					};
@@ -260,6 +308,7 @@
 			targets = (
 				D50216DC2FF1001400C9EAC2 /* MenuBarDeclutter */,
 				D50216EB2FF1001500C9EAC2 /* MenuBarDeclutterTests */,
+				D5B100032FFB001500C9EAC2 /* MenuBarDeclutterLogicTests */,
 				D50216F52FF1001500C9EAC2 /* MenuBarDeclutterUITests */,
 				D5F920072FF9200000C9EAC2 /* MenuBarFixtureApp */,
 			);
@@ -282,6 +331,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		D50216F42FF1001500C9EAC2 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D5B100062FFB001500C9EAC2 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -319,6 +375,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D5B100042FFB001500C9EAC2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		D5F920042FF9200000C9EAC2 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -338,6 +401,11 @@
 			isa = PBXTargetDependency;
 			target = D50216DC2FF1001400C9EAC2 /* MenuBarDeclutter */;
 			targetProxy = D50216F72FF1001500C9EAC2 /* PBXContainerItemProxy */;
+		};
+		D5B100082FFB001500C9EAC2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D50216DC2FF1001400C9EAC2 /* MenuBarDeclutter */;
+			targetProxy = D5B100072FFB001500C9EAC2 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -563,6 +631,48 @@
 			};
 			name = Release;
 		};
+		D5B100092FFB001500C9EAC2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = D5A000022FF9A00000C9EAC2 /* Debug.xcconfig */;
+			buildSettings = {
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(BUILT_PRODUCTS_DIR)/MenuBarDeclutter.app/Contents/MacOS",
+				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"$(BUILT_PRODUCTS_DIR)/MenuBarDeclutter.app/Contents/MacOS/MenuBarDeclutter.debug.dylib",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "Yongjun-Zhang.MenuBarDeclutterLogicTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+			};
+			name = Debug;
+		};
+		D5B1000A2FFB001500C9EAC2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = D5A000032FF9A00000C9EAC2 /* Release.xcconfig */;
+			buildSettings = {
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(BUILT_PRODUCTS_DIR)/MenuBarDeclutter.app/Contents/MacOS",
+				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"$(BUILT_PRODUCTS_DIR)/MenuBarDeclutter.app/Contents/MacOS/MenuBarDeclutter.debug.dylib",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "Yongjun-Zhang.MenuBarDeclutterLogicTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+			};
+			name = Release;
+		};
 		D5F920082FF9200000C9EAC2 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = D5A000022FF9A00000C9EAC2 /* Debug.xcconfig */;
@@ -642,6 +752,15 @@
 			buildConfigurations = (
 				D50217072FF1001500C9EAC2 /* Debug */,
 				D50217082FF1001500C9EAC2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D5B1000B2FFB001500C9EAC2 /* Build configuration list for PBXNativeTarget "MenuBarDeclutterLogicTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D5B100092FFB001500C9EAC2 /* Debug */,
+				D5B1000A2FFB001500C9EAC2 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

@@ -1,6 +1,6 @@
 # Second Bar
 
-Second Bar is an optional Pro floating panel for hidden and always-hidden menu bar items. It uses Accessibility metadata and app/bundle icons, not captured menu bar pixels.
+Second Bar is a private-access floating panel for hidden and always-hidden menu bar items. It opens by default, and uses Accessibility metadata and app/bundle icons when macOS permission is granted.
 
 ## What It Does
 
@@ -19,7 +19,7 @@ Second Bar is an optional Pro floating panel for hidden and always-hidden menu b
 
 1. Open Settings -> Find & Rescue.
 2. Use Show Second Bar, or open its detailed settings from the Second Bar card.
-3. Enable Pro Mode, Accessibility Discovery, and Accessibility permission if not already configured.
+3. Grant macOS Accessibility permission if hidden-item metadata is not already available.
 4. Hide items with the Basic Mode separator.
 5. Open Second Bar from the status menu.
 6. Search or navigate to an item.

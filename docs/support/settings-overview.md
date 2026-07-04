@@ -13,6 +13,6 @@ MenuBarDeclutter `v0.1.10` uses eight top-level Settings areas.
 | Recovery | "I can't find my icons", Safe Mode, reset layout, health, diagnostics export, repair actions. |
 | Advanced | Diagnostics, full Groups, Profiles, Smart Triggers, Dynamic Hotkeys, Private Access, Automation, Import / Export, Spacing Labs, Experimental Icon Moving, and internal Dogfood notes when enabled. |
 
-Basic hiding and Guided Manual Arrange do not require Pro Mode or Accessibility. Pro metadata features show clear unavailable states until the user enables Pro Mode, enables Accessibility Discovery, and grants macOS Accessibility permission from an explicit button.
+Basic hiding and Guided Manual Arrange do not require Pro Mode or Accessibility. Private metadata features show clear unavailable states until macOS Accessibility permission is granted; after macOS reports the grant, Find Icon and Second Bar skip their old app-level enable states.
 
 Workspaces is top-level because it is now the main Preview configuration surface for app-owned Function Bar and Info Strip experiences. It does not replace or control the macOS system menu bar.

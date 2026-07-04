@@ -20,6 +20,14 @@ Use this lane for ordinary localized changes that do not affect permissions, rel
 Steps:
 
 1. Run focused unit or UI tests for the changed area when available.
+   For pure logic covered by `MenuBarDeclutterLogicTests`, use:
+
+   ```sh
+   scripts/run_logic_tests.sh
+   ```
+
+   This lane builds the logic-test bundle and runs it directly with
+   `xcrun xctest`, avoiding local app-hosted runner attachment failures.
 2. For code changes, run one canonical test command before handoff:
 
    ```sh
@@ -27,6 +35,8 @@ Steps:
    ```
 
    `scripts/test.sh` is acceptable when the scheme fallback behavior is useful.
+   If the local Xcode runner fails before tests attach, record the infra failure
+   and include passing `scripts/run_logic_tests.sh` evidence for pure logic changes.
 3. For documentation-only changes, run a lightweight validation such as:
 
    ```sh

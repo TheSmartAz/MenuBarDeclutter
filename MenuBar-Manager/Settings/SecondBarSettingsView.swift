@@ -29,14 +29,14 @@ struct SecondBarSettingsView: View {
     var body: some View {
         ClearGlassSettingsPage(
             "Second Bar",
-            subtitle: "Configure the optional secondary bar for hidden menu bar items.",
+            subtitle: "Configure the secondary bar for hidden menu bar items.",
             badges: [.preview, .proMode, .accessibilityRequired],
             sectionAnchors: pageSectionAnchors
         ) {
             ClearGlassSection("Second Bar", subtitle: "Status menu entry point and panel behavior.") {
                 FeatureGateNotice(
                     .preview,
-                    text: "Second Bar metadata and icon browsing are supported in v0.1.3 when Pro discovery requirements are satisfied."
+                    text: "Second Bar opens by default. Hidden-item metadata and icon browsing require Pro discovery and Accessibility permission."
                 )
 
                 ClearGlassDivider()
@@ -157,10 +157,10 @@ struct SecondBarSettingsView: View {
                 SecondBarPreviewStrip(showLabels: settingsStore.secondBarShowLabels)
             }
 
-            ClearGlassSection("Requirements", subtitle: "Second Bar remains unavailable until all Pro requirements are satisfied.") {
+            ClearGlassSection("Requirements", subtitle: "Second Bar item metadata remains unavailable until these private-access requirements are satisfied.") {
                 SearchRequirementRow(
                     title: "Pro Mode",
-                    detail: "Second Bar is available only in opt-in Pro Mode.",
+                    detail: "Private menu bar item discovery is available only in opt-in Pro Mode.",
                     status: settingsStore.proModeEnabled ? "Enabled" : "Disabled",
                     isSatisfied: settingsStore.proModeEnabled,
                     systemImage: "star"

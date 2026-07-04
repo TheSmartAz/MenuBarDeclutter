@@ -8,7 +8,7 @@ The current release target is `v0.1.10`. This is a release-hardening checkpoint 
 
 - Hide clutter without sensitive permissions, arrange icons safely, find hidden items when needed, and recover if layout breaks.
 - Basic Mode works without Accessibility, Screen Recording, Apple Events permission or other-app control, Input Monitoring, network access, telemetry, cloud sync, or ScreenCaptureKit.
-- Pro Mode is opt-in. It can use Accessibility metadata only after the user enables Pro Mode, enables Accessibility Discovery, and explicitly grants macOS Accessibility permission.
+- Pro metadata remains gated by macOS Accessibility. The app never prompts automatically; after the user grants macOS Accessibility permission, private discovery surfaces default on and Basic Mode still works if permission is missing or revoked.
 - Labs and Experimental features are off by default and must fail closed when permissions or gates are missing.
 
 ## Stable Surfaces Under v0.1.10 Verification
@@ -66,12 +66,15 @@ These are the intended stable product surfaces for `v0.1.10`. Current release co
 
 ```sh
 scripts/build_debug.sh
+scripts/run_logic_tests.sh
 scripts/test.sh
 scripts/qa_preflight.sh
 scripts/verify_privacy_boundary.sh
 ```
 
 The default local build scripts use CI-style ad-hoc/no-account signing overrides (`CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO`) so a personal Apple signing account is not required. `scripts/test.sh` uses the project's local signing defaults and runs the hosted unit lane by default. Run `scripts/test.sh --ui` when you explicitly want the local UI runner.
+
+For pure logic coverage during local development, use `scripts/run_logic_tests.sh`; it builds `MenuBarDeclutterLogicTests` and runs the resulting bundle directly with `xcrun xctest`, avoiding app-hosted LaunchServices attachment.
 
 Direct Xcode equivalents:
 

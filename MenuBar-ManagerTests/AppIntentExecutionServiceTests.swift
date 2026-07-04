@@ -10,7 +10,6 @@ struct AppIntentExecutionServiceTests {
         automationPaused: Bool = false,
         proModeEnabled: Bool = false,
         accessibilityDiscoveryEnabled: Bool = false,
-        searchEnabled: Bool = false,
         appIntentsCanApplyProfiles: Bool = false,
         appIntentsCanAccessLabs: Bool = false,
         menuBarSpacingLabsEnabled: Bool = false
@@ -23,7 +22,6 @@ struct AppIntentExecutionServiceTests {
         store.automationPaused = automationPaused
         store.proModeEnabled = proModeEnabled
         store.accessibilityDiscoveryEnabled = accessibilityDiscoveryEnabled
-        store.searchEnabled = searchEnabled
         store.appIntentsCanApplyProfiles = appIntentsCanApplyProfiles
         store.appIntentsCanAccessLabs = appIntentsCanAccessLabs
         store.menuBarSpacingLabsEnabled = menuBarSpacingLabsEnabled
@@ -115,8 +113,7 @@ struct AppIntentExecutionServiceTests {
 
         let (readyService, _) = makeService(
             proModeEnabled: true,
-            accessibilityDiscoveryEnabled: true,
-            searchEnabled: true
+            accessibilityDiscoveryEnabled: true
         )
         #expect(readyService.showFindIcon() == .success)
     }
@@ -194,14 +191,6 @@ struct AppIntentExecutionServiceTests {
             canAccessLabs: false,
             spacingLabsEnabled: false
         ) == .discoveryGated)
-        #expect(findAction.status(
-            appIntentsEnabled: true,
-            proModeEnabled: true,
-            accessibilityDiscoveryEnabled: true,
-            canApplyProfiles: false,
-            canAccessLabs: false,
-            spacingLabsEnabled: false
-        ) == .ready)
         #expect(findAction.status(
             appIntentsEnabled: true,
             proModeEnabled: true,

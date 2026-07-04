@@ -171,8 +171,8 @@ struct SettingsCommandPaletteIndex {
 
         return SettingsCommandPaletteEntry(
             id: "settings.section.\(section.rawValue)",
-            title: section.title,
-            subtitle: section.helpText,
+            title: section.commandPaletteTitle,
+            subtitle: section.commandPaletteSubtitle,
             systemImage: section.systemImage,
             kind: .setting,
             source: source,
@@ -225,6 +225,38 @@ struct SettingsCommandPaletteIndex {
                     keywords: [action.searchKeywords]
                 )
             }
+    }
+}
+
+private extension SettingsSection {
+    var commandPaletteTitle: String {
+        switch self {
+        case .behavior:
+            "Hide & Reveal Legacy"
+        case .layout:
+            "Layout Labs"
+        case .menuBarItems:
+            "Menu Bar Item Inspector"
+        case .search:
+            "Find Icon Settings"
+        case .secondBar:
+            "Second Bar Settings"
+        default:
+            title
+        }
+    }
+
+    var commandPaletteSubtitle: String {
+        switch self {
+        case .behavior:
+            "Legacy route for reveal behavior. Use Hide & Reveal for the main workflow."
+        case .layout:
+            "Advanced capacity, spacer, Full Menu Bar Mode, and spacing lab controls."
+        case .menuBarItems, .search, .secondBar, .groups, .hotkeys, .profiles, .automation, .privateAccess, .importExport:
+            "\(helpText) Advanced surface."
+        default:
+            helpText
+        }
     }
 }
 

@@ -179,4 +179,5 @@ final class AccessibilityPermissionService {
         guard let lastStatusRefreshDate else { return true }
         return now().timeIntervalSince(lastStatusRefreshDate) >= statusCacheDuration
     }
+
 }

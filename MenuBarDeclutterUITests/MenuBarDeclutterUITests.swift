@@ -384,10 +384,7 @@ final class MenuBarDeclutterUITests: XCTestCase {
         let secondBarApp = launchApp(opening: "--ui-testing-show-second-bar")
         defer { terminateApplication(secondBarApp) }
         assertElement("secondBar.unavailable", in: secondBarApp, timeout: 10)
-        assertStaticText(
-            "Second Bar is optional Pro UI. Basic Mode hiding stays available when this panel is disabled or permissions are missing.",
-            in: secondBarApp
-        )
+        assertStaticText("Pro Mode Required", in: secondBarApp)
 
         let secondBarAttachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         secondBarAttachment.name = "Floating Panel - Second Bar Unavailable"
