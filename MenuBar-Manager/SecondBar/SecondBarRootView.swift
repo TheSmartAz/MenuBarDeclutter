@@ -62,7 +62,7 @@ struct SecondBarRootView: View {
             }
         }
         .frame(width: panelWidth, height: panelHeight)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .menuBarDeclutterFloatingPanelChrome()
         .accessibilityIdentifier("secondBar.panel")
         .onAppear {
             onRefresh()
@@ -126,7 +126,7 @@ struct SecondBarRootView: View {
 
     private var panelHeight: CGFloat {
         if !secondBarIsAvailable {
-            return 238
+            return 360
         }
         return settingsStore.secondBarShowLabels ? 274 : 228
     }
@@ -307,7 +307,7 @@ struct SecondBarRootView: View {
                     .lineLimit(1)
                     .foregroundStyle(.secondary)
             } else if secondBarIsAvailable {
-                Label("Ready", systemImage: "checkmark.shield")
+                Label("Optional Pro", systemImage: "checkmark.shield")
                     .foregroundStyle(.green)
             } else {
                 Text("Unavailable")
@@ -321,7 +321,7 @@ struct SecondBarRootView: View {
 
     private var footerMessage: String {
         if !secondBarIsAvailable {
-            return "Enable requirements above to use Second Bar."
+            return "Complete the Optional Pro next step above to use Second Bar."
         }
         if let scanWarning {
             return scanWarning
@@ -385,9 +385,9 @@ struct SecondBarRootView: View {
     private var unavailableState: SecondBarUnavailableState? {
         if liveStatus.safeModeActive {
             return SecondBarUnavailableState(
-                title: "Safe Mode Active",
+                title: "Second Bar Unavailable",
                 systemImage: "exclamationmark.triangle",
-                message: "Second Bar item actions are paused while Safe Mode is active. Reason: \(liveStatus.safeModeReasonSummary).",
+                message: "Safe Mode is active, so Second Bar item actions are paused. Reason: \(liveStatus.safeModeReasonSummary).",
                 primaryButtonTitle: "Refresh Status",
                 primaryAction: onRefresh,
                 secondaryButtonTitle: nil,
@@ -397,10 +397,10 @@ struct SecondBarRootView: View {
 
         if !settingsStore.proModeEnabled {
             return SecondBarUnavailableState(
-                title: "Pro Mode Required",
+                title: "Second Bar Unavailable",
                 systemImage: "lock",
-                message: "Second Bar uses the optional Accessibility discovery index. Basic Mode still works without permissions.",
-                primaryButtonTitle: "Enable Pro Mode",
+                message: "Second Bar is Optional Pro. Basic Mode hiding stays available without Accessibility, screen capture, automation, or network access.",
+                primaryButtonTitle: "Enable Optional Pro",
                 primaryAction: {
                     PrivacyProSetupActions.enableProMode(
                         settingsStore: settingsStore,
@@ -408,16 +408,16 @@ struct SecondBarRootView: View {
                     )
                     onSettingsChanged()
                 },
-                secondaryButtonTitle: "Open Privacy Settings",
+                secondaryButtonTitle: "Review Privacy",
                 secondaryAction: onOpenPrivacySettings
             )
         }
 
         if !settingsStore.accessibilityDiscoveryEnabled {
             return SecondBarUnavailableState(
-                title: "Accessibility Discovery Off",
+                title: "Optional Pro Discovery Off",
                 systemImage: "hand.raised",
-                message: "Turn on Accessibility Discovery to populate hidden menu bar items.",
+                message: "Turn on local Accessibility Discovery to populate hidden and always-hidden menu bar items.",
                 primaryButtonTitle: "Enable Discovery",
                 primaryAction: {
                     settingsStore.accessibilityDiscoveryEnabled = true
@@ -430,9 +430,9 @@ struct SecondBarRootView: View {
 
         if permissionService.status != .granted {
             return SecondBarUnavailableState(
-                title: "Accessibility Permission Needed",
+                title: "Second Bar Unavailable",
                 systemImage: "hand.raised.slash",
-                message: "Grant Accessibility permission to read menu bar item labels and frames. No screen recording is used.",
+                message: "Grant Accessibility permission to let Optional Pro discovery read menu bar item labels and frames locally. No Screen Recording, clicking, or network access is used.",
                 primaryButtonTitle: "Request Permission",
                 primaryAction: {
                     permissionService.requestPromptFromUserAction()
@@ -497,24 +497,24 @@ struct SecondBarRootView: View {
                     route(.dryRunAssistedMove, snapshot: snapshot)
                 }
                 Divider()
-                Button("Experimental: Move to Visible", systemImage: "arrow.right.to.line") {
+                Button("Labs: Move to Visible", systemImage: "arrow.right.to.line") {
                     move(snapshot, command: .moveToZone(.visible))
                 }
-                Button("Experimental: Move to Hidden", systemImage: "arrow.left.and.right") {
+                Button("Labs: Move to Hidden", systemImage: "arrow.left.and.right") {
                     move(snapshot, command: .moveToZone(.hidden))
                 }
-                Button("Experimental: Move to Always Hidden", systemImage: "eye.slash") {
+                Button("Labs: Move to Always Hidden", systemImage: "eye.slash") {
                     move(snapshot, command: .moveToZone(.alwaysHidden))
                 }
                 Divider()
-                Button("Experimental: Move Left", systemImage: "arrow.left") {
+                Button("Labs: Move Left", systemImage: "arrow.left") {
                     move(snapshot, command: .moveLeft)
                 }
-                Button("Experimental: Move Right", systemImage: "arrow.right") {
+                Button("Labs: Move Right", systemImage: "arrow.right") {
                     move(snapshot, command: .moveRight)
                 }
             } else {
-                Button("Experimental Move Disabled", systemImage: "exclamationmark.triangle") {}
+                Button("Labs Move Unavailable", systemImage: "exclamationmark.triangle") {}
                     .disabled(true)
             }
         }
@@ -740,64 +740,33 @@ private struct SecondBarUnavailableView: View {
     let state: SecondBarUnavailableState
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: state.systemImage)
-                    .font(.system(size: 24, weight: .regular))
-                    .foregroundStyle(.orange)
-                    .frame(width: 30)
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(state.title)
-                        .font(.title3)
-                        .bold()
-                        .accessibilityIdentifier("secondBar.unavailable")
-
-                    Text(state.message)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 10) {
-                    unavailableButtons
-                }
-
-                VStack(alignment: .leading, spacing: 8) {
-                    unavailableButtons
-                }
-            }
-
-            ClearGlassInlineMessage(
-                text: "Second Bar is optional Pro UI. Basic Mode hiding stays available when this panel is disabled or permissions are missing.",
-                systemImage: "checkmark.shield",
-                style: .success
-            )
-        }
-        .padding(20)
-        .frame(maxWidth: 520, alignment: .leading)
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("secondBar.unavailable")
-        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
-        .overlay {
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        FloatingUnavailableStatePanel(
+            title: state.title,
+            message: state.message,
+            systemImage: state.systemImage,
+            privacyMessage: "Basic Mode hiding stays available without Accessibility, Screen Recording, Apple Events, Input Monitoring, or network access.",
+            primaryAction: .init(
+                title: state.primaryButtonTitle,
+                style: .primary,
+                accessibilityIdentifier: "secondBar.unavailable.primary",
+                handler: state.primaryAction
+            ),
+            secondaryAction: secondaryAction,
+            accessibilityIdentifier: "secondBar.unavailable"
+        )
     }
 
-    @ViewBuilder
-    private var unavailableButtons: some View {
-        Button(state.primaryButtonTitle, action: state.primaryAction)
-            .buttonStyle(.borderedProminent)
-
-        if let secondaryButtonTitle = state.secondaryButtonTitle,
-           let secondaryAction = state.secondaryAction {
-            Button(secondaryButtonTitle, action: secondaryAction)
-                .buttonStyle(.borderless)
-                .foregroundStyle(.secondary)
+    private var secondaryAction: FloatingUnavailableStatePanel.Action? {
+        guard let title = state.secondaryButtonTitle,
+              let handler = state.secondaryAction else {
+            return nil
         }
+
+        return FloatingUnavailableStatePanel.Action(
+            title: title,
+            style: .secondary,
+            handler: handler
+        )
     }
 }
 

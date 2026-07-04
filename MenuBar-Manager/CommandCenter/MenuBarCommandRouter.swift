@@ -156,7 +156,7 @@ final class MenuBarCommandRouter {
         if command.action.requiresProMode, !settingsStore.proModeEnabled {
             return .unavailable(
                 status: .requiresPro,
-                message: "This command requires Pro Mode.",
+                message: "This command requires Optional Pro.",
                 diagnosticReason: "proModeDisabled",
                 failedGate: .proMode
             )
@@ -568,7 +568,7 @@ final class MenuBarCommandRouter {
         case .spacingLabs:
             "Menu Bar Spacing Labs is disabled."
         case .assistedMove:
-            "Experimental Icon Moving is disabled."
+            "Labs Icon Moving is disabled."
         case .workspaces:
             "Workspace Preview is disabled."
         case .functionBar:

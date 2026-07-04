@@ -23,8 +23,8 @@ struct FindAndRescueSettingsView: View {
     var body: some View {
         ClearGlassSettingsPage(
             "Find & Rescue",
-            subtitle: "Find hidden icons, review new items, and recover when inline reveal is crowded.",
-            badges: [.preview, .proMode, .accessibilityRequired],
+            subtitle: "Find hidden icons, review new items, and recover crowded reveal with Optional Pro local discovery.",
+            badges: [.preview],
             sectionAnchors: [
                 ClearGlassPageAnchor("Setup", systemImage: "lock", targetID: "Setup Checklist"),
                 ClearGlassPageAnchor("Surfaces", systemImage: "rectangle.on.rectangle", targetID: "Find Icon and Second Bar"),
@@ -53,16 +53,16 @@ struct FindAndRescueSettingsView: View {
     private var proRequirementsSection: some View {
         ClearGlassSection(
             "Setup Checklist",
-            subtitle: "Turn on only the optional local discovery pieces you want."
+            subtitle: "Basic Mode keeps working while each Optional Pro step is unavailable."
         ) {
             FindRescueSetupStepRow(
                 number: 1,
-                title: "Enable Pro Mode",
+                title: "Enable Optional Pro",
                 detail: "Unlock optional rescue surfaces and item review.",
-                statusText: settingsStore.proModeEnabled ? "On" : "Next",
+                statusText: settingsStore.proModeEnabled ? "Optional Pro" : "Basic",
                 state: settingsStore.proModeEnabled ? .complete : .current,
                 systemImage: "star",
-                actionTitle: settingsStore.proModeEnabled ? nil : "Enable Pro Mode",
+                actionTitle: settingsStore.proModeEnabled ? nil : "Enable Optional Pro",
                 action: settingsStore.proModeEnabled ? nil : { enableProMode() }
             )
 
@@ -72,7 +72,7 @@ struct FindAndRescueSettingsView: View {
                 number: 2,
                 title: "Enable Accessibility Discovery",
                 detail: "Build a local item index. No Screen Recording, pixel capture, or network access.",
-                statusText: settingsStore.accessibilityDiscoveryEnabled ? "On" : settingsStore.proModeEnabled ? "Next" : "Locked",
+                statusText: settingsStore.accessibilityDiscoveryEnabled ? "Optional Pro" : "Unavailable",
                 state: discoveryStepState,
                 systemImage: "figure.circle",
                 actionTitle: discoveryStepState == .current ? "Enable Discovery" : nil,
@@ -86,8 +86,8 @@ struct FindAndRescueSettingsView: View {
                 title: "Grant Accessibility Permission",
                 detail: "Allow local reading of menu bar labels and frames.",
                 statusText: permissionService?.status == .granted
-                    ? "Granted"
-                    : discoveryReady ? "Next" : "Locked",
+                    ? "Optional Pro"
+                    : "Unavailable",
                 state: permissionStepState,
                 systemImage: "hand.raised",
                 actionTitle: permissionStepState == .current ? "Open Privacy" : nil,
@@ -100,7 +100,7 @@ struct FindAndRescueSettingsView: View {
                 number: 4,
                 title: "Open Find Icon",
                 detail: "Search, reveal, highlight, or hand off to Second Bar.",
-                statusText: findRescueReady ? "Ready" : "Waiting",
+                statusText: findRescueReady ? "Preview" : "Unavailable",
                 state: findRescueReady ? .current : .locked,
                 systemImage: "magnifyingglass",
                 actionTitle: findRescueReady ? "Open Find Icon" : nil,
@@ -331,9 +331,9 @@ struct FindAndRescueSettingsView: View {
 
     private var findRescueSetupMessage: String {
         if findRescueReady {
-            return "Find Icon and Second Bar can use local Accessibility metadata. Basic Mode remains available if these previews are turned off later."
+            return "Find Icon and Second Bar previews can use local Optional Pro metadata. Basic Mode remains available if these previews are turned off later."
         }
-        return "Basic Mode keeps working while Pro discovery is off, unavailable, or waiting for permission."
+        return "Basic Mode keeps working while Optional Pro discovery is unavailable or waiting for permission."
     }
 
     private func enableProMode() {
@@ -491,7 +491,7 @@ private enum FindRescueSetupStepState: Equatable {
         case .complete:
             .success
         case .current:
-            .warning
+            .info
         case .locked:
             .secondary
         }
@@ -502,7 +502,7 @@ private enum FindRescueSetupStepState: Equatable {
         case .complete:
             .green
         case .current:
-            .orange
+            .accentColor
         case .locked:
             .secondary
         }
@@ -570,11 +570,11 @@ private struct FindRescueOverviewStrip: View {
     let newItemCount: Int
 
     private let columns = [
-        GridItem(.adaptive(minimum: 150), spacing: 10)
+        GridItem(.adaptive(minimum: 150), spacing: 8)
     ]
 
     var body: some View {
-        LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
+        LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
             overviewPill("Discovered", value: "\(scannedCount)", systemImage: "list.bullet", style: scannedCount > 0 ? .info : .secondary)
             overviewPill("Hidden", value: "\(hiddenCount)", systemImage: "eye.slash", style: hiddenCount > 0 ? .info : .secondary)
             overviewPill("Always Hidden", value: "\(alwaysHiddenCount)", systemImage: "lock", style: alwaysHiddenCount > 0 ? .warning : .secondary)
@@ -588,11 +588,11 @@ private struct FindRescueOverviewStrip: View {
         systemImage: String,
         style: ClearGlassStatusStyle
     ) -> some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 9) {
             Image(systemName: systemImage)
                 .font(.system(size: 16, weight: .regular))
                 .foregroundStyle(style.tint)
-                .frame(width: 20)
+                .frame(width: 19)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
@@ -604,8 +604,8 @@ private struct FindRescueOverviewStrip: View {
                     .foregroundStyle(.primary)
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
         .overlay {
@@ -631,7 +631,7 @@ private struct FindRescueFlowPreview: View {
                 Spacer()
 
                 ClearGlassStatusValue(
-                    text: findIconAvailable || secondBarAvailable ? "Ready" : "Gated",
+                    text: findIconAvailable || secondBarAvailable ? "Preview" : "Unavailable",
                     style: findIconAvailable || secondBarAvailable ? .info : .secondary
                 )
             }
@@ -702,7 +702,7 @@ private struct FindRescueFlowPreview: View {
                 .lineLimit(1)
 
             ClearGlassStatusValue(
-                text: isAvailable ? "Ready" : "Needs Pro",
+                text: isAvailable ? "Preview" : "Unavailable",
                 style: isAvailable ? .info : .secondary
             )
         }

@@ -679,7 +679,7 @@ struct AssistedMoveGateTests {
         #expect(ready.command == .moveToZone(.visible))
         #expect(ready.steps.contains { $0.contains("No CGEvent is posted during dry-run") })
         #expect(ready.plannedDragDirection == "right")
-        #expect(ready.riskReason == "Experimental single-item Command-drag; verify after any attempt.")
+        #expect(ready.riskReason == "Labs single-item Command-drag; verify after any attempt.")
     }
 
     @MainActor

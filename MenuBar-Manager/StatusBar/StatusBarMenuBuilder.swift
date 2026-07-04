@@ -330,7 +330,7 @@ final class StatusBarMenuBuilder {
         )
         refreshItem.isEnabled = actions.canRefreshMenuBarItems()
         if !refreshItem.isEnabled {
-            refreshItem.toolTip = "Unavailable until Pro Mode, Accessibility Discovery, and Accessibility permission are enabled."
+            refreshItem.toolTip = "Unavailable until Optional Pro, Accessibility Discovery, and Accessibility permission are enabled."
         }
         submenu.addItem(refreshItem)
 

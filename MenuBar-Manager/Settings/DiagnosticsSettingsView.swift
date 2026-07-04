@@ -946,7 +946,7 @@ private struct HealthStatusSection: View {
     }
 
     private var disableProButton: some View {
-        Button("Disable Pro Mode", systemImage: "hand.raised.slash") {
+        Button("Disable Optional Pro", systemImage: "hand.raised.slash") {
             onDisableProMode?()
         }
     }
@@ -1332,7 +1332,7 @@ private struct LiveStatusIconMoveGrid: View {
             ),
             LiveStatusRowData(label: "Move Retries", value: liveStatus.lastIconMoveRetriesCount.formatted(.number)),
             LiveStatusRowData(
-                label: "Experimental Icon Moving",
+                label: "Labs Icon Moving",
                 value: settingsStore.iconMovingEnabled ? "Enabled" : "Disabled",
                 valueStyle: settingsStore.iconMovingEnabled ? .warning : .secondary
             )
@@ -1407,7 +1407,7 @@ private struct LiveMenuBarSnapshotSection: View {
                 ContentUnavailableView(
                     "No Accessibility Snapshots",
                     systemImage: "menubar.rectangle",
-                    description: Text("Menu bar item snapshots appear after a Pro Mode Accessibility scan.")
+                    description: Text("Menu bar item snapshots appear after an Optional Pro Accessibility scan.")
                 )
                 .frame(maxWidth: .infinity, minHeight: 120)
             } else {

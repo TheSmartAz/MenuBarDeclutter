@@ -719,7 +719,7 @@ private struct MigrationApplyResultPanel: View {
 
             if !result.skippedExperimentalFlags.isEmpty {
                 ClearGlassInlineMessage(
-                    text: "Skipped experimental enablement: \(result.skippedExperimentalFlags.joined(separator: ", ")).",
+                    text: "Skipped Labs enablement: \(result.skippedExperimentalFlags.joined(separator: ", ")).",
                     systemImage: "checkmark.shield",
                     style: .success
                 )

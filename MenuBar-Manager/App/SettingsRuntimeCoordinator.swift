@@ -160,13 +160,13 @@ final class SettingsRuntimeCoordinator {
     func toggleProMode() {
         if settingsStore.proModeEnabled {
             PrivacyProSetupActions.disableProMode(settingsStore: settingsStore)
-            diagnosticsLogger.log("Pro Mode disabled from status menu.")
+            diagnosticsLogger.log("Optional Pro disabled from status menu.")
         } else {
             PrivacyProSetupActions.enableProMode(
                 settingsStore: settingsStore,
                 permissionService: nil
             )
-            diagnosticsLogger.log("Pro Mode enabled from status menu; Accessibility Discovery remains opt-in.")
+            diagnosticsLogger.log("Optional Pro enabled from status menu; Accessibility Discovery remains opt-in.")
         }
 
         refreshPrivacySettings()

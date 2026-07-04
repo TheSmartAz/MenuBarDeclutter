@@ -201,7 +201,7 @@ private extension MenuBarCommandGate {
         case .labsAutomation:
             "Labs Automation"
         case .proMode:
-            "Pro Mode"
+            "Optional Pro"
         case .accessibilityDiscovery:
             "Accessibility Discovery"
         case .accessibilityPermission:
@@ -215,7 +215,7 @@ private extension MenuBarCommandGate {
         case .targetAvailable:
             "Target Available"
         case .experimentalConfirmation:
-            "Experimental Confirmation"
+            "Labs Confirmation"
         }
     }
 }
@@ -234,7 +234,7 @@ private extension MenuBarCommandResultStatus {
         case .requiresUnlock:
             "Unlock Needed"
         case .requiresPro:
-            "Pro Required"
+            "Optional Pro Required"
         case .requiresLabs:
             "Labs Required"
         case .dryRunOnly:

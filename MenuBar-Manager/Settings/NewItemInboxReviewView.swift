@@ -33,7 +33,7 @@ struct NewItemInboxReviewView: View {
         ContentUnavailableView {
             Label("New Item Inbox Unavailable", systemImage: "tray")
         } description: {
-            Text("Pro Discovery and Accessibility permission are required.")
+            Text("Optional Pro Discovery and Accessibility permission are required.")
         } actions: {
             Button("Open Privacy", systemImage: "hand.raised") {
                 onOpenPrivacy?()

@@ -75,7 +75,7 @@ enum HealthRecoveryAction: String, CaseIterable, Codable, Hashable, Sendable {
         case .resetSettingsToDefaults:
             "Reset settings to defaults"
         case .disableProMode:
-            "Disable Pro Mode"
+            "Disable Optional Pro"
         case .enterSafeModeNextLaunch:
             "Enter Safe Mode next launch"
         case .exitFullMenuBarMode:

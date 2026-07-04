@@ -62,8 +62,8 @@ nonisolated struct LayoutSuggestionService {
             suggestions.append(
                 LayoutSuggestion(
                     id: "enable-pro-better-estimate",
-                    title: "Enable Pro Mode for Better Estimate",
-                    message: "Pro Mode with Accessibility provides more accurate capacity estimates. It is optional and opt-in.",
+                    title: "Enable Optional Pro for Better Estimate",
+                    message: "Optional Pro with Accessibility provides more accurate capacity estimates. It is optional and opt-in.",
                     severity: .info,
                     actionKind: .enableProForBetterEstimate,
                     requiresProMode: true,
@@ -105,7 +105,7 @@ nonisolated struct LayoutSuggestionService {
                 LayoutSuggestion(
                     id: "compact-spacing-labs",
                     title: "Try Compact Spacing (Labs)",
-                    message: "Experimental compact spacing may help fit more items. It is reversible and Labs-only.",
+                    message: "Labs compact spacing may help fit more items. It is reversible and Labs-only.",
                     severity: .info,
                     actionKind: .compactSpacingLabs,
                     isExperimental: true,

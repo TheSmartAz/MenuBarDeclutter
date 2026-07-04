@@ -291,10 +291,10 @@ struct RecoverySettingsView: View {
 
             ClearGlassControlRow(
                 systemImage: "star.slash",
-                title: "Disable Pro Mode",
-                subtitle: "Turn off Pro-only discovery and optional features."
+                title: "Disable Optional Pro",
+                subtitle: "Turn off Optional Pro discovery and optional features."
             ) {
-                Button("Disable Pro Mode") {
+                Button("Disable Optional Pro") {
                     onDisableProMode?()
                 }
                 .controlSize(.small)
@@ -448,15 +448,15 @@ private struct RecoveryOverviewStrip: View {
     let proModeEnabled: Bool
 
     private let columns = [
-        GridItem(.adaptive(minimum: 150), spacing: 10)
+        GridItem(.adaptive(minimum: 150), spacing: 8)
     ]
 
     var body: some View {
-        LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
+        LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
             overviewPill("Health", value: healthStatus, systemImage: "heart.text.square", style: issueCount == 0 ? .success : .warning)
             overviewPill("Issues", value: "\(issueCount)", systemImage: "exclamationmark.triangle", style: issueCount == 0 ? .success : .warning)
             overviewPill("Safe Mode", value: safeModeActive ? "Active" : "Off", systemImage: "lifepreserver", style: safeModeActive ? .warning : .secondary)
-            overviewPill("Pro Mode", value: proModeEnabled ? "On" : "Off", systemImage: "star", style: proModeEnabled ? .info : .secondary)
+            overviewPill("Optional Pro", value: proModeEnabled ? "On" : "Off", systemImage: "star", style: proModeEnabled ? .info : .secondary)
         }
     }
 
@@ -466,11 +466,11 @@ private struct RecoveryOverviewStrip: View {
         systemImage: String,
         style: ClearGlassStatusStyle
     ) -> some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 9) {
             Image(systemName: systemImage)
                 .font(.system(size: 16, weight: .regular))
                 .foregroundStyle(style.tint)
-                .frame(width: 20)
+                .frame(width: 19)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
@@ -484,8 +484,8 @@ private struct RecoveryOverviewStrip: View {
                     .minimumScaleFactor(0.82)
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
         .overlay {

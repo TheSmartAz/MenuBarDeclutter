@@ -28,7 +28,7 @@ extension OnboardingStep {
             id: "welcome",
             title: "Quiet your menu bar",
             symbol: "menubar.rectangle",
-            body: "\(AppConstants.displayName) starts in Basic Mode: local settings, app-owned controls, and no sensitive permissions. You can hide clutter first and decide later whether any optional Pro tools are worth enabling."
+            body: "\(AppConstants.displayName) starts in Basic Mode: local settings, app-owned controls, and no sensitive permissions. You can hide clutter first and decide later whether any Optional Pro tools are worth enabling."
         ),
         OnboardingStep(
             id: "nativeCleanup",
@@ -40,7 +40,7 @@ extension OnboardingStep {
             id: "basicHideReveal",
             title: "Basic Hide & Reveal",
             symbol: "eye",
-            body: "Place the control and separator, then collapse the items to the right of the separator. Expand or Reveal All brings them back in Basic Mode, without Accessibility, Screen Recording, or Pro Mode."
+            body: "Place the control and separator, then collapse the items to the right of the separator. Expand or Reveal All brings them back in Basic Mode, without Accessibility, Screen Recording, or Optional Pro."
         ),
         OnboardingStep(
             id: "arrange",
@@ -52,7 +52,7 @@ extension OnboardingStep {
             id: "findRescue",
             title: "Optional rescue tools",
             symbol: "lifepreserver",
-            body: "Later, Find Icon, Second Bar, and New Item Inbox can help recover hidden or newly discovered items. They stay optional and use Pro Discovery only after explicit opt-in."
+            body: "Later, Find Icon, Second Bar, and New Item Inbox can help recover hidden or newly discovered items. They stay optional and use Optional Pro Discovery only after explicit opt-in."
         ),
         OnboardingStep(
             id: "workspaces",
@@ -76,7 +76,7 @@ extension OnboardingStep {
             id: "finish",
             title: "Choose your next step",
             symbol: "checkmark.circle",
-            body: "Open Settings, test Arrange, create a local sample Workspace, or skip advanced setup. Preview, Labs, Experimental, and Pro features remain off until you explicitly enable them.",
+            body: "Open Settings, test Arrange, create a local sample Workspace, or skip advanced setup. Preview, Labs, and Optional Pro features remain off until you explicitly enable them.",
             callout: "Creating a sample Workspace uses local app-owned commands only and requests no permissions."
         )
     ]

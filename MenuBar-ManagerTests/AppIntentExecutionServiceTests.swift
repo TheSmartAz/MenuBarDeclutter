@@ -10,6 +10,7 @@ struct AppIntentExecutionServiceTests {
         automationPaused: Bool = false,
         proModeEnabled: Bool = false,
         accessibilityDiscoveryEnabled: Bool = false,
+        searchEnabled: Bool = true,
         appIntentsCanApplyProfiles: Bool = false,
         appIntentsCanAccessLabs: Bool = false,
         menuBarSpacingLabsEnabled: Bool = false
@@ -22,6 +23,7 @@ struct AppIntentExecutionServiceTests {
         store.automationPaused = automationPaused
         store.proModeEnabled = proModeEnabled
         store.accessibilityDiscoveryEnabled = accessibilityDiscoveryEnabled
+        store.searchEnabled = searchEnabled
         store.appIntentsCanApplyProfiles = appIntentsCanApplyProfiles
         store.appIntentsCanAccessLabs = appIntentsCanAccessLabs
         store.menuBarSpacingLabsEnabled = menuBarSpacingLabsEnabled

@@ -348,7 +348,7 @@ This checklist verifies the Phase 1 hiding MVP. Later-phase features such as glo
 
 - Start from a clean install or choose Settings → General → Reset All Settings.
 - Open the status menu and choose "Find Icon…".
-- Confirm the Find Icon panel opens centered as a native floating utility panel with the search field focused.
+- Confirm the Find Icon panel opens centered as a borderless floating utility panel with no titlebar or traffic-light controls, and the search field focused.
 - With Pro Mode disabled, confirm the panel explains that Pro Mode is required and Basic Mode remains available.
 - Click "Enable Pro Mode" in the panel; confirm no Accessibility prompt appears automatically.
 - If Accessibility permission is not granted, confirm the panel explains that Accessibility permission is needed and offers Request Permission / System Settings actions.
@@ -371,6 +371,7 @@ This checklist verifies the Phase 1 hiding MVP. Later-phase features such as glo
 - Type part of a bundle identifier shown in Diagnostics; confirm bundle-id matches appear.
 - Clear the query; confirm recent indexed items appear.
 - Press Escape; confirm the panel closes.
+- Reopen Find Icon, click outside the panel, and confirm it closes.
 
 ### Keyboard navigation
 
@@ -458,7 +459,7 @@ This checklist verifies the Phase 1 hiding MVP. Later-phase features such as glo
 
 - Enable Pro Mode, Accessibility Discovery, and grant Accessibility permission.
 - Choose "Refresh Menu Bar Items" from the status menu.
-- Choose "Show Second Bar"; confirm a native utility panel appears near the menu bar with visible titlebar controls and no nested rounded-card shell.
+- Choose "Show Second Bar"; confirm a borderless floating utility panel appears near the menu bar with no titlebar or traffic-light controls and no nested rounded-card shell.
 - Choose "Hide Second Bar"; confirm the panel closes.
 - Choose "Toggle Second Bar" twice; confirm it opens and closes.
 - Press Escape while the panel is key; confirm it closes.

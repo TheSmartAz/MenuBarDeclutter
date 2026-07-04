@@ -19,7 +19,7 @@ enum IconMoveError: Error, Equatable, Sendable {
         case .disabled:
             "Icon Moving Disabled"
         case .proModeRequired:
-            "Pro Mode Required"
+            "Optional Pro Required"
         case .accessibilityPermissionRequired:
             "Accessibility Permission Required"
         case .confirmationCancelled:

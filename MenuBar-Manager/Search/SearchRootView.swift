@@ -63,7 +63,7 @@ struct SearchRootView: View {
             searchFooter
         }
         .frame(width: panelWidth, height: panelHeight)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .menuBarDeclutterFloatingPanelChrome()
         .accessibilityIdentifier("search.panel")
         .onAppear {
             onRefresh()
@@ -130,7 +130,7 @@ struct SearchRootView: View {
     }
 
     private var panelHeight: CGFloat {
-        searchIsAvailable ? 400 : 340
+        searchIsAvailable ? 400 : 460
     }
 
     private var searchHeader: some View {
@@ -193,6 +193,7 @@ struct SearchRootView: View {
             RoundedRectangle(cornerRadius: 7)
                 .stroke(searchFieldFocused ? Color.accentColor.opacity(0.45) : Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
         }
+        .opacity(searchIsAvailable ? 1 : 0.52)
     }
 
     private var searchFilterBar: some View {
@@ -305,24 +306,24 @@ struct SearchRootView: View {
                                     groupContextMenu(for: result)
                                     Divider()
                                     if settingsStore.iconMovingEnabled {
-                                        Button("Experimental: Move to Visible", systemImage: "arrow.right.to.line") {
+                                        Button("Labs: Move to Visible", systemImage: "arrow.right.to.line") {
                                             move(result, command: .moveToZone(.visible))
                                         }
-                                        Button("Experimental: Move to Hidden", systemImage: "arrow.left.and.right") {
+                                        Button("Labs: Move to Hidden", systemImage: "arrow.left.and.right") {
                                             move(result, command: .moveToZone(.hidden))
                                         }
-                                        Button("Experimental: Move to Always Hidden", systemImage: "eye.slash") {
+                                        Button("Labs: Move to Always Hidden", systemImage: "eye.slash") {
                                             move(result, command: .moveToZone(.alwaysHidden))
                                         }
                                         Divider()
-                                        Button("Experimental: Move Left", systemImage: "arrow.left") {
+                                        Button("Labs: Move Left", systemImage: "arrow.left") {
                                             move(result, command: .moveLeft)
                                         }
-                                        Button("Experimental: Move Right", systemImage: "arrow.right") {
+                                        Button("Labs: Move Right", systemImage: "arrow.right") {
                                             move(result, command: .moveRight)
                                         }
                                     } else {
-                                        Button("Experimental Move Disabled", systemImage: "exclamationmark.triangle") {}
+                                        Button("Labs Move Unavailable", systemImage: "exclamationmark.triangle") {}
                                             .disabled(true)
                                     }
                                 }
@@ -354,7 +355,7 @@ struct SearchRootView: View {
             Spacer()
 
             if !searchIsAvailable {
-                Text("Enable requirements above to use local search.")
+                Text("Complete the Optional Pro next step above to search local menu bar items.")
                     .lineLimit(1)
                     .foregroundStyle(.secondary)
             } else if let activationMessage {
@@ -425,7 +426,7 @@ struct SearchRootView: View {
             return "Favorite an item from its context menu to keep it here."
         }
 
-        return "Refresh menu bar items after enabling Pro Mode and Accessibility."
+        return "Refresh menu bar items after enabling Optional Pro discovery and Accessibility."
     }
 
     private var searchIsAvailable: Bool {
@@ -444,9 +445,9 @@ struct SearchRootView: View {
     private var unavailableState: SearchUnavailableState? {
         if liveStatus.safeModeActive {
             return SearchUnavailableState(
-                title: "Safe Mode Active",
+                title: "Find Icon Unavailable",
                 systemImage: "exclamationmark.triangle",
-                message: "Find Icon is paused while Safe Mode is active. Reason: \(liveStatus.safeModeReasonSummary).",
+                message: "Safe Mode is active, so Find Icon actions are paused. Reason: \(liveStatus.safeModeReasonSummary).",
                 primaryButtonTitle: "Refresh Status",
                 primaryAction: onRefresh,
                 secondaryButtonTitle: nil,
@@ -456,10 +457,10 @@ struct SearchRootView: View {
 
         if !settingsStore.proModeEnabled {
             return SearchUnavailableState(
-                title: "Pro Mode Required",
+                title: "Find Icon Unavailable",
                 systemImage: "lock",
-                message: "Find Icon uses the optional Accessibility discovery index. Basic Mode remains available without permissions.",
-                primaryButtonTitle: "Enable Pro Mode",
+                message: "Find Icon search is Optional Pro. Basic Mode remains available without Accessibility, screen capture, automation, or network access.",
+                primaryButtonTitle: "Enable Optional Pro",
                 primaryAction: {
                     PrivacyProSetupActions.enableProMode(
                         settingsStore: settingsStore,
@@ -467,16 +468,16 @@ struct SearchRootView: View {
                     )
                     onSettingsChanged()
                 },
-                secondaryButtonTitle: "Open Privacy Settings",
+                secondaryButtonTitle: "Review Privacy",
                 secondaryAction: onOpenPrivacySettings
             )
         }
 
         if !settingsStore.accessibilityDiscoveryEnabled {
             return SearchUnavailableState(
-                title: "Accessibility Discovery Off",
+                title: "Optional Pro Discovery Off",
                 systemImage: "hand.raised",
-                message: "Turn on Accessibility Discovery to build the local menu bar item index.",
+                message: "Turn on local Accessibility Discovery to build the menu bar item index used by Find Icon.",
                 primaryButtonTitle: "Enable Discovery",
                 primaryAction: {
                     settingsStore.accessibilityDiscoveryEnabled = true
@@ -489,9 +490,9 @@ struct SearchRootView: View {
 
         if permissionService.status != .granted {
             return SearchUnavailableState(
-                title: "Accessibility Permission Needed",
+                title: "Find Icon Unavailable",
                 systemImage: "hand.raised.slash",
-                message: "Grant Accessibility permission to let MenuBarDeclutter read menu bar item labels and frames. No screen recording or clicking is used.",
+                message: "Grant Accessibility permission to let Optional Pro discovery read menu bar item labels and frames locally. No Screen Recording, clicking, or network access is used.",
                 primaryButtonTitle: "Request Permission",
                 primaryAction: {
                     permissionService.requestPromptFromUserAction()
@@ -821,65 +822,33 @@ private struct SearchUnavailableView: View {
     let state: SearchUnavailableState
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: state.systemImage)
-                    .font(.system(size: 24, weight: .regular))
-                    .foregroundStyle(.orange)
-                    .frame(width: 30)
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(state.title)
-                        .font(.title3)
-                        .bold()
-
-                    Text(state.message)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 10) {
-                    unavailableButtons
-                }
-
-                VStack(alignment: .leading, spacing: 8) {
-                    unavailableButtons
-                }
-            }
-
-            ClearGlassInlineMessage(
-                text: "Basic Mode stays available without Accessibility, Screen Recording, Apple Events, Input Monitoring, or network access.",
-                systemImage: "lock.shield",
-                style: .success
-            )
-        }
-        .padding(20)
-        .frame(maxWidth: 400, alignment: .leading)
-        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
-        .overlay {
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("search.unavailable")
+        FloatingUnavailableStatePanel(
+            title: state.title,
+            message: state.message,
+            systemImage: state.systemImage,
+            privacyMessage: "Basic Mode stays available without Accessibility, Screen Recording, Apple Events, Input Monitoring, or network access.",
+            primaryAction: .init(
+                title: state.primaryButtonTitle,
+                style: .primary,
+                accessibilityIdentifier: "search.unavailable.primary",
+                handler: state.primaryAction
+            ),
+            secondaryAction: secondaryAction,
+            accessibilityIdentifier: "search.unavailable"
+        )
     }
 
-    @ViewBuilder
-    private var unavailableButtons: some View {
-        Button(state.primaryButtonTitle, action: state.primaryAction)
-            .buttonStyle(.borderedProminent)
-            .accessibilityLabel(Text(state.primaryButtonTitle))
-            .accessibilityIdentifier("search.unavailable.primary")
-
-        if let secondaryButtonTitle = state.secondaryButtonTitle,
-           let secondaryAction = state.secondaryAction {
-            Button(secondaryButtonTitle, action: secondaryAction)
-                .buttonStyle(.borderless)
-                .foregroundStyle(.secondary)
+    private var secondaryAction: FloatingUnavailableStatePanel.Action? {
+        guard let title = state.secondaryButtonTitle,
+              let handler = state.secondaryAction else {
+            return nil
         }
+
+        return FloatingUnavailableStatePanel.Action(
+            title: title,
+            style: .secondary,
+            handler: handler
+        )
     }
 }
 

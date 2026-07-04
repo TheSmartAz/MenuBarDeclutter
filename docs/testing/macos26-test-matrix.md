@@ -12,9 +12,10 @@
 | Health | Missing/misplaced status items | Diagnostics reports warning/critical issues and Fix Automatically recreates or resets state. |
 | Health | Corrupted settings | Diagnostics reports settings corruption and Reset Basic Mode returns safe defaults. |
 | Health | Stale Pro scan | Diagnostics reports stale scan when Pro requirements are enabled and granted. |
-| Search | Pro requirements missing | Find Icon shows explanatory unavailable states and does not prompt automatically. |
+| Search | Pro requirements missing | Find Icon shows explanatory unavailable states in a borderless panel and does not prompt automatically. |
 | Second Bar | Pro requirements missing | Second Bar shows explanatory unavailable states and Basic Mode continues working. |
-| Second Bar | Pro requirements met | Floating panel shows hidden/always-hidden items, remains in visible bounds, and closes with Escape. |
+| Second Bar | Pro requirements met | Borderless floating panel shows hidden/always-hidden items, remains in visible bounds, and closes with Escape or outside click when enabled. |
+| Groups | Group panel | Borderless floating panel shows saved group items and closes with Escape or outside click. |
 | Icon Moving | Disabled or permission missing | Move actions are skipped with clear diagnostics and no drag occurs. |
 | Icon Moving | Explicit third-party move | User-triggered Command-drag is confirmed, executed, rescanned, and verified or clearly reported as failed. |
 | Profiles | Create/apply/import/export | Local JSON profiles persist and apply conservative settings without automatic bulk moves. |

@@ -115,7 +115,7 @@ private struct ZoneBadge: View {
     private var zoneColor: Color {
         switch zone {
         case .hidden:
-            .orange
+            .accentColor
         case .alwaysHidden:
             .red
         case .visible:

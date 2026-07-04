@@ -37,7 +37,7 @@ nonisolated enum AssistedMoveGateFailure: String, CaseIterable, Identifiable, Se
     var title: String {
         switch self {
         case .proModeOff:
-            "Pro Mode Required"
+            "Optional Pro Required"
         case .accessibilityDiscoveryOff:
             "Accessibility Discovery Required"
         case .accessibilityPermissionMissing:

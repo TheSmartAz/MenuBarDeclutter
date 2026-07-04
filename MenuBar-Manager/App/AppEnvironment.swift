@@ -325,7 +325,7 @@ final class AppEnvironment {
             refreshMenuBarItems: { [weak self] in self?.refreshMenuBarItems() },
             toggleProMode: { [weak self] in self?.toggleProMode() },
             proModeTitle: { [weak self] in
-                self?.settingsStore.proModeEnabled == true ? "Disable Pro Mode" : "Enable Pro Mode"
+                self?.settingsStore.proModeEnabled == true ? "Disable Optional Pro" : "Enable Optional Pro"
             },
             toggleAutomationPaused: { [weak self] in self?.toggleAutomationPaused() },
             automationPausedTitle: { [weak self] in
@@ -1144,7 +1144,7 @@ final class AppEnvironment {
 
     private func startMenuBarScanningIfAllowed() {
         guard !safeModeLaunchState.isSafeModeActive else {
-            diagnosticsLogger.log("Safe Mode skipped Pro Mode Accessibility scans.", level: .warning)
+            diagnosticsLogger.log("Safe Mode skipped Optional Pro Accessibility scans.", level: .warning)
             return
         }
         menuBarScanCoordinator.start()
@@ -1201,7 +1201,7 @@ final class AppEnvironment {
         let alert = NSAlert()
         alert.messageText = "Updated to v0.1 safe defaults"
         alert.informativeText = """
-        Experimental automation, icon moving, Pro discovery, auto-rehide, hover reveal, hotkeys, and Launch at Login were reset to conservative defaults. Your profiles were left in place.
+        Labs automation, icon moving, Optional Pro discovery, auto-rehide, hover reveal, hotkeys, and Launch at Login were reset to conservative defaults. Your profiles were left in place.
         """
         alert.alertStyle = .informational
         alert.addButton(withTitle: "OK")

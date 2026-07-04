@@ -29,7 +29,7 @@ struct IconGroupItemPickerView: View {
         DisclosureGroup {
             if !isAvailable {
                 ClearGlassInlineMessage(
-                    text: "Enable Pro Mode and Accessibility Discovery for the current menu bar item picker.",
+                    text: "Enable Optional Pro and Accessibility Discovery for the current menu bar item picker.",
                     systemImage: "star",
                     style: .info
                 )
@@ -37,7 +37,7 @@ struct IconGroupItemPickerView: View {
                 SettingsUnavailableGate(
                     .emptyData,
                     title: "No Snapshot Items",
-                    message: "Refresh menu bar items after enabling Pro Mode.",
+                    message: "Refresh menu bar items after enabling Optional Pro.",
                     systemImage: "menubar.rectangle",
                     minHeight: 110
                 )

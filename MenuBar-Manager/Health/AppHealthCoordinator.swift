@@ -258,7 +258,7 @@ final class AppHealthCoordinator {
         dependencies.liveStatus.scannedMenuBarItems = []
         dependencies.liveStatus.lastMenuBarScanTime = nil
         dependencies.liveStatus.menuBarScanFailuresCount = 0
-        dependencies.diagnosticsLogger.log("Pro Mode disabled by health recovery.", level: .warning)
+        dependencies.diagnosticsLogger.log("Optional Pro disabled by health recovery.", level: .warning)
     }
 
     func requestSafeModeNextLaunch() {

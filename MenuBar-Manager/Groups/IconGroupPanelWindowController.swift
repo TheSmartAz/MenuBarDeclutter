@@ -18,22 +18,13 @@ final class IconGroupPanelWindowController: NSWindowController, NSWindowDelegate
 
         let panel = IconGroupPanel(
             contentRect: NSRect(x: 0, y: 0, width: 560, height: 420),
-            styleMask: [.titled, .closable, .utilityWindow],
+            styleMask: [.borderless],
             backing: .buffered,
             defer: false
         )
-        panel.title = "Group"
-        panel.titleVisibility = .visible
-        panel.titlebarAppearsTransparent = false
-        panel.isFloatingPanel = true
-        panel.isReleasedWhenClosed = false
-        panel.level = .floating
+        panel.applyMenuBarDeclutterFloatingPanelStyle(title: "Group")
         panel.collectionBehavior = [.canJoinAllSpaces, .transient]
-        panel.backgroundColor = .windowBackgroundColor
-        panel.isOpaque = true
-        panel.hasShadow = true
         panel.minSize = NSSize(width: 500, height: 360)
-        panel.animationBehavior = .utilityWindow
 
         super.init(window: panel)
         panel.delegate = self
@@ -90,6 +81,11 @@ final class IconGroupPanelWindowController: NSWindowController, NSWindowDelegate
             outcome: .selectedWithoutHighlight,
             message: "Private Access authentication requested."
         )
+    }
+
+    func windowDidResignKey(_ notification: Notification) {
+        guard window?.isVisible == true else { return }
+        window?.close()
     }
 }
 

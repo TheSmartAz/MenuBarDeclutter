@@ -32,26 +32,14 @@ final class SearchWindowController: NSWindowController, NSWindowDelegate {
         )
         let panel = SearchPanel(
             contentRect: NSRect(x: 0, y: 0, width: 620, height: 440),
-            styleMask: [.titled, .closable, .utilityWindow],
+            styleMask: [.borderless],
             backing: .buffered,
             defer: false
         )
-        panel.title = "Find Icon"
-        panel.titleVisibility = .visible
-        panel.titlebarAppearsTransparent = false
-        panel.isFloatingPanel = true
-        panel.hidesOnDeactivate = false
-        panel.isReleasedWhenClosed = false
-        panel.level = .floating
-        panel.backgroundColor = .windowBackgroundColor
-        panel.isOpaque = true
-        panel.hasShadow = true
+        panel.applyMenuBarDeclutterFloatingPanelStyle(title: "Find Icon")
         panel.setContentSize(Self.contentSize(showsUnavailableState: showsUnavailableState))
         panel.minSize = NSSize(width: 520, height: 340)
         panel.collectionBehavior = [.moveToActiveSpace, .transient]
-        panel.animationBehavior = .utilityWindow
-        panel.standardWindowButton(.miniaturizeButton)?.isHidden = true
-        panel.standardWindowButton(.zoomButton)?.isHidden = true
 
         super.init(window: panel)
 
@@ -104,6 +92,11 @@ final class SearchWindowController: NSWindowController, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         diagnosticsLogger.log("Find Icon panel closed.", level: .debug)
+    }
+
+    func windowDidResignKey(_ notification: Notification) {
+        guard window?.isVisible == true else { return }
+        window?.close()
     }
 
     private static func formattedMilliseconds(_ value: Double) -> String {

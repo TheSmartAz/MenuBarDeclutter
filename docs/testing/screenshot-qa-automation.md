@@ -24,7 +24,8 @@ For the full repeatable capture pass:
 scripts/qa_capture_ui_screenshots.sh --build
 ```
 
-For a quicker pass of the focused Settings sidebar pages plus floating panels:
+For a quicker pass of the focused Settings sidebar pages, onboarding surfaces,
+and floating panels:
 
 ```sh
 scripts/qa_capture_ui_screenshots.sh --build --focused-only
@@ -67,7 +68,12 @@ It also attempts these floating panels when their launch switches are available:
 - Floating Second Bar
 - Floating Group Panel
 
-Focused Settings pages are required. Floating panels are best-effort by default because preview gates can change; pass `--strict-optional` if a missing panel should fail the run.
+It also captures these onboarding launch-switch surfaces:
+
+- Onboarding Welcome
+- Onboarding Privacy
+
+Focused Settings pages and onboarding surfaces are required. Floating panels are best-effort by default because preview gates can change; pass `--strict-optional` if a missing panel should fail the run.
 
 ## Outputs
 
@@ -91,5 +97,6 @@ Use `--output-dir PATH` or `OUTPUT_DIR=PATH` to choose a different artifact loca
 
 - XCTest screenshot attachment export still works after successful UI tests via `scripts/export_visual_smoke_screenshots.sh`, but XCTest automation may time out while enabling automation mode in macOS automation sessions. This script avoids that path by launching the app directly.
 - `screencapture` depends on an active graphical session and may fail until the runner app has Screen Recording permission.
+- Status menu visual capture is still not automated. `StatusBarMenuBuilder` remains source-covered by tests, with status menu behavior covered through manual QA.
 - The script terminates existing `MenuBarDeclutter` processes before capture so it does not select an older app window. Use `--keep-running-app` only when you know there is no conflicting window.
 - Screenshots are visual QA artifacts. Review them before sharing outside the project because they can include window shadows or transparent edge pixels from the surrounding desktop.

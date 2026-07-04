@@ -76,7 +76,7 @@ nonisolated enum FunctionBarItemStatus: String, Equatable, Sendable {
         case .available: "Available"
         case .unavailable: "Unavailable"
         case .missingReference: "Missing"
-        case .requiresPro: "Requires Pro"
+        case .requiresPro: "Requires Optional Pro"
         case .requiresAccessibility: "Requires Accessibility"
         case .stale: "Stale"
         case .protected: "Protected"
@@ -146,7 +146,7 @@ nonisolated enum FunctionBarUnavailableReason: String, Equatable, Sendable {
         case .missingReference:
             "This item references something that no longer exists."
         case .requiresPro:
-            "This item needs Pro Discovery to resolve."
+            "This item needs Optional Pro Discovery to resolve."
         case .requiresAccessibility:
             "This item needs Accessibility permission."
         }

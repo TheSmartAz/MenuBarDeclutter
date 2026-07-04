@@ -35,7 +35,7 @@ final class MenuBarDeclutterUITests: XCTestCase {
         assertButton("Fix Automatically", in: app)
         assertButton("Recreate", in: app)
         assertButton("Reset Basic Mode", in: app)
-        assertButton("Disable Pro Mode", in: app)
+        assertButton("Disable Optional Pro", in: app)
         assertButton("Export Diagnostics", in: app)
         assertButton("Safe Mode Next Launch", in: app)
     }
@@ -63,21 +63,21 @@ final class MenuBarDeclutterUITests: XCTestCase {
         XCTAssertTrue(scrollView.waitForExistence(timeout: 5), "Expected Privacy settings to scroll.")
 
         assertElement("privacy.proDiscovery.section", in: app, scrolling: scrollView, maxSwipes: 4)
-        assertButton("Enable Pro Mode", in: app, scrolling: scrollView)
+        assertButton("Enable Optional Pro", in: app, scrolling: scrollView)
         assertStaticText("Accessibility Discovery", in: app)
         assertStaticText("Accessibility Permission", in: app)
 
         let requestPermission = app.buttons["Request Permission"]
         XCTAssertTrue(requestPermission.waitForExistence(timeout: 5), "Expected explicit Request Permission button.")
-        XCTAssertFalse(requestPermission.isEnabled, "Request Permission should stay disabled until Pro Mode is explicitly enabled.")
+        XCTAssertFalse(requestPermission.isEnabled, "Request Permission should stay disabled until Optional Pro is explicitly enabled.")
 
-        let enableProMode = app.buttons["Enable Pro Mode"]
-        XCTAssertTrue(enableProMode.waitForExistence(timeout: 5), "Expected Enable Pro Mode button before clicking.")
+        let enableProMode = app.buttons["Enable Optional Pro"]
+        XCTAssertTrue(enableProMode.waitForExistence(timeout: 5), "Expected Enable Optional Pro button before clicking.")
         enableProMode.click()
-        assertStaticText("Pro Mode is on, but discovery is disabled. Pro features degrade to their unavailable state until discovery is enabled.", in: app)
+        assertStaticText("Optional Pro is on, but local discovery is off. Optional Pro surfaces show Unavailable until discovery is enabled.", in: app)
         XCTAssertFalse(
             app.buttons["Request Permission"].isEnabled,
-            "The UI-test harness has no permission service, so Pro Mode alone must not make a system prompt path active."
+            "The UI-test harness has no permission service, so Optional Pro alone must not make a system prompt path active."
         )
     }
 
@@ -85,8 +85,8 @@ final class MenuBarDeclutterUITests: XCTestCase {
     func testSearchUnavailableStateIsVisibleWithoutProMode() throws {
         let app = launchApp(opening: "--ui-testing-show-search")
 
-        assertStaticText("Pro Mode Required", in: app)
-        assertButton("Enable Pro Mode", in: app)
+        assertStaticText("Find Icon Unavailable", in: app)
+        assertButton("Enable Optional Pro", in: app)
         XCTAssertFalse(app.staticTexts["Find Icon Disabled"].waitForExistence(timeout: 1))
         XCTAssertFalse(app.buttons["Enable Find Icon"].exists)
     }
@@ -94,14 +94,14 @@ final class MenuBarDeclutterUITests: XCTestCase {
     @MainActor
     func testDefaultGatedFeaturePanelsSkipLegacyEnableState() throws {
         let searchApp = launchApp(opening: "--ui-testing-show-search")
-        assertStaticText("Pro Mode Required", in: searchApp)
+        assertStaticText("Find Icon Unavailable", in: searchApp)
         XCTAssertFalse(searchApp.staticTexts["Find Icon Disabled"].waitForExistence(timeout: 1))
         XCTAssertFalse(searchApp.buttons["Enable Find Icon"].exists)
         terminateApplication(searchApp)
 
         let secondBarApp = launchApp(opening: "--ui-testing-show-second-bar")
         assertElement("secondBar.unavailable", in: secondBarApp)
-        assertStaticText("Pro Mode Required", in: secondBarApp)
+        assertStaticText("Second Bar Unavailable", in: secondBarApp)
         XCTAssertFalse(secondBarApp.staticTexts["Second Bar Disabled"].waitForExistence(timeout: 1))
         XCTAssertFalse(secondBarApp.buttons["Enable Second Bar"].exists)
     }
@@ -116,7 +116,7 @@ final class MenuBarDeclutterUITests: XCTestCase {
 
         let searchApp = launchApp(opening: ["--ui-testing-show-search"] + grantedArguments)
         assertElement("search.panel", in: searchApp)
-        XCTAssertFalse(searchApp.staticTexts["Pro Mode Required"].waitForExistence(timeout: 1))
+        XCTAssertFalse(searchApp.staticTexts["Find Icon Unavailable"].waitForExistence(timeout: 1))
         XCTAssertFalse(searchApp.staticTexts["Accessibility Discovery Off"].exists)
         XCTAssertFalse(searchApp.staticTexts["Accessibility Permission Needed"].exists)
         assertStaticText("Results", in: searchApp)
@@ -139,7 +139,7 @@ final class MenuBarDeclutterUITests: XCTestCase {
 
         let searchApp = launchApp(opening: ["--ui-testing-show-search"] + hiddenShortcutArguments)
         assertElement("search.panel", in: searchApp)
-        XCTAssertFalse(searchApp.staticTexts["Pro Mode Required"].waitForExistence(timeout: 1))
+        XCTAssertFalse(searchApp.staticTexts["Find Icon Unavailable"].waitForExistence(timeout: 1))
         XCTAssertFalse(searchApp.staticTexts["Accessibility Discovery Off"].exists)
         XCTAssertFalse(searchApp.staticTexts["Accessibility Permission Needed"].exists)
         assertStaticText("Results", in: searchApp)
@@ -159,8 +159,8 @@ final class MenuBarDeclutterUITests: XCTestCase {
 
         assertStaticText("Second Bar", in: app)
         assertStaticText("Second Bar uses Accessibility snapshots and app bundle icons. It does not use Screen Recording or captured menu bar pixels.", in: app)
-        assertStaticText("Pro Mode", in: app, scrolling: scrollView, maxSwipes: 4)
-        assertStaticText("Disabled", in: app, scrolling: scrollView, maxSwipes: 2)
+        assertStaticText("Optional Pro", in: app, scrolling: scrollView, maxSwipes: 4)
+        assertStaticText("Unavailable", in: app, scrolling: scrollView, maxSwipes: 2)
         assertStaticText("Accessibility Permission", in: app, scrolling: scrollView, maxSwipes: 2)
         assertButton("Open Privacy Settings", in: app, scrolling: scrollView, maxSwipes: 2)
     }
@@ -198,7 +198,7 @@ final class MenuBarDeclutterUITests: XCTestCase {
         assertStaticText("Find Icon", in: app)
         assertStaticText("Second Bar", in: app)
         assertStaticText("Crowded menu rescue", in: app)
-        assertStaticText("This command requires Pro Mode. Gate: Pro Mode.", in: app)
+        assertStaticText("This command requires Optional Pro. Gate: Optional Pro.", in: app)
         XCTAssertFalse(
             app.staticTexts["Command Center: Find Icon"].exists,
             "Find & Rescue should not expose internal Command Center terminology."
@@ -360,36 +360,62 @@ final class MenuBarDeclutterUITests: XCTestCase {
     func testSearchPanelEscapeDismisses() throws {
         let app = launchApp(opening: "--ui-testing-show-search")
 
-        assertStaticText("Pro Mode Required", in: app)
+        assertStaticText("Find Icon Unavailable", in: app)
         RunLoop.current.run(until: Date().addingTimeInterval(0.25))
         app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
 
         XCTAssertFalse(
-            app.staticTexts["Pro Mode Required"].waitForExistence(timeout: 3),
+            app.staticTexts["Find Icon Unavailable"].waitForExistence(timeout: 3),
             "Expected Escape to dismiss the floating Find Icon panel."
+        )
+    }
+
+    @MainActor
+    func testFocusAppsPanelEscapeDismisses() throws {
+        let app = launchApp(opening: "--ui-testing-show-group-panel")
+
+        assertElement("groupPanel.panel", in: app, timeout: 10)
+        assertStaticText("Focus Apps", in: app)
+        RunLoop.current.run(until: Date().addingTimeInterval(0.25))
+        app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
+
+        XCTAssertFalse(
+            app.descendants(matching: .any)["groupPanel.panel"].waitForExistence(timeout: 3),
+            "Expected Escape to dismiss the floating Focus Apps panel."
         )
     }
 
     @MainActor
     func testFloatingPanelsVisualSmoke() throws {
         let searchApp = launchApp(opening: "--ui-testing-show-search")
-        assertStaticText("Pro Mode Required", in: searchApp, timeout: 10)
+        assertStaticText("Find Icon Unavailable", in: searchApp, timeout: 10)
 
         let searchAttachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-        searchAttachment.name = "Floating Panel - Find Icon Pro Mode Required"
+        searchAttachment.name = "Floating Panel - Find Icon Unavailable"
         searchAttachment.lifetime = .keepAlways
         add(searchAttachment)
         terminateApplication(searchApp)
 
         let secondBarApp = launchApp(opening: "--ui-testing-show-second-bar")
-        defer { terminateApplication(secondBarApp) }
         assertElement("secondBar.unavailable", in: secondBarApp, timeout: 10)
-        assertStaticText("Pro Mode Required", in: secondBarApp)
+        assertStaticText("Second Bar Unavailable", in: secondBarApp)
 
         let secondBarAttachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         secondBarAttachment.name = "Floating Panel - Second Bar Unavailable"
         secondBarAttachment.lifetime = .keepAlways
         add(secondBarAttachment)
+
+        terminateApplication(secondBarApp)
+
+        let groupApp = launchApp(opening: "--ui-testing-show-group-panel")
+        defer { terminateApplication(groupApp) }
+        assertElement("groupPanel.panel", in: groupApp, timeout: 10)
+        assertStaticText("Focus Apps", in: groupApp)
+
+        let groupAttachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        groupAttachment.name = "Floating Panel - Focus Apps"
+        groupAttachment.lifetime = .keepAlways
+        add(groupAttachment)
     }
 
     @MainActor

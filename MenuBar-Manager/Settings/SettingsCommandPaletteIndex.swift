@@ -178,7 +178,7 @@ struct SettingsCommandPaletteIndex {
             source: source,
             destination: section,
             action: nil,
-            keywords: [section.searchKeywords, source.rawValue]
+            keywords: [section.searchKeywords, source.rawValue, section.commandPaletteSidebarKeywords]
         )
     }
 
@@ -257,6 +257,18 @@ private extension SettingsSection {
         default:
             helpText
         }
+    }
+
+    var commandPaletteSidebarKeywords: String {
+        if SettingsSection.visibleSidebarSections.contains(self) {
+            return "primary settings sidebar"
+        }
+
+        if SettingsSection.moreSidebarSections.contains(self) {
+            return "more settings sidebar"
+        }
+
+        return "hidden legacy route"
     }
 }
 

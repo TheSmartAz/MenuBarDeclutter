@@ -69,7 +69,7 @@ nonisolated enum WorkspaceIntegrationFeatureStatus: String, Codable, Equatable, 
         case .stable: "Stable"
         case .preview: "Preview"
         case .labs: "Labs"
-        case .experimental: "Experimental"
+        case .experimental: "Labs"
         case .deferred: "Deferred"
         case .internalOnly: "Internal"
         }

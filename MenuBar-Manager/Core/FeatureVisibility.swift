@@ -50,7 +50,7 @@ nonisolated enum ProductFeatureStatus: String, CaseIterable, Identifiable, Senda
         case .labs:
             "Labs"
         case .experimental:
-            "Experimental"
+            "Labs"
         case .deferred:
             "Deferred"
         case .internal:
@@ -187,7 +187,7 @@ nonisolated struct FeatureVisibility: Equatable, Sendable {
             area: .arrange,
             status: .preview,
             isVisibleInMainFlow: true,
-            summary: "Use Pro Discovery metadata to suggest manual placement without moving items."
+            summary: "Use Optional Pro Discovery metadata to suggest manual placement without moving items."
         ),
         FeatureVisibility(
             feature: .findIcon,
@@ -307,7 +307,7 @@ nonisolated struct FeatureVisibility: Equatable, Sendable {
             area: .advanced,
             status: .experimental,
             isVisibleInMainFlow: false,
-            summary: "Experimental routed activation only when explicitly gated."
+            summary: "Labs routed activation only when explicitly gated."
         ),
         FeatureVisibility(
             feature: .stableBulkMoving,

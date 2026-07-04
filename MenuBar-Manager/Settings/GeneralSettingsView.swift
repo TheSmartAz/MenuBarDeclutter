@@ -371,11 +371,11 @@ private struct GeneralOverviewStrip: View {
     let hasCompletedOnboarding: Bool
 
     private let columns = [
-        GridItem(.adaptive(minimum: 150), spacing: 10)
+        GridItem(.adaptive(minimum: 150), spacing: 8)
     ]
 
     var body: some View {
-        LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
+        LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
             GeneralOverviewPill(
                 title: "Mode",
                 value: mode,
@@ -414,11 +414,11 @@ private struct GeneralOverviewPill: View {
     let style: ClearGlassStatusStyle
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 9) {
             Image(systemName: systemImage)
                 .font(.system(size: 16, weight: .regular))
                 .foregroundStyle(style.tint)
-                .frame(width: 20)
+                .frame(width: 19)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
@@ -432,8 +432,8 @@ private struct GeneralOverviewPill: View {
                     .minimumScaleFactor(0.82)
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
         .overlay {

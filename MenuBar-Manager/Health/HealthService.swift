@@ -322,8 +322,8 @@ struct HealthService {
                 HealthIssue(
                     code: "pro.discovery-enabled-without-pro",
                     severity: .warning,
-                    title: "Accessibility Discovery is enabled without Pro Mode",
-                    detail: "Discovery depends on Pro Mode and should be disabled when Pro Mode is off.",
+                    title: "Accessibility Discovery is enabled without Optional Pro",
+                    detail: "Discovery depends on Optional Pro and should be disabled when Optional Pro is off.",
                     recoveryAction: .disableProMode
                 )
             )
@@ -335,8 +335,8 @@ struct HealthService {
                 HealthIssue(
                     code: "pro.permission-unavailable",
                     severity: .warning,
-                    title: "Pro Mode permission is unavailable",
-                    detail: "Pro Mode discovery is enabled, but Accessibility permission is \(snapshot.accessibilityPermissionStatus.displayName).",
+                    title: "Optional Pro permission is unavailable",
+                    detail: "Optional Pro discovery is enabled, but Accessibility permission is \(snapshot.accessibilityPermissionStatus.displayName).",
                     recoveryAction: .disableProMode
                 )
             )
@@ -347,7 +347,7 @@ struct HealthService {
                 HealthIssue(
                     code: "pro.repeated-ax-failures",
                     severity: .critical,
-                    title: "Pro Mode scans are repeatedly failing",
+                    title: "Optional Pro scans are repeatedly failing",
                     detail: "The latest Accessibility scan reported \(snapshot.menuBarScanFailuresCount) failures.",
                     recoveryAction: .disableProMode
                 )
@@ -365,7 +365,7 @@ struct HealthService {
                     code: "pro.ax-scan-missing",
                     severity: .warning,
                     title: "No recent Accessibility scan",
-                    detail: "Pro Mode is enabled, but no Accessibility scan has completed.",
+                    detail: "Optional Pro is enabled, but no Accessibility scan has completed.",
                     recoveryAction: nil
                 )
             )

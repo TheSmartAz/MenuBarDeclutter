@@ -37,7 +37,7 @@ struct ArrangeSettingsView: View {
     private var manualGuideSection: some View {
         ClearGlassSection(
             "Guided Manual Arrange",
-            subtitle: "Stable path. No Pro Mode, Accessibility, Screen Recording, automation, or simulated dragging."
+            subtitle: "Stable path. No Optional Pro, Accessibility, Screen Recording, automation, or simulated dragging."
         ) {
             ForEach(ArrangeStep.guidedManualSteps) { step in
                 ArrangeStepRow(step: step)
@@ -110,7 +110,7 @@ struct ArrangeSettingsView: View {
 
         return ClearGlassSection(
             "Placement Planner",
-            subtitle: "Preview. Uses Pro Discovery metadata to suggest manual placement without moving items."
+            subtitle: "Preview. Uses Optional Pro Discovery metadata to suggest manual placement without moving items."
         ) {
             FeatureGateNotice(
                 .preview,
@@ -161,7 +161,7 @@ struct ArrangeSettingsView: View {
     private var assistedMoveSection: some View {
         ClearGlassSection(
             "Assisted Move",
-            subtitle: "Experimental. Single item only, with dry-run and confirmation before any attempt."
+            subtitle: "Labs. Single item only, with dry-run and confirmation before any attempt."
         ) {
             AssistedMoveFlowView(
                 settingsStore: settingsStore,
@@ -245,7 +245,7 @@ struct ArrangeSettingsView: View {
         case .ready:
             "Planner suggestions are based on the latest local Accessibility scan and produce manual instructions only."
         case .proModeOff:
-            "Turn on Pro Mode before using Placement Planner. Guided Manual Arrange does not need Pro Mode."
+            "Enable Optional Pro before using Placement Planner. Guided Manual Arrange does not need Optional Pro."
         case .accessibilityDiscoveryOff:
             "Enable Accessibility Discovery to read item metadata locally."
         case .accessibilityPermissionMissing:
@@ -253,9 +253,9 @@ struct ArrangeSettingsView: View {
         case .safeMode:
             "Safe Mode suppresses Planner scans and keeps recovery first."
         case .noScan:
-            "Run a Pro Discovery scan before Planner can suggest placements."
+            "Run an Optional Pro Discovery scan before Planner can suggest placements."
         case .staleScan:
-            "Refresh Pro Discovery before following any placement suggestions."
+            "Refresh Optional Pro Discovery before following any placement suggestions."
         }
     }
 

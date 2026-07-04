@@ -51,7 +51,7 @@ struct IconGroupPanelItemRowView: View {
         case .visible:
             .green
         case .hidden:
-            .orange
+            .accentColor
         case .alwaysHidden:
             .red
         case .unknown:

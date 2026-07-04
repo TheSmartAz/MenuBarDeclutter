@@ -29,7 +29,7 @@ struct MenuBarItemsSettingsView: View {
         if !settingsStore.proModeEnabled {
             return MenuBarItemsDiscoveryPresentation(
                 title: "Basic Mode",
-                subtitle: "Discovery is off because Pro Mode is disabled. Basic Mode remains fully usable.",
+                subtitle: "Discovery is off because Optional Pro is disabled. Basic Mode remains fully usable.",
                 systemImage: "hand.raised.slash",
                 style: .secondary
             )
@@ -47,7 +47,7 @@ struct MenuBarItemsSettingsView: View {
         if permissionStatus != .granted {
             return MenuBarItemsDiscoveryPresentation(
                 title: permissionStatus.displayName,
-                subtitle: "Accessibility permission is required before Pro item discovery can inspect the menu bar.",
+                subtitle: "Accessibility permission is required before Optional Pro item discovery can inspect the menu bar.",
                 systemImage: "lock",
                 style: .warning
             )
@@ -55,7 +55,7 @@ struct MenuBarItemsSettingsView: View {
 
         return MenuBarItemsDiscoveryPresentation(
             title: "Ready",
-            subtitle: "Pro discovery can refresh the current local menu bar snapshot.",
+            subtitle: "Optional Pro discovery can refresh the current local menu bar snapshot.",
             systemImage: "checkmark.circle",
             style: .success
         )
@@ -99,7 +99,7 @@ struct MenuBarItemsSettingsView: View {
                 ClearGlassControlRow(
                     systemImage: "arrow.clockwise",
                     title: "Refresh Snapshot",
-                    subtitle: "Refresh the local Accessibility discovery index when Pro Mode is enabled."
+                    subtitle: "Refresh the local Accessibility discovery index when Optional Pro is enabled."
                 ) {
                     HStack(spacing: 10) {
                         Button("Refresh", systemImage: "arrow.clockwise") {
@@ -169,7 +169,7 @@ struct MenuBarItemsSettingsView: View {
     private var snapshotStateMessage: some View {
         if !settingsStore.proModeEnabled {
             ClearGlassInlineMessage(
-                text: "Menu bar item discovery is opt-in Pro functionality. Basic Mode does not request Accessibility permission.",
+                text: "Menu bar item discovery is opt-in Optional Pro functionality. Basic Mode does not request Accessibility permission.",
                 systemImage: "hand.raised.slash",
                 style: .secondary
             )
@@ -733,7 +733,7 @@ private struct MenuBarItemsUnavailableView: View {
         }
 
         if !proModeEnabled {
-            return "Menu bar item discovery is a Pro Mode feature. Basic Mode still works without this snapshot."
+            return "Menu bar item discovery is an Optional Pro feature. Basic Mode still works without this snapshot."
         }
 
         if !discoveryEnabled {
@@ -801,7 +801,7 @@ private extension MenuBarZone {
         case .visible:
             .success
         case .hidden:
-            .warning
+            .info
         case .alwaysHidden:
             .danger
         case .unknown:

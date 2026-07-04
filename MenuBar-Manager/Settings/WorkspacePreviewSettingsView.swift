@@ -50,10 +50,9 @@ struct WorkspacePreviewSettingsView: View {
     private func workspacePage(state: WorkspacePreviewPreparedState) -> some View {
         ClearGlassSettingsPage(
             "Workspaces",
-            subtitle: "Preview workspace sets for MenuBarDeclutter-owned surfaces.",
-            badges: [.experimental, .privacySafe, .diagnostics],
+            subtitle: "Switch between local Workspace sets and configure app-owned preview surfaces.",
+            badges: [.preview, .privacySafe],
             sectionAnchors: [
-                ClearGlassPageAnchor("Integration", systemImage: "point.3.connected.trianglepath.dotted", targetID: "Workspace Integration"),
                 ClearGlassPageAnchor("Gates", systemImage: "switch.2", targetID: "Preview Gates"),
                 ClearGlassPageAnchor("Active", systemImage: "rectangle.3.group", targetID: "Active Workspace"),
                 ClearGlassPageAnchor("Actions", systemImage: "bolt", targetID: "Quick Actions"),
@@ -70,7 +69,6 @@ struct WorkspacePreviewSettingsView: View {
 
     @ViewBuilder
     private func workspacePageContent(_ state: WorkspacePreviewPreparedState) -> some View {
-        integrationOverviewSection(state)
         previewGatesSection
         activeWorkspaceSection(state)
         quickActionsSection
@@ -174,26 +172,26 @@ struct WorkspacePreviewSettingsView: View {
             subtitle: "Enable only the local preview surfaces you want."
         ) {
             ClearGlassInlineMessage(
-                text: "Workspaces configure MenuBarDeclutter-owned Function Bar, Set Builder, and Info Strip previews. They do not replace, inspect, or control the macOS system menu bar.",
+                text: "Workspaces configure only MenuBarDeclutter-owned Function Bar, Set Builder, and Info Strip previews. They do not replace or control the macOS system menu bar.",
                 systemImage: "lock.shield",
                 style: .success
             )
 
             LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 250), spacing: 10)],
+                columns: [GridItem(.adaptive(minimum: 220), spacing: 8)],
                 alignment: .leading,
-                spacing: 10
+                spacing: 8
             ) {
                 WorkspaceGateCard(
                     title: "Workspaces Preview",
-                    subtitle: "Unlock local Workspace records and app-owned preview surfaces.",
+                    subtitle: "Use local Workspace records.",
                     systemImage: "rectangle.3.group",
                     isOn: $settingsStore.workspacesPreviewEnabled
                 )
 
                 WorkspaceGateCard(
                     title: "Function Bar",
-                    subtitle: "Show an app-owned strip for Workspace shortcuts.",
+                    subtitle: "Show the app-owned shortcut strip.",
                     systemImage: "menubar.rectangle",
                     isOn: $settingsStore.functionBarPreviewEnabled,
                     disabled: !settingsStore.workspacesPreviewEnabled
@@ -201,7 +199,7 @@ struct WorkspacePreviewSettingsView: View {
 
                 WorkspaceGateCard(
                     title: "Set Builder",
-                    subtitle: "Edit local Workspace sets inside Settings.",
+                    subtitle: "Edit local Workspace sets.",
                     systemImage: "slider.horizontal.3",
                     isOn: $settingsStore.setBuilderPreviewEnabled,
                     disabled: !settingsStore.workspacesPreviewEnabled
@@ -209,27 +207,11 @@ struct WorkspacePreviewSettingsView: View {
 
                 WorkspaceGateCard(
                     title: "Info Strip",
-                    subtitle: "Show a local idle strip for selected Workspace tiles.",
+                    subtitle: "Show selected tiles when idle.",
                     systemImage: "info.circle",
                     isOn: $settingsStore.infoStripPreviewEnabled,
                     disabled: !settingsStore.workspacesPreviewEnabled
                 )
-            }
-        }
-    }
-
-    private func integrationOverviewSection(_ state: WorkspacePreviewPreparedState) -> some View {
-        ClearGlassSection(
-            "Workspace Integration",
-            subtitle: "Local-only status for Workspace-aware item assignment, search badges, placement hints, and rescue fallback."
-        ) {
-            Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 8) {
-                diagnosticsRow("Indexed Workspaces", "\(state.integrationDiagnostics.workspaceCount)")
-                diagnosticsRow("Indexed Items", "\(state.integrationDiagnostics.indexedItemReferenceCount)")
-                diagnosticsRow("Unassigned Items", "\(state.integrationDiagnostics.unassignedItemReferenceCount)")
-                diagnosticsRow("Missing Group Refs", "\(state.integrationDiagnostics.missingGroupReferenceCount)")
-                diagnosticsRow("Physical Bindings", "\(state.integrationDiagnostics.physicalProfileBindingCount)")
-                diagnosticsRow("Command Automation", "Internal only")
             }
         }
     }
@@ -261,9 +243,7 @@ struct WorkspacePreviewSettingsView: View {
                     diagnosticsRow("Workspace Items", "\(state.activeWorkspace.functionItems.count)")
                     diagnosticsRow("Linked Groups", "\(state.activeLinkedGroupCount)")
                     diagnosticsRow("New Items", "\(liveStatus?.newMenuBarItemReviewCount ?? 0)")
-                    diagnosticsRow("Unassigned Items", "\(state.unassignedItemCount)")
-                    diagnosticsRow("Profile Binding", state.activeWorkspace.physicalProfileBinding == nil ? "Preview none" : "Dry-run bound")
-                    diagnosticsRow("Used In Active", "\(state.usedInActiveWorkspaceCount)")
+                    diagnosticsRow("Needs Assignment", "\(state.unassignedItemCount)")
                 }
             }
         }
@@ -852,23 +832,28 @@ struct WorkspacePreviewSettingsView: View {
     private func diagnosticsSection(_ state: WorkspacePreviewPreparedState) -> some View {
         ClearGlassSection(
             "Diagnostics",
-            subtitle: "Counts and states are safe to export; protected names are redacted."
+            subtitle: "Deeper local counts for troubleshooting. Protected names stay redacted."
         ) {
             Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 8) {
                 diagnosticsRow("Store", state.workspaceDiagnostics.lastLoadStatus.rawValue)
-                diagnosticsRow("Workspaces", "\(state.workspaceDiagnostics.workspaceCount)")
+                diagnosticsRow("Workspace Records", "\(state.workspaceDiagnostics.workspaceCount)")
                 diagnosticsRow("Active", state.workspaceDiagnostics.activeWorkspacePresent ? "Present" : "Missing")
                 diagnosticsRow("Function Bar", state.functionDiagnostics.displayState)
                 diagnosticsRow("Function Items", "\(state.functionDiagnostics.visibleItemCount)")
                 diagnosticsRow("Set Builder", state.setBuilderDiagnostics.previewEnabled ? "Enabled" : "Disabled")
                 diagnosticsRow("Workspace Items", "\(state.setBuilderDiagnostics.totalWorkspaceItemCount)")
-                diagnosticsRow("Group Refs", "\(state.workspaceDiagnostics.groupReferenceCount)")
+                diagnosticsRow("Item References", "\(state.integrationDiagnostics.indexedItemReferenceCount)")
+                diagnosticsRow("Unassigned References", "\(state.integrationDiagnostics.unassignedItemReferenceCount)")
+                diagnosticsRow("Group References", "\(state.workspaceDiagnostics.groupReferenceCount)")
                 diagnosticsRow("Linked Groups", "\(state.setBuilderDiagnostics.linkedGroupReferenceCount)")
                 diagnosticsRow("Protected Groups", "\(state.workspaceDiagnostics.protectedGroupReferenceCount)")
-                diagnosticsRow("Missing Groups", "\(state.setBuilderDiagnostics.missingGroupReferenceCount)")
-                diagnosticsRow("Detached Sources Missing", "\(state.setBuilderDiagnostics.detachedSourceGroupMissingCount)")
+                diagnosticsRow("Missing Group References", "\(state.setBuilderDiagnostics.missingGroupReferenceCount)")
+                diagnosticsRow("Missing Detached Sources", "\(state.setBuilderDiagnostics.detachedSourceGroupMissingCount)")
                 diagnosticsRow("Proxy Items", "\(state.setBuilderDiagnostics.menuBarProxyReferenceCount)")
                 diagnosticsRow("Unresolved Proxies", "\(state.setBuilderDiagnostics.unresolvedMenuBarProxyReferenceCount)")
+                diagnosticsRow("Physical Profile Bindings", "\(state.integrationDiagnostics.physicalProfileBindingCount)")
+                diagnosticsRow("Command Automation", "Reserved")
+                diagnosticsRow("Active Item Matches", "\(state.usedInActiveWorkspaceCount)")
                 diagnosticsRow("Info Strip", state.infoDiagnostics.displayState)
                 diagnosticsRow("Current Tile", state.infoDiagnostics.currentTileProviderID ?? "None")
                 diagnosticsRow("New Items", "\(liveStatus?.newMenuBarItemReviewCount ?? 0)")
@@ -1145,20 +1130,38 @@ private struct WorkspaceGateCard: View {
     var disabled = false
 
     var body: some View {
-        ClearGlassControlRow(
-            systemImage: systemImage,
-            title: title,
-            subtitle: subtitle,
-            iconTint: iconTint
-        ) {
-            HStack(spacing: 10) {
+        HStack(alignment: .top, spacing: 9) {
+            Image(systemName: systemImage)
+                .font(.system(size: 15, weight: .regular))
+                .foregroundStyle(iconTint)
+                .frame(width: 20, height: 20)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.body)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+
+                Text(subtitle)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            VStack(alignment: .trailing, spacing: 6) {
                 ClearGlassStatusValue(text: statusText, style: statusStyle)
+                    .font(.caption)
+
                 Toggle(title, isOn: $isOn)
                     .labelsHidden()
                     .accessibilityLabel(Text(title))
             }
         }
         .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, minHeight: 74, alignment: .topLeading)
         .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 8))
         .overlay {
             RoundedRectangle(cornerRadius: 8)

@@ -241,7 +241,7 @@ struct MenuBarScanCoordinatorTests {
         #expect(harness.coordinator.isManualRefreshAvailable == false)
         #expect(harness.coordinator.canScan == false)
         #expect(harness.liveStatus.menuBarScanLifecycleState == .skipped)
-        #expect(harness.liveStatus.menuBarScanLastSkipReason == "Pro Mode disabled")
+        #expect(harness.liveStatus.menuBarScanLastSkipReason == "Optional Pro disabled")
     }
 
     @Test func staleAsyncScanResultIsIgnoredAfterScanningIsDisabled() async {
@@ -261,7 +261,7 @@ struct MenuBarScanCoordinatorTests {
 
         #expect(harness.liveStatus.scannedMenuBarItems.isEmpty)
         #expect(harness.coordinator.lastResult == nil)
-        #expect(harness.coordinator.lastSkipReason == "Pro Mode disabled")
+        #expect(harness.coordinator.lastSkipReason == "Optional Pro disabled")
     }
 
     private func makeHarness(

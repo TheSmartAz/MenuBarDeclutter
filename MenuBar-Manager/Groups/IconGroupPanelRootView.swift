@@ -30,7 +30,7 @@ struct IconGroupPanelRootView: View {
             footer
         }
         .frame(width: 560, height: 420)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .menuBarDeclutterFloatingPanelChrome()
         .accessibilityIdentifier("groupPanel.panel")
         .onAppear {
             selectedID = matchedSnapshots.first?.id

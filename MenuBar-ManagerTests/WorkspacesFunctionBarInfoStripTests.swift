@@ -371,7 +371,7 @@ struct WorkspacesFunctionBarInfoStripTests {
         #expect(newProxy.badge?.title == "New Item")
         #expect(protectedProxy.badge?.title == "Protected")
         #expect(missingProxy.badge?.title == "Missing")
-        #expect(proGatedProxy.badge?.title == "Requires Pro")
+        #expect(proGatedProxy.badge?.title == "Requires Optional Pro")
     }
 
     @Test func validationClampsInfoStripTimingToPhase20Bounds() throws {
@@ -893,10 +893,10 @@ struct WorkspacesFunctionBarInfoStripTests {
         let clock = items.first { $0.id == "info.\(InfoTileProviderID.clock.rawValue)" }
 
         #expect(newItems?.isEnabled == true)
-        #expect(newItems?.badge == "Requires Pro")
-        #expect(newItems?.subtitle?.contains("Requires Pro Discovery") == true)
-        #expect(staleScan?.badge == "Requires Pro")
-        #expect(staleScan?.subtitle?.contains("Requires Pro Discovery") == true)
+        #expect(newItems?.badge == "Requires Optional Pro")
+        #expect(newItems?.subtitle?.contains("Requires Optional Pro Discovery") == true)
+        #expect(staleScan?.badge == "Requires Optional Pro")
+        #expect(staleScan?.subtitle?.contains("Requires Optional Pro Discovery") == true)
         #expect(clock?.badge == "Info Strip")
         #expect(clock?.subtitle == "Local Info Strip tile")
     }

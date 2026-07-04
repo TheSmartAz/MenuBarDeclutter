@@ -99,7 +99,7 @@ final class ProfileApplicationService {
         var requirements: [String] = []
         if !movePreviews.isEmpty {
             if !settingsStore.proModeEnabled {
-                requirements.append("Pro Mode must be enabled for zone moves.")
+                requirements.append("Optional Pro must be enabled for zone moves.")
             }
             if accessibilityStatus != .granted {
                 requirements.append("Accessibility permission is required to verify zone moves.")

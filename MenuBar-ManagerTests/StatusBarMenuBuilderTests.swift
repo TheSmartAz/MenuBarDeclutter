@@ -8,7 +8,7 @@ struct StatusBarMenuBuilderTests {
     @Test func menuStructurePreservesTitlesKeyEquivalentsAndDynamicState() {
         let builder = StatusBarMenuBuilder(
             actions: Self.makeActions(
-                proModeTitle: "Disable Pro Mode",
+                proModeTitle: "Disable Optional Pro",
                 automationPausedTitle: "Resume Automation",
                 workspacesPreviewEnabled: true,
                 functionBarPreviewEnabled: true,
@@ -50,7 +50,7 @@ struct StatusBarMenuBuilderTests {
                 "Full Menu Bar Mode",
                 "Refresh Menu Bar Items",
                 "Apply Profile…",
-                "Disable Pro Mode",
+                "Disable Optional Pro",
                 "Resume Automation",
                 "Spacing Labs Settings…",
                 "Show Function Bar Preview",
@@ -81,7 +81,7 @@ struct StatusBarMenuBuilderTests {
         #expect(advancedItems?.items.filter { !$0.isSeparatorItem }.map { $0.title } == [
             "Refresh Menu Bar Items",
             "Apply Profile…",
-            "Disable Pro Mode",
+            "Disable Optional Pro",
             "Resume Automation",
             "Spacing Labs Settings…",
             "Show Function Bar Preview",
@@ -445,7 +445,7 @@ struct StatusBarMenuBuilderTests {
     }
 
     @Test func routedMenuItemsExplainUnavailableCommandGates() throws {
-        let unavailableMessage = "Enable Pro Mode and Accessibility Discovery first."
+        let unavailableMessage = "Enable Optional Pro and Accessibility Discovery first."
         let menu = StatusBarMenuBuilder(
             actions: Self.makeActions(
                 advancedMenuRelevant: true,
@@ -582,7 +582,7 @@ struct StatusBarMenuBuilderTests {
 
     private static func makeActions(
         recorder: MenuActionRecorder = MenuActionRecorder(),
-        proModeTitle: String = "Enable Pro Mode",
+        proModeTitle: String = "Enable Optional Pro",
         automationPausedTitle: String = "Pause Automation",
         automationPaused: Bool = false,
         secondBarVisible: Bool = false,

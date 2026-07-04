@@ -29,14 +29,14 @@ struct SecondBarSettingsView: View {
     var body: some View {
         ClearGlassSettingsPage(
             "Second Bar",
-            subtitle: "Configure the secondary bar for hidden menu bar items.",
-            badges: [.preview, .proMode, .accessibilityRequired],
+            subtitle: "Configure the Optional Pro secondary bar for hidden menu bar items.",
+            badges: [.preview],
             sectionAnchors: pageSectionAnchors
         ) {
             ClearGlassSection("Second Bar", subtitle: "Status menu entry point and panel behavior.") {
                 FeatureGateNotice(
                     .preview,
-                    text: "Second Bar opens by default. Hidden-item metadata and icon browsing require Pro discovery and Accessibility permission."
+                    text: "Second Bar is a Preview surface. The panel can open from Basic Mode; hidden-item metadata shows Unavailable until Optional Pro discovery and Accessibility permission are available."
                 )
 
                 ClearGlassDivider()
@@ -97,7 +97,7 @@ struct SecondBarSettingsView: View {
                 )
 
                 ClearGlassInlineMessage(
-                    text: "Second Bar uses Accessibility snapshots and app bundle icons. It does not use Screen Recording or captured menu bar pixels.",
+                    text: "Basic Mode hiding stays available without this panel. Optional Pro Second Bar uses Accessibility snapshots and app bundle icons; it does not use Screen Recording or captured menu bar pixels.",
                     systemImage: "checkmark.shield",
                     style: .success
                 )
@@ -157,11 +157,11 @@ struct SecondBarSettingsView: View {
                 SecondBarPreviewStrip(showLabels: settingsStore.secondBarShowLabels)
             }
 
-            ClearGlassSection("Requirements", subtitle: "Second Bar item metadata remains unavailable until these private-access requirements are satisfied.") {
+            ClearGlassSection("Optional Pro Requirements", subtitle: "Second Bar item metadata shows Unavailable until these private-access requirements are satisfied.") {
                 SearchRequirementRow(
-                    title: "Pro Mode",
-                    detail: "Private menu bar item discovery is available only in opt-in Pro Mode.",
-                    status: settingsStore.proModeEnabled ? "Enabled" : "Disabled",
+                    title: "Optional Pro",
+                    detail: "Private menu bar item discovery is available only after opt-in.",
+                    status: settingsStore.proModeEnabled ? "Optional Pro" : "Unavailable",
                     isSatisfied: settingsStore.proModeEnabled,
                     systemImage: "star"
                 )
@@ -171,7 +171,7 @@ struct SecondBarSettingsView: View {
                 SearchRequirementRow(
                     title: "Accessibility Discovery",
                     detail: "Allow the app to discover menu bar items locally.",
-                    status: settingsStore.accessibilityDiscoveryEnabled ? "Enabled" : "Disabled",
+                    status: settingsStore.accessibilityDiscoveryEnabled ? "Optional Pro" : "Unavailable",
                     isSatisfied: settingsStore.accessibilityDiscoveryEnabled,
                     systemImage: "figure.circle"
                 )
@@ -181,7 +181,7 @@ struct SecondBarSettingsView: View {
                 SearchRequirementRow(
                     title: "Accessibility Permission",
                     detail: "Grant permission before the app can read menu bar item labels and frames.",
-                    status: permissionService?.status.displayName ?? AccessibilityPermissionStatus.notRequested.displayName,
+                    status: permissionService?.status == .granted ? "Optional Pro" : "Unavailable",
                     isSatisfied: permissionService?.status == .granted,
                     systemImage: "hand.raised",
                     actionTitle: "Open Privacy Settings",

@@ -150,7 +150,7 @@ nonisolated struct AssistedMoveDryRunBuilder {
             return "Missing item frame"
         }
 
-        return "Experimental single-item Command-drag; verify after any attempt."
+        return "Labs single-item Command-drag; verify after any attempt."
     }
 
     private static let recoveryActions = [

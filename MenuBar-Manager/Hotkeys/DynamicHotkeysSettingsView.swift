@@ -115,7 +115,7 @@ struct DynamicHotkeysSettingsView: View {
                 HotkeyActionOption(
                     action: .revealGroup(group.id),
                     title: "Reveal \(name)",
-                    subtitle: "Reveal matching menu bar items. Requires Pro Mode at runtime.",
+                    subtitle: "Reveal matching menu bar items. Requires Optional Pro at runtime.",
                     systemImage: "eye",
                     requiresProMode: true
                 )

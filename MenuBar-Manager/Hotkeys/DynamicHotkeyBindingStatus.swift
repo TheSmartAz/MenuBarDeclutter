@@ -74,7 +74,7 @@ nonisolated struct DynamicHotkeyBindingStatusPlanner {
         if binding.action.requiresProMode && !proModeEnabled {
             return DynamicHotkeyBindingStatus(
                 kind: .requiresProMode,
-                message: "Registers, but the action requires Pro Mode to run.",
+                message: "Registers, but the action requires Optional Pro to run.",
                 systemImage: "lock",
                 isWarning: true
             )

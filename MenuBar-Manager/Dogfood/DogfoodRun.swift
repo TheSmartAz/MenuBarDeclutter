@@ -18,7 +18,7 @@ enum DogfoodGate: String, CaseIterable, Codable, Equatable, Identifiable, Sendab
         case .proAssisted:
             "Gate C: Pro Assisted"
         case .iconMovingExperimental:
-            "Gate D: Icon Moving Experimental"
+            "Gate D: Icon Moving Labs"
         case .installedRelease:
             "Gate E: Installed Release"
         }
@@ -108,7 +108,7 @@ struct DogfoodChecklistItem: Codable, Equatable, Identifiable, Sendable {
         (
             .proReadOnly,
             [
-                "Enable Pro Mode",
+                "Enable Optional Pro",
                 "Request Accessibility permission",
                 "Grant Accessibility permission",
                 "Revoke Accessibility permission",

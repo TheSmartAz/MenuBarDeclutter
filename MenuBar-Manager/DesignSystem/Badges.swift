@@ -16,15 +16,15 @@ struct StatusBadge: View {
             case .basicMode:
                 "Basic Mode"
             case .proMode:
-                "Pro Mode"
+                "Optional Pro"
             case .privacySafe:
                 "Privacy Safe"
             case .accessibilityRequired:
-                "Accessibility Required"
+                "Unavailable"
             case .diagnostics:
                 "Diagnostics"
             case .experimental:
-                "Experimental"
+                "Labs"
             case .actionNeeded:
                 "Action Needed"
             case .neutral:
@@ -38,6 +38,8 @@ struct StatusBadge: View {
                 "Privacy Safe"
             case .proMode:
                 "Opt-in"
+            case .accessibilityRequired:
+                "Permission needed"
             default:
                 nil
             }
@@ -66,7 +68,9 @@ struct StatusBadge: View {
             switch self {
             case .basicMode, .privacySafe:
                 .privacySafe
-            case .proMode, .neutral:
+            case .proMode:
+                .accent
+            case .neutral:
                 .neutral
             case .accessibilityRequired:
                 .permissionRequired
@@ -201,7 +205,7 @@ enum FeatureStatus: String, CaseIterable, Hashable, Sendable {
         case .labs:
             "Labs"
         case .experimental:
-            "Experimental"
+            "Labs"
         case .disabled:
             "Disabled"
         case .unavailable:
@@ -254,7 +258,7 @@ enum FeatureStatus: String, CaseIterable, Hashable, Sendable {
         case .stable:
             .privacySafe
         case .preview:
-            .diagnostics
+            .accent
         case .labs, .experimental:
             .experimental
         case .disabled, .unavailable, .deferred:
@@ -344,7 +348,7 @@ struct MenuBarZoneBadge: View {
             case .visible:
                 Descriptor(shortTitle: "V", title: "Visible", systemImage: "eye", tone: .privacySafe)
             case .hidden:
-                Descriptor(shortTitle: "H", title: "Hidden", systemImage: "eye.slash", tone: .experimental)
+                Descriptor(shortTitle: "H", title: "Hidden", systemImage: "eye.slash", tone: .accent)
             case .alwaysHidden:
                 Descriptor(shortTitle: "A", title: "Always Hidden", systemImage: "lock", tone: .destructive)
             case .unknown:

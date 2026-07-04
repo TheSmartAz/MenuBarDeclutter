@@ -27,14 +27,14 @@ struct SearchSettingsView: View {
     var body: some View {
         ClearGlassSettingsPage(
             "Search",
-            subtitle: "Find Icon preferences for locating menu bar items from the local discovery index.",
-            badges: [.preview, .proMode, .accessibilityRequired],
+            subtitle: "Find Icon preferences for locating menu bar items with Optional Pro local discovery.",
+            badges: [.preview],
             sectionAnchors: pageSectionAnchors
         ) {
             ClearGlassSection("Find Icon", subtitle: "Status menu entry point and selection behavior.") {
                 FeatureGateNotice(
                     .preview,
-                    text: "Preview in v0.1.3. The panel is available by default; results require Pro discovery and Accessibility permission."
+                    text: "Preview in v0.1.3. The panel can open from Basic Mode; results show Unavailable until Optional Pro discovery and Accessibility permission are available."
                 )
 
                 ClearGlassDivider()
@@ -72,7 +72,7 @@ struct SearchSettingsView: View {
                 }
 
                 ClearGlassInlineMessage(
-                    text: "Find Icon uses the local Accessibility discovery index after private access is granted. It does not click, drag, record the screen, or use the network.",
+                    text: "Basic Mode keeps Find Icon visibility and hotkey settings local. Optional Pro discovery can read menu bar labels and frames after private access is granted; it does not click, drag, record the screen, or use the network.",
                     systemImage: "checkmark.shield",
                     style: .success
                 )
@@ -111,11 +111,11 @@ struct SearchSettingsView: View {
                 }
             }
 
-            ClearGlassSection("Requirements", subtitle: "Find Icon results remain unavailable until these private-access requirements are satisfied.") {
+            ClearGlassSection("Optional Pro Requirements", subtitle: "Find Icon results show Unavailable until these private-access requirements are satisfied.") {
                 SearchRequirementRow(
-                    title: "Pro Mode",
-                    detail: "Private menu bar item discovery is available only in opt-in Pro Mode.",
-                    status: settingsStore.proModeEnabled ? "Enabled" : "Disabled",
+                    title: "Optional Pro",
+                    detail: "Private menu bar item discovery is available only after opt-in.",
+                    status: settingsStore.proModeEnabled ? "Optional Pro" : "Unavailable",
                     isSatisfied: settingsStore.proModeEnabled,
                     systemImage: "star"
                 )
@@ -125,7 +125,7 @@ struct SearchSettingsView: View {
                 SearchRequirementRow(
                     title: "Accessibility Discovery",
                     detail: "Allow the app to discover menu bar items locally.",
-                    status: settingsStore.accessibilityDiscoveryEnabled ? "Enabled" : "Disabled",
+                    status: settingsStore.accessibilityDiscoveryEnabled ? "Optional Pro" : "Unavailable",
                     isSatisfied: settingsStore.accessibilityDiscoveryEnabled,
                     systemImage: "figure.circle"
                 )
@@ -135,7 +135,7 @@ struct SearchSettingsView: View {
                 SearchRequirementRow(
                     title: "Accessibility Permission",
                     detail: "Grant permission before the app can read menu bar item labels and frames.",
-                    status: permissionService?.status.displayName ?? AccessibilityPermissionStatus.notRequested.displayName,
+                    status: permissionService?.status == .granted ? "Optional Pro" : "Unavailable",
                     isSatisfied: permissionService?.status == .granted,
                     systemImage: "hand.raised",
                     actionTitle: "Open Privacy Settings",

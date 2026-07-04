@@ -39,7 +39,7 @@ struct OnboardingStepTests {
         #expect(step.body.contains("app-owned controls"))
         #expect(step.body.contains("no sensitive permissions"))
         #expect(step.body.contains("decide later"))
-        #expect(step.body.contains("optional Pro tools"))
+        #expect(step.body.contains("Optional Pro tools"))
     }
 
     @Test func finishStepCarriesLocalSampleWorkspaceCallout() throws {
@@ -71,7 +71,7 @@ struct OnboardingStepTests {
         #expect(step.body.contains("Basic Mode"))
         #expect(step.body.contains("without Accessibility"))
         #expect(step.body.contains("Screen Recording"))
-        #expect(step.body.contains("Pro Mode"))
+        #expect(step.body.contains("Optional Pro"))
     }
 
     @Test func arrangeStepKeepsStableFlowPermissionFree() throws {

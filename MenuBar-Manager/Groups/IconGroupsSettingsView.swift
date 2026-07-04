@@ -132,7 +132,7 @@ struct IconGroupsSettingsView: View {
 
     private var basicModeGroupMessage: some View {
         ClearGlassInlineMessage(
-            text: "Manual bundle ID, app name, and title groups work in Basic Mode. Enable Pro Mode for the current menu bar item picker.",
+            text: "Manual bundle ID, app name, and title groups work in Basic Mode. Enable Optional Pro for the current menu bar item picker.",
             systemImage: "star",
             style: .info
         )

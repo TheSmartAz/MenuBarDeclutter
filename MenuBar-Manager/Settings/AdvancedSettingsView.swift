@@ -35,13 +35,13 @@ struct AdvancedSettingsView: View {
     var body: some View {
         ClearGlassSettingsPage(
             "Advanced",
-            subtitle: "Low-level layout, diagnostics, and experimental automation controls.",
-            badges: [.privacySafe, .diagnostics, .labs, .experimental],
+            subtitle: "Low-level layout, diagnostics, and Labs automation controls.",
+            badges: [.privacySafe, .diagnostics, .labs],
             sectionAnchors: [
                 ClearGlassPageAnchor("Directory", systemImage: "list.bullet.rectangle", targetID: "Advanced Feature Directory"),
                 ClearGlassPageAnchor("Separators", systemImage: "ruler", targetID: "Separator Geometry"),
                 ClearGlassPageAnchor("Diagnostics", systemImage: "waveform.path.ecg", targetID: "Recovery & Diagnostics"),
-                ClearGlassPageAnchor("Labs", systemImage: "testtube.2", targetID: "Labs / Experimental"),
+                ClearGlassPageAnchor("Labs", systemImage: "testtube.2", targetID: "Labs"),
                 ClearGlassPageAnchor("Notes", systemImage: "exclamationmark.triangle", targetID: "Developer Notes")
             ]
         ) {
@@ -80,17 +80,17 @@ struct AdvancedSettingsView: View {
             }
         }
         .confirmationDialog(
-            "Enable experimental icon moving?",
+            "Enable Labs icon moving?",
             isPresented: $showIconMovingConfirmation,
             titleVisibility: .visible
         ) {
-            Button("Enable Experimental Icon Moving") {
+            Button("Enable Labs Icon Moving") {
                 settingsStore.iconMovingEnabled = true
                 onChange?()
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Experimental: uses simulated Command-drag and may fail depending on macOS, display layout, and third-party menu bar apps.")
+            Text("Labs: uses simulated Command-drag and may fail depending on macOS, display layout, and third-party menu bar apps.")
         }
     }
 
@@ -214,7 +214,7 @@ enum AdvancedFeatureDirectory {
         ),
         AdvancedFeatureDirectoryEntry(
             title: "Icon Moving",
-            subtitle: "Explicit, confirmed experimental assisted movement.",
+            subtitle: "Explicit, confirmed Labs assisted movement.",
             status: .labs,
             category: .labs,
             systemImage: "arrow.up.left.and.arrow.down.right",
@@ -299,7 +299,7 @@ enum AdvancedFeatureDirectoryCategory: String, CaseIterable, Identifiable {
         case .previews:
             "Opt-in surfaces that stay local and reversible."
         case .labs:
-            "Experimental controls for advanced users."
+            "Labs controls for advanced users."
         case .deferred:
             "Tracked ideas with no active control surface yet."
         }
@@ -315,7 +315,7 @@ private struct AdvancedFeatureDirectorySection: View {
 
         ClearGlassSection(
             "Advanced Feature Directory",
-            subtitle: "Power-user and experimental surfaces stay available without crowding the main settings flow."
+            subtitle: "Power-user and Labs surfaces stay available without crowding the main settings flow."
         ) {
             VStack(spacing: 0) {
                 ForEach(Array(groups.enumerated()), id: \.element.id) { offset, group in
@@ -466,7 +466,7 @@ private extension ProductFeatureStatus {
         case .labs:
             .purple
         case .experimental:
-            .orange
+            .purple
         case .deferred:
             .secondary
         case .internal:
@@ -496,11 +496,11 @@ private struct AdvancedOverviewStrip: View {
     @Bindable var settingsStore: SettingsStore
 
     private let columns = [
-        GridItem(.adaptive(minimum: 150), spacing: 10)
+        GridItem(.adaptive(minimum: 150), spacing: 8)
     ]
 
     var body: some View {
-        LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
+        LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
             AdvancedOverviewPill(
                 title: "Expanded",
                 value: settingsStore.expandedSeparatorLength.formatted(.number.precision(.fractionLength(0))) + " pt",
@@ -539,11 +539,11 @@ private struct AdvancedOverviewPill: View {
     var style: ClearGlassStatusStyle
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 9) {
             Image(systemName: systemImage)
                 .font(.system(size: 16, weight: .regular))
                 .foregroundStyle(style.tint)
-                .frame(width: 20)
+                .frame(width: 19)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
@@ -557,8 +557,8 @@ private struct AdvancedOverviewPill: View {
                     .minimumScaleFactor(0.82)
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
         .overlay {
@@ -877,19 +877,19 @@ private struct IconMovingLabsSection: View {
 
     var body: some View {
         ClearGlassSection(
-            "Labs / Experimental",
+            "Labs",
             subtitle: "Automation features that may fail depending on system state."
         ) {
             VStack(spacing: 0) {
                 FeatureGateNotice(
                     .experimental,
-                    text: "Icon Moving is Experimental in v0.1.3. It is disabled by default and only runs from explicit user action after confirmation."
+                    text: "Icon Moving is in Labs for v0.1.3. It is disabled by default and only runs from explicit user action after confirmation."
                 )
 
                 ClearGlassDivider()
 
                 ClearGlassInlineMessage(
-                    text: "These features are experimental and may change or break in future updates. Use at your own risk.",
+                    text: "These Labs features may change or break in future updates. Use at your own risk.",
                     systemImage: "testtube.2",
                     style: .warning
                 )
@@ -983,16 +983,16 @@ private struct IconMovingControlsPanel: View {
     var body: some View {
         AdvancedInspectorPanel(
             title: "Icon Moving",
-            subtitle: settingsStore.iconMovingEnabled ? "Experimental moving controls are enabled." : "Disabled until confirmed.",
+            subtitle: settingsStore.iconMovingEnabled ? "Labs moving controls are enabled." : "Disabled until confirmed.",
             systemImage: "arrow.up.left.and.arrow.down.right",
-            iconTint: settingsStore.iconMovingEnabled ? .orange : .secondary
+            iconTint: settingsStore.iconMovingEnabled ? .purple : .secondary
         ) {
             VStack(spacing: 0) {
                 ClearGlassControlRow(
                     systemImage: "arrow.up.left.and.arrow.down.right",
                     title: "Enable icon moving",
                     subtitle: "Allow explicit simulated Command-drag moves between menu bar locations.",
-                    iconTint: .orange
+                    iconTint: .purple
                 ) {
                     Toggle("Enable icon moving", isOn: $iconMovingEnabled)
                         .labelsHidden()
@@ -1073,7 +1073,7 @@ private struct DeveloperNotesSection: View {
             subtitle: "Advanced settings are intended for advanced users and developers."
         ) {
             ClearGlassInlineMessage(
-                text: "Icon moving is Pro-only and only runs after an explicit menu action. It simulates Command-drag and may fail for some apps or system items.",
+                text: "Icon moving is Optional Pro and only runs after an explicit menu action. It simulates Command-drag and may fail for some apps or system items.",
                 systemImage: "exclamationmark.triangle",
                 style: .warning
             )

@@ -72,7 +72,7 @@ nonisolated struct SetBuilderDropValidator {
         }
         if case .menuBarItemHash(let hash) = payload.payloadKind {
             guard proDiscoveryAvailable else {
-                return .rejected("Menu bar item drops require Pro Discovery metadata.")
+                return .rejected("Menu bar item drops require Optional Pro Discovery metadata.")
             }
             guard !hash.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 return .rejected("Menu bar item reference is invalid.")

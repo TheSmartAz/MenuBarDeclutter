@@ -93,7 +93,7 @@ struct MenuBarItemLibraryProvider: SetBuilderLibraryProviding {
 
     func items() -> [SetBuilderLibraryItem] {
         guard proDiscoveryAvailable else {
-            return [unavailable("Menu Bar Items", subtitle: "Enable Pro Discovery to add menu bar item proxies.", badge: "Requires Pro")]
+            return [unavailable("Menu Bar Items", subtitle: "Enable Optional Pro Discovery to add menu bar item proxies.", badge: "Requires Optional Pro")]
         }
         guard accessibilityAvailable else {
             return [unavailable("Menu Bar Items", subtitle: "Grant Accessibility only from the explicit Privacy setup flow.", badge: "Requires Accessibility")]
@@ -185,7 +185,7 @@ struct UnassignedMenuBarItemLibraryProvider: SetBuilderLibraryProviding {
 
     func items() -> [SetBuilderLibraryItem] {
         guard proDiscoveryAvailable else {
-            return [unavailable("Unassigned Items", subtitle: "Enable Pro Discovery to review unassigned menu bar item proxies.", badge: "Requires Pro")]
+            return [unavailable("Unassigned Items", subtitle: "Enable Optional Pro Discovery to review unassigned menu bar item proxies.", badge: "Requires Optional Pro")]
         }
         guard accessibilityAvailable else {
             return [unavailable("Unassigned Items", subtitle: "Grant Accessibility only from the explicit Privacy setup flow.", badge: "Requires Accessibility")]
@@ -286,7 +286,7 @@ struct InfoTileLibraryProvider: SetBuilderLibraryProviding {
         switch providerID {
         case InfoTileProviderID.newItemCount.rawValue,
              InfoTileProviderID.staleScanWarning.rawValue:
-            ("Local Info Strip tile. Requires Pro Discovery to show live data.", "Requires Pro")
+            ("Local Info Strip tile. Requires Optional Pro Discovery to show live data.", "Requires Optional Pro")
         default:
             ("Local Info Strip tile", "Info Strip")
         }

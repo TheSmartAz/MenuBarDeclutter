@@ -56,7 +56,6 @@ struct OnboardingRootView: View {
                 ForEach(Array(OnboardingStep.allSteps.enumerated()), id: \.element.id) { index, step in
                     OnboardingStepView(
                         step: step,
-                        index: index,
                         onOpenSettings: onOpenSettings,
                         onOpenArrange: onOpenArrange,
                         onOpenWorkspaces: onOpenWorkspaces,
@@ -118,7 +117,6 @@ private struct OnboardingHeader: View {
 
 private struct OnboardingStepView: View {
     let step: OnboardingStep
-    let index: Int
     var onOpenSettings: (() -> Void)? = nil
     var onOpenArrange: (() -> Void)? = nil
     var onOpenWorkspaces: (() -> Void)? = nil
@@ -127,11 +125,6 @@ private struct OnboardingStepView: View {
     var body: some View {
         VStack(spacing: 16) {
             Spacer(minLength: 6)
-
-            Text("Step \(index + 1) of \(OnboardingStep.allSteps.count)")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .accessibilityIdentifier("onboarding.stepCounter")
 
             OnboardingStepIcon(systemImage: step.symbol)
 
@@ -346,7 +339,7 @@ private struct OnboardingFindRescueSummary: View {
     private let surfaces = [
         ("Find Icon", "magnifyingglass", "Preview"),
         ("Second Bar", "rectangle.bottomthird.inset.filled", "Preview"),
-        ("New Items", "tray", "Requires Pro")
+        ("New Items", "tray", "Requires Optional Pro")
     ]
 
     var body: some View {
@@ -550,79 +543,10 @@ private struct OnboardingWorkspaceSurface: View {
 
 private struct OnboardingPrivacySummary: View {
     var body: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(alignment: .top, spacing: 12) {
-                basicModeCard
-                proDiscoveryCard
-            }
-
-            VStack(spacing: 12) {
-                basicModeCard
-                proDiscoveryCard
-            }
-        }
-        .frame(maxWidth: 540)
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("onboarding.privacyBoundary")
-    }
-
-    private var basicModeCard: some View {
-        OnboardingPermissionCard(
-            title: "Basic Mode",
-            systemImage: "checkmark.shield",
-            tint: .green,
-            rows: [
-                ("No sensitive permissions", "checkmark.circle"),
-                ("Local settings only", "folder"),
-                ("No network access", "network.slash")
-            ]
+        PrivacyTrustBoundarySummary(
+            maximumWidth: 540,
+            accessibilityIdentifier: "onboarding.privacyBoundary"
         )
-    }
-
-    private var proDiscoveryCard: some View {
-        OnboardingPermissionCard(
-            title: "Optional Pro Discovery",
-            systemImage: "lock",
-            tint: .orange,
-            rows: [
-                ("Off until enabled", "power"),
-                ("Permission can be denied", "hand.raised"),
-                ("Basic Mode keeps working", "checkmark.circle")
-            ]
-        )
-    }
-}
-
-private struct OnboardingPermissionCard: View {
-    let title: String
-    let systemImage: String
-    let tint: Color
-    let rows: [(String, String)]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label(title, systemImage: systemImage)
-                .font(.callout)
-                .bold()
-                .foregroundStyle(tint)
-
-            VStack(alignment: .leading, spacing: 7) {
-                ForEach(rows, id: \.0) { row in
-                    Label(row.0, systemImage: row.1)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .labelStyle(.titleAndIcon)
-                        .lineLimit(2)
-                }
-            }
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, minHeight: 128, alignment: .topLeading)
-        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
-        .overlay {
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(.primary.opacity(0.10), lineWidth: 1)
-        }
     }
 }
 
@@ -768,8 +692,6 @@ private struct OnboardingProgressSummary: View {
                     .lineLimit(1)
 
                 Spacer(minLength: 12)
-
-                PageControl(count: count, current: current)
             }
 
             ProgressView(value: Double(current + 1), total: Double(count))
@@ -778,24 +700,6 @@ private struct OnboardingProgressSummary: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Onboarding progress, step \(current + 1) of \(count), \(currentStep.title)")
         .accessibilityIdentifier("onboarding.progress")
-    }
-}
-
-private struct PageControl: View {
-    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
-    let count: Int
-    let current: Int
-
-    var body: some View {
-        HStack(spacing: 8) {
-            ForEach(0..<count, id: \.self) { index in
-                Capsule()
-                    .fill(index == current ? Color.accentColor : Color.secondary.opacity(0.35))
-                    .frame(width: index == current ? 18 : 7, height: 7)
-                    .animation(accessibilityReduceMotion ? nil : .snappy(duration: 0.18), value: current)
-            }
-        }
-        .accessibilityHidden(true)
     }
 }
 

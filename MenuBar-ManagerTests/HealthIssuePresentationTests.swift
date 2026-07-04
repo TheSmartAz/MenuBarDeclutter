@@ -26,7 +26,7 @@ struct HealthIssuePresentationTests {
             .resetSecondBarPosition: "Reset Second Bar position",
             .refreshAccessibilityPermissionStatus: "Refresh Accessibility permission status",
             .resetSettingsToDefaults: "Reset settings to defaults",
-            .disableProMode: "Disable Pro Mode",
+            .disableProMode: "Disable Optional Pro",
             .enterSafeModeNextLaunch: "Enter Safe Mode next launch",
             .exitFullMenuBarMode: "Exit Full Menu Bar Mode",
             .hideOptionalSpacerItems: "Hide optional spacer items",

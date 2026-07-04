@@ -14,7 +14,7 @@ nonisolated struct AppIntentResultMapper {
         case .requiresPrivateAccess:
             "This action requires Private Access. Please unlock in the MenuBarDeclutter app."
         case .requiresProMode:
-            "This action requires Pro Mode."
+            "This action requires Optional Pro."
         case .requiresAccessibility:
             "This action requires Accessibility permission."
         case .requiresLabs:

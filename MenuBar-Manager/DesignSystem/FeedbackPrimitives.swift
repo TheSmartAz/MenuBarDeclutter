@@ -50,7 +50,7 @@ struct RequirementRow: View {
             case .optional:
                 .neutral
             case .required:
-                .experimental
+                .permissionRequired
             case .unavailable:
                 .disabled
             }
@@ -137,11 +137,11 @@ struct NoticeBanner: View {
         var tone: DesignTokens.SemanticTone {
             switch self {
             case .info:
-                .permissionRequired
+                .accent
             case .privacy, .success:
                 .privacySafe
             case .warning:
-                .experimental
+                .permissionRequired
             case .destructive:
                 .destructive
             }
@@ -228,6 +228,100 @@ struct NoticeBanner: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(kind.accessibilityPrefix): \(title)")
+    }
+}
+
+struct PrivacyTrustBoundarySummary: View {
+    private let maximumWidth: CGFloat?
+    private let accessibilityIdentifier: String
+
+    private let basicItems = [
+        PrivacyTrustBoundaryItem(title: "No sensitive permissions", systemImage: "checkmark.circle"),
+        PrivacyTrustBoundaryItem(title: "No network access", systemImage: "network.slash"),
+        PrivacyTrustBoundaryItem(title: "Local controls stay usable", systemImage: "lock.open")
+    ]
+
+    private let optionalProItems = [
+        PrivacyTrustBoundaryItem(title: "Off until enabled", systemImage: "power"),
+        PrivacyTrustBoundaryItem(title: "Permission prompt only from your button press", systemImage: "hand.raised"),
+        PrivacyTrustBoundaryItem(title: "Basic Mode keeps working if denied", systemImage: "checkmark.circle")
+    ]
+
+    init(
+        maximumWidth: CGFloat? = nil,
+        accessibilityIdentifier: String = "privacy.trustBoundary"
+    ) {
+        self.maximumWidth = maximumWidth
+        self.accessibilityIdentifier = accessibilityIdentifier
+    }
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: DesignTokens.Spacing.large) {
+                basicModeCard
+                optionalProCard
+            }
+
+            VStack(spacing: DesignTokens.Spacing.large) {
+                basicModeCard
+                optionalProCard
+            }
+        }
+        .frame(maxWidth: maximumWidth ?? .infinity)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(accessibilityIdentifier)
+    }
+
+    private var basicModeCard: some View {
+        PrivacyTrustBoundaryCard(
+            title: "Basic Mode",
+            systemImage: "checkmark.shield",
+            tint: .green,
+            items: basicItems
+        )
+    }
+
+    private var optionalProCard: some View {
+        PrivacyTrustBoundaryCard(
+            title: "Optional Pro",
+            systemImage: "lock",
+            tint: .accentColor,
+            items: optionalProItems
+        )
+    }
+}
+
+private struct PrivacyTrustBoundaryItem: Hashable {
+    let title: String
+    let systemImage: String
+}
+
+private struct PrivacyTrustBoundaryCard: View {
+    let title: String
+    let systemImage: String
+    let tint: Color
+    let items: [PrivacyTrustBoundaryItem]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.large) {
+            Label(title, systemImage: systemImage)
+                .font(DesignTokens.Typography.body.bold())
+                .foregroundStyle(tint)
+
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.medium) {
+                ForEach(items, id: \.self) { item in
+                    Label(item.title, systemImage: item.systemImage)
+                        .font(DesignTokens.Typography.callout)
+                        .foregroundStyle(.secondary)
+                        .labelStyle(.titleAndIcon)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .padding(DesignTokens.Spacing.large)
+        .frame(maxWidth: .infinity, minHeight: 124, alignment: .topLeading)
+        .clearGlassSurface()
     }
 }
 

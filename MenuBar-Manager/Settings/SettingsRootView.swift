@@ -37,6 +37,20 @@ enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         .advanced
     ]
 
+    static let moreSidebarSections: [SettingsSection] = [
+        .menuBarItems,
+        .search,
+        .secondBar,
+        .groups,
+        .hotkeys,
+        .profiles,
+        .privateAccess,
+        .automation,
+        .importExport,
+        .diagnostics,
+        .layout
+    ]
+
     var title: String {
         switch self {
         case .general:
@@ -138,8 +152,23 @@ private struct SettingsSidebarGroup: Identifiable {
         SettingsSidebarGroup(
             title: "MenuBarDeclutter",
             sections: SettingsSection.visibleSidebarSections
+        ),
+        SettingsSidebarGroup(
+            title: "More",
+            sections: SettingsSection.moreSidebarSections
         )
     ]
+}
+
+private struct SettingsSidebarSectionRow: View {
+    let section: SettingsSection
+
+    var body: some View {
+        Label(section.title, systemImage: section.systemImage)
+            .tag(section)
+            .help(section.helpText)
+            .accessibilityIdentifier(section.sidebarAccessibilityIdentifier)
+    }
 }
 
 extension SettingsSection {
@@ -176,13 +205,13 @@ extension SettingsSection {
         case .importExport:
             "Privacy-safe import, export, backups, and migration."
         case .privacy:
-            "Basic Mode, Pro Mode, permissions, and local data policy."
+            "Basic Mode, Optional Pro, permissions, and local data policy."
         case .recovery:
             "Safe Mode, reset layout, repair actions, diagnostics export, and health report."
         case .diagnostics:
             "Health checks, logs, live status, and diagnostics export."
         case .advanced:
-            "Developer-oriented recovery and experimental controls."
+            "Developer-oriented recovery and Labs controls."
         case .workspacesPreview:
             "Local-only Workspaces, Function Bar, Set Builder, and Info Strip previews."
         }
@@ -226,19 +255,35 @@ struct SettingsRootView: View {
     var infoStripController: InfoStripController?
     var actions: SettingsActions = .empty
     @State private var isCommandPalettePresented = false
+    @State private var isMoreSettingsExpanded = false
 
     var body: some View {
         NavigationSplitView {
             List(selection: $navigationModel.selectedSection) {
-                ForEach(filteredSidebarGroups) { group in
-                    Section(group.title) {
-                        ForEach(group.sections) { section in
-                            Label(section.title, systemImage: section.systemImage)
-                                .tag(section)
-                                .help(section.helpText)
-                                .accessibilityIdentifier(section.sidebarAccessibilityIdentifier)
+                if isFilteringSidebar {
+                    ForEach(filteredSidebarGroups) { group in
+                        Section(group.title) {
+                            ForEach(group.sections) { section in
+                                SettingsSidebarSectionRow(section: section)
+                            }
                         }
                     }
+                } else {
+                    Section("MenuBarDeclutter") {
+                        ForEach(SettingsSection.visibleSidebarSections) { section in
+                            SettingsSidebarSectionRow(section: section)
+                        }
+                    }
+
+                    DisclosureGroup(isExpanded: $isMoreSettingsExpanded) {
+                        ForEach(SettingsSection.moreSidebarSections) { section in
+                            SettingsSidebarSectionRow(section: section)
+                        }
+                    } label: {
+                        Label("More", systemImage: "ellipsis.circle")
+                            .help("Show deeper settings surfaces.")
+                    }
+                    .accessibilityIdentifier("settings.sidebar.more")
                 }
             }
             .listStyle(.sidebar)
@@ -272,6 +317,11 @@ struct SettingsRootView: View {
         }
         .onAppear {
             navigationModel.selectedSection = navigationModel.selectedSection ?? .general
+            expandMoreSettingsIfNeeded(for: selectedSection)
+        }
+        .onChange(of: navigationModel.selectedSection) { _, newValue in
+            guard let newValue else { return }
+            expandMoreSettingsIfNeeded(for: newValue)
         }
     }
 
@@ -279,15 +329,25 @@ struct SettingsRootView: View {
         navigationModel.selectedSection ?? .general
     }
 
+    private var sidebarSearchQuery: String {
+        navigationModel.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var isFilteringSidebar: Bool {
+        !sidebarSearchQuery.isEmpty
+    }
+
     private var filteredSidebarGroups: [SettingsSidebarGroup] {
-        let query = navigationModel.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let query = sidebarSearchQuery
         guard !query.isEmpty else { return SettingsSidebarGroup.all }
 
         return SettingsSidebarGroup.all.compactMap { group in
-            let sections = group.sections.filter { section in
-                section.title.localizedStandardContains(query)
-                    || section.searchKeywords.localizedStandardContains(query)
-            }
+            let sections = group.title.localizedStandardContains(query)
+                ? group.sections
+                : group.sections.filter { section in
+                    section.title.localizedStandardContains(query)
+                        || section.searchKeywords.localizedStandardContains(query)
+                }
             guard !sections.isEmpty else { return nil }
             return SettingsSidebarGroup(title: group.title, sections: sections)
         }
@@ -370,6 +430,12 @@ struct SettingsRootView: View {
             actions.disableHoverRevealTemporarily?()
         case .openTroubleshootingGuide:
             actions.openTroubleshootingGuide?()
+        }
+    }
+
+    private func expandMoreSettingsIfNeeded(for section: SettingsSection) {
+        if SettingsSection.moreSidebarSections.contains(section) {
+            isMoreSettingsExpanded = true
         }
     }
 
@@ -972,21 +1038,23 @@ struct ClearGlassSettingsPage<Content: View>: View {
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    ClearGlassPageHeader(title: title, subtitle: subtitle, badges: badges)
-                        .id(ClearGlassPageAnchor.top.targetID)
+                VStack(alignment: .leading, spacing: 15) {
+                    VStack(alignment: .leading, spacing: 9) {
+                        ClearGlassPageHeader(title: title, subtitle: subtitle, badges: badges)
 
-                    if !sectionAnchors.isEmpty {
-                        ClearGlassPageAnchorBar(anchors: sectionAnchors) { anchor in
-                            scroll(to: anchor, using: proxy)
+                        if sectionAnchors.count > 1 {
+                            ClearGlassPageAnchorBar(anchors: sectionAnchors) { anchor in
+                                scroll(to: anchor, using: proxy)
+                            }
                         }
                     }
+                    .id(ClearGlassPageAnchor.top.targetID)
 
                     content
                 }
-                .padding(.horizontal, 32)
-                .padding(.top, 24)
-                .padding(.bottom, 36)
+                .padding(.horizontal, 28)
+                .padding(.top, 16)
+                .padding(.bottom, 28)
                 .frame(maxWidth: 980, alignment: .topLeading)
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             }
@@ -1031,28 +1099,13 @@ struct ClearGlassPageAnchorBar: View {
     }
 
     var body: some View {
-        ViewThatFits(in: .horizontal) {
-            expandedAnchorBar
+        if anchors.count > 1 {
             compactAnchorMenu
+                .fixedSize(horizontal: true, vertical: false)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("Page sections")
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .controlBackgroundColor).opacity(0.68), in: .rect(cornerRadius: 8))
-        .overlay {
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Page sections")
-    }
-
-    private var expandedAnchorBar: some View {
-        HStack(spacing: 7) {
-            ForEach(allAnchors) { anchor in
-                anchorButton(anchor)
-            }
-        }
-        .padding(6)
-        .fixedSize(horizontal: true, vertical: false)
     }
 
     private var compactAnchorMenu: some View {
@@ -1071,24 +1124,8 @@ struct ClearGlassPageAnchorBar: View {
         }
         .buttonStyle(.bordered)
         .controlSize(.small)
-        .padding(6)
-        .fixedSize(horizontal: true, vertical: false)
         .accessibilityLabel("Jump to page section")
         .accessibilityHint("Opens a menu of sections on this settings page.")
-    }
-
-    private func anchorButton(_ anchor: ClearGlassPageAnchor) -> some View {
-        Button {
-            onSelect(anchor)
-        } label: {
-            Label(anchor.title, systemImage: anchor.systemImage)
-                .labelStyle(.titleAndIcon)
-                .lineLimit(1)
-        }
-        .buttonStyle(.bordered)
-        .controlSize(.small)
-        .accessibilityLabel("Jump to \(anchor.title)")
-        .accessibilityHint("Scrolls to this section.")
     }
 }
 
@@ -1111,8 +1148,8 @@ struct ClearGlassSection<Content: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(title)
                     .font(.subheadline)
                     .foregroundStyle(.primary)
@@ -1129,8 +1166,8 @@ struct ClearGlassSection<Content: View>: View {
             VStack(spacing: 0) {
                 content
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 6)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 4)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
             .overlay {
@@ -1237,12 +1274,12 @@ struct ClearGlassControlRow<Accessory: View>: View {
             horizontalRow
             verticalRow
         }
-        .padding(.vertical, 9)
+        .padding(.vertical, 7)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var horizontalRow: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
             iconView
 
             labelContent
@@ -1257,8 +1294,8 @@ struct ClearGlassControlRow<Accessory: View>: View {
     }
 
     private var verticalRow: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .top, spacing: 12) {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(alignment: .top, spacing: 10) {
                 iconView
 
                 labelContent
@@ -1275,11 +1312,11 @@ struct ClearGlassControlRow<Accessory: View>: View {
         Image(systemName: systemImage)
             .font(.system(size: 15, weight: .regular))
             .foregroundStyle(iconTint)
-            .frame(width: 22)
+            .frame(width: 20)
     }
 
     private var labelContent: some View {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: 2) {
             Text(title)
                 .font(.body)
                 .foregroundStyle(.primary)
@@ -1335,7 +1372,7 @@ struct ClearGlassValueRow<ValueContent: View>: View {
             horizontalRow
             verticalRow
         }
-        .padding(.vertical, 9)
+        .padding(.vertical, 7)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -1352,7 +1389,7 @@ struct ClearGlassValueRow<ValueContent: View>: View {
     }
 
     private var verticalRow: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 7) {
             labelContent
 
             value
@@ -1363,7 +1400,7 @@ struct ClearGlassValueRow<ValueContent: View>: View {
     }
 
     private var labelContent: some View {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: 2) {
             Text(title)
                 .font(.body)
                 .foregroundStyle(.primary)
@@ -1410,7 +1447,7 @@ struct ClearGlassSliderRow: View {
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 16) {
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.body)
 
@@ -1432,7 +1469,7 @@ struct ClearGlassSliderRow: View {
                 .foregroundStyle(.secondary)
                 .frame(width: valueWidth, alignment: .trailing)
         }
-        .padding(.vertical, 9)
+        .padding(.vertical, 7)
     }
 
     private var formattedValue: String {
@@ -1469,7 +1506,7 @@ struct ClearGlassInlineMessage: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .layoutPriority(1)
         }
-        .padding(10)
+        .padding(8)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(style.background, in: .rect(cornerRadius: 7))
         .overlay {
@@ -1650,8 +1687,8 @@ struct ClearGlassBadge: View {
             .font(.caption)
             .foregroundStyle(style.tint)
             .labelStyle(.titleAndIcon)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 2)
             .background(style.tint.opacity(0.08), in: .capsule)
             .overlay {
                 Capsule()
@@ -1698,9 +1735,9 @@ enum ClearGlassBadgeStyle: Hashable {
         case .privacySafe:
             "Privacy Safe"
         case .proMode:
-            "Pro Mode"
+            "Optional Pro"
         case .accessibilityRequired:
-            "Accessibility Required"
+            "Unavailable"
         case .diagnostics:
             "Diagnostics"
         case .stable:
@@ -1710,7 +1747,7 @@ enum ClearGlassBadgeStyle: Hashable {
         case .labs:
             FeatureStatus.labs.title
         case .experimental:
-            FeatureStatus.experimental.title
+            FeatureStatus.labs.title
         case .unavailable:
             FeatureStatus.unavailable.title
         case .deferred:
@@ -1739,7 +1776,7 @@ enum ClearGlassBadgeStyle: Hashable {
         case .labs:
             FeatureStatus.labs.systemImage
         case .experimental:
-            FeatureStatus.experimental.systemImage
+            FeatureStatus.labs.systemImage
         case .unavailable:
             FeatureStatus.unavailable.systemImage
         case .deferred:
@@ -1754,9 +1791,9 @@ enum ClearGlassBadgeStyle: Hashable {
         case .basicMode, .privacySafe:
             .green
         case .proMode:
-            .primary
+            .accentColor
         case .accessibilityRequired:
-            .orange
+            DesignTokens.SemanticTone.permissionRequired.foregroundStyle
         case .diagnostics:
             .secondary
         case .stable:
@@ -1766,7 +1803,7 @@ enum ClearGlassBadgeStyle: Hashable {
         case .labs:
             FeatureStatus.labs.tint
         case .experimental:
-            FeatureStatus.experimental.tint
+            FeatureStatus.labs.tint
         case .unavailable:
             FeatureStatus.unavailable.tint
         case .deferred:
@@ -1783,10 +1820,19 @@ private struct ClearGlassPageHeader: View {
     let badges: [ClearGlassBadgeStyle]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.largeTitle)
-                .foregroundStyle(.primary)
+        VStack(alignment: .leading, spacing: 5) {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    titleText
+                    badgeStrip
+                    Spacer(minLength: 0)
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    titleText
+                    badgeStrip
+                }
+            }
 
             if let subtitle {
                 Text(subtitle)
@@ -1795,16 +1841,25 @@ private struct ClearGlassPageHeader: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            if !visibleBadges.isEmpty {
-                HStack(spacing: 8) {
-                    ForEach(visibleBadges, id: \.self) { badge in
-                        ClearGlassBadge(style: badge)
-                    }
-                }
-                .padding(.top, 2)
-            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var titleText: some View {
+        Text(title)
+            .font(.largeTitle)
+            .foregroundStyle(.primary)
+    }
+
+    @ViewBuilder
+    private var badgeStrip: some View {
+        if !visibleBadges.isEmpty {
+            HStack(spacing: 7) {
+                ForEach(visibleBadges, id: \.self) { badge in
+                    ClearGlassBadge(style: badge)
+                }
+            }
+        }
     }
 
     private var visibleBadges: [ClearGlassBadgeStyle] {

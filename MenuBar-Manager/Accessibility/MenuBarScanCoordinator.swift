@@ -201,7 +201,7 @@ final class MenuBarScanCoordinator {
         )
 
         guard settingsStore.proModeEnabled else {
-            clearScanState(skipReason: "Pro Mode disabled")
+            clearScanState(skipReason: "Optional Pro disabled")
             return .finished(nil)
         }
 

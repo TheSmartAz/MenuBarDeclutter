@@ -351,7 +351,7 @@ nonisolated struct PlacementPlanner {
         case .reviewNewItem:
             "Review this item, then choose visible, hidden, or always-hidden placement manually."
         case .staleMetadata:
-            "Refresh Pro Discovery before following placement instructions."
+            "Refresh Optional Pro Discovery before following placement instructions."
         case .likelySystemItem:
             "Prefer Apple settings or Control Center for this item before moving it manually."
         case .needsManualPlacement:

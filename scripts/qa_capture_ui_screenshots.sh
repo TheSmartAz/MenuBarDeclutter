@@ -34,7 +34,7 @@ Options:
   --build                 Build the Debug app before capture.
   --app-path PATH         Use an existing MenuBarDeclutter.app bundle.
   --output-dir PATH       Write run artifacts to PATH.
-  --focused-only          Capture focused Settings pages, plus panels unless --settings-only is set.
+  --focused-only          Capture focused Settings pages and onboarding, plus panels unless --settings-only is set.
   --settings-only         Skip floating Find Icon / Second Bar / Groups panels.
   --keep-running-app      Do not terminate an already-running MenuBarDeclutter before capture.
   --strict-optional       Treat optional floating panel capture failures as failures.
@@ -426,6 +426,7 @@ write_summary() {
     echo "- The app is launched with \`--ui-testing\` so screenshots use isolated defaults and temporary app-support data."
     echo "- This runner uses public CoreGraphics window metadata plus the system \`screencapture\` tool. It does not use private APIs, Accessibility automation, network access, or XCTest UI automation."
     echo "- macOS may require Screen Recording permission for the terminal or Codex runner that executes \`screencapture\`; do not grant Screen Recording to MenuBarDeclutter for Basic Mode QA."
+    echo "- Status menu visual capture is not automated by this harness; keep using source-covered StatusBarMenuBuilder tests plus manual QA for status menu behavior."
     echo "- XCTest attachment export remains useful after successful UI tests, but XCTest automation can time out while enabling automation mode on macOS automation sessions."
   } > "$SUMMARY_PATH"
 }
@@ -460,6 +461,11 @@ floating_panel_surfaces=(
   "panel|21-floating-find-icon|Floating Find Icon|optional|--ui-testing-show-search|Find Icon"
   "panel|22-floating-second-bar|Floating Second Bar|optional|--ui-testing-show-second-bar|Second Bar"
   "panel|23-floating-group-panel|Floating Group Panel|optional|--ui-testing-show-group-panel|Focus Apps"
+)
+
+onboarding_surfaces=(
+  "onboarding|24-onboarding-welcome|Onboarding Welcome|required|--ui-testing-show-onboarding|Setup"
+  "onboarding|25-onboarding-privacy|Onboarding Privacy|required|--ui-testing-show-onboarding-privacy|Setup"
 )
 
 mkdir -p "$SCREENSHOT_DIR" "$LOG_DIR"
@@ -497,6 +503,11 @@ if [[ "$INCLUDE_PANELS" -eq 1 ]]; then
     capture_surface "$kind" "$slug" "$label" "$required" "$args_string" "$title_contains"
   done
 fi
+
+for entry in "${onboarding_surfaces[@]}"; do
+  IFS='|' read -r kind slug label required args_string title_contains <<< "$entry"
+  capture_surface "$kind" "$slug" "$label" "$required" "$args_string" "$title_contains"
+done
 
 write_summary
 

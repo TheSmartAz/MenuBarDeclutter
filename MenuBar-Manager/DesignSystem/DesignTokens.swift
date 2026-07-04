@@ -60,7 +60,7 @@ enum DesignTokens {
             case .diagnostics:
                 "Diagnostics"
             case .experimental:
-                "Experimental"
+                "Labs"
             case .destructive:
                 "Action Needed"
             case .neutral:
@@ -77,11 +77,11 @@ enum DesignTokens {
             case .privacySafe:
                 .green
             case .permissionRequired:
-                .orange
+                .yellow
             case .diagnostics:
                 .secondary
             case .experimental:
-                .orange
+                .purple
             case .destructive:
                 .red
             case .neutral:

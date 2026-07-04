@@ -58,22 +58,13 @@ final class SecondBarWindowController: NSWindowController, NSWindowDelegate {
                     )
                 )
             ),
-            styleMask: [.titled, .closable, .utilityWindow],
+            styleMask: [.borderless],
             backing: .buffered,
             defer: false
         )
-        panel.title = "Second Bar"
-        panel.titleVisibility = .visible
-        panel.titlebarAppearsTransparent = false
-        panel.isFloatingPanel = true
-        panel.isReleasedWhenClosed = false
-        panel.level = .floating
+        panel.applyMenuBarDeclutterFloatingPanelStyle(title: "Second Bar")
         panel.collectionBehavior = [.canJoinAllSpaces, .transient, .ignoresCycle]
-        panel.backgroundColor = .windowBackgroundColor
-        panel.isOpaque = true
-        panel.hasShadow = true
         panel.minSize = NSSize(width: 620, height: 210)
-        panel.animationBehavior = .utilityWindow
 
         super.init(window: panel)
 
@@ -294,7 +285,7 @@ final class SecondBarWindowController: NSWindowController, NSWindowDelegate {
 
     private func updatePanelBehaviorFromSettings() {
         guard let panel = window as? NSPanel else { return }
-        panel.hidesOnDeactivate = settingsStore.secondBarCloseOnOutsideClick
+        panel.hidesOnDeactivate = false
     }
 
     private func frameSummary(_ frame: CGRect) -> String {

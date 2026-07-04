@@ -11,10 +11,10 @@ struct DesignSystemSemanticsTests {
         #expect(StatusBadge.Style.basicMode.tone == .privacySafe)
         #expect(StatusBadge.Style.basicMode.isProminent)
 
-        #expect(StatusBadge.Style.proMode.defaultTitle == "Pro Mode")
+        #expect(StatusBadge.Style.proMode.defaultTitle == "Optional Pro")
         #expect(StatusBadge.Style.proMode.defaultSubtitle == "Opt-in")
         #expect(StatusBadge.Style.proMode.systemImage == "star")
-        #expect(StatusBadge.Style.proMode.tone == .neutral)
+        #expect(StatusBadge.Style.proMode.tone == .accent)
 
         #expect(StatusBadge.Style.accessibilityRequired.systemImage == "accessibility")
         #expect(StatusBadge.Style.accessibilityRequired.tone == .permissionRequired)
@@ -27,7 +27,7 @@ struct DesignSystemSemanticsTests {
             "Stable",
             "Preview",
             "Labs",
-            "Experimental",
+            "Labs",
             "Disabled",
             "Unavailable",
             "Deferred"
@@ -38,7 +38,7 @@ struct DesignSystemSemanticsTests {
         #expect(FeatureStatus.stable.isReleaseCore)
         #expect(!FeatureStatus.preview.isReleaseCore)
 
-        #expect(FeatureStatus.preview.tone == .diagnostics)
+        #expect(FeatureStatus.preview.tone == .accent)
         #expect(FeatureStatus.labs.tone == .experimental)
         #expect(FeatureStatus.experimental.tone == .experimental)
         #expect(FeatureStatus.unavailable.tone == .disabled)
@@ -53,7 +53,7 @@ struct DesignSystemSemanticsTests {
         #expect(ClearGlassBadgeStyle(featureStatus: .stable).title == "Stable")
         #expect(ClearGlassBadgeStyle(featureStatus: .preview).systemImage == "sparkles")
         #expect(ClearGlassBadgeStyle(featureStatus: .labs).title == "Labs")
-        #expect(ClearGlassBadgeStyle(featureStatus: .experimental).title == "Experimental")
+        #expect(ClearGlassBadgeStyle(featureStatus: .experimental).title == "Labs")
         #expect(ClearGlassBadgeStyle(featureStatus: .unavailable).title == "Unavailable")
         #expect(ClearGlassBadgeStyle(featureStatus: .disabled).title == "Unavailable")
         #expect(ClearGlassBadgeStyle(featureStatus: .deferred).title == "Deferred")
@@ -66,7 +66,7 @@ struct DesignSystemSemanticsTests {
         #expect(RequirementRow.Status.permissionBoundary(isSatisfied: true, isRequired: true, isAvailable: false) == .unavailable)
 
         #expect(RequirementRow.Status.satisfied.systemImage == "checkmark.circle.fill")
-        #expect(RequirementRow.Status.required.tone == .experimental)
+        #expect(RequirementRow.Status.required.tone == .permissionRequired)
         #expect(RequirementRow.Status.unavailable.tone == .disabled)
         #expect(RequirementRow.Status.required.isBlocking)
         #expect(!RequirementRow.Status.optional.isBlocking)
@@ -76,7 +76,7 @@ struct DesignSystemSemanticsTests {
         #expect(NoticeBanner.Kind.privacy.systemImage == "hand.raised")
         #expect(NoticeBanner.Kind.privacy.tone == .privacySafe)
         #expect(NoticeBanner.Kind.success.tone == .privacySafe)
-        #expect(NoticeBanner.Kind.warning.tone == .experimental)
+        #expect(NoticeBanner.Kind.warning.tone == .permissionRequired)
         #expect(NoticeBanner.Kind.destructive.tone == .destructive)
         #expect(NoticeBanner.Kind.info.accessibilityPrefix == "Information")
     }
@@ -90,7 +90,7 @@ struct DesignSystemSemanticsTests {
         let hidden = MenuBarZoneBadge.Descriptor.descriptor(for: .hidden)
         #expect(hidden.shortTitle == "H")
         #expect(hidden.systemImage == "eye.slash")
-        #expect(hidden.tone == .experimental)
+        #expect(hidden.tone == .accent)
 
         let alwaysHidden = MenuBarZoneBadge.Descriptor.descriptor(for: .alwaysHidden)
         #expect(alwaysHidden.shortTitle == "A")

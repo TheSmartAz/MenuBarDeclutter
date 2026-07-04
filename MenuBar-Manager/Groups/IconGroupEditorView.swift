@@ -188,7 +188,7 @@ struct IconGroupEditorView: View {
     }
 
     private var addItemsSection: some View {
-        editorSection("Add Items", subtitle: "Use Basic Mode manual criteria or Pro Mode snapshots.") {
+        editorSection("Add Items", subtitle: "Use Basic Mode manual criteria or Optional Pro snapshots.") {
             ManualReferenceEntryRow(
                 title: "Bundle ID",
                 placeholder: "com.example.App",

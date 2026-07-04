@@ -55,7 +55,7 @@ struct AssistedMoveFlowView: View {
                 ContentUnavailableView(
                     "No Discovered Items",
                     systemImage: "menubar.rectangle",
-                    description: Text("Run Pro Discovery before trying Assisted Move.")
+                    description: Text("Run Optional Pro Discovery before trying Assisted Move.")
                 )
                 .frame(maxWidth: .infinity, minHeight: 150)
             }
@@ -186,7 +186,7 @@ struct AssistedMoveIntroView: View {
 
             ClearGlassControlRow(
                 systemImage: "arrow.up.left.and.arrow.down.right",
-                title: "Experimental Icon Moving",
+                title: "Labs Icon Moving",
                 subtitle: settingsStore.iconMovingEnabled
                     ? "Enabled for explicitly confirmed single-item attempts."
                     : "Off by default. Advanced settings contain the opt-in controls.",

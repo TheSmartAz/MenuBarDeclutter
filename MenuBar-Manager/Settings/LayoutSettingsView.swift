@@ -264,13 +264,13 @@ private struct CapacityInspectorPanel: View {
                 ContentUnavailableView(
                     "No Capacity Snapshot",
                     systemImage: "chart.bar",
-                    description: Text("Basic Mode remains available. Pro Mode can improve estimates when Accessibility is enabled.")
+                    description: Text("Basic Mode remains available. Optional Pro can improve estimates when Accessibility is enabled.")
                 )
                 .frame(maxWidth: .infinity, minHeight: 150)
             }
 
             ClearGlassInlineMessage(
-                text: "Capacity estimates are more accurate with Pro Mode and Accessibility. Basic Mode uses approximate geometry.",
+                text: "Capacity estimates are more accurate with Optional Pro and Accessibility. Basic Mode uses approximate geometry.",
                 systemImage: "checkmark.shield",
                 style: .success
             )
@@ -659,7 +659,7 @@ private struct MenuBarSpacingLabsSection: View {
     var body: some View {
         ClearGlassSection(
             "Menu Bar Spacing Labs",
-            subtitle: "Experimental global menu bar spacing, only after explicit opt-in."
+            subtitle: "Labs global menu bar spacing, only after explicit opt-in."
         ) {
             VStack(spacing: 0) {
                 FeatureGateNotice(
@@ -672,8 +672,8 @@ private struct MenuBarSpacingLabsSection: View {
                 ClearGlassControlRow(
                     systemImage: "testtube.2",
                     title: "Enable Spacing Labs",
-                    subtitle: "Enable the experimental spacing manager. Off by default.",
-                    iconTint: settingsStore.menuBarSpacingLabsEnabled ? .orange : .secondary
+                    subtitle: "Enable the Labs spacing manager. Off by default.",
+                    iconTint: settingsStore.menuBarSpacingLabsEnabled ? .purple : .secondary
                 ) {
                     Toggle("Enable Spacing Labs", isOn: $settingsStore.menuBarSpacingLabsEnabled)
                         .labelsHidden()
@@ -686,7 +686,7 @@ private struct MenuBarSpacingLabsSection: View {
                         .padding(.vertical, 12)
 
                     ClearGlassInlineMessage(
-                        text: "This is experimental. Menu bar apps, SystemUIServer, ControlCenter, logout, or reboot may be needed for full effect. Never automatically restarts system processes.",
+                        text: "This is a Labs feature. Menu bar apps, SystemUIServer, ControlCenter, logout, or reboot may be needed for full effect. Never automatically restarts system processes.",
                         systemImage: "exclamationmark.triangle",
                         style: .warning
                     )
@@ -705,7 +705,7 @@ private struct MenuBarSpacingPresetPanel: View {
             title: "Spacing Inspector",
             subtitle: selectedPreset.displayName,
             systemImage: "slider.horizontal.3",
-            iconTint: .orange
+            iconTint: .purple
         ) {
             VStack(spacing: 0) {
                 ClearGlassValueRow("Preset", subtitle: "Current spacing preset.") {

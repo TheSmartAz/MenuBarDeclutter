@@ -12,9 +12,9 @@ enum SettingsUnavailableReason: Sendable {
     var defaultTitle: String {
         switch self {
         case .proModeDisabled:
-            "Pro Mode Off"
+            "Optional Pro Off"
         case .permissionMissing:
-            "Permission Required"
+            "Unavailable"
         case .previewDisabled:
             "Preview Disabled"
         case .emptyData:
@@ -31,7 +31,7 @@ enum SettingsUnavailableReason: Sendable {
     var defaultMessage: String {
         switch self {
         case .proModeDisabled:
-            "This is available only after Pro Mode is enabled. Basic Mode remains usable without extra permissions."
+            "This is available only after Optional Pro is enabled. Basic Mode remains usable without extra permissions."
         case .permissionMissing(let status):
             if let status {
                 "Accessibility permission is \(status.lowercased()). Grant permission from Privacy settings to use this feature."

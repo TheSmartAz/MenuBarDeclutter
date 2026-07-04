@@ -767,7 +767,7 @@ struct DiagnosticsExporter {
         SettingsField(key: "isCollapsed", label: "Collapsed") { .bool($0.isCollapsed) },
         SettingsField(key: "hasCompletedOnboarding", label: "Onboarding Completed") { .bool($0.hasCompletedOnboarding) },
         SettingsField(key: "launchAtLoginEnabled", label: "Launch at Login") { .bool($0.launchAtLoginEnabled) },
-        SettingsField(key: "proModeEnabled", label: "Pro Mode Enabled") { .bool($0.proModeEnabled) },
+        SettingsField(key: "proModeEnabled", label: "Optional Pro Enabled") { .bool($0.proModeEnabled) },
         SettingsField(key: "accessibilityDiscoveryEnabled", label: "Accessibility Discovery Enabled") { .bool($0.accessibilityDiscoveryEnabled) },
         SettingsField(key: "lastAccessibilityPermissionStatus", label: "Last Accessibility Permission Status") {
             .optionalString($0.lastAccessibilityPermissionStatus, emptyText: "(none)")
@@ -849,7 +849,7 @@ struct DiagnosticsExporter {
         SettingsField(key: "crowdedRevealThresholdRatio", label: "Crowded Reveal Threshold Ratio") {
             .double($0.crowdedRevealThresholdRatio)
         },
-        SettingsField(key: "crowdedRevealRequireProEstimate", label: "Crowded Reveal Requires Pro Estimate") {
+        SettingsField(key: "crowdedRevealRequireProEstimate", label: "Crowded Reveal Requires Optional Pro Estimate") {
             .bool($0.crowdedRevealRequireProEstimate)
         },
         SettingsField(key: "spacerItemsEnabled", label: "Spacer Items Enabled") { .bool($0.spacerItemsEnabled) },

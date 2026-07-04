@@ -154,7 +154,7 @@ struct FunctionBarItemResolver {
         case .missingReference:
             return FunctionBarItemBadge(title: "Missing")
         case .requiresPro:
-            return FunctionBarItemBadge(title: "Requires Pro")
+            return FunctionBarItemBadge(title: "Requires Optional Pro")
         case .requiresAccessibility:
             return FunctionBarItemBadge(title: "Requires Accessibility")
         case .stale:

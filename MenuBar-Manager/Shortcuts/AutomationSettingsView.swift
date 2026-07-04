@@ -688,9 +688,9 @@ private extension AutomationShortcutAction {
         case .none:
             "Available when App Intents are enabled and global safety gates permit execution."
         case .findIcon:
-            "Requires Pro Discovery; status-menu visibility does not block the shortcut."
+            "Requires Optional Pro Discovery; status-menu visibility does not block the shortcut."
         case .proDiscovery:
-            "Requires Pro Discovery; Accessibility permission is checked when the shortcut runs."
+            "Requires Optional Pro Discovery; Accessibility permission is checked when the shortcut runs."
         case .profileApply:
             "Requires profile apply access and still respects automation pause and Private Access."
         case .spacingLabs:
