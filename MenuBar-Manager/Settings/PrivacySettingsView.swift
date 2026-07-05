@@ -139,15 +139,7 @@ struct PrivacySettingsView: View {
                 status: accessibilityStatusText,
                 style: accessibilityStatusStyle
             ) {
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 8) {
-                        accessibilityButtons
-                    }
-
-                    VStack(alignment: .trailing, spacing: 8) {
-                        accessibilityButtons
-                    }
-                }
+                accessibilityButtons
             }
             .opacity(settingsStore.proModeEnabled ? 1 : 0.72)
 
@@ -239,15 +231,7 @@ struct PrivacySettingsView: View {
                 status: screenCaptureStatusText,
                 style: screenCaptureStatusStyle
             ) {
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 8) {
-                        screenCaptureButtons
-                    }
-
-                    VStack(alignment: .trailing, spacing: 8) {
-                        screenCaptureButtons
-                    }
-                }
+                screenCaptureButtons
             }
             .opacity(settingsStore.renderedIconCaptureEnabled ? 1 : 0.72)
 
@@ -512,90 +496,45 @@ private struct PrivacyStatusOverview: View {
     let screenCaptureStatusText: String
     let screenCaptureStatusStyle: ClearGlassStatusStyle
 
-    private let columns = [
-        GridItem(.adaptive(minimum: 150), spacing: 8)
-    ]
-
     var body: some View {
-        LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
-            PrivacyOverviewPill(
+        ClearGlassOverviewStrip([
+            ClearGlassOverviewMetric(
                 title: "Basic Mode",
                 value: "Ready",
                 systemImage: "checkmark.shield",
                 style: .success
-            )
-
-            PrivacyOverviewPill(
+            ),
+            ClearGlassOverviewMetric(
                 title: "Optional Pro",
                 value: proModeEnabled ? "Optional Pro" : "Basic Mode",
                 systemImage: "star",
                 style: proModeEnabled ? .info : .secondary
-            )
-
-            PrivacyOverviewPill(
+            ),
+            ClearGlassOverviewMetric(
                 title: "Discovery",
                 value: accessibilityDiscoveryEnabled ? "Optional Pro" : "Unavailable",
                 systemImage: "figure.circle",
                 style: accessibilityDiscoveryEnabled ? .info : .secondary
-            )
-
-            PrivacyOverviewPill(
+            ),
+            ClearGlassOverviewMetric(
                 title: "Accessibility",
                 value: accessibilityStatusText,
                 systemImage: "hand.raised",
                 style: accessibilityStatusStyle
-            )
-
-            PrivacyOverviewPill(
+            ),
+            ClearGlassOverviewMetric(
                 title: "Accurate Icons",
                 value: accurateIconsStatusText,
                 systemImage: "sparkle.magnifyingglass",
                 style: accurateIconsStatusStyle
-            )
-
-            PrivacyOverviewPill(
+            ),
+            ClearGlassOverviewMetric(
                 title: "Screen Recording",
                 value: screenCaptureStatusText,
                 systemImage: "rectangle.on.rectangle",
                 style: screenCaptureStatusStyle
             )
-        }
-    }
-}
-
-private struct PrivacyOverviewPill: View {
-    let title: String
-    let value: String
-    let systemImage: String
-    let style: ClearGlassStatusStyle
-
-    var body: some View {
-        HStack(spacing: 9) {
-            Image(systemName: systemImage)
-                .font(.system(size: 16, weight: .regular))
-                .foregroundStyle(style.tint)
-                .frame(width: 19)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Text(value)
-                    .font(.callout)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.82)
-            }
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
-        .overlay {
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
-        }
+        ], maximumColumnCount: 3)
     }
 }
 
@@ -613,9 +552,7 @@ private struct PrivacyProModeRow: View {
             status: isEnabled ? "Optional Pro" : "Basic Mode",
             style: isEnabled ? .info : .secondary
         ) {
-            if isEnabled {
-                ClearGlassStatusValue(text: "Optional Pro", style: .info)
-            } else {
+            if !isEnabled {
                 Button("Enable Optional Pro", systemImage: "lock.open", action: enableAction)
                     .controlSize(.small)
                     .accessibilityIdentifier("privacy.action.enableProMode")
@@ -649,16 +586,15 @@ private struct PrivacyPermissionRow<Accessory: View>: View {
     }
 
     var body: some View {
-        ClearGlassControlRow(
+        ClearGlassStatusControlRow(
             systemImage: systemImage,
             title: title,
             subtitle: subtitle,
-            iconTint: style.tint
+            iconTint: style.tint,
+            statusText: status,
+            statusStyle: style
         ) {
-            HStack(spacing: 12) {
-                ClearGlassStatusValue(text: status, style: style)
-                accessory
-            }
+            accessory
         }
     }
 }
@@ -688,11 +624,13 @@ private struct PrivacyScanThrottleRow: View {
     let isEnabled: Bool
 
     var body: some View {
-        ClearGlassControlRow(
+        ClearGlassStatusControlRow(
             systemImage: "clock",
             title: "Scan Throttle",
             subtitle: "Slow local discovery scans to reduce system impact.",
-            iconTint: isEnabled ? .secondary : .secondary
+            iconTint: .secondary,
+            statusText: isEnabled ? "Active" : "Off",
+            statusStyle: isEnabled ? .info : .secondary
         ) {
             HStack(spacing: 10) {
                 Text(value, format: .number.precision(.fractionLength(1)))

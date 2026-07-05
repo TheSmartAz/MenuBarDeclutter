@@ -24,7 +24,14 @@ struct FindAndRescueSettingsView: View {
         ClearGlassSettingsPage(
             "Find & Rescue",
             subtitle: "Find hidden icons, review new items, and recover crowded reveal with Optional Pro local discovery.",
-            badges: [.preview],
+            badges: [
+                .preview,
+                .optionalProDiscovery(
+                    proModeEnabled: settingsStore.proModeEnabled,
+                    accessibilityDiscoveryEnabled: settingsStore.accessibilityDiscoveryEnabled,
+                    accessibilityPermissionStatus: accessibilityPermissionStatus
+                )
+            ],
             sectionAnchors: [
                 ClearGlassPageAnchor("Setup", systemImage: "lock", targetID: "Setup Checklist"),
                 ClearGlassPageAnchor("Surfaces", systemImage: "rectangle.on.rectangle", targetID: "Find Icon and Second Bar"),
@@ -53,13 +60,13 @@ struct FindAndRescueSettingsView: View {
     private var proRequirementsSection: some View {
         ClearGlassSection(
             "Setup Checklist",
-            subtitle: "Basic Mode keeps working while each Optional Pro step is unavailable."
+            subtitle: "Basic Mode keeps working while each Optional Pro step is waiting."
         ) {
             FindRescueSetupStepRow(
                 number: 1,
                 title: "Enable Optional Pro",
                 detail: "Unlock optional rescue surfaces and item review.",
-                statusText: settingsStore.proModeEnabled ? "Optional Pro" : "Basic",
+                statusText: settingsStore.proModeEnabled ? "On" : "Off",
                 state: settingsStore.proModeEnabled ? .complete : .current,
                 systemImage: "star",
                 actionTitle: settingsStore.proModeEnabled ? nil : "Enable Optional Pro",
@@ -72,7 +79,7 @@ struct FindAndRescueSettingsView: View {
                 number: 2,
                 title: "Enable Accessibility Discovery",
                 detail: "Build a local item index. Accurate Icons can add local rendered thumbnails when enabled.",
-                statusText: settingsStore.accessibilityDiscoveryEnabled ? "Optional Pro" : "Unavailable",
+                statusText: discoverySetupStatusText,
                 state: discoveryStepState,
                 systemImage: "figure.circle",
                 actionTitle: discoveryStepState == .current ? "Enable Discovery" : nil,
@@ -85,9 +92,7 @@ struct FindAndRescueSettingsView: View {
                 number: 3,
                 title: "Grant Accessibility Permission",
                 detail: "Allow local reading of menu bar labels and frames.",
-                statusText: permissionService?.status == .granted
-                    ? "Optional Pro"
-                    : "Unavailable",
+                statusText: permissionSetupStatusText,
                 state: permissionStepState,
                 systemImage: "hand.raised",
                 actionTitle: permissionStepState == .current ? "Open Privacy" : nil,
@@ -100,7 +105,7 @@ struct FindAndRescueSettingsView: View {
                 number: 4,
                 title: "Open Find Icon",
                 detail: "Search, reveal, highlight, or hand off to Second Bar.",
-                statusText: findRescueReady ? "Preview" : "Unavailable",
+                statusText: findRescueReady ? "Ready" : "Waiting",
                 state: findRescueReady ? .current : .locked,
                 systemImage: "magnifyingglass",
                 actionTitle: findRescueReady ? "Open Find Icon" : nil,
@@ -301,8 +306,15 @@ struct FindAndRescueSettingsView: View {
             }
 
             if findIconAvailability == nil && secondBarAvailability == nil {
-                ContentUnavailableView("Item Actions Unavailable", systemImage: "link")
-                    .frame(maxWidth: .infinity, minHeight: 120)
+                SettingsUnavailableGate(
+                    .serviceUnavailable,
+                    title: "Item Actions Unavailable",
+                    message: "Action status appears once command routing is attached.",
+                    systemImage: "link",
+                    minHeight: 140,
+                    nextSteps: ["Use Setup Checklist first.", "Open Find Icon or Second Bar when the gates are ready."]
+                )
+                .frame(maxWidth: .infinity, minHeight: 140)
             }
         }
     }
@@ -313,6 +325,26 @@ struct FindAndRescueSettingsView: View {
 
     private var findRescueReady: Bool {
         discoveryReady && permissionService?.status == .granted
+    }
+
+    private var accessibilityPermissionStatus: AccessibilityPermissionStatus {
+        permissionService?.status ?? .notRequested
+    }
+
+    private var discoverySetupStatusText: String {
+        if settingsStore.accessibilityDiscoveryEnabled {
+            return "On"
+        }
+
+        return settingsStore.proModeEnabled ? "Off" : "Locked"
+    }
+
+    private var permissionSetupStatusText: String {
+        if accessibilityPermissionStatus == .granted {
+            return "Granted"
+        }
+
+        return discoveryReady ? accessibilityPermissionStatus.displayName : "Locked"
     }
 
     private var discoveryStepState: FindRescueSetupStepState {
@@ -333,7 +365,7 @@ struct FindAndRescueSettingsView: View {
         if findRescueReady {
             return "Find Icon and Second Bar previews can use local Optional Pro metadata. Basic Mode remains available if these previews are turned off later."
         }
-        return "Basic Mode keeps working while Optional Pro discovery is unavailable or waiting for permission."
+        return "Basic Mode keeps working while Optional Pro discovery is off or waiting for permission."
     }
 
     private func enableProMode() {
@@ -569,49 +601,33 @@ private struct FindRescueOverviewStrip: View {
     let alwaysHiddenCount: Int
     let newItemCount: Int
 
-    private let columns = [
-        GridItem(.adaptive(minimum: 150), spacing: 8)
-    ]
-
     var body: some View {
-        LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
-            overviewPill("Discovered", value: "\(scannedCount)", systemImage: "list.bullet", style: scannedCount > 0 ? .info : .secondary)
-            overviewPill("Hidden", value: "\(hiddenCount)", systemImage: "eye.slash", style: hiddenCount > 0 ? .info : .secondary)
-            overviewPill("Always Hidden", value: "\(alwaysHiddenCount)", systemImage: "lock", style: alwaysHiddenCount > 0 ? .warning : .secondary)
-            overviewPill("New Items", value: "\(newItemCount)", systemImage: "tray", style: newItemCount > 0 ? .warning : .secondary)
-        }
-    }
-
-    private func overviewPill(
-        _ title: String,
-        value: String,
-        systemImage: String,
-        style: ClearGlassStatusStyle
-    ) -> some View {
-        HStack(spacing: 9) {
-            Image(systemName: systemImage)
-                .font(.system(size: 16, weight: .regular))
-                .foregroundStyle(style.tint)
-                .frame(width: 19)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Text(value)
-                    .font(.callout)
-                    .foregroundStyle(.primary)
-            }
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
-        .overlay {
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
-        }
+        ClearGlassOverviewStrip([
+            ClearGlassOverviewMetric(
+                title: "Discovered",
+                value: "\(scannedCount)",
+                systemImage: "list.bullet",
+                style: scannedCount > 0 ? .info : .secondary
+            ),
+            ClearGlassOverviewMetric(
+                title: "Hidden",
+                value: "\(hiddenCount)",
+                systemImage: "eye.slash",
+                style: hiddenCount > 0 ? .info : .secondary
+            ),
+            ClearGlassOverviewMetric(
+                title: "Always Hidden",
+                value: "\(alwaysHiddenCount)",
+                systemImage: "lock",
+                style: alwaysHiddenCount > 0 ? .warning : .secondary
+            ),
+            ClearGlassOverviewMetric(
+                title: "New Items",
+                value: "\(newItemCount)",
+                systemImage: "tray",
+                style: newItemCount > 0 ? .warning : .secondary
+            )
+        ])
     }
 }
 
@@ -631,8 +647,8 @@ private struct FindRescueFlowPreview: View {
                 Spacer()
 
                 ClearGlassStatusValue(
-                    text: findIconAvailable || secondBarAvailable ? "Preview" : "Unavailable",
-                    style: findIconAvailable || secondBarAvailable ? .info : .secondary
+                    text: findIconAvailable || secondBarAvailable ? "Ready" : "Waiting",
+                    style: findIconAvailable || secondBarAvailable ? .success : .secondary
                 )
             }
 
@@ -702,8 +718,8 @@ private struct FindRescueFlowPreview: View {
                 .lineLimit(1)
 
             ClearGlassStatusValue(
-                text: isAvailable ? "Preview" : "Unavailable",
-                style: isAvailable ? .info : .secondary
+                text: isAvailable ? "Ready" : "Waiting",
+                style: isAvailable ? .success : .secondary
             )
         }
         .padding(.horizontal, 10)
@@ -726,12 +742,12 @@ private struct FindRescueCard<Action: View>: View {
             subtitle: summary,
             iconTint: status.tint
         ) {
-            HStack(spacing: 8) {
+            ClearGlassAccessoryCluster {
                 ClearGlassBadge(style: ClearGlassBadgeStyle(featureStatus: status))
                 action
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
             }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
         }
     }
 }

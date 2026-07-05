@@ -25,6 +25,17 @@ struct MenuBarItemsSettingsView: View {
         liveStatus?.accessibilityPermissionStatus ?? .notRequested
     }
 
+    private var pageBadges: [ClearGlassBadgeStyle] {
+        [
+            .stable,
+            .optionalProDiscovery(
+                proModeEnabled: settingsStore.proModeEnabled,
+                accessibilityDiscoveryEnabled: settingsStore.accessibilityDiscoveryEnabled,
+                accessibilityPermissionStatus: permissionStatus
+            )
+        ]
+    }
+
     private var discoveryPresentation: MenuBarItemsDiscoveryPresentation {
         if !settingsStore.proModeEnabled {
             return MenuBarItemsDiscoveryPresentation(
@@ -73,7 +84,8 @@ struct MenuBarItemsSettingsView: View {
         ClearGlassSettingsPage(
             "Menu Bar Items",
             subtitle: "Inspect the current local Accessibility discovery snapshot.",
-            badges: [.stable, .proMode, .accessibilityRequired],
+            badges: pageBadges,
+            style: .tool,
             sectionAnchors: [
                 ClearGlassPageAnchor("Snapshot", systemImage: "camera.metering.matrix"),
                 ClearGlassPageAnchor("Items", systemImage: "list.bullet.rectangle")
@@ -96,20 +108,21 @@ struct MenuBarItemsSettingsView: View {
 
                 ClearGlassDivider()
 
-                ClearGlassControlRow(
+                ClearGlassActionStrip(
+                    "Snapshot Actions",
+                    subtitle: "Refresh the local Accessibility discovery index, or open Privacy to change Optional Pro gates.",
                     systemImage: "arrow.clockwise",
-                    title: "Refresh Snapshot",
-                    subtitle: "Refresh the local Accessibility discovery index when Optional Pro is enabled."
+                    statusText: scanCoordinator?.canScan == true ? "Ready" : "Gated",
+                    statusStyle: scanCoordinator?.canScan == true ? .success : .secondary
                 ) {
-                    HStack(spacing: 10) {
-                        Button("Refresh", systemImage: "arrow.clockwise") {
-                            scanCoordinator?.requestManualRefresh()
-                        }
-                        .disabled(scanCoordinator?.canScan != true)
+                    Button("Refresh Snapshot", systemImage: "arrow.clockwise") {
+                        scanCoordinator?.requestManualRefresh()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(scanCoordinator?.canScan != true)
 
-                        Button("Privacy Settings", systemImage: "hand.raised") {
-                            onOpenPrivacySettings?()
-                        }
+                    Button("Privacy Settings", systemImage: "hand.raised") {
+                        onOpenPrivacySettings?()
                     }
                 }
 
@@ -126,6 +139,7 @@ struct MenuBarItemsSettingsView: View {
                         onOpenPrivacySettings: onOpenPrivacySettings
                     )
                 } else {
+                    ClearGlassToolSurface(minHeight: 430) {
                         ClearGlassPaneLayout(primaryWidth: 280, spacing: 0) {
                             MenuBarItemsSourcePane(
                                 snapshots: visibleSnapshots,
@@ -133,22 +147,17 @@ struct MenuBarItemsSettingsView: View {
                                 searchText: $searchText,
                                 selectedFilter: $selectedFilter,
                                 selectedSnapshotID: $selectedSnapshotID
-                        )
-                        .frame(minHeight: 320, maxHeight: 430)
-                    } detail: {
-                        MenuBarItemInspector(
-                            snapshot: selectedSnapshot,
-                            onRefresh: {
-                                scanCoordinator?.requestManualRefresh()
-                            }
-                        )
-                        .frame(minHeight: 320)
-                    }
-                    .frame(minHeight: 430)
-                    .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 8))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
+                            )
+                            .frame(minHeight: 320, maxHeight: 430)
+                        } detail: {
+                            MenuBarItemInspector(
+                                snapshot: selectedSnapshot,
+                                onRefresh: {
+                                    scanCoordinator?.requestManualRefresh()
+                                }
+                            )
+                            .frame(minHeight: 320)
+                        }
                     }
                 }
             }
@@ -688,7 +697,8 @@ private struct MenuBarItemsUnavailableView: View {
             message: message,
             systemImage: systemImage,
             minHeight: 320,
-            showsActions: onOpenPrivacySettings != nil
+            showsActions: onOpenPrivacySettings != nil,
+            nextSteps: nextSteps
         ) {
             if onOpenPrivacySettings != nil {
                 Button("Open Privacy Settings", systemImage: "hand.raised") {
@@ -745,6 +755,26 @@ private struct MenuBarItemsUnavailableView: View {
         }
 
         return "Refresh the snapshot to inspect discovered menu bar items."
+    }
+
+    private var nextSteps: [String] {
+        if hasSnapshots {
+            return ["Clear the search or choose a broader filter."]
+        }
+
+        if !proModeEnabled {
+            return ["Enable Optional Pro only when you want local discovery.", "Basic Mode remains usable without Accessibility."]
+        }
+
+        if !discoveryEnabled {
+            return ["Turn on Accessibility Discovery in Privacy.", "Refresh the snapshot after enabling discovery."]
+        }
+
+        if permissionStatus != .granted {
+            return ["Grant Accessibility permission in System Settings.", "Return here and refresh the snapshot."]
+        }
+
+        return ["Use Refresh Snapshot to build the first local item list."]
     }
 }
 

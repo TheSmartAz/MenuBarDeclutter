@@ -51,42 +51,35 @@ private struct LayoutOverviewStrip: View {
     var estimate: LayoutCapacityEstimate?
     var suggestionCount: Int
 
-    private let columns = [
-        GridItem(.adaptive(minimum: 150), spacing: 10)
-    ]
-
     var body: some View {
-        LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
-            LayoutOverviewPill(
+        ClearGlassOverviewStrip([
+            ClearGlassOverviewMetric(
                 title: "Capacity",
                 value: capacityValue,
                 systemImage: "chart.bar",
                 style: capacityStyle
-            )
-
-            LayoutOverviewPill(
+            ),
+            ClearGlassOverviewMetric(
                 title: "Suggestions",
                 value: settingsStore.layoutSuggestionsEnabled
                     ? "\(suggestionCount)"
                     : "Off",
                 systemImage: "lightbulb",
                 style: settingsStore.layoutSuggestionsEnabled ? .info : .secondary
-            )
-
-            LayoutOverviewPill(
+            ),
+            ClearGlassOverviewMetric(
                 title: "Full Menu Bar",
                 value: settingsStore.fullMenuBarModeEnabled ? "On" : "Off",
                 systemImage: "rectangle.expand.vertical",
                 style: settingsStore.fullMenuBarModeEnabled ? .success : .secondary
-            )
-
-            LayoutOverviewPill(
+            ),
+            ClearGlassOverviewMetric(
                 title: "Spacers",
                 value: settingsStore.spacerItemsEnabled ? "On" : "Off",
                 systemImage: "line.vertical",
                 style: settingsStore.spacerItemsEnabled ? .success : .secondary
             )
-        }
+        ])
     }
 
     private var capacityValue: String {
@@ -101,42 +94,6 @@ private struct LayoutOverviewStrip: View {
             return .secondary
         }
         return estimate.isLikelyCrowded ? .warning : .success
-    }
-}
-
-private struct LayoutOverviewPill: View {
-    let title: String
-    let value: String
-    let systemImage: String
-    var style: ClearGlassStatusStyle = .secondary
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: systemImage)
-                .font(.system(size: 16, weight: .regular))
-                .foregroundStyle(style.tint)
-                .frame(width: 20)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Text(value)
-                    .font(.callout)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.82)
-            }
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
-        .overlay {
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
-        }
     }
 }
 
@@ -261,12 +218,15 @@ private struct CapacityInspectorPanel: View {
                     }
                 }
             } else {
-                ContentUnavailableView(
-                    "No Capacity Snapshot",
+                SettingsUnavailableGate(
+                    .emptyData,
+                    title: "No Capacity Snapshot",
+                    message: "Basic Mode remains available. Optional Pro can improve estimates when Accessibility is enabled.",
                     systemImage: "chart.bar",
-                    description: Text("Basic Mode remains available. Optional Pro can improve estimates when Accessibility is enabled.")
+                    minHeight: 160,
+                    nextSteps: ["Use Basic Mode approximate layout safely.", "Enable Optional Pro Discovery for better estimates."]
                 )
-                .frame(maxWidth: .infinity, minHeight: 150)
+                .frame(maxWidth: .infinity, minHeight: 160)
             }
 
             ClearGlassInlineMessage(
@@ -637,12 +597,15 @@ private struct SpacerItemsSection: View {
                         .disabled(!settingsStore.spacerItemsEnabled)
                         .opacity(settingsStore.spacerItemsEnabled ? 1 : 0.72)
                     } else {
-                        ContentUnavailableView(
-                            "Spacer Store Unavailable",
+                        SettingsUnavailableGate(
+                            .serviceUnavailable,
+                            title: "Spacer Store Unavailable",
+                            message: "Spacer items appear here once layout services are attached.",
                             systemImage: "line.vertical",
-                            description: Text("Spacer items appear here once layout services are attached.")
+                            minHeight: 170,
+                            nextSteps: ["Keep Basic Mode hiding available.", "Return after layout services are attached."]
                         )
-                        .frame(maxWidth: .infinity, minHeight: 160)
+                        .frame(maxWidth: .infinity, minHeight: 170)
                     }
                 }
                 .padding(.bottom, 8)

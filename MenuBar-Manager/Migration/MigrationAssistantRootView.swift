@@ -59,6 +59,7 @@ struct MigrationAssistantRootView: View {
             "Import / Export",
             subtitle: "Move local MenuBarDeclutter configuration explicitly and safely.",
             badges: [.preview, .privacySafe],
+            style: .tool,
             sectionAnchors: pageSectionAnchors
         ) {
             MigrationOverviewStrip(
@@ -293,76 +294,33 @@ private struct MigrationOverviewStrip: View {
     let backupCount: Int
     let lastApplyResult: SettingsImportApplyResult?
 
-    private let columns = [
-        GridItem(.adaptive(minimum: 150), spacing: 10)
-    ]
-
     var body: some View {
-        LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
-            MigrationOverviewPill(
+        ClearGlassOverviewStrip([
+            ClearGlassOverviewMetric(
                 title: "Pending Import",
                 value: hasPendingImport ? "Review" : "None",
                 systemImage: hasPendingImport ? "doc.text.magnifyingglass" : "checkmark.circle",
                 style: hasPendingImport ? .warning : .secondary
-            )
-
-            MigrationOverviewPill(
+            ),
+            ClearGlassOverviewMetric(
                 title: "Backups",
                 value: "\(backupCount)",
                 systemImage: "externaldrive",
                 style: backupCount > 0 ? .success : .secondary
-            )
-
-            MigrationOverviewPill(
+            ),
+            ClearGlassOverviewMetric(
                 title: "Last Apply",
                 value: lastApplyResult == nil ? "None" : "Applied",
                 systemImage: lastApplyResult == nil ? "clock" : "checkmark.shield",
                 style: lastApplyResult == nil ? .secondary : .success
-            )
-
-            MigrationOverviewPill(
+            ),
+            ClearGlassOverviewMetric(
                 title: "Import Mode",
                 value: "Safe Apply",
                 systemImage: "lock.shield",
                 style: .success
             )
-        }
-    }
-}
-
-private struct MigrationOverviewPill: View {
-    let title: String
-    let value: String
-    let systemImage: String
-    let style: ClearGlassStatusStyle
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: systemImage)
-                .font(.system(size: 16, weight: .regular))
-                .foregroundStyle(style.tint)
-                .frame(width: 20)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Text(value)
-                    .font(.callout)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.85)
-            }
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
-        .overlay {
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
-        }
+        ])
     }
 }
 
@@ -447,16 +405,16 @@ private struct MigrationExportWorkflowView: View {
                 statusStyle: .success
             )
 
-            MigrationGroupedBox("Package Contents", subtitle: "The package reflects the settings stores currently attached to this window.") {
+            ClearGlassGroupedList("Package Contents", subtitle: "The package reflects the settings stores currently attached to this window.") {
                 MigrationPackageScopeGrid(counts: counts)
 
-                migrationDivider
+                ClearGlassDivider()
 
-                MigrationRow(
+                ClearGlassStatusControlRow(
+                    systemImage: "doc.badge.gearshape",
                     title: "Export Settings Package",
                     subtitle: "Includes user settings, groups, hotkeys, spacers, profiles, and Private Access policy.",
-                    systemImage: "doc.badge.gearshape",
-                    style: .info
+                    statusStyle: .info
                 ) {
                     Button("Export Package", systemImage: "square.and.arrow.up", action: onExport)
                         .buttonStyle(.borderedProminent)
@@ -492,18 +450,18 @@ private struct MigrationImportWorkflowView: View {
                 statusStyle: headerStatusStyle
             )
 
-            MigrationGroupedBox("Package Review", subtitle: "Safe apply never enables experimental settings from an imported package.") {
-                MigrationRow(
+            ClearGlassGroupedList("Package Review", subtitle: "Safe apply never enables experimental settings from an imported package.") {
+                ClearGlassStatusControlRow(
+                    systemImage: "square.and.arrow.down",
                     title: "Choose Package",
                     subtitle: "Select a local JSON package. Dry-run does not mutate settings; a backup is created only when you apply.",
-                    systemImage: "square.and.arrow.down",
-                    style: .info
+                    statusStyle: .info
                 ) {
                     Button("Choose File", systemImage: "doc.badge.plus", action: onImport)
                         .controlSize(.small)
                 }
 
-                migrationDivider
+                ClearGlassDivider()
 
                 if let dryRun {
                     MigrationImportReviewPanel(
@@ -514,16 +472,19 @@ private struct MigrationImportWorkflowView: View {
                         onClearPendingImport: onClearPendingImport
                     )
                 } else {
-                    ContentUnavailableView(
-                        "No Package Selected",
+                    SettingsUnavailableGate(
+                        .emptyData,
+                        title: "No Package Selected",
+                        message: "Choose a JSON package to run a local import review.",
                         systemImage: "doc.text.magnifyingglass",
-                        description: Text("Choose a JSON package to run a local import review.")
+                        minHeight: 150,
+                        nextSteps: ["Choose a package.", "Review the dry-run before applying."]
                     )
-                    .frame(maxWidth: .infinity, minHeight: 140)
+                    .frame(maxWidth: .infinity, minHeight: 150)
                 }
 
                 if let lastApplyResult {
-                    migrationDivider
+                    ClearGlassDivider()
                     MigrationApplyResultPanel(result: lastApplyResult)
                 }
             }
@@ -566,12 +527,12 @@ private struct MigrationBackupWorkflowView: View {
                 statusStyle: backupCount > 0 ? .success : .secondary
             )
 
-            MigrationGroupedBox("Local Restore Points", subtitle: "Refresh the local backup count or restore the newest backup package.") {
-                MigrationRow(
+            ClearGlassGroupedList("Local Restore Points", subtitle: "Refresh the local backup count or restore the newest backup package.") {
+                ClearGlassStatusControlRow(
+                    systemImage: "externaldrive",
                     title: "Available Backups",
                     subtitle: "Backups are stored locally in MenuBarDeclutter application support.",
-                    systemImage: "externaldrive",
-                    style: backupCount > 0 ? .success : .secondary
+                    statusStyle: backupCount > 0 ? .success : .secondary
                 ) {
                     Text(backupCount, format: .number)
                         .font(.system(.body, design: .monospaced))
@@ -579,19 +540,17 @@ private struct MigrationBackupWorkflowView: View {
                         .frame(width: 44, alignment: .trailing)
                 }
 
-                migrationDivider
+                ClearGlassDivider()
 
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 10) {
-                        backupButtons
-                    }
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        backupButtons
-                    }
+                ClearGlassActionStrip(
+                    "Backup Actions",
+                    subtitle: "Refresh restore points or restore the newest local backup package.",
+                    systemImage: "externaldrive",
+                    statusText: backupCount > 0 ? "Ready" : "None",
+                    statusStyle: backupCount > 0 ? .success : .secondary
+                ) {
+                    backupButtons
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
                 .padding(.vertical, 8)
             }
 
@@ -649,17 +608,16 @@ private struct MigrationImportReviewPanel: View {
                 )
             }
 
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 10) {
-                    importButtons
-                }
-
-                VStack(alignment: .leading, spacing: 8) {
-                    importButtons
-                }
+            ClearGlassActionStrip(
+                "Import Actions",
+                subtitle: "Apply only after review, or clear the pending package and choose another file.",
+                systemImage: hasUnsupportedSchema ? "xmark.octagon" : "checkmark.shield",
+                iconTint: hasUnsupportedSchema ? .red : .accentColor,
+                statusText: reviewStatusText,
+                statusStyle: reviewStatusStyle
+            ) {
+                importButtons
             }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
         }
         .padding(.vertical, 8)
     }
@@ -711,10 +669,10 @@ private struct MigrationApplyResultPanel: View {
             }
 
             LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
-                MigrationMetricTile(value: "\(result.appliedSettings)", label: "Applied Settings")
-                MigrationMetricTile(value: "\(result.skippedSettings)", label: "Skipped Settings")
-                MigrationMetricTile(value: "\(result.importedObjectCount)", label: "Imported Objects")
-                MigrationMetricTile(value: "\(result.skippedHotkeys)", label: "Skipped Hotkeys")
+                ClearGlassMetricTile(value: "\(result.appliedSettings)", label: "Applied Settings")
+                ClearGlassMetricTile(value: "\(result.skippedSettings)", label: "Skipped Settings")
+                ClearGlassMetricTile(value: "\(result.importedObjectCount)", label: "Imported Objects")
+                ClearGlassMetricTile(value: "\(result.skippedHotkeys)", label: "Skipped Hotkeys")
             }
 
             if !result.skippedExperimentalFlags.isEmpty {
@@ -738,11 +696,11 @@ private struct MigrationPackageScopeGrid: View {
 
     var body: some View {
         LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
-            MigrationMetricTile(value: "\(counts.profiles)", label: "Profiles")
-            MigrationMetricTile(value: "\(counts.groups)", label: "Groups")
-            MigrationMetricTile(value: "\(counts.hotkeys)", label: "Hotkeys")
-            MigrationMetricTile(value: "\(counts.spacers)", label: "Spacers")
-            MigrationMetricTile(value: "\(counts.workspaces)", label: "Workspaces")
+            ClearGlassMetricTile(value: "\(counts.profiles)", label: "Profiles")
+            ClearGlassMetricTile(value: "\(counts.groups)", label: "Groups")
+            ClearGlassMetricTile(value: "\(counts.hotkeys)", label: "Hotkeys")
+            ClearGlassMetricTile(value: "\(counts.spacers)", label: "Spacers")
+            ClearGlassMetricTile(value: "\(counts.workspaces)", label: "Workspaces")
         }
         .padding(.vertical, 8)
     }
@@ -757,46 +715,18 @@ private struct MigrationDryRunMetricGrid: View {
 
     var body: some View {
         LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
-            MigrationMetricTile(value: "\(dryRun.modifiedSettings)", label: "Modified Settings")
-            MigrationMetricTile(value: "\(dryRun.addedProfiles)", label: "Profiles")
-            MigrationMetricTile(value: "\(dryRun.addedGroups)", label: "Groups")
-            MigrationMetricTile(value: "\(dryRun.addedHotkeys)", label: "Hotkeys")
-            MigrationMetricTile(value: "\(dryRun.addedSpacers)", label: "Spacers")
-            MigrationMetricTile(value: "\(dryRun.addedWorkspaces)", label: "Workspaces")
+            ClearGlassMetricTile(value: "\(dryRun.modifiedSettings)", label: "Modified Settings")
+            ClearGlassMetricTile(value: "\(dryRun.addedProfiles)", label: "Profiles")
+            ClearGlassMetricTile(value: "\(dryRun.addedGroups)", label: "Groups")
+            ClearGlassMetricTile(value: "\(dryRun.addedHotkeys)", label: "Hotkeys")
+            ClearGlassMetricTile(value: "\(dryRun.addedSpacers)", label: "Spacers")
+            ClearGlassMetricTile(value: "\(dryRun.addedWorkspaces)", label: "Workspaces")
         }
     }
 
     private let columns = [
         GridItem(.adaptive(minimum: 132), spacing: 8)
     ]
-}
-
-private struct MigrationMetricTile: View {
-    let value: String
-    let label: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 1) {
-            Text(value)
-                .font(.headline)
-                .lineLimit(1)
-                .minimumScaleFactor(0.82)
-
-            Text(label)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 7))
-        .overlay {
-            RoundedRectangle(cornerRadius: 7)
-                .stroke(Color(nsColor: .separatorColor).opacity(0.36), lineWidth: 0.5)
-        }
-    }
 }
 
 private struct MigrationWorkflowHeader: View {
@@ -843,119 +773,6 @@ private struct MigrationWorkflowHeader: View {
                 .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
         }
     }
-}
-
-private struct MigrationGroupedBox<Content: View>: View {
-    private let title: String
-    private let subtitle: String?
-    @ViewBuilder private let content: Content
-
-    init(
-        _ title: String,
-        subtitle: String? = nil,
-        @ViewBuilder content: () -> Content
-    ) {
-        self.title = title
-        self.subtitle = subtitle
-        self.content = content()
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-
-                if let subtitle {
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            .padding(.horizontal, 2)
-
-            VStack(spacing: 0) {
-                content
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 5)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 8))
-            .overlay {
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(Color(nsColor: .separatorColor).opacity(0.42), lineWidth: 0.5)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-private struct MigrationRow<Accessory: View>: View {
-    let title: String
-    let subtitle: String
-    let systemImage: String
-    let style: ClearGlassStatusStyle
-    @ViewBuilder let accessory: Accessory
-
-    init(
-        title: String,
-        subtitle: String,
-        systemImage: String,
-        style: ClearGlassStatusStyle = .secondary,
-        @ViewBuilder accessory: () -> Accessory
-    ) {
-        self.title = title
-        self.subtitle = subtitle
-        self.systemImage = systemImage
-        self.style = style
-        self.accessory = accessory()
-    }
-
-    var body: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(alignment: .center, spacing: 12) {
-                rowLabel
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                accessory
-                    .fixedSize()
-            }
-
-            VStack(alignment: .leading, spacing: 8) {
-                rowLabel
-                accessory
-                    .fixedSize()
-            }
-        }
-        .padding(.vertical, 8)
-    }
-
-    private var rowLabel: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: systemImage)
-                .font(.system(size: 15))
-                .foregroundStyle(style.tint)
-                .frame(width: 22)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.body)
-
-                Text(subtitle)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(3)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-    }
-}
-
-private var migrationDivider: some View {
-    Divider()
-        .padding(.leading, 34)
 }
 
 @MainActor

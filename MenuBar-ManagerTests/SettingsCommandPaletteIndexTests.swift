@@ -79,6 +79,39 @@ struct SettingsCommandPaletteIndexTests {
         #expect(results.allSatisfy { $0.isPrivacySafeLocalOnly })
     }
 
+    @Test func resultGroupsMirrorSettingsNavigationBuckets() throws {
+        let index = SettingsCommandPaletteIndex.make(
+            includeDogfood: false,
+            availableActions: [.revealAll]
+        )
+
+        func entry(id: String) throws -> SettingsCommandPaletteEntry {
+            try #require(index.entries.first { $0.id == id })
+        }
+
+        let entries = try [
+            entry(id: "settings.section.general"),
+            entry(id: "settings.section.automation"),
+            entry(id: "settings.section.behavior"),
+            entry(id: "settings.action.revealAll")
+        ]
+
+        let groups = SettingsCommandPaletteIndex.resultGroups(for: entries)
+
+        #expect(groups.map(\.kind) == [
+            .primarySettings,
+            .moreSettings,
+            .legacyRoutes,
+            .localActions
+        ])
+        #expect(groups.map { $0.entries.map(\.id) } == [
+            ["settings.section.general"],
+            ["settings.section.automation"],
+            ["settings.section.behavior"],
+            ["settings.action.revealAll"]
+        ])
+    }
+
     @Test func dogfoodAliasHonorsDogfoodVisibility() {
         let hiddenIndex = SettingsCommandPaletteIndex.make(includeDogfood: false)
         #expect(hiddenIndex.search("Dogfood").isEmpty)

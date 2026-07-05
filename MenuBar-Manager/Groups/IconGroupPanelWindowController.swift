@@ -47,7 +47,8 @@ final class IconGroupPanelWindowController: NSWindowController, NSWindowDelegate
             },
             onDismiss: { [weak self] in
                 self?.window?.close()
-            }
+            },
+            initialQuery: FloatingPanelSearchUITestingArguments.query(for: .groupPanel)
         )
 
         window?.contentViewController = NSHostingController(rootView: root)

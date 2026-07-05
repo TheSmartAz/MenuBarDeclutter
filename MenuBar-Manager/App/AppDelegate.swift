@@ -214,8 +214,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else if launchArguments.contains("--ui-testing-show-advanced") {
             environment.showSettings(section: .advanced)
         } else if launchArguments.contains("--ui-testing-show-search") {
+            if shouldSeedMenuBarItems {
+                seedMenuBarItemsUITestingSnapshot(environment)
+            }
             environment.showSearch()
         } else if launchArguments.contains("--ui-testing-show-second-bar") {
+            if shouldSeedMenuBarItems {
+                seedMenuBarItemsUITestingSnapshot(environment)
+            }
             environment.settingsStore.secondBarCloseOnOutsideClick = false
             environment.showSecondBar()
         } else if launchArguments.contains("--ui-testing-show-group-panel") {
@@ -236,6 +242,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func seedRequestedUITestingPersistentStores(_ environment: AppEnvironment) {
         guard launchArguments.contains("--ui-testing") else {
             return
+        }
+
+        if launchArguments.contains("--ui-testing-enable-workspace-panels") {
+            environment.prepareWorkspacePanelUITestingState()
         }
 
         if launchArguments.contains("--ui-testing-seed-profiles") {
@@ -567,7 +577,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func makeUITestingIconGroup() -> IconGroup {
         IconGroup(
             id: UUID(uuidString: "8C5B7B19-9E0A-46C9-A1A7-E7B4D9E8A114") ?? UUID(),
-            name: "Focus Apps",
+            name: "Pinned Tools",
             symbolName: "folder",
             itemRefs: [
                 IconGroupItemRef(

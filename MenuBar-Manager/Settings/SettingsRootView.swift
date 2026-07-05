@@ -37,19 +37,45 @@ enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         .advanced
     ]
 
-    static let moreSidebarSections: [SettingsSection] = [
-        .menuBarItems,
-        .search,
-        .secondBar,
-        .groups,
-        .hotkeys,
-        .profiles,
-        .privateAccess,
-        .automation,
-        .importExport,
-        .diagnostics,
-        .layout
+    static let moreSidebarGroups: [SettingsSidebarNavigationGroup] = [
+        SettingsSidebarNavigationGroup(
+            id: "surfaces",
+            title: "Surfaces",
+            systemImage: "rectangle.on.rectangle",
+            helpText: "Inspect and open secondary menu bar surfaces.",
+            sections: [
+                .menuBarItems,
+                .search,
+                .secondBar,
+                .groups
+            ]
+        ),
+        SettingsSidebarNavigationGroup(
+            id: "control",
+            title: "Control",
+            systemImage: "slider.horizontal.3",
+            helpText: "Configure shortcuts, profiles, automation, and protected access.",
+            sections: [
+                .hotkeys,
+                .profiles,
+                .privateAccess,
+                .automation
+            ]
+        ),
+        SettingsSidebarNavigationGroup(
+            id: "system",
+            title: "System",
+            systemImage: "wrench.and.screwdriver",
+            helpText: "Review import/export, diagnostics, and layout maintenance tools.",
+            sections: [
+                .importExport,
+                .diagnostics,
+                .layout
+            ]
+        )
     ]
+
+    static let moreSidebarSections: [SettingsSection] = moreSidebarGroups.flatMap(\.sections)
 
     var title: String {
         switch self {
@@ -142,6 +168,18 @@ enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
     }
 }
 
+struct SettingsSidebarNavigationGroup: Identifiable, Hashable {
+    let id: String
+    let title: String
+    let systemImage: String
+    let helpText: String
+    let sections: [SettingsSection]
+
+    func contains(_ section: SettingsSection) -> Bool {
+        sections.contains(section)
+    }
+}
+
 private struct SettingsSidebarGroup: Identifiable {
     let title: String
     let sections: [SettingsSection]
@@ -168,6 +206,28 @@ private struct SettingsSidebarSectionRow: View {
             .tag(section)
             .help(section.helpText)
             .accessibilityIdentifier(section.sidebarAccessibilityIdentifier)
+    }
+}
+
+private struct SettingsSidebarNavigationGroupLabel: View {
+    let group: SettingsSidebarNavigationGroup
+
+    var body: some View {
+        Label {
+            HStack(spacing: 8) {
+                Text(group.title)
+
+                Spacer(minLength: 8)
+
+                Text(group.sections.count.formatted())
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.tertiary)
+            }
+        } icon: {
+            Image(systemName: group.systemImage)
+        }
+        .foregroundStyle(.secondary)
+        .help(group.helpText)
     }
 }
 
@@ -258,6 +318,7 @@ struct SettingsRootView: View {
     var actions: SettingsActions = .empty
     @State private var isCommandPalettePresented = false
     @State private var isMoreSettingsExpanded = false
+    @State private var expandedMoreGroupIDs: Set<String> = []
 
     var body: some View {
         NavigationSplitView {
@@ -278,8 +339,15 @@ struct SettingsRootView: View {
                     }
 
                     DisclosureGroup(isExpanded: $isMoreSettingsExpanded) {
-                        ForEach(SettingsSection.moreSidebarSections) { section in
-                            SettingsSidebarSectionRow(section: section)
+                        ForEach(SettingsSection.moreSidebarGroups) { group in
+                            DisclosureGroup(isExpanded: moreGroupExpansionBinding(for: group)) {
+                                ForEach(group.sections) { section in
+                                    SettingsSidebarSectionRow(section: section)
+                                }
+                            } label: {
+                                SettingsSidebarNavigationGroupLabel(group: group)
+                            }
+                            .accessibilityIdentifier("settings.sidebar.more.\(group.id)")
                         }
                     } label: {
                         Label("More", systemImage: "ellipsis.circle")
@@ -309,7 +377,7 @@ struct SettingsRootView: View {
                 .accessibilityIdentifier(selectedSection.pageAccessibilityIdentifier)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(minWidth: 820, minHeight: 620)
+        .frame(minWidth: 820, minHeight: 700)
         .background(Color(nsColor: .windowBackgroundColor))
         .sheet(isPresented: $isCommandPalettePresented) {
             SettingsCommandPaletteView(
@@ -438,6 +506,27 @@ struct SettingsRootView: View {
     private func expandMoreSettingsIfNeeded(for section: SettingsSection) {
         if SettingsSection.moreSidebarSections.contains(section) {
             isMoreSettingsExpanded = true
+            expandMoreGroupIfNeeded(for: section)
+        }
+    }
+
+    private func expandMoreGroupIfNeeded(for section: SettingsSection) {
+        guard let group = SettingsSection.moreSidebarGroups.first(where: { $0.contains(section) }) else {
+            return
+        }
+
+        expandedMoreGroupIDs.insert(group.id)
+    }
+
+    private func moreGroupExpansionBinding(for group: SettingsSidebarNavigationGroup) -> Binding<Bool> {
+        Binding {
+            expandedMoreGroupIDs.contains(group.id) || group.contains(selectedSection)
+        } set: { isExpanded in
+            if isExpanded {
+                expandedMoreGroupIDs.insert(group.id)
+            } else {
+                expandedMoreGroupIDs.remove(group.id)
+            }
         }
     }
 
@@ -1017,10 +1106,153 @@ extension SettingsSection {
     }
 }
 
+enum ClearGlassSettingsPageStyle {
+    case form
+    case tool
+
+    var maxContentWidth: CGFloat {
+        rhythm.maxContentWidth
+    }
+
+    var contentSpacing: CGFloat {
+        rhythm.contentSpacing
+    }
+
+    var horizontalPadding: CGFloat {
+        rhythm.horizontalPadding
+    }
+
+    var topPadding: CGFloat {
+        rhythm.topPadding
+    }
+
+    var bottomPadding: CGFloat {
+        rhythm.bottomPadding
+    }
+
+    var headerInlineSpacing: CGFloat {
+        rhythm.headerInlineSpacing
+    }
+
+    var headerStackSpacing: CGFloat {
+        rhythm.headerStackSpacing
+    }
+
+    var sectionHeaderWidth: CGFloat {
+        rhythm.sectionHeaderWidth
+    }
+
+    var sectionColumnSpacing: CGFloat {
+        rhythm.sectionColumnSpacing
+    }
+
+    var sectionHeaderTopPadding: CGFloat {
+        rhythm.sectionHeaderTopPadding
+    }
+
+    var sectionHeaderBodySpacing: CGFloat {
+        rhythm.sectionHeaderBodySpacing
+    }
+
+    var nestedSectionSpacing: CGFloat {
+        rhythm.nestedSectionSpacing
+    }
+
+    var sectionBodyHorizontalPadding: CGFloat {
+        rhythm.sectionBodyHorizontalPadding
+    }
+
+    var sectionBodyVerticalPadding: CGFloat {
+        rhythm.sectionBodyVerticalPadding
+    }
+
+    var nestedSectionBodyHorizontalPadding: CGFloat {
+        rhythm.nestedSectionBodyHorizontalPadding
+    }
+
+    var nestedSectionBodyVerticalPadding: CGFloat {
+        rhythm.nestedSectionBodyVerticalPadding
+    }
+
+    private var rhythm: ClearGlassSettingsPageRhythm {
+        switch self {
+        case .form:
+            ClearGlassSettingsPageRhythm(
+                maxContentWidth: 1040,
+                horizontalPadding: 34,
+                topPadding: 26,
+                bottomPadding: 78,
+                headerInlineSpacing: 18,
+                headerStackSpacing: 13,
+                contentSpacing: 28,
+                sectionHeaderWidth: 190,
+                sectionColumnSpacing: 24,
+                sectionHeaderTopPadding: 10,
+                sectionHeaderBodySpacing: 10,
+                nestedSectionSpacing: 9,
+                sectionBodyHorizontalPadding: 16,
+                sectionBodyVerticalPadding: 9,
+                nestedSectionBodyHorizontalPadding: 12,
+                nestedSectionBodyVerticalPadding: 7
+            )
+        case .tool:
+            ClearGlassSettingsPageRhythm(
+                maxContentWidth: 1160,
+                horizontalPadding: 34,
+                topPadding: 24,
+                bottomPadding: 82,
+                headerInlineSpacing: 18,
+                headerStackSpacing: 12,
+                contentSpacing: 22,
+                sectionHeaderWidth: 180,
+                sectionColumnSpacing: 20,
+                sectionHeaderTopPadding: 8,
+                sectionHeaderBodySpacing: 11,
+                nestedSectionSpacing: 9,
+                sectionBodyHorizontalPadding: 16,
+                sectionBodyVerticalPadding: 9,
+                nestedSectionBodyHorizontalPadding: 12,
+                nestedSectionBodyVerticalPadding: 7
+            )
+        }
+    }
+}
+
+private struct ClearGlassSettingsPageRhythm {
+    let maxContentWidth: CGFloat
+    let horizontalPadding: CGFloat
+    let topPadding: CGFloat
+    let bottomPadding: CGFloat
+    let headerInlineSpacing: CGFloat
+    let headerStackSpacing: CGFloat
+    let contentSpacing: CGFloat
+    let sectionHeaderWidth: CGFloat
+    let sectionColumnSpacing: CGFloat
+    let sectionHeaderTopPadding: CGFloat
+    let sectionHeaderBodySpacing: CGFloat
+    let nestedSectionSpacing: CGFloat
+    let sectionBodyHorizontalPadding: CGFloat
+    let sectionBodyVerticalPadding: CGFloat
+    let nestedSectionBodyHorizontalPadding: CGFloat
+    let nestedSectionBodyVerticalPadding: CGFloat
+}
+
+private struct ClearGlassSettingsPageStyleKey: EnvironmentKey {
+    static let defaultValue: ClearGlassSettingsPageStyle = .form
+}
+
+private extension EnvironmentValues {
+    var clearGlassSettingsPageStyle: ClearGlassSettingsPageStyle {
+        get { self[ClearGlassSettingsPageStyleKey.self] }
+        set { self[ClearGlassSettingsPageStyleKey.self] = newValue }
+    }
+}
+
 struct ClearGlassSettingsPage<Content: View>: View {
     private let title: String
     private let subtitle: String?
     private let badges: [ClearGlassBadgeStyle]
+    private let style: ClearGlassSettingsPageStyle
     private let sectionAnchors: [ClearGlassPageAnchor]
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @ViewBuilder private let content: Content
@@ -1029,12 +1261,14 @@ struct ClearGlassSettingsPage<Content: View>: View {
         _ title: String,
         subtitle: String? = nil,
         badges: [ClearGlassBadgeStyle] = [],
+        style: ClearGlassSettingsPageStyle = .form,
         sectionAnchors: [ClearGlassPageAnchor] = [],
         @ViewBuilder content: () -> Content
     ) {
         self.title = title
         self.subtitle = subtitle
         self.badges = badges
+        self.style = style
         self.sectionAnchors = sectionAnchors
         self.content = content()
     }
@@ -1042,24 +1276,40 @@ struct ClearGlassSettingsPage<Content: View>: View {
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                VStack(alignment: .leading, spacing: 15) {
-                    VStack(alignment: .leading, spacing: 9) {
-                        ClearGlassPageHeader(title: title, subtitle: subtitle, badges: badges)
+                VStack(alignment: .leading, spacing: style.contentSpacing) {
+                    ViewThatFits(in: .horizontal) {
+                        HStack(alignment: .bottom, spacing: style.headerInlineSpacing) {
+                            ClearGlassPageHeader(title: title, subtitle: subtitle, badges: badges)
+                                .layoutPriority(1)
 
-                        if sectionAnchors.count > 1 {
-                            ClearGlassPageAnchorBar(anchors: sectionAnchors) { anchor in
-                                scroll(to: anchor, using: proxy)
+                            Spacer(minLength: style.headerInlineSpacing)
+
+                            if sectionAnchors.count > 1 {
+                                ClearGlassPageAnchorBar(anchors: sectionAnchors) { anchor in
+                                    scroll(to: anchor, using: proxy)
+                                }
+                            }
+                        }
+
+                        VStack(alignment: .leading, spacing: style.headerStackSpacing) {
+                            ClearGlassPageHeader(title: title, subtitle: subtitle, badges: badges)
+
+                            if sectionAnchors.count > 1 {
+                                ClearGlassPageAnchorBar(anchors: sectionAnchors) { anchor in
+                                    scroll(to: anchor, using: proxy)
+                                }
                             }
                         }
                     }
                     .id(ClearGlassPageAnchor.top.targetID)
 
                     content
+                        .environment(\.clearGlassSettingsPageStyle, style)
                 }
-                .padding(.horizontal, 28)
-                .padding(.top, 16)
-                .padding(.bottom, 28)
-                .frame(maxWidth: 980, alignment: .topLeading)
+                .padding(.horizontal, style.horizontalPadding)
+                .padding(.top, style.topPadding)
+                .padding(.bottom, style.bottomPadding)
+                .frame(maxWidth: style.maxContentWidth, alignment: .topLeading)
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             }
             .accessibilityIdentifier("settings.page.scroll")
@@ -1133,10 +1383,23 @@ struct ClearGlassPageAnchorBar: View {
     }
 }
 
+private struct ClearGlassSectionDepthKey: EnvironmentKey {
+    static let defaultValue = 0
+}
+
+private extension EnvironmentValues {
+    var clearGlassSectionDepth: Int {
+        get { self[ClearGlassSectionDepthKey.self] }
+        set { self[ClearGlassSectionDepthKey.self] = newValue }
+    }
+}
+
 struct ClearGlassSection<Content: View>: View {
     private let title: String
     private let subtitle: String?
     private let anchorID: String?
+    @Environment(\.clearGlassSettingsPageStyle) private var pageStyle
+    @Environment(\.clearGlassSectionDepth) private var sectionDepth
     @ViewBuilder private let content: Content
 
     init(
@@ -1152,35 +1415,142 @@ struct ClearGlassSection<Content: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.subheadline)
-                    .foregroundStyle(.primary)
-
-                if let subtitle {
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            .padding(.horizontal, 2)
-
-            VStack(spacing: 0) {
-                content
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 4)
+        sectionLayout
+            .environment(\.clearGlassSectionDepth, sectionDepth + 1)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
-            .overlay {
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
+            .id(anchorID ?? title)
+    }
+
+    @ViewBuilder
+    private var sectionLayout: some View {
+        if sectionDepth == 0 {
+            switch pageStyle {
+            case .form:
+                formTopLevelSection
+            case .tool:
+                toolTopLevelSection
+            }
+        } else {
+            nestedSection
+        }
+    }
+
+    private var formTopLevelSection: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: pageStyle.sectionColumnSpacing) {
+                sectionHeader
+                    .frame(width: pageStyle.sectionHeaderWidth, alignment: .topLeading)
+                    .padding(.top, pageStyle.sectionHeaderTopPadding)
+
+                sectionBody()
+                    .frame(minWidth: 360, maxWidth: .infinity, alignment: .topLeading)
+            }
+
+            verticalSection
+        }
+    }
+
+    private var toolTopLevelSection: some View {
+        VStack(alignment: .leading, spacing: pageStyle.sectionHeaderBodySpacing) {
+            sectionHeader
+                .padding(.horizontal, 2)
+
+            sectionBody()
+        }
+    }
+
+    private var verticalSection: some View {
+        VStack(alignment: .leading, spacing: pageStyle.sectionHeaderBodySpacing) {
+            sectionHeader
+                .padding(.horizontal, 2)
+
+            sectionBody()
+        }
+    }
+
+    private var nestedSection: some View {
+        VStack(alignment: .leading, spacing: pageStyle.nestedSectionSpacing) {
+            sectionHeader
+                .padding(.horizontal, 2)
+
+            sectionBody(isNested: true)
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var sectionHeader: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(DesignTokens.Typography.body.weight(.semibold))
+                .foregroundStyle(.primary)
+                .lineLimit(2)
+
+            if let subtitle {
+                Text(subtitle)
+                    .font(DesignTokens.Typography.callout)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(4)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .id(anchorID ?? title)
+    }
+
+    private func sectionBody(isNested: Bool = false) -> some View {
+        VStack(spacing: 0) {
+            content
+        }
+        .padding(.horizontal, isNested ? pageStyle.nestedSectionBodyHorizontalPadding : pageStyle.sectionBodyHorizontalPadding)
+        .padding(.vertical, isNested ? pageStyle.nestedSectionBodyVerticalPadding : pageStyle.sectionBodyVerticalPadding)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(sectionFill(isNested: isNested), in: .rect(cornerRadius: DesignTokens.Radius.group))
+        .overlay {
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.group)
+                .strokeBorder(sectionBorder(isNested: isNested), lineWidth: DesignTokens.Stroke.hairline)
+        }
+    }
+
+    private func sectionFill(isNested: Bool) -> Color {
+        if isNested {
+            return Color(nsColor: .quaternaryLabelColor).opacity(0.08)
+        }
+
+        return Color(nsColor: .controlBackgroundColor)
+    }
+
+    private func sectionBorder(isNested: Bool) -> Color {
+        Color(nsColor: .separatorColor).opacity(isNested ? 0.38 : 0.58)
+    }
+}
+
+struct ClearGlassToolSurface<Content: View>: View {
+    private let horizontalPadding: CGFloat
+    private let verticalPadding: CGFloat
+    private let minHeight: CGFloat?
+    @ViewBuilder private let content: Content
+
+    init(
+        horizontalPadding: CGFloat = 0,
+        verticalPadding: CGFloat = 0,
+        minHeight: CGFloat? = nil,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.horizontalPadding = horizontalPadding
+        self.verticalPadding = verticalPadding
+        self.minHeight = minHeight
+        self.content = content()
+    }
+
+    var body: some View {
+        content
+            .padding(.horizontal, horizontalPadding)
+            .padding(.vertical, verticalPadding)
+            .frame(maxWidth: .infinity, minHeight: minHeight, alignment: .topLeading)
+            .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: DesignTokens.Radius.group))
+            .overlay {
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.group)
+                    .strokeBorder(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: DesignTokens.Stroke.hairline)
+            }
     }
 }
 
@@ -1252,6 +1622,786 @@ struct ClearGlassButtonGrid<Content: View>: View {
     }
 }
 
+enum ClearGlassInteractionSurface {
+    case row
+    case surface
+    case tile
+    case token
+
+    var cornerRadius: CGFloat {
+        switch self {
+        case .row:
+            7
+        case .surface:
+            8
+        case .tile:
+            8
+        case .token:
+            6
+        }
+    }
+
+    var hoverFill: Color {
+        switch self {
+        case .row:
+            Color.accentColor.opacity(0.045)
+        case .surface:
+            Color.accentColor.opacity(0.035)
+        case .tile:
+            Color.accentColor.opacity(0.045)
+        case .token:
+            Color.accentColor.opacity(0.05)
+        }
+    }
+
+    var hoverStroke: Color {
+        Color.accentColor.opacity(0.18)
+    }
+
+    var disabledFill: Color {
+        Color(nsColor: .quaternaryLabelColor).opacity(0.08)
+    }
+
+    var disabledStroke: Color {
+        Color(nsColor: .separatorColor).opacity(0.42)
+    }
+}
+
+private struct ClearGlassInteractionFeedback: ViewModifier {
+    let surface: ClearGlassInteractionSurface
+    let isDimmed: Bool
+    let helpText: String?
+
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
+    @Environment(\.isEnabled) private var isEnabled
+    @State private var isHovered = false
+
+    private var isInteractive: Bool {
+        isEnabled && !isDimmed
+    }
+
+    func body(content: Content) -> some View {
+        content
+            .contentShape(.rect(cornerRadius: surface.cornerRadius))
+            .background {
+                RoundedRectangle(cornerRadius: surface.cornerRadius)
+                    .fill(backgroundFill)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: surface.cornerRadius)
+                    .strokeBorder(strokeColor, style: strokeStyle)
+            }
+            .onHover { isHovered = $0 }
+            .animation(accessibilityReduceMotion ? nil : .easeOut(duration: 0.16), value: isHovered)
+            .clearGlassHelp(helpText)
+    }
+
+    private var backgroundFill: Color {
+        if !isInteractive {
+            return surface.disabledFill
+        }
+
+        return isHovered ? surface.hoverFill : .clear
+    }
+
+    private var strokeColor: Color {
+        if !isInteractive {
+            return surface.disabledStroke
+        }
+
+        return isHovered ? surface.hoverStroke : .clear
+    }
+
+    private var strokeStyle: StrokeStyle {
+        StrokeStyle(
+            lineWidth: isInteractive ? 0.75 : 0.5,
+            dash: isInteractive ? [] : [3, 3]
+        )
+    }
+}
+
+extension View {
+    func clearGlassInteractionFeedback(
+        _ surface: ClearGlassInteractionSurface,
+        isDimmed: Bool = false,
+        help helpText: String? = nil
+    ) -> some View {
+        modifier(
+            ClearGlassInteractionFeedback(
+                surface: surface,
+                isDimmed: isDimmed,
+                helpText: helpText
+            )
+        )
+    }
+
+    @ViewBuilder
+    func clearGlassHelp(_ helpText: String?) -> some View {
+        if let helpText, !helpText.isEmpty {
+            help(helpText)
+        } else {
+            self
+        }
+    }
+}
+
+struct ClearGlassOverviewMetric: Identifiable, Hashable {
+    let id: String
+    let title: String
+    let value: String
+    let systemImage: String
+    let style: ClearGlassStatusStyle
+
+    init(
+        id: String? = nil,
+        title: String,
+        value: String,
+        systemImage: String,
+        style: ClearGlassStatusStyle = .secondary
+    ) {
+        self.id = id ?? title
+        self.title = title
+        self.value = value
+        self.systemImage = systemImage
+        self.style = style
+    }
+}
+
+struct ClearGlassOverviewStrip: View {
+    private let metrics: [ClearGlassOverviewMetric]
+    private let minimumItemWidth: CGFloat
+    private let maximumColumnCount: Int
+
+    init(
+        _ metrics: [ClearGlassOverviewMetric],
+        minimumItemWidth: CGFloat = 120,
+        maximumColumnCount: Int = 4
+    ) {
+        self.metrics = metrics
+        self.minimumItemWidth = minimumItemWidth
+        self.maximumColumnCount = max(1, maximumColumnCount)
+    }
+
+    var body: some View {
+        LazyVGrid(
+            columns: columns,
+            alignment: .leading,
+            spacing: 10
+        ) {
+            ForEach(metrics) { metric in
+                ClearGlassOverviewMetricTile(metric: metric)
+            }
+        }
+    }
+
+    private var columns: [GridItem] {
+        if maximumColumnCount < metrics.count {
+            return Array(
+                repeating: GridItem(.flexible(minimum: minimumItemWidth), spacing: 10),
+                count: maximumColumnCount
+            )
+        }
+
+        return [
+            GridItem(.adaptive(minimum: minimumItemWidth), spacing: 10)
+        ]
+    }
+}
+
+private struct ClearGlassOverviewMetricTile: View {
+    let metric: ClearGlassOverviewMetric
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: metric.systemImage)
+                .font(.system(size: 16, weight: .regular))
+                .foregroundStyle(metric.style.tint)
+                .frame(width: 20)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(metric.title)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Text(metric.value)
+                    .font(.callout.monospacedDigit())
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
+        }
+        .clearGlassInteractionFeedback(.tile, help: "\(metric.title): \(metric.value)")
+    }
+}
+
+struct ClearGlassMetricTile: View {
+    let value: String
+    let label: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(value)
+                .font(.headline.monospacedDigit())
+                .lineLimit(1)
+                .minimumScaleFactor(0.82)
+
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 7))
+        .overlay {
+            RoundedRectangle(cornerRadius: 7)
+                .stroke(Color(nsColor: .separatorColor).opacity(0.36), lineWidth: 0.5)
+        }
+        .clearGlassInteractionFeedback(.tile, help: "\(label): \(value)")
+    }
+}
+
+struct ClearGlassGroupedList<Content: View>: View {
+    private let title: String
+    private let subtitle: String?
+    @ViewBuilder private let content: Content
+
+    init(
+        _ title: String,
+        subtitle: String? = nil,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(.horizontal, 2)
+
+            VStack(spacing: 0) {
+                content
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 5)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 8))
+            .overlay {
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color(nsColor: .separatorColor).opacity(0.42), lineWidth: 0.5)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+struct ClearGlassStatusControlRow<Accessory: View>: View {
+    private let systemImage: String
+    private let title: String
+    private let subtitle: String
+    private let iconTint: Color
+    private let statusText: String?
+    private let statusStyle: ClearGlassStatusStyle
+    private let isDimmed: Bool
+    @ViewBuilder private let accessory: Accessory
+
+    init(
+        systemImage: String,
+        title: String,
+        subtitle: String,
+        iconTint: Color? = nil,
+        statusText: String? = nil,
+        statusStyle: ClearGlassStatusStyle = .secondary,
+        isDimmed: Bool = false,
+        @ViewBuilder accessory: () -> Accessory
+    ) {
+        self.systemImage = systemImage
+        self.title = title
+        self.subtitle = subtitle
+        self.iconTint = iconTint ?? statusStyle.tint
+        self.statusText = statusText
+        self.statusStyle = statusStyle
+        self.isDimmed = isDimmed
+        self.accessory = accessory()
+    }
+
+    var body: some View {
+        ClearGlassRowAnatomy(
+            systemImage: systemImage,
+            iconTint: iconTint,
+            title: title,
+            subtitle: subtitle,
+            statusText: statusText,
+            statusStyle: statusStyle
+        ) {
+            accessory
+        }
+        .padding(.vertical, 8)
+        .opacity(isDimmed ? 0.58 : 1)
+        .clearGlassInteractionFeedback(.row, isDimmed: isDimmed, help: helpText)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var helpText: String {
+        if let statusText {
+            return "\(title). \(subtitle) Status: \(statusText)."
+        }
+
+        return "\(title). \(subtitle)"
+    }
+}
+
+extension ClearGlassStatusControlRow where Accessory == EmptyView {
+    init(
+        systemImage: String,
+        title: String,
+        subtitle: String,
+        iconTint: Color? = nil,
+        statusText: String? = nil,
+        statusStyle: ClearGlassStatusStyle = .secondary,
+        isDimmed: Bool = false
+    ) {
+        self.init(
+            systemImage: systemImage,
+            title: title,
+            subtitle: subtitle,
+            iconTint: iconTint,
+            statusText: statusText,
+            statusStyle: statusStyle,
+            isDimmed: isDimmed
+        ) {
+            EmptyView()
+        }
+    }
+}
+
+enum ClearGlassAccessoryClusterAlignment {
+    case leading
+    case center
+    case trailing
+}
+
+enum ClearGlassAccessoryClusterWidth {
+    case compact
+    case flexible
+}
+
+struct ClearGlassAccessoryCluster<Content: View>: View {
+    private let alignment: ClearGlassAccessoryClusterAlignment
+    private let spacing: CGFloat
+    private let width: ClearGlassAccessoryClusterWidth
+    private let appliesDefaultButtonStyle: Bool
+    @ViewBuilder private let content: Content
+
+    init(
+        alignment: ClearGlassAccessoryClusterAlignment = .trailing,
+        spacing: CGFloat = 8,
+        width: ClearGlassAccessoryClusterWidth = .compact,
+        appliesDefaultButtonStyle: Bool = false,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.alignment = alignment
+        self.spacing = spacing
+        self.width = width
+        self.appliesDefaultButtonStyle = appliesDefaultButtonStyle
+        self.content = content()
+    }
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: spacing) {
+                content
+            }
+            .frame(maxWidth: horizontalMaxWidth, alignment: horizontalFrameAlignment)
+
+            VStack(alignment: stackAlignment, spacing: spacing) {
+                content
+            }
+            .frame(maxWidth: .infinity, alignment: verticalFrameAlignment)
+        }
+        .modifier(ClearGlassAccessoryButtonStyle(appliesDefaultStyle: appliesDefaultButtonStyle))
+    }
+
+    private var horizontalMaxWidth: CGFloat? {
+        switch width {
+        case .compact:
+            return nil
+        case .flexible:
+            return .infinity
+        }
+    }
+
+    private var horizontalFrameAlignment: Alignment {
+        switch alignment {
+        case .leading:
+            return .leading
+        case .center:
+            return .center
+        default:
+            return .trailing
+        }
+    }
+
+    private var stackAlignment: HorizontalAlignment {
+        switch alignment {
+        case .leading:
+            return .leading
+        case .center:
+            return .center
+        case .trailing:
+            return .trailing
+        }
+    }
+
+    private var verticalFrameAlignment: Alignment {
+        switch alignment {
+        case .leading:
+            return .leading
+        case .center:
+            return .center
+        default:
+            return .trailing
+        }
+    }
+}
+
+private struct ClearGlassAccessoryButtonStyle: ViewModifier {
+    let appliesDefaultStyle: Bool
+
+    func body(content: Content) -> some View {
+        if appliesDefaultStyle {
+            content
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+        } else {
+            content
+        }
+    }
+}
+
+enum ClearGlassRowIconStyle {
+    case plain
+    case tile
+
+    var frameSize: CGFloat {
+        switch self {
+        case .plain:
+            22
+        case .tile:
+            30
+        }
+    }
+
+    var imageSize: CGFloat {
+        switch self {
+        case .plain:
+            15
+        case .tile:
+            15
+        }
+    }
+
+    var imageWeight: Font.Weight {
+        switch self {
+        case .plain:
+            .regular
+        case .tile:
+            .medium
+        }
+    }
+}
+
+struct ClearGlassRowAnatomy<Accessory: View>: View {
+    private let systemImage: String?
+    private let iconTint: Color
+    private let iconStyle: ClearGlassRowIconStyle
+    private let title: String
+    private let subtitle: String?
+    private let titleFont: Font
+    private let subtitleFont: Font
+    private let subtitleLineLimit: Int
+    private let statusText: String?
+    private let statusStyle: ClearGlassStatusStyle
+    private let accessoryAlignment: ClearGlassAccessoryClusterAlignment
+    private let accessoryWidth: ClearGlassAccessoryClusterWidth
+    private let accessorySpacing: CGFloat
+    @ViewBuilder private let accessory: Accessory
+
+    init(
+        systemImage: String? = nil,
+        iconTint: Color = .secondary,
+        iconStyle: ClearGlassRowIconStyle = .plain,
+        title: String,
+        subtitle: String? = nil,
+        titleFont: Font = .body,
+        subtitleFont: Font = .callout,
+        subtitleLineLimit: Int = 3,
+        statusText: String? = nil,
+        statusStyle: ClearGlassStatusStyle = .secondary,
+        accessoryAlignment: ClearGlassAccessoryClusterAlignment = .trailing,
+        accessoryWidth: ClearGlassAccessoryClusterWidth = .compact,
+        accessorySpacing: CGFloat = 10,
+        @ViewBuilder accessory: () -> Accessory
+    ) {
+        self.systemImage = systemImage
+        self.iconTint = iconTint
+        self.iconStyle = iconStyle
+        self.title = title
+        self.subtitle = subtitle
+        self.titleFont = titleFont
+        self.subtitleFont = subtitleFont
+        self.subtitleLineLimit = subtitleLineLimit
+        self.statusText = statusText
+        self.statusStyle = statusStyle
+        self.accessoryAlignment = accessoryAlignment
+        self.accessoryWidth = accessoryWidth
+        self.accessorySpacing = accessorySpacing
+        self.accessory = accessory()
+    }
+
+    var body: some View {
+        horizontalLayout
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var horizontalLayout: some View {
+        HStack(alignment: .center, spacing: 12) {
+            iconView
+
+            labelContent
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .layoutPriority(1)
+
+            Spacer(minLength: 16)
+
+            trailingContent
+                .fixedSize(horizontal: usesCompactAccessoryWidth, vertical: false)
+        }
+    }
+
+    @ViewBuilder
+    private var iconView: some View {
+        if let systemImage {
+            switch iconStyle {
+            case .plain:
+                Image(systemName: systemImage)
+                    .font(.system(size: iconStyle.imageSize, weight: iconStyle.imageWeight))
+                    .foregroundStyle(iconTint)
+                    .frame(width: iconStyle.frameSize, height: iconStyle.frameSize)
+            case .tile:
+                ZStack {
+                    RoundedRectangle(cornerRadius: 7)
+                        .fill(iconTint.opacity(0.12))
+
+                    Image(systemName: systemImage)
+                        .font(.system(size: iconStyle.imageSize, weight: iconStyle.imageWeight))
+                        .foregroundStyle(iconTint)
+                }
+                .frame(width: iconStyle.frameSize, height: iconStyle.frameSize)
+            }
+        }
+    }
+
+    private var labelContent: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(titleFont)
+                .foregroundStyle(.primary)
+                .lineLimit(2)
+
+            if let subtitle {
+                Text(subtitle)
+                    .font(subtitleFont)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(subtitleLineLimit)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private var trailingContent: some View {
+        ClearGlassAccessoryCluster(
+            alignment: accessoryAlignment,
+            spacing: accessorySpacing,
+            width: accessoryWidth
+        ) {
+            if let statusText {
+                ClearGlassStatusValue(text: statusText, style: statusStyle)
+            }
+
+            accessory
+        }
+    }
+
+    private var usesCompactAccessoryWidth: Bool {
+        switch accessoryWidth {
+        case .compact:
+            true
+        case .flexible:
+            false
+        }
+    }
+}
+
+extension ClearGlassRowAnatomy where Accessory == EmptyView {
+    init(
+        systemImage: String? = nil,
+        iconTint: Color = .secondary,
+        iconStyle: ClearGlassRowIconStyle = .plain,
+        title: String,
+        subtitle: String? = nil,
+        titleFont: Font = .body,
+        subtitleFont: Font = .callout,
+        subtitleLineLimit: Int = 3,
+        statusText: String? = nil,
+        statusStyle: ClearGlassStatusStyle = .secondary
+    ) {
+        self.init(
+            systemImage: systemImage,
+            iconTint: iconTint,
+            iconStyle: iconStyle,
+            title: title,
+            subtitle: subtitle,
+            titleFont: titleFont,
+            subtitleFont: subtitleFont,
+            subtitleLineLimit: subtitleLineLimit,
+            statusText: statusText,
+            statusStyle: statusStyle
+        ) {
+            EmptyView()
+        }
+    }
+}
+
+struct ClearGlassActionStrip<Actions: View>: View {
+    private let title: String
+    private let subtitle: String?
+    private let systemImage: String
+    private let iconTint: Color
+    private let statusText: String?
+    private let statusStyle: ClearGlassStatusStyle
+    @ViewBuilder private let actions: Actions
+
+    init(
+        _ title: String,
+        subtitle: String? = nil,
+        systemImage: String = "bolt",
+        iconTint: Color = .accentColor,
+        statusText: String? = nil,
+        statusStyle: ClearGlassStatusStyle = .secondary,
+        @ViewBuilder actions: () -> Actions
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.systemImage = systemImage
+        self.iconTint = iconTint
+        self.statusText = statusText
+        self.statusStyle = statusStyle
+        self.actions = actions()
+    }
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            horizontalLayout
+            verticalLayout
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 8))
+        .shadow(color: .black.opacity(0.035), radius: 5, x: 0, y: 1)
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color(nsColor: .separatorColor).opacity(0.45), lineWidth: 0.5)
+        }
+        .clearGlassInteractionFeedback(.surface, help: helpText)
+    }
+
+    private var helpText: String {
+        let detail = subtitle.map { "\(title). \($0)" } ?? title
+        if let statusText {
+            return "\(detail) Status: \(statusText)."
+        }
+
+        return detail
+    }
+
+    private var horizontalLayout: some View {
+        ClearGlassRowAnatomy(
+            systemImage: systemImage,
+            iconTint: iconTint,
+            iconStyle: .tile,
+            title: title,
+            subtitle: subtitle,
+            titleFont: .body.weight(.semibold),
+            statusText: statusText,
+            statusStyle: statusStyle,
+            accessoryAlignment: .leading,
+            accessoryWidth: .flexible
+        ) {
+            actionRow
+        }
+    }
+
+    private var verticalLayout: some View {
+        ClearGlassRowAnatomy(
+            systemImage: systemImage,
+            iconTint: iconTint,
+            iconStyle: .tile,
+            title: title,
+            subtitle: subtitle,
+            titleFont: .body.weight(.semibold),
+            statusText: statusText,
+            statusStyle: statusStyle,
+            accessoryAlignment: .leading,
+            accessoryWidth: .flexible
+        ) {
+            actionRow
+        }
+    }
+
+    private var actionRow: some View {
+        ClearGlassAccessoryCluster(
+            alignment: .leading,
+            width: .flexible,
+            appliesDefaultButtonStyle: true
+        ) {
+            actions
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 5)
+        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 7))
+        .overlay {
+            RoundedRectangle(cornerRadius: 7)
+                .stroke(Color(nsColor: .separatorColor).opacity(0.26), lineWidth: 0.5)
+        }
+    }
+}
+
 struct ClearGlassControlRow<Accessory: View>: View {
     private let systemImage: String
     private let title: String
@@ -1274,67 +2424,21 @@ struct ClearGlassControlRow<Accessory: View>: View {
     }
 
     var body: some View {
-        ViewThatFits(in: .horizontal) {
-            horizontalRow
-            verticalRow
+        ClearGlassRowAnatomy(
+            systemImage: systemImage,
+            iconTint: iconTint,
+            title: title,
+            subtitle: subtitle
+        ) {
+            accessory
         }
         .padding(.vertical, 7)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .clearGlassInteractionFeedback(.row, help: helpText)
     }
 
-    private var horizontalRow: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
-            iconView
-
-            labelContent
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            Spacer(minLength: 16)
-
-            accessory
-                .fixedSize()
-                .layoutPriority(1)
-        }
-    }
-
-    private var verticalRow: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            HStack(alignment: .top, spacing: 10) {
-                iconView
-
-                labelContent
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            accessory
-                .fixedSize()
-                .frame(maxWidth: .infinity, alignment: .trailing)
-        }
-    }
-
-    private var iconView: some View {
-        Image(systemName: systemImage)
-            .font(.system(size: 15, weight: .regular))
-            .foregroundStyle(iconTint)
-            .frame(width: 20)
-    }
-
-    private var labelContent: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-                .font(.body)
-                .foregroundStyle(.primary)
-                .lineLimit(2)
-
-            if let subtitle {
-                Text(subtitle)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(3)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
+    private var helpText: String {
+        subtitle.map { "\(title). \($0)" } ?? title
     }
 }
 
@@ -1372,50 +2476,21 @@ struct ClearGlassValueRow<ValueContent: View>: View {
     }
 
     var body: some View {
-        ViewThatFits(in: .horizontal) {
-            horizontalRow
-            verticalRow
-        }
-        .padding(.vertical, 7)
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var horizontalRow: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 16) {
-            labelContent
-
-            Spacer(minLength: 16)
-
+        ClearGlassRowAnatomy(
+            title: title,
+            subtitle: subtitle
+        ) {
             value
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.trailing)
         }
+        .padding(.vertical, 7)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .clearGlassInteractionFeedback(.row, help: helpText)
     }
 
-    private var verticalRow: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            labelContent
-
-            value
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.leading)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-
-    private var labelContent: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-                .font(.body)
-                .foregroundStyle(.primary)
-
-            if let subtitle {
-                Text(subtitle)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
+    private var helpText: String {
+        subtitle.map { "\(title). \($0)" } ?? title
     }
 }
 
@@ -1450,34 +2525,38 @@ struct ClearGlassSliderRow: View {
     }
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 16) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.body)
+        ClearGlassRowAnatomy(
+            title: title,
+            subtitle: subtitle,
+            accessoryAlignment: .leading
+        ) {
+            HStack(spacing: 12) {
+                Slider(value: $value, in: range, step: step)
+                    .frame(minWidth: 220, idealWidth: 300, maxWidth: 320)
 
-                if let subtitle {
-                    Text(subtitle)
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
+                valueText
             }
-            .frame(minWidth: 180, alignment: .leading)
-
-            Spacer(minLength: 16)
-
-            Slider(value: $value, in: range, step: step)
-                .frame(maxWidth: 320)
-
-            Text(formattedValue)
-                .font(.system(.body, design: .monospaced))
-                .foregroundStyle(.secondary)
-                .frame(width: valueWidth, alignment: .trailing)
         }
         .padding(.vertical, 7)
+        .clearGlassInteractionFeedback(.row, help: helpText)
+    }
+
+    private var helpText: String {
+        if let subtitle {
+            return "\(title). \(subtitle) Current value: \(formattedValue)."
+        }
+
+        return "\(title). Current value: \(formattedValue)."
     }
 
     private var formattedValue: String {
         value.formatted(.number.precision(.fractionLength(valueFractionLength))) + valueSuffix
+    }
+    private var valueText: some View {
+        Text(formattedValue)
+            .font(.system(.body, design: .monospaced))
+            .foregroundStyle(.secondary)
+            .frame(width: valueWidth, alignment: .trailing)
     }
 }
 
@@ -1517,6 +2596,7 @@ struct ClearGlassInlineMessage: View {
             RoundedRectangle(cornerRadius: 7)
                 .stroke(style.border, lineWidth: 0.5)
         }
+        .help(text)
     }
 }
 
@@ -1536,6 +2616,7 @@ struct ClearGlassStatusValue: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(text)
+        .help("Status: \(text)")
     }
 }
 
@@ -1553,6 +2634,7 @@ struct KeyboardShortcutToken: View {
                 RoundedRectangle(cornerRadius: 6)
                     .stroke(Color(nsColor: .separatorColor).opacity(0.75), lineWidth: 1)
             }
+            .clearGlassInteractionFeedback(.token, help: "Keyboard shortcut: \(text)")
             .accessibilityLabel("Keyboard shortcut \(text)")
     }
 }
@@ -1561,36 +2643,18 @@ struct CommandAvailabilityRow: View {
     let summary: MenuBarCommandAvailabilitySummary
 
     var body: some View {
-        HStack(alignment: .top, spacing: 14) {
-            Image(systemName: summary.systemImage)
-                .font(.system(size: 18, weight: .regular))
-                .foregroundStyle(summary.tone.clearGlassTint)
-                .frame(width: 26, height: 26)
-
-            VStack(alignment: .leading, spacing: 5) {
-                Text(summary.title)
-                    .font(.body)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                ClearGlassStatusValue(
-                    text: summary.statusText,
-                    style: summary.tone.clearGlassStyle
-                )
-
-                Text(summary.detail)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(3)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
+        ClearGlassRowAnatomy(
+            systemImage: summary.systemImage,
+            iconTint: summary.tone.clearGlassTint,
+            iconStyle: .tile,
+            title: summary.title,
+            subtitle: summary.detail,
+            statusText: summary.statusText,
+            statusStyle: summary.tone.clearGlassStyle
+        )
         .padding(.vertical, 7)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .clearGlassInteractionFeedback(.row, help: "\(summary.title). \(summary.detail) Status: \(summary.statusText).")
     }
 }
 
@@ -1698,6 +2762,7 @@ struct ClearGlassBadge: View {
                 Capsule()
                     .stroke(style.tint.opacity(0.18), lineWidth: 0.5)
             }
+            .help(style.helpText)
     }
 }
 
@@ -1706,6 +2771,10 @@ enum ClearGlassBadgeStyle: Hashable {
     case privacySafe
     case proMode
     case accessibilityRequired
+    case optionalProOff
+    case discoveryOff
+    case permissionNeeded
+    case ready
     case diagnostics
     case stable
     case preview
@@ -1741,7 +2810,15 @@ enum ClearGlassBadgeStyle: Hashable {
         case .proMode:
             "Optional Pro"
         case .accessibilityRequired:
-            "Unavailable"
+            "Accessibility"
+        case .optionalProOff:
+            "Optional Pro Off"
+        case .discoveryOff:
+            "Discovery Off"
+        case .permissionNeeded:
+            "Needs Permission"
+        case .ready:
+            "Ready"
         case .diagnostics:
             "Diagnostics"
         case .stable:
@@ -1771,6 +2848,14 @@ enum ClearGlassBadgeStyle: Hashable {
             "star"
         case .accessibilityRequired:
             "figure.circle"
+        case .optionalProOff:
+            "star.slash"
+        case .discoveryOff:
+            "eye.slash"
+        case .permissionNeeded:
+            "hand.raised"
+        case .ready:
+            "checkmark.circle"
         case .diagnostics:
             "waveform.path.ecg"
         case .stable:
@@ -1798,6 +2883,14 @@ enum ClearGlassBadgeStyle: Hashable {
             .accentColor
         case .accessibilityRequired:
             DesignTokens.SemanticTone.permissionRequired.foregroundStyle
+        case .optionalProOff:
+            .secondary
+        case .discoveryOff:
+            .orange
+        case .permissionNeeded:
+            DesignTokens.SemanticTone.permissionRequired.foregroundStyle
+        case .ready:
+            .green
         case .diagnostics:
             .secondary
         case .stable:
@@ -1814,6 +2907,43 @@ enum ClearGlassBadgeStyle: Hashable {
             FeatureStatus.deferred.tint
         case .actionNeeded:
             .red
+        }
+    }
+
+    var helpText: String {
+        switch self {
+        case .basicMode:
+            "Basic Mode: available without elevated permissions."
+        case .privacySafe:
+            "Privacy Safe: local-first behavior without network access."
+        case .proMode:
+            "Optional Pro capability."
+        case .accessibilityRequired:
+            "Requires Accessibility permission before use."
+        case .optionalProOff:
+            "Optional Pro is off."
+        case .discoveryOff:
+            "Discovery is off."
+        case .permissionNeeded:
+            "Permission is needed before this capability can run."
+        case .ready:
+            "Ready to use."
+        case .diagnostics:
+            "Diagnostics information."
+        case .stable:
+            FeatureStatus.stable.summary
+        case .preview:
+            FeatureStatus.preview.summary
+        case .labs:
+            FeatureStatus.labs.summary
+        case .experimental:
+            FeatureStatus.labs.summary
+        case .unavailable:
+            FeatureStatus.unavailable.summary
+        case .deferred:
+            FeatureStatus.deferred.summary
+        case .actionNeeded:
+            "Action is needed before this item is ready."
         }
     }
 }
@@ -1890,6 +3020,10 @@ private extension ClearGlassBadgeStyle {
             true
         case .proMode,
              .accessibilityRequired,
+             .optionalProOff,
+             .discoveryOff,
+             .permissionNeeded,
+             .ready,
              .diagnostics,
              .preview,
              .labs,
@@ -1905,25 +3039,55 @@ private extension ClearGlassBadgeStyle {
         switch self {
         case .actionNeeded:
             0
-        case .accessibilityRequired:
+        case .permissionNeeded:
             1
-        case .proMode:
+        case .discoveryOff:
             2
-        case .labs:
+        case .optionalProOff:
             3
-        case .experimental:
+        case .accessibilityRequired:
             4
-        case .preview:
+        case .proMode:
             5
-        case .unavailable:
+        case .labs:
             6
-        case .deferred:
+        case .experimental:
             7
-        case .diagnostics:
+        case .preview:
             8
+        case .ready:
+            9
+        case .unavailable:
+            10
+        case .deferred:
+            11
+        case .diagnostics:
+            12
         case .basicMode, .privacySafe, .stable:
             20
         }
+    }
+}
+
+extension ClearGlassBadgeStyle {
+    static func optionalProDiscovery(
+        proModeEnabled: Bool,
+        accessibilityDiscoveryEnabled: Bool,
+        accessibilityPermissionStatus: AccessibilityPermissionStatus?
+    ) -> ClearGlassBadgeStyle {
+        guard proModeEnabled else {
+            return .optionalProOff
+        }
+
+        guard accessibilityDiscoveryEnabled else {
+            return .discoveryOff
+        }
+
+        guard accessibilityPermissionStatus == .granted else {
+            return .permissionNeeded
+        }
+
+        return .ready
     }
 }
 

@@ -121,15 +121,7 @@ struct GeneralSettingsView: View {
                     subtitle: "macOS controls final approval in Login Items settings.",
                     iconTint: loginItemStatusStyle(service.statusDisplayName).foreground
                 ) {
-                    ViewThatFits(in: .horizontal) {
-                        HStack(spacing: 8) {
-                            loginStatusActions(service)
-                        }
-
-                        VStack(alignment: .trailing, spacing: 8) {
-                            loginStatusActions(service)
-                        }
-                    }
+                    loginStatusActions(service)
                 }
 
                 if let result = service.lastRegistrationResult {
@@ -370,76 +362,33 @@ private struct GeneralOverviewStrip: View {
     let isRunningFromApplications: Bool
     let hasCompletedOnboarding: Bool
 
-    private let columns = [
-        GridItem(.adaptive(minimum: 150), spacing: 8)
-    ]
-
     var body: some View {
-        LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
-            GeneralOverviewPill(
+        ClearGlassOverviewStrip([
+            ClearGlassOverviewMetric(
                 title: "Mode",
                 value: mode,
                 systemImage: "checkmark.shield",
                 style: .success
-            )
-
-            GeneralOverviewPill(
+            ),
+            ClearGlassOverviewMetric(
                 title: "Login Item",
                 value: launchStatus,
                 systemImage: "power",
                 style: launchStyle
-            )
-
-            GeneralOverviewPill(
+            ),
+            ClearGlassOverviewMetric(
                 title: "Location",
                 value: isRunningFromApplications ? "Applications" : "Other",
                 systemImage: isRunningFromApplications ? "checkmark.circle" : "exclamationmark.triangle",
                 style: isRunningFromApplications ? .success : .warning
-            )
-
-            GeneralOverviewPill(
+            ),
+            ClearGlassOverviewMetric(
                 title: "Onboarding",
                 value: hasCompletedOnboarding ? "Done" : "Pending",
                 systemImage: hasCompletedOnboarding ? "checkmark.circle" : "circle",
                 style: hasCompletedOnboarding ? .success : .secondary
             )
-        }
-    }
-}
-
-private struct GeneralOverviewPill: View {
-    let title: String
-    let value: String
-    let systemImage: String
-    let style: ClearGlassStatusStyle
-
-    var body: some View {
-        HStack(spacing: 9) {
-            Image(systemName: systemImage)
-                .font(.system(size: 16, weight: .regular))
-                .foregroundStyle(style.tint)
-                .frame(width: 19)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Text(value)
-                    .font(.callout)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.82)
-            }
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
-        .overlay {
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
-        }
+        ])
     }
 }
 

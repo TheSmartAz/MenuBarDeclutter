@@ -15,7 +15,5 @@ Crowded Reveal Rescue estimates whether an inline reveal is likely to fit and ca
 ## Deferred
 
 - Ask-every-time UI.
-- Icon Panel fallback while Icon Panel remains deferred.
-- Full preference matrix from the Phase 13 plan.
+- Additional fallback preferences beyond the current Second Bar, Full Menu Bar Mode, layout suggestion, blocked, and no-op paths.
 - Manual QA on real crowded menu bars, notch displays, external displays, Spaces, and sleep/wake.
-

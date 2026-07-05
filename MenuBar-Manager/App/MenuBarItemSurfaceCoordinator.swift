@@ -203,13 +203,20 @@ final class MenuBarItemSurfaceCoordinator {
     }
 
     func refreshMenuBarItems() {
+        let usesSeededMenuBarItems = FloatingPanelSearchUITestingArguments.usesSeededMenuBarItems
         if safeModeLaunchState.isSafeModeActive {
             diagnosticsLogger.log("Safe Mode skipped manual Pro scan.", level: .warning)
+        } else if usesSeededMenuBarItems {
+            diagnosticsLogger.log("UI testing seeded menu bar items retained; skipped live manual Pro scan.", level: .debug)
         } else {
             menuBarScanCoordinator.requestManualRefresh()
         }
         liveStatusSynchronizer.refreshSearchAndSecondBarItemCounts()
-        iconCaptureCoordinator?.refreshHiddenIconsViaRevealSweepIfAllowed(reason: "surface refresh")
+        if usesSeededMenuBarItems {
+            diagnosticsLogger.log("UI testing seeded menu bar items retained; skipped rendered icon refresh.", level: .debug)
+        } else {
+            iconCaptureCoordinator?.refreshHiddenIconsViaRevealSweepIfAllowed(reason: "surface refresh")
+        }
     }
 
     func refreshMenuBarItemsForMoveVerification() async -> [MenuBarItemSnapshot] {
@@ -273,5 +280,52 @@ final class MenuBarItemSurfaceCoordinator {
         }
         liveStatus.hoverPollingActive = hoverRevealController.isPollingActive
         diagnosticsLogger.log("Runtime reveal behaviors resumed after icon move.", level: .debug)
+    }
+}
+
+enum FloatingPanelSearchUITestingArguments {
+    enum Surface {
+        case findIcon
+        case secondBar
+        case groupPanel
+
+        var queryArgumentName: String {
+            switch self {
+            case .findIcon:
+                "--ui-testing-find-icon-query"
+            case .secondBar:
+                "--ui-testing-second-bar-query"
+            case .groupPanel:
+                "--ui-testing-group-panel-query"
+            }
+        }
+    }
+
+    static func query(for surface: Surface) -> String {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard arguments.contains("--ui-testing") else { return "" }
+        return value(for: surface.queryArgumentName, in: arguments)
+            ?? value(for: "--ui-testing-floating-panel-query", in: arguments)
+            ?? ""
+    }
+
+    static var usesSeededMenuBarItems: Bool {
+        let arguments = ProcessInfo.processInfo.arguments
+        return arguments.contains("--ui-testing")
+            && arguments.contains("--ui-testing-seed-menu-bar-items")
+    }
+
+    private static func value(for argumentName: String, in arguments: [String]) -> String? {
+        let assignmentPrefix = "\(argumentName)="
+        if let assignedValue = arguments.first(where: { $0.hasPrefix(assignmentPrefix) }) {
+            return String(assignedValue.dropFirst(assignmentPrefix.count)).removingPercentEncoding
+        }
+
+        guard let argumentIndex = arguments.firstIndex(of: argumentName),
+              arguments.indices.contains(argumentIndex + 1) else {
+            return nil
+        }
+
+        return arguments[argumentIndex + 1].removingPercentEncoding
     }
 }

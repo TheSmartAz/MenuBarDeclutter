@@ -22,6 +22,7 @@ struct AutomationSettingsView: View {
             "Automation",
             subtitle: "Configure App Shortcuts and automation boundaries.",
             badges: [.preview, .privacySafe],
+            style: .tool,
             sectionAnchors: [
                 ClearGlassPageAnchor("App Shortcuts", systemImage: "link"),
                 ClearGlassPageAnchor("Shortcut Actions", systemImage: "list.bullet.rectangle"),
@@ -98,76 +99,33 @@ private struct AutomationOverviewStrip: View {
     let readyActionCount: Int
     let reviewActionCount: Int
 
-    private let columns = [
-        GridItem(.adaptive(minimum: 150), spacing: 10)
-    ]
-
     var body: some View {
-        LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
-            AutomationOverviewPill(
+        ClearGlassOverviewStrip([
+            ClearGlassOverviewMetric(
                 title: "App Intents",
                 value: appIntentsEnabled ? "On" : "Off",
                 systemImage: appIntentsEnabled ? "checkmark.circle" : "minus.circle",
                 style: appIntentsEnabled ? .success : .secondary
-            )
-
-            AutomationOverviewPill(
+            ),
+            ClearGlassOverviewMetric(
                 title: "Profiles",
                 value: canApplyProfiles && appIntentsEnabled ? "Allowed" : "Gated",
                 systemImage: "person.crop.rectangle.stack",
                 style: canApplyProfiles && appIntentsEnabled ? .success : .warning
-            )
-
-            AutomationOverviewPill(
+            ),
+            ClearGlassOverviewMetric(
                 title: "Labs",
                 value: canAccessLabs && appIntentsEnabled ? "Allowed" : "Gated",
                 systemImage: "testtube.2",
                 style: canAccessLabs && appIntentsEnabled ? .success : .warning
-            )
-
-            AutomationOverviewPill(
+            ),
+            ClearGlassOverviewMetric(
                 title: "Actions",
                 value: reviewActionCount == 0 ? "\(readyActionCount) Ready" : "\(readyActionCount) / \(readyActionCount + reviewActionCount)",
                 systemImage: reviewActionCount == 0 ? "checkmark.shield" : "exclamationmark.triangle",
                 style: reviewActionCount == 0 ? .success : .warning
             )
-        }
-    }
-}
-
-private struct AutomationOverviewPill: View {
-    let title: String
-    let value: String
-    let systemImage: String
-    let style: ClearGlassStatusStyle
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: systemImage)
-                .font(.system(size: 16, weight: .regular))
-                .foregroundStyle(style.tint)
-                .frame(width: 20)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Text(value)
-                    .font(.callout)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.85)
-            }
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
-        .overlay {
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
-        }
+        ])
     }
 }
 
@@ -181,50 +139,61 @@ private struct AutomationControlsPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            AutomationGroupedBox("Availability") {
-                AutomationToggleRow(
+            ClearGlassGroupedList("Availability") {
+                ClearGlassStatusControlRow(
+                    systemImage: "link",
                     title: "Enable App Intents",
                     subtitle: "Expose MenuBarDeclutter actions to Shortcuts without Apple Events permission or other-app control.",
-                    systemImage: "link",
                     statusText: appIntentsEnabled ? "Enabled" : "Off",
                     statusStyle: appIntentsEnabled ? .success : .secondary,
-                    isDisabled: false,
-                    isOn: $appIntentsEnabled,
-                    onChange: onChange
-                )
+                    isDimmed: false
+                ) {
+                    Toggle("Enable App Intents", isOn: $appIntentsEnabled)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .onChange(of: appIntentsEnabled) { _, _ in onChange() }
+                }
 
-                automationDivider
+                ClearGlassDivider()
 
-                AutomationToggleRow(
+                ClearGlassStatusControlRow(
+                    systemImage: "person.crop.rectangle.stack",
                     title: "Allow Profile Apply",
                     subtitle: "Let App Shortcuts apply profiles when automation is not paused.",
-                    systemImage: "person.crop.rectangle.stack",
                     statusText: profileStatusText,
                     statusStyle: profileStatusStyle,
-                    isDisabled: !appIntentsEnabled,
-                    isOn: $canApplyProfiles,
-                    onChange: onChange
-                )
+                    isDimmed: !appIntentsEnabled
+                ) {
+                    Toggle("Allow Profile Apply", isOn: $canApplyProfiles)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .disabled(!appIntentsEnabled)
+                        .onChange(of: canApplyProfiles) { _, _ in onChange() }
+                }
 
-                automationDivider
+                ClearGlassDivider()
 
-                AutomationToggleRow(
+                ClearGlassStatusControlRow(
+                    systemImage: "testtube.2",
                     title: "Allow Labs Access",
                     subtitle: "Allow App Shortcuts to request Labs features. Labs settings remain gated.",
-                    systemImage: "testtube.2",
                     statusText: labsStatusText,
                     statusStyle: labsStatusStyle,
-                    isDisabled: !appIntentsEnabled,
-                    isOn: $canAccessLabs,
-                    onChange: onChange
-                )
+                    isDimmed: !appIntentsEnabled
+                ) {
+                    Toggle("Allow Labs Access", isOn: $canAccessLabs)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .disabled(!appIntentsEnabled)
+                        .onChange(of: canAccessLabs) { _, _ in onChange() }
+                }
             }
 
-            AutomationGroupedBox("Shortcuts App") {
-                AutomationActionRow(
+            ClearGlassGroupedList("Shortcuts App") {
+                ClearGlassStatusControlRow(
+                    systemImage: "arrow.up.right.square",
                     title: "Open Shortcuts",
                     subtitle: "Open Apple's Shortcuts app to inspect or run MenuBarDeclutter actions.",
-                    systemImage: "arrow.up.right.square",
                     statusText: appIntentsEnabled ? "Ready" : "Configure",
                     statusStyle: appIntentsEnabled ? .success : .secondary
                 ) {
@@ -236,7 +205,7 @@ private struct AutomationControlsPanel: View {
     }
 
     private var profileStatusText: String {
-        guard appIntentsEnabled else { return "Unavailable" }
+        guard appIntentsEnabled else { return "Off" }
         return canApplyProfiles ? "Allowed" : "Blocked"
     }
 
@@ -246,7 +215,7 @@ private struct AutomationControlsPanel: View {
     }
 
     private var labsStatusText: String {
-        guard appIntentsEnabled else { return "Unavailable" }
+        guard appIntentsEnabled else { return "Off" }
         return canAccessLabs ? "Allowed" : "Blocked"
     }
 
@@ -292,7 +261,7 @@ private struct AutomationShortcutActionList: View {
                     )
 
                     if index != actions.count - 1 {
-                        automationDivider
+                        ClearGlassDivider()
                     }
                 }
             }
@@ -335,37 +304,17 @@ private struct AutomationShortcutActionRow: View {
     let status: AutomationShortcutStatus
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 7)
-                    .fill(status.clearGlassStyle.tint.opacity(0.12))
-
-                Image(systemName: action.systemImage)
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(status.clearGlassStyle.tint)
-            }
-            .frame(width: 30, height: 30)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(action.title)
-                    .font(.body)
-                    .lineLimit(1)
-
-                Text(action.detailText)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            ClearGlassStatusValue(
-                text: status.displayName,
-                style: status.clearGlassStyle
-            )
-            .fixedSize()
-            .padding(.top, 5)
-        }
+        ClearGlassRowAnatomy(
+            systemImage: action.systemImage,
+            iconTint: status.clearGlassStyle.tint,
+            iconStyle: .tile,
+            title: action.title,
+            subtitle: action.detailText,
+            subtitleFont: .caption,
+            subtitleLineLimit: 2,
+            statusText: status.displayName,
+            statusStyle: status.clearGlassStyle
+        )
         .padding(.vertical, 8)
         .opacity(status == .disabled ? 0.62 : 1)
     }
@@ -373,201 +322,36 @@ private struct AutomationShortcutActionRow: View {
 
 private struct AutomationSafetyChecklist: View {
     var body: some View {
-        AutomationGroupedBox("Privacy Boundary") {
-            AutomationSafetyItem(
+        ClearGlassGroupedList("Privacy Boundary") {
+            ClearGlassStatusControlRow(
+                systemImage: "checkmark.shield",
                 title: "No Apple Events Permission",
                 subtitle: "App Shortcuts use App Intents and do not script or control other apps.",
-                systemImage: "checkmark.shield",
-                style: .success
+                iconTint: ClearGlassStatusStyle.success.tint,
+                statusStyle: .success
             )
 
-            automationDivider
+            ClearGlassDivider()
 
-            AutomationSafetyItem(
+            ClearGlassStatusControlRow(
+                systemImage: "network.slash",
                 title: "No Network Access",
                 subtitle: "Automation settings stay local and do not add network behavior.",
-                systemImage: "network.slash",
-                style: .success
+                iconTint: ClearGlassStatusStyle.success.tint,
+                statusStyle: .success
             )
 
-            automationDivider
+            ClearGlassDivider()
 
-            AutomationSafetyItem(
+            ClearGlassStatusControlRow(
+                systemImage: "lock.circle",
                 title: "Gate-aware Execution",
                 subtitle: "Safe Mode, automation pause, Private Access, Pro requirements, and Labs requirements are still enforced.",
-                systemImage: "lock.circle",
-                style: .info
+                iconTint: ClearGlassStatusStyle.info.tint,
+                statusStyle: .info
             )
         }
     }
-}
-
-private struct AutomationSafetyItem: View {
-    let title: String
-    let subtitle: String
-    let systemImage: String
-    let style: ClearGlassStatusStyle
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: systemImage)
-                .font(.system(size: 15))
-                .foregroundStyle(style.tint)
-                .frame(width: 22)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.body)
-
-                Text(subtitle)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(.vertical, 8)
-    }
-}
-
-private struct AutomationGroupedBox<Content: View>: View {
-    private let title: String
-    @ViewBuilder private let content: Content
-
-    init(
-        _ title: String,
-        @ViewBuilder content: () -> Content
-    ) {
-        self.title = title
-        self.content = content()
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            Text(title)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 2)
-
-            VStack(spacing: 0) {
-                content
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 5)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 8))
-            .overlay {
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(Color(nsColor: .separatorColor).opacity(0.42), lineWidth: 0.5)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-private struct AutomationToggleRow: View {
-    let title: String
-    let subtitle: String
-    let systemImage: String
-    let statusText: String
-    let statusStyle: ClearGlassStatusStyle
-    let isDisabled: Bool
-    @Binding var isOn: Bool
-    let onChange: () -> Void
-
-    var body: some View {
-        AutomationActionRow(
-            title: title,
-            subtitle: subtitle,
-            systemImage: systemImage,
-            statusText: statusText,
-            statusStyle: statusStyle,
-            isDimmed: isDisabled
-        ) {
-            HStack(spacing: 10) {
-                ClearGlassStatusValue(text: statusText, style: statusStyle)
-
-                Toggle(title, isOn: $isOn)
-                    .labelsHidden()
-                    .toggleStyle(.switch)
-                    .disabled(isDisabled)
-                    .onChange(of: isOn) { _, _ in onChange() }
-            }
-        }
-    }
-}
-
-private struct AutomationActionRow<Accessory: View>: View {
-    let title: String
-    let subtitle: String
-    let systemImage: String
-    let statusText: String
-    let statusStyle: ClearGlassStatusStyle
-    var isDimmed = false
-    @ViewBuilder let accessory: Accessory
-
-    init(
-        title: String,
-        subtitle: String,
-        systemImage: String,
-        statusText: String,
-        statusStyle: ClearGlassStatusStyle,
-        isDimmed: Bool = false,
-        @ViewBuilder accessory: () -> Accessory
-    ) {
-        self.title = title
-        self.subtitle = subtitle
-        self.systemImage = systemImage
-        self.statusText = statusText
-        self.statusStyle = statusStyle
-        self.isDimmed = isDimmed
-        self.accessory = accessory()
-    }
-
-    var body: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(alignment: .center, spacing: 12) {
-                rowLabel
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                accessory
-                    .fixedSize()
-            }
-
-            VStack(alignment: .leading, spacing: 8) {
-                rowLabel
-                accessory
-                    .fixedSize()
-            }
-        }
-        .padding(.vertical, 8)
-        .opacity(isDimmed ? 0.58 : 1)
-    }
-
-    private var rowLabel: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: systemImage)
-                .font(.system(size: 15))
-                .foregroundStyle(statusStyle.tint)
-                .frame(width: 22)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.body)
-
-                Text(subtitle)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(3)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-    }
-}
-
-private var automationDivider: some View {
-    Divider()
-        .padding(.leading, 34)
 }
 
 struct AutomationShortcutAction: Identifiable, Equatable, Sendable {

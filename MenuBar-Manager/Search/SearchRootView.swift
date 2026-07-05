@@ -45,6 +45,42 @@ struct SearchRootView: View {
 
     private let keyboardRouter = SearchKeyboardActionRouter()
 
+    init(
+        settingsStore: SettingsStore,
+        permissionService: AccessibilityPermissionService,
+        liveStatus: LiveDiagnosticsStatus,
+        searchService: SearchService,
+        itemMemoryStore: MenuBarItemMemoryStore,
+        diagnosticsLogger: DiagnosticsLogger,
+        newItemStorageKeysProvider: @escaping () -> Set<String>,
+        workspaceUsageProvider: @escaping () -> WorkspaceUsageIndexSnapshot? = { nil },
+        onRefresh: @escaping () -> Void,
+        onCommand: @escaping (MenuBarCommand) -> MenuBarCommandResult,
+        onMove: @escaping @MainActor (MenuBarSearchResult, IconMoveCommand) async -> IconMoveResult,
+        groupsProvider: @escaping () -> [IconGroup],
+        onSettingsChanged: @escaping () -> Void,
+        onOpenPrivacySettings: @escaping () -> Void,
+        onDismiss: @escaping () -> Void,
+        initialQuery: String = ""
+    ) {
+        self.settingsStore = settingsStore
+        self.permissionService = permissionService
+        self.liveStatus = liveStatus
+        self.searchService = searchService
+        self.itemMemoryStore = itemMemoryStore
+        self.diagnosticsLogger = diagnosticsLogger
+        self.newItemStorageKeysProvider = newItemStorageKeysProvider
+        self.workspaceUsageProvider = workspaceUsageProvider
+        self.onRefresh = onRefresh
+        self.onCommand = onCommand
+        self.onMove = onMove
+        self.groupsProvider = groupsProvider
+        self.onSettingsChanged = onSettingsChanged
+        self.onOpenPrivacySettings = onOpenPrivacySettings
+        self.onDismiss = onDismiss
+        _query = State(initialValue: initialQuery)
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             searchHeader
@@ -143,6 +179,7 @@ struct SearchRootView: View {
                     .labelStyle(.iconOnly)
                     .buttonStyle(.bordered)
                     .help("Refresh Menu Bar Items")
+                    .accessibilityIdentifier("search.refresh")
                 }
             }
 
@@ -156,9 +193,10 @@ struct SearchRootView: View {
     }
 
     private var searchInputBar: some View {
-        SearchField(
+        IntegratedSearchField(
             "Find menu bar icon",
             text: $query,
+            font: .system(size: 16, weight: .regular),
             autoFocus: true,
             isEnabled: searchIsAvailable,
             accessibilityIdentifier: "search.field",
@@ -180,7 +218,10 @@ struct SearchRootView: View {
                 .pickerStyle(.segmented)
                 .labelsHidden()
                 .fixedSize()
+                .accessibilityLabel("Find Icon filter")
+                .accessibilityValue(selectedFilter.displayName)
             }
+            .accessibilityIdentifier("search.filter")
             .scrollIndicators(.hidden)
             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -222,6 +263,7 @@ struct SearchRootView: View {
             .buttonStyle(.bordered)
             .controlSize(.small)
             .help("Clear Recent Items")
+            .accessibilityIdentifier("search.clearRecent")
         case .favorites where itemMemoryStore.favoriteCount > 0:
             Button("Clear Favorites", systemImage: "star.slash") {
                 itemMemoryStore.resetFavorites()
@@ -232,6 +274,7 @@ struct SearchRootView: View {
             .buttonStyle(.bordered)
             .controlSize(.small)
             .help("Clear Favorites")
+            .accessibilityIdentifier("search.clearFavorites")
         default:
             EmptyView()
         }
@@ -240,10 +283,12 @@ struct SearchRootView: View {
     private var resultList: some View {
         Group {
             if results.isEmpty {
-                ContentUnavailableView(
-                    emptyResultsTitle,
+                UnavailablePanel(
+                    title: emptyResultsTitle,
+                    message: emptyResultsDescription,
                     systemImage: selectedFilter == .all ? "magnifyingglass" : selectedFilter.systemImage,
-                    description: Text(emptyResultsDescription)
+                    primaryAction: emptyResultsPrimaryAction,
+                    secondaryAction: emptyResultsSecondaryAction
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .accessibilityIdentifier("search.empty")
@@ -263,6 +308,11 @@ struct SearchRootView: View {
                                 }
                                 .buttonStyle(.plain)
                                 .id(result.id)
+                                .onHover { isHovered in
+                                    if isHovered {
+                                        selectedID = result.id
+                                    }
+                                }
                                 .contextMenu {
                                     Button("Reveal", systemImage: "eye") {
                                         route(.revealItem, result: result)
@@ -318,6 +368,7 @@ struct SearchRootView: View {
                             }
                         }
                     }
+                    .accessibilityIdentifier("search.results")
                 }
             }
         }
@@ -325,39 +376,31 @@ struct SearchRootView: View {
     }
 
     private var searchFooter: some View {
-        HStack(spacing: 12) {
-            Text(searchIsAvailable ? "\(results.count) results" : "Unavailable")
-                .foregroundStyle(.secondary)
+        FloatingPanelFooter(
+            leadingTitle: searchIsAvailable ? "\(results.count) results" : "Unavailable",
+            message: searchFooterMessage,
+            emphasizedMessage: searchFooterEmphasizedMessage
+        )
+    }
 
-            Spacer()
-
-            if !searchIsAvailable {
-                Text("Complete the Optional Pro next step above to search local menu bar items.")
-                    .lineLimit(1)
-                    .foregroundStyle(.secondary)
-            } else if let activationMessage {
-                Text(activationMessage)
-                    .lineLimit(1)
-                    .foregroundStyle(.secondary)
-            } else {
-                HStack(spacing: 4) {
-                    Text("Use arrows to choose, Return to reveal, Command-Return for Second Bar.")
-                        .lineLimit(1)
-                        .foregroundStyle(.secondary)
-                    Text("No clicking is automated.")
-                        .lineLimit(1)
-                        .foregroundStyle(.blue)
-                }
-            }
+    private var searchFooterMessage: String? {
+        if !searchIsAvailable {
+            return "Complete the Optional Pro next step above to search local menu bar items."
         }
-        .font(.caption)
-        .padding(.horizontal, 18)
-        .padding(.vertical, 11)
+        if let activationMessage {
+            return activationMessage
+        }
+        return "Use arrows to choose, Return to reveal, Command-Return for Second Bar."
+    }
+
+    private var searchFooterEmphasizedMessage: String? {
+        guard searchIsAvailable, activationMessage == nil else { return nil }
+        return "No clicking is automated."
     }
 
     private var emptyResultsTitle: String {
         if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return "No Results"
+            return "No Matching Items"
         }
 
         switch selectedFilter {
@@ -404,6 +447,28 @@ struct SearchRootView: View {
         }
 
         return "Refresh menu bar items after enabling Optional Pro discovery and Accessibility."
+    }
+
+    private var emptyResultsPrimaryAction: UnavailablePanel.Action? {
+        if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return UnavailablePanel.Action(title: "Clear Search", systemImage: "xmark.circle") {
+                query = ""
+                refreshResults()
+            }
+        }
+
+        return UnavailablePanel.Action(title: "Refresh", systemImage: "arrow.clockwise") {
+            onRefresh()
+            refreshResults()
+        }
+    }
+
+    private var emptyResultsSecondaryAction: UnavailablePanel.Action? {
+        guard selectedFilter != .all else { return nil }
+        return UnavailablePanel.Action(title: "Show All", systemImage: "line.3.horizontal.decrease.circle", style: .secondary) {
+            selectedFilter = .all
+            refreshResults()
+        }
     }
 
     private var searchIsAvailable: Bool {

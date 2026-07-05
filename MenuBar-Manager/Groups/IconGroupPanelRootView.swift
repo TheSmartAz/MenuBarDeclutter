@@ -13,6 +13,20 @@ struct IconGroupPanelRootView: View {
 
     private let snapshotResolver = IconGroupSnapshotResolver()
 
+    init(
+        group: IconGroup,
+        snapshots: [MenuBarItemSnapshot],
+        onActivate: @escaping (MenuBarItemSnapshot) -> MenuItemActivationResult,
+        onDismiss: @escaping () -> Void,
+        initialQuery: String = ""
+    ) {
+        self.group = group
+        self.snapshots = snapshots
+        self.onActivate = onActivate
+        self.onDismiss = onDismiss
+        _searchQuery = State(initialValue: initialQuery)
+    }
+
     private var matchedSnapshots: [MenuBarItemSnapshot] {
         snapshotResolver.matchedSnapshots(
             for: group,
@@ -48,6 +62,14 @@ struct IconGroupPanelRootView: View {
             moveSelection(by: -1)
             return .handled
         }
+        .onKeyPress(.rightArrow) {
+            moveSelection(by: 1)
+            return .handled
+        }
+        .onKeyPress(.leftArrow) {
+            moveSelection(by: -1)
+            return .handled
+        }
         .onKeyPress(.return) {
             activateSelected()
             return .handled
@@ -61,10 +83,15 @@ struct IconGroupPanelRootView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {
-                Image(systemName: group.symbolName ?? "folder")
-                    .font(.title3)
-                    .foregroundStyle(.secondary)
-                    .frame(width: 24)
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(groupTint.opacity(0.12))
+
+                    Image(systemName: group.symbolName ?? "folder")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(groupTint)
+                }
+                .frame(width: 34, height: 34)
 
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 8) {
@@ -84,18 +111,65 @@ struct IconGroupPanelRootView: View {
                 }
 
                 Spacer()
+
+                HStack(spacing: 6) {
+                    groupHeaderBadge(
+                        "\(group.itemRefs.count) Rules",
+                        systemImage: "checklist",
+                        accessibilityLabel: "\(group.itemRefs.count) group rule\(group.itemRefs.count == 1 ? "" : "s")"
+                    )
+
+                    if group.isProtected {
+                        groupHeaderBadge(
+                            "Protected",
+                            systemImage: "lock.fill",
+                            accessibilityLabel: "Protected group"
+                        )
+                    }
+                }
             }
 
-            SearchField(
+            IntegratedSearchField(
                 "Search group",
                 text: $searchQuery,
+                font: .system(size: 15, weight: .regular),
                 autoFocus: true,
-                accessibilityIdentifier: "groupPanel.search"
+                accessibilityIdentifier: "groupPanel.search",
+                clearAccessibilityIdentifier: "groupPanel.clearSearch"
             )
         }
         .controlSize(.small)
-        .padding(.horizontal, 16)
+        .padding(.horizontal, DesignTokens.Spacing.panelInset)
         .padding(.vertical, 14)
+    }
+
+    private func groupHeaderBadge(
+        _ title: String,
+        systemImage: String,
+        accessibilityLabel: String? = nil
+    ) -> some View {
+        FloatingPanelToolbarBadge(
+            title,
+            systemImage: systemImage,
+            accessibilityLabel: accessibilityLabel
+        )
+    }
+
+    private var groupTint: Color {
+        switch group.colorName {
+        case "blue":
+            .blue
+        case "green":
+            .green
+        case "orange":
+            .orange
+        case "purple":
+            .purple
+        case "red":
+            .red
+        default:
+            .accentColor
+        }
     }
 
     private var content: some View {
@@ -104,10 +178,11 @@ struct IconGroupPanelRootView: View {
                 UnavailablePanel(
                     title: emptyStateTitle,
                     message: emptyStateMessage,
-                    systemImage: searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "menubar.rectangle" : "magnifyingglass"
+                    systemImage: searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "menubar.rectangle" : "magnifyingglass",
+                    primaryAction: emptyStatePrimaryAction
                 )
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .accessibilityIdentifier("groupPanel.empty")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .accessibilityIdentifier("groupPanel.empty")
             } else {
                 ScrollViewReader { proxy in
                     ScrollView {
@@ -121,6 +196,11 @@ struct IconGroupPanelRootView: View {
                                     activate(snapshot)
                                 }
                                 .id(snapshot.id)
+                                .onHover { isHovered in
+                                    if isHovered {
+                                        selectedID = snapshot.id
+                                    }
+                                }
                             }
                         }
                         .padding(12)
@@ -135,23 +215,18 @@ struct IconGroupPanelRootView: View {
                             }
                         }
                     }
+                    .accessibilityIdentifier("groupPanel.items")
                 }
             }
         }
     }
 
     private var footer: some View {
-        HStack {
-            Label("Return reveals and highlights. Click original icon manually.", systemImage: "return")
-                .foregroundStyle(.secondary)
-            Spacer()
-            Text(statusMessage)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-        }
-        .font(.caption)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        FloatingPanelFooter(
+            leadingTitle: "Return reveals the original item. Click it in the menu bar to open.",
+            leadingSystemImage: "return",
+            trailingTitle: statusMessage
+        )
     }
 
     private var emptyStateTitle: String {
@@ -172,6 +247,13 @@ struct IconGroupPanelRootView: View {
         }
 
         return "No current menu bar items match this group. Refresh discovery after the relevant apps are running."
+    }
+
+    private var emptyStatePrimaryAction: UnavailablePanel.Action? {
+        guard !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        return UnavailablePanel.Action(title: "Clear Search", systemImage: "xmark.circle") {
+            searchQuery = ""
+        }
     }
 
     private func moveSelection(by delta: Int) {

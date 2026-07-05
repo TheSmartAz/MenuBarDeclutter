@@ -44,7 +44,7 @@ Accurate Icons is a separate opt-in path that can use Screen Recording and publi
 - `MenuBar-ManagerTests/MenuBarScanCoordinatorTests.swift`
 - `MenuBar-ManagerTests/AXMenuBarCandidateCacheTests.swift`
 - Privacy QA: `docs/testing/privacy-qa.md`
-- Manual QA: `docs/testing/manual-v0.1.3-system-qa.md`
+- Manual QA: `docs/testing/manual-qa.md`
 
 ## Known Limitations
 

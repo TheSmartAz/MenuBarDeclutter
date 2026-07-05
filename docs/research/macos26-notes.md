@@ -18,4 +18,4 @@ MenuBarDeclutter targets macOS 26.0+ only.
 
 - No compatibility branches are needed for macOS 13, 14, or 15.
 - Intel support should be documented separately before release.
-- Phase 0 uses public AppKit `NSStatusItem` behavior only.
+- Basic Mode uses public AppKit `NSStatusItem` behavior only.

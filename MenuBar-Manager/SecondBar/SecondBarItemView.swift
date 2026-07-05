@@ -27,8 +27,11 @@ struct SecondBarItemView: View {
                 cornerRadius: CGFloat(min(8, iconSize / 4))
             )
                 .overlay(alignment: .topTrailing) {
-                    ZoneBadge(zone: snapshot.zone, isSelected: isSelected)
-                        .offset(x: 5, y: -5)
+                    ZoneBadge(
+                        zone: snapshot.zone,
+                        isSelected: isSelected
+                    )
+                    .offset(x: 8, y: -6)
                 }
 
             if showLabels {
@@ -83,6 +86,8 @@ private struct ZoneBadge: View {
         Text(badgeText)
             .font(.caption2)
             .bold()
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
             .padding(.horizontal, 5)
             .padding(.vertical, 2)
             .background(PanelSelectionTokens.badgeFill(zoneColor, isSelected: isSelected), in: .capsule)
@@ -95,14 +100,10 @@ private struct ZoneBadge: View {
 
     private var badgeText: String {
         switch zone {
-        case .hidden:
-            "H"
         case .alwaysHidden:
-            "A"
-        case .visible:
-            "V"
-        case .unknown:
-            "?"
+            "Always"
+        default:
+            zone.displayName
         }
     }
 

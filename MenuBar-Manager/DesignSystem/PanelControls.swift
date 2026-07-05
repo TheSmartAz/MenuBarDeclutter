@@ -172,17 +172,226 @@ struct SearchField: View {
     }
 }
 
-enum PanelSelectionTokens {
-    static func background(isSelected: Bool) -> Color {
-        isSelected
-            ? Color.accentColor.opacity(0.16)
-            : Color(nsColor: .controlBackgroundColor).opacity(0.45)
+struct IntegratedSearchField: View {
+    @Binding var text: String
+
+    let placeholder: String
+    let font: Font
+    let autoFocus: Bool
+    let isEnabled: Bool
+    let accessibilityIdentifier: String
+    let clearAccessibilityIdentifier: String
+    let onSubmit: () -> Void
+
+    @FocusState private var isFocused: Bool
+
+    init(
+        _ placeholder: String,
+        text: Binding<String>,
+        font: Font = .system(size: 18, weight: .regular),
+        autoFocus: Bool = false,
+        isEnabled: Bool = true,
+        accessibilityIdentifier: String = "",
+        clearAccessibilityIdentifier: String = "",
+        onSubmit: @escaping () -> Void = {}
+    ) {
+        self.placeholder = placeholder
+        _text = text
+        self.font = font
+        self.autoFocus = autoFocus
+        self.isEnabled = isEnabled
+        self.accessibilityIdentifier = accessibilityIdentifier
+        self.clearAccessibilityIdentifier = clearAccessibilityIdentifier
+        self.onSubmit = onSubmit
     }
 
-    static func stroke(isSelected: Bool) -> Color {
-        isSelected
-            ? Color.accentColor.opacity(0.58)
-            : Color(nsColor: .separatorColor).opacity(0.24)
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 15, weight: .regular))
+                .foregroundStyle(.secondary)
+                .frame(width: 20, height: 20)
+
+            TextField(placeholder, text: $text)
+                .textFieldStyle(.plain)
+                .font(font)
+                .focused($isFocused)
+                .disabled(!isEnabled)
+                .onSubmit(onSubmit)
+                .accessibilityLabel(placeholder)
+                .accessibilityIdentifier(accessibilityIdentifier)
+
+            Button("Clear Search", systemImage: "xmark.circle.fill") {
+                text = ""
+                isFocused = true
+            }
+            .labelStyle(.iconOnly)
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .opacity(text.isEmpty ? 0 : 1)
+            .disabled(text.isEmpty || !isEnabled)
+            .help("Clear Search")
+            .accessibilityIdentifier(clearAccessibilityIdentifier)
+        }
+        .opacity(isEnabled ? 1 : 0.62)
+        .frame(minHeight: 28)
+        .contentShape(.rect)
+        .onTapGesture {
+            if isEnabled {
+                isFocused = true
+            }
+        }
+        .task {
+            if autoFocus && isEnabled {
+                isFocused = true
+            }
+        }
+        .accessibilityElement(children: .contain)
+    }
+}
+
+struct FloatingPanelToolbarBadge: View {
+    let title: String
+    let systemImage: String
+    let tint: Color
+    let accessibilityLabel: String
+
+    init(
+        _ title: String,
+        systemImage: String,
+        tint: Color = .secondary,
+        accessibilityLabel: String? = nil
+    ) {
+        self.title = title
+        self.systemImage = systemImage
+        self.tint = tint
+        self.accessibilityLabel = accessibilityLabel ?? title
+    }
+
+    var body: some View {
+        Label(title, systemImage: systemImage)
+            .font(.caption)
+            .bold()
+            .lineLimit(1)
+            .foregroundStyle(tint)
+            .padding(.horizontal, 9)
+            .padding(.vertical, 6)
+            .background(Color(nsColor: .controlBackgroundColor).opacity(0.74), in: .capsule)
+            .overlay {
+                Capsule()
+                    .stroke(Color(nsColor: .separatorColor).opacity(0.36), lineWidth: DesignTokens.Stroke.hairline)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(accessibilityLabel)
+    }
+}
+
+struct FloatingPanelFooter: View {
+    let leadingTitle: String
+    let leadingSystemImage: String?
+    let message: String?
+    let emphasizedMessage: String?
+    let trailingTitle: String?
+    let trailingSystemImage: String?
+    let trailingTint: Color
+
+    init(
+        leadingTitle: String,
+        leadingSystemImage: String? = nil,
+        message: String? = nil,
+        emphasizedMessage: String? = nil,
+        trailingTitle: String? = nil,
+        trailingSystemImage: String? = nil,
+        trailingTint: Color = .secondary
+    ) {
+        self.leadingTitle = leadingTitle
+        self.leadingSystemImage = leadingSystemImage
+        self.message = message
+        self.emphasizedMessage = emphasizedMessage
+        self.trailingTitle = trailingTitle
+        self.trailingSystemImage = trailingSystemImage
+        self.trailingTint = trailingTint
+    }
+
+    var body: some View {
+        HStack(spacing: 10) {
+            footerLabel(
+                title: leadingTitle,
+                systemImage: leadingSystemImage,
+                tint: .secondary
+            )
+
+            Spacer(minLength: 12)
+
+            if message != nil || emphasizedMessage != nil {
+                HStack(spacing: 4) {
+                    if let message {
+                        Text(message)
+                            .lineLimit(1)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    if let emphasizedMessage {
+                        Text(emphasizedMessage)
+                            .lineLimit(1)
+                            .foregroundStyle(.blue)
+                    }
+                }
+            }
+
+            if let trailingTitle {
+                Spacer(minLength: 12)
+
+                footerLabel(
+                    title: trailingTitle,
+                    systemImage: trailingSystemImage,
+                    tint: trailingTint
+                )
+            }
+        }
+        .font(.caption)
+        .padding(.horizontal, DesignTokens.Spacing.panelInset)
+        .padding(.vertical, 10)
+        .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder
+    private func footerLabel(
+        title: String,
+        systemImage: String?,
+        tint: Color
+    ) -> some View {
+        if let systemImage {
+            Label(title, systemImage: systemImage)
+                .lineLimit(1)
+                .foregroundStyle(tint)
+        } else {
+            Text(title)
+                .lineLimit(1)
+                .foregroundStyle(tint)
+        }
+    }
+}
+
+enum PanelSelectionTokens {
+    static func background(isSelected: Bool, isHovered: Bool = false) -> Color {
+        if isSelected {
+            return Color.accentColor.opacity(0.16)
+        }
+        if isHovered {
+            return Color(nsColor: .controlBackgroundColor).opacity(0.82)
+        }
+        return Color(nsColor: .controlBackgroundColor).opacity(0.45)
+    }
+
+    static func stroke(isSelected: Bool, isHovered: Bool = false) -> Color {
+        if isSelected {
+            return Color.accentColor.opacity(0.58)
+        }
+        if isHovered {
+            return Color(nsColor: .separatorColor).opacity(0.46)
+        }
+        return Color(nsColor: .separatorColor).opacity(0.24)
     }
 
     static func primaryForeground(isSelected: Bool) -> Color {
@@ -212,14 +421,15 @@ enum PanelSelectionTokens {
 
 private struct PanelSelectableRowBackground: ViewModifier {
     let isSelected: Bool
+    let isHovered: Bool
     let cornerRadius: CGFloat
 
     func body(content: Content) -> some View {
         content
-            .background(PanelSelectionTokens.background(isSelected: isSelected), in: .rect(cornerRadius: cornerRadius))
+            .background(PanelSelectionTokens.background(isSelected: isSelected, isHovered: isHovered), in: .rect(cornerRadius: cornerRadius))
             .overlay {
                 RoundedRectangle(cornerRadius: cornerRadius)
-                    .stroke(PanelSelectionTokens.stroke(isSelected: isSelected), lineWidth: DesignTokens.Stroke.hairline)
+                    .stroke(PanelSelectionTokens.stroke(isSelected: isSelected, isHovered: isHovered), lineWidth: DesignTokens.Stroke.hairline)
             }
     }
 }
@@ -227,9 +437,10 @@ private struct PanelSelectableRowBackground: ViewModifier {
 extension View {
     func panelSelectableRowBackground(
         isSelected: Bool,
+        isHovered: Bool = false,
         cornerRadius: CGFloat = DesignTokens.Radius.control
     ) -> some View {
-        modifier(PanelSelectableRowBackground(isSelected: isSelected, cornerRadius: cornerRadius))
+        modifier(PanelSelectableRowBackground(isSelected: isSelected, isHovered: isHovered, cornerRadius: cornerRadius))
     }
 }
 

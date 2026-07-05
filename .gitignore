@@ -10,6 +10,7 @@ DerivedData/
 build/
 
 # Generated local QA artifacts
+artifacts/
 docs/testing/current-ui-review-*/
 docs/testing/screenshot-qa/
 docs/testing/v*-visual-smoke/

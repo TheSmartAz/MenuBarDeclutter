@@ -1,6 +1,6 @@
-# Phase 9.2 Dogfood Plan
+# Dogfood Plan
 
-Goal: make MenuBarDeclutter safe enough for private daily use on the developer's own Mac before installed-app alpha work.
+Goal: keep MenuBarDeclutter safe enough for private daily use on the developer's own Mac and for installed-app local release validation.
 
 ## Run Cadence
 
@@ -18,7 +18,7 @@ Each run should record:
 - Result: PASS, FAIL, BLOCKED, or NOT TESTED.
 - Evidence: diagnostics export path, health report path, dogfood bundle path, manual notes, reproduction steps.
 
-## Phase 9.1 Blockers Converted To Runs
+## Risk Areas Converted To Runs
 
 - Real menu bar drag/use: Gate A and fixture runs.
 - Accessibility grant/revoke: Gate B.
@@ -27,4 +27,5 @@ Each run should record:
 - Profiles, triggers, Safe Mode: Gate C.
 - Installed Launch at Login: Gate E.
 - Interactive network watch: Gate E manual evidence only.
-- Archive and notarization: Gate E placeholder until credentials exist.
+- Archive/install verification: Gate E.
+- Developer ID signing, notarization, and stapling: record as out of scope unless explicitly requested.

@@ -71,6 +71,24 @@ struct Phase14ProductDietTests {
         }
     }
 
+    @Test func moreSidebarGroupsKeepAdvancedSurfacesOrganized() {
+        #expect(SettingsSection.moreSidebarGroups.map(\.title) == [
+            "Surfaces",
+            "Control",
+            "System"
+        ])
+
+        #expect(SettingsSection.moreSidebarGroups.map(\.sections) == [
+            [.menuBarItems, .search, .secondBar, .groups],
+            [.hotkeys, .profiles, .privateAccess, .automation],
+            [.importExport, .diagnostics, .layout]
+        ])
+
+        let groupedSections = SettingsSection.moreSidebarGroups.flatMap(\.sections)
+        #expect(groupedSections == SettingsSection.moreSidebarSections)
+        #expect(Set(groupedSections).count == groupedSections.count)
+    }
+
     @Test func advancedDirectoryExcludesSidebarDuplicatePages() {
         let entries = AdvancedFeatureDirectory.visibleEntries(showDogfood: true)
         let sidebarSections = Set(SettingsSection.visibleSidebarSections + SettingsSection.moreSidebarSections)

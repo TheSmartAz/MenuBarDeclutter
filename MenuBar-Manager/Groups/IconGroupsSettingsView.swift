@@ -28,6 +28,7 @@ struct IconGroupsSettingsView: View {
             "Groups",
             subtitle: "Organize related menu bar items without adding permissions.",
             badges: [.preview, .basicMode, .privacySafe],
+            style: .tool,
             sectionAnchors: [
                 ClearGlassPageAnchor("Groups", systemImage: "person.2"),
                 ClearGlassPageAnchor("Manage Groups", systemImage: "sidebar.left")
@@ -78,6 +79,27 @@ struct IconGroupsSettingsView: View {
 
             ClearGlassSection("Manage Groups", subtitle: "Create local groups manually or from the current Pro snapshot.") {
                 VStack(alignment: .leading, spacing: 12) {
+                    ClearGlassActionStrip(
+                        "Group Library Actions",
+                        subtitle: "Create manual groups in Basic Mode, or import a saved group package.",
+                        systemImage: "person.2",
+                        statusText: groups.isEmpty ? "Empty" : "\(groups.count) Groups",
+                        statusStyle: groups.isEmpty ? .secondary : .success
+                    ) {
+                        Button("Add Group", systemImage: "plus") {
+                            editingGroup = newGroup()
+                        }
+                        .buttonStyle(.borderedProminent)
+
+                        Button("Import", systemImage: "square.and.arrow.down") {
+                            importGroups()
+                        }
+
+                        Button("Privacy Settings", systemImage: "hand.raised") {
+                            onOpenPrivacySettings()
+                        }
+                    }
+
                     ClearGlassPaneLayout(primaryWidth: 280) {
                         groupList
                     } detail: {
@@ -201,7 +223,8 @@ struct IconGroupsSettingsView: View {
                     title: "No Groups",
                     message: "Create a group to organize related menu bar items locally.",
                     systemImage: "person.2",
-                    minHeight: 220
+                    minHeight: 220,
+                    nextSteps: ["Create a manual group.", "Add item references from the editor."]
                 ) {
                     Button("Add Group", systemImage: "plus") {
                         editingGroup = newGroup()
@@ -215,23 +238,19 @@ struct IconGroupsSettingsView: View {
 
     @ViewBuilder
     private func selectedGroupActions(_ group: IconGroup) -> some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 8) {
-                selectedGroupActionButtons(group)
-            }
+        ClearGlassActionStrip(
+            "Group Actions",
+            subtitle: "Open or reveal the group, then use More for editing, export, and deletion.",
+            systemImage: "rectangle.on.rectangle",
+            statusText: group.isProtected ? "Protected" : groupItemCountText(group),
+            statusStyle: group.isProtected ? .warning : .secondary
+        ) {
+            selectedGroupActionButtons(group)
+        }
+    }
 
-            VStack(alignment: .leading, spacing: 8) {
-                selectedGroupActionButtons(group)
-            }
-        }
-        .controlSize(.small)
-        .padding(10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 8))
-        .overlay {
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color(nsColor: .separatorColor).opacity(0.42), lineWidth: 0.5)
-        }
+    private func groupItemCountText(_ group: IconGroup) -> String {
+        group.itemCount == 1 ? "1 Item" : "\(group.itemCount) Items"
     }
 
     @ViewBuilder
@@ -240,6 +259,12 @@ struct IconGroupsSettingsView: View {
             Button("Open Panel", systemImage: "rectangle.on.rectangle") {
                 runOpenPanel(group)
             }
+            .buttonStyle(.borderedProminent)
+        } else {
+            Button("Edit", systemImage: "pencil") {
+                editingGroup = group
+            }
+            .buttonStyle(.borderedProminent)
         }
 
         if onRevealGroup != nil {
@@ -248,19 +273,25 @@ struct IconGroupsSettingsView: View {
             }
         }
 
-        Button("Edit", systemImage: "pencil") {
-            editingGroup = group
-        }
+        Menu("More", systemImage: "ellipsis.circle") {
+            if onOpenGroupPanel != nil {
+                Button("Edit", systemImage: "pencil") {
+                    editingGroup = group
+                }
+            }
 
-        Button("Export", systemImage: "square.and.arrow.up") {
-            export(group)
-        }
+            Button("Export", systemImage: "square.and.arrow.up") {
+                export(group)
+            }
 
-        Button("Delete", systemImage: "trash", role: .destructive) {
-            let remainingGroups = groups.filter { $0.id != group.id }
-            groupStore.removeGroup(id: group.id)
-            selectedID = remainingGroups.first?.id
-            notifyChanged()
+            Divider()
+
+            Button("Delete", systemImage: "trash", role: .destructive) {
+                let remainingGroups = groups.filter { $0.id != group.id }
+                groupStore.removeGroup(id: group.id)
+                selectedID = remainingGroups.first?.id
+                notifyChanged()
+            }
         }
     }
 
@@ -276,17 +307,9 @@ struct IconGroupsSettingsView: View {
 
                 Spacer()
 
-                Button("Add Group", systemImage: "plus") {
-                    editingGroup = newGroup()
-                }
-                .labelStyle(.iconOnly)
-                .help("Add Group")
-
-                Button("Import", systemImage: "square.and.arrow.down") {
-                    importGroups()
-                }
-                .labelStyle(.iconOnly)
-                .help("Import Groups")
+                Text(groups.count, format: .number)
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
             }
 
             ScrollView {
@@ -296,7 +319,8 @@ struct IconGroupsSettingsView: View {
                         title: "No Groups",
                         message: "Create a group to collect related menu bar items.",
                         systemImage: "person.2",
-                        minHeight: 170
+                        minHeight: 170,
+                        nextSteps: ["Use Add Group above.", "Groups stay local and privacy-safe."]
                     ) {
                         Button("Add Group", systemImage: "plus") {
                             editingGroup = newGroup()

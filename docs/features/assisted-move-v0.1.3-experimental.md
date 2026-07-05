@@ -24,5 +24,5 @@ Do not claim stable icon moving, bulk moving, or broad third-party activation. A
 
 - `IconMovePlanningTests`
 - `Phase14ProductDietTests`
-- `docs/testing/manual-v0.1.3-assisted-move-dogfood.md`
-- `docs/testing/manual-v0.1.3-system-qa.md`
+- `docs/testing/manual-qa.md`
+- `docs/testing/dogfood/pro-assisted-gate.md`

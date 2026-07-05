@@ -45,7 +45,7 @@ Second Bar requires the Pro Accessibility discovery index. It does not request S
 - `MenuBar-ManagerTests/SecondBarViewModelTests.swift`
 - `MenuBar-ManagerTests/SecondBarPositioningServiceTests.swift`
 - UI tests for requirement states
-- Manual QA: `docs/testing/manual-v0.1.3-system-qa.md`
+- Manual QA: `docs/testing/manual-qa.md`
 
 ## Known Limitations
 

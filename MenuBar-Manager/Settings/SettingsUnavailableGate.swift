@@ -87,6 +87,7 @@ struct SettingsUnavailableGate<Actions: View>: View {
     private let systemImage: String
     private let minHeight: CGFloat
     private let showsActions: Bool
+    private let nextSteps: [String]
     @ViewBuilder private let actions: Actions
 
     init(
@@ -96,6 +97,7 @@ struct SettingsUnavailableGate<Actions: View>: View {
         systemImage: String? = nil,
         minHeight: CGFloat = 160,
         showsActions: Bool = true,
+        nextSteps: [String] = [],
         @ViewBuilder actions: () -> Actions
     ) {
         self.reason = reason
@@ -104,16 +106,22 @@ struct SettingsUnavailableGate<Actions: View>: View {
         self.systemImage = systemImage ?? reason.defaultSystemImage
         self.minHeight = minHeight
         self.showsActions = showsActions
+        self.nextSteps = nextSteps
         self.actions = actions()
     }
 
     var body: some View {
-        VStack(spacing: 13) {
-            VStack(spacing: 8) {
-                Image(systemName: systemImage)
-                    .font(.system(size: 28, weight: .regular))
-                    .foregroundStyle(reason.style.tint)
-                    .frame(width: 34, height: 34)
+        VStack(spacing: 14) {
+            VStack(spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(reason.style.tint.opacity(0.12))
+
+                    Image(systemName: systemImage)
+                        .font(.system(size: 26, weight: .regular))
+                        .foregroundStyle(reason.style.tint)
+                }
+                .frame(width: 42, height: 42)
 
                 Text(title)
                     .font(.headline)
@@ -130,8 +138,28 @@ struct SettingsUnavailableGate<Actions: View>: View {
             }
             .accessibilityElement(children: .combine)
 
+            if !nextSteps.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(nextSteps, id: \.self) { step in
+                        Label(step, systemImage: "checkmark.circle")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .frame(maxWidth: 420, alignment: .leading)
+                .background(Color(nsColor: .textBackgroundColor).opacity(0.66), in: .rect(cornerRadius: 7))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 7)
+                        .stroke(Color(nsColor: .separatorColor).opacity(0.35), lineWidth: 0.5)
+                }
+            }
+
             if showsActions {
-                HStack(spacing: 8) {
+                ClearGlassAccessoryCluster(alignment: .center, width: .flexible) {
                     actions
                 }
                 .buttonStyle(.bordered)
@@ -155,7 +183,8 @@ extension SettingsUnavailableGate where Actions == EmptyView {
         title: String? = nil,
         message: String? = nil,
         systemImage: String? = nil,
-        minHeight: CGFloat = 160
+        minHeight: CGFloat = 160,
+        nextSteps: [String] = []
     ) {
         self.init(
             reason,
@@ -163,7 +192,8 @@ extension SettingsUnavailableGate where Actions == EmptyView {
             message: message,
             systemImage: systemImage,
             minHeight: minHeight,
-            showsActions: false
+            showsActions: false,
+            nextSteps: nextSteps
         ) {
             EmptyView()
         }

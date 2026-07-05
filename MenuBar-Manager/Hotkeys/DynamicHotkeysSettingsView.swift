@@ -168,6 +168,7 @@ struct DynamicHotkeysSettingsView: View {
             "Hotkeys",
             subtitle: "Create optional local shortcuts for groups, profiles, and layout actions.",
             badges: [.preview, .privacySafe],
+            style: .tool,
             sectionAnchors: [
                 ClearGlassPageAnchor("Dynamic Hotkeys", systemImage: "keyboard"),
                 ClearGlassPageAnchor("New Binding", systemImage: "plus.circle"),
@@ -259,35 +260,31 @@ struct DynamicHotkeysSettingsView: View {
                         searchText: searchText
                     )
                 } else {
-                    ClearGlassPaneLayout(primaryWidth: 430, spacing: 0) {
-                        DynamicHotkeyBindingsList(
-                            bindings: filteredBindings,
-                            selectedBindingID: $selectedBindingID,
-                            statusProvider: bindingStatus(for:),
-                            presentationProvider: actionPresentation(for:),
-                            shortcutProvider: hotkeyDisplayName(for:),
-                            onEnabledChanged: updateBindingEnabled
-                        )
-                        .frame(minHeight: 360)
-                    } detail: {
-                        DynamicHotkeyBindingInspector(
-                            binding: selectedBinding,
-                            status: selectedBinding.map(bindingStatus(for:)),
-                            presentation: selectedBinding.map { actionPresentation(for: $0.action) },
-                            shortcutDisplay: selectedBinding.map(hotkeyDisplayName(for:)),
-                            canResetToSuggestedShortcut: selectedBinding.map(canResetToSuggestedShortcut) ?? false,
-                            onRefresh: notifyChanged,
-                            onReset: resetToSuggestedShortcut,
-                            onDisable: disableBinding,
-                            onDelete: deleteBinding
-                        )
-                        .frame(minHeight: 360)
-                    }
-                    .frame(minHeight: 360)
-                    .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 8))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
+                    ClearGlassToolSurface(minHeight: 360) {
+                        ClearGlassPaneLayout(primaryWidth: 430, spacing: 0) {
+                            DynamicHotkeyBindingsList(
+                                bindings: filteredBindings,
+                                selectedBindingID: $selectedBindingID,
+                                statusProvider: bindingStatus(for:),
+                                presentationProvider: actionPresentation(for:),
+                                shortcutProvider: hotkeyDisplayName(for:),
+                                onEnabledChanged: updateBindingEnabled
+                            )
+                            .frame(minHeight: 360)
+                        } detail: {
+                            DynamicHotkeyBindingInspector(
+                                binding: selectedBinding,
+                                status: selectedBinding.map(bindingStatus(for:)),
+                                presentation: selectedBinding.map { actionPresentation(for: $0.action) },
+                                shortcutDisplay: selectedBinding.map(hotkeyDisplayName(for:)),
+                                canResetToSuggestedShortcut: selectedBinding.map(canResetToSuggestedShortcut) ?? false,
+                                onRefresh: notifyChanged,
+                                onReset: resetToSuggestedShortcut,
+                                onDisable: disableBinding,
+                                onDelete: deleteBinding
+                            )
+                            .frame(minHeight: 360)
+                        }
                     }
                 }
             }
@@ -569,71 +566,32 @@ private struct DynamicHotkeyOverviewStrip: View {
     let readyCount: Int
     let warningCount: Int
 
-    private let columns = [
-        GridItem(.adaptive(minimum: 150), spacing: 10)
-    ]
-
     var body: some View {
-        LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
-            DynamicHotkeyMetricView(
+        ClearGlassOverviewStrip([
+            ClearGlassOverviewMetric(
                 title: "Bindings",
                 value: totalCount.formatted(.number),
                 systemImage: "keyboard"
-            )
-            DynamicHotkeyMetricView(
+            ),
+            ClearGlassOverviewMetric(
                 title: "Enabled",
                 value: enabledCount.formatted(.number),
                 systemImage: "power",
                 style: enabledCount > 0 ? .success : .secondary
-            )
-            DynamicHotkeyMetricView(
+            ),
+            ClearGlassOverviewMetric(
                 title: "Registerable",
                 value: readyCount.formatted(.number),
                 systemImage: "checkmark.circle",
                 style: .success
-            )
-            DynamicHotkeyMetricView(
+            ),
+            ClearGlassOverviewMetric(
                 title: "Needs Review",
                 value: warningCount.formatted(.number),
                 systemImage: "exclamationmark.triangle",
                 style: warningCount > 0 ? .warning : .secondary
             )
-        }
-    }
-}
-
-private struct DynamicHotkeyMetricView: View {
-    let title: String
-    let value: String
-    let systemImage: String
-    var style: ClearGlassStatusStyle = .secondary
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: systemImage)
-                .font(.system(size: 16, weight: .regular))
-                .foregroundStyle(style.tint)
-                .frame(width: 20)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Text(value)
-                    .font(.callout.monospacedDigit())
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-            }
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
-        .overlay {
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
-        }
+        ])
     }
 }
 
@@ -654,67 +612,116 @@ private struct DynamicHotkeyComposer: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            ClearGlassControlRow(
+            DynamicHotkeyComposerStep(
+                number: 1,
                 systemImage: selectedActionPresentation.systemImage,
-                title: "Action",
+                title: "Choose Action",
                 subtitle: selectedActionPresentation.subtitle,
                 iconTint: selectedActionPresentation.requiresProMode ? .orange : .secondary
             ) {
-                Picker("Action", selection: $selectedAction) {
-                    ForEach(actionOptions) { option in
-                        Text(option.title).tag(option.action)
-                    }
-                }
-                .labelsHidden()
-                .pickerStyle(.menu)
-                .frame(width: 260)
+                actionPicker
             }
 
             ClearGlassDivider()
 
-            ClearGlassControlRow(
+            DynamicHotkeyComposerStep(
+                number: 2,
                 systemImage: "command",
-                title: "Modifiers",
+                title: "Add Modifiers",
                 subtitle: "Use at least one modifier so normal typing never triggers a global shortcut."
             ) {
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 12) {
-                        modifierToggles
-                    }
-
-                    VStack(alignment: .leading, spacing: 6) {
-                        modifierToggles
-                    }
+                ClearGlassAccessoryCluster(alignment: .leading, spacing: 12, width: .flexible) {
+                    modifierToggles
                 }
             }
 
             ClearGlassDivider()
 
-            ClearGlassControlRow(
+            DynamicHotkeyComposerStep(
+                number: 3,
                 systemImage: "key",
-                title: "Key",
+                title: "Pick Key",
                 subtitle: hasEnabledConflict
                     ? "This shortcut matches an enabled binding and will be saved as a conflict."
                     : "Preview the shortcut before adding it to the local binding list.",
                 iconTint: hasEnabledConflict ? .orange : .secondary
             ) {
-                HStack(spacing: 10) {
-                    Picker("Key", selection: $selectedKeyCode) {
-                        ForEach(DynamicHotkeysSettingsView.commonKeys, id: \.keyCode) { key in
-                            Text(key.label).tag(key.keyCode)
-                        }
-                    }
-                    .labelsHidden()
-                    .frame(width: 120)
-
-                    KeyboardShortcutToken(text: shortcutDisplay)
-
-                    Button("Add Binding", systemImage: "plus", action: onAdd)
-                        .buttonStyle(.borderedProminent)
-                        .disabled(!hasModifiers)
+                ClearGlassAccessoryCluster(alignment: .leading, spacing: 10, width: .flexible) {
+                    keyControls
                 }
             }
+
+            ClearGlassDivider()
+
+            ClearGlassActionStrip(
+                "Binding Actions",
+                subtitle: bindingActionSubtitle,
+                systemImage: hasEnabledConflict ? "exclamationmark.triangle" : "plus.circle",
+                iconTint: hasEnabledConflict ? .orange : .accentColor,
+                statusText: bindingActionStatusText,
+                statusStyle: bindingActionStatusStyle
+            ) {
+                Button("Add Binding", systemImage: "plus", action: onAdd)
+                    .buttonStyle(.borderedProminent)
+                    .disabled(!hasModifiers)
+                    .help(hasModifiers ? "Save this shortcut binding." : "Choose at least one modifier before adding the binding.")
+            }
         }
+    }
+
+    private var actionPicker: some View {
+        Picker("Action", selection: $selectedAction) {
+            ForEach(actionOptions) { option in
+                Text(option.title).tag(option.action)
+            }
+        }
+        .labelsHidden()
+        .pickerStyle(.menu)
+        .frame(width: 260)
+        .help("Choose which MenuBarDeclutter action this shortcut will run.")
+    }
+
+    private var keyControls: some View {
+        Group {
+            Picker("Key", selection: $selectedKeyCode) {
+                ForEach(DynamicHotkeysSettingsView.commonKeys, id: \.keyCode) { key in
+                    Text(key.label).tag(key.keyCode)
+                }
+            }
+            .labelsHidden()
+            .frame(width: 120)
+            .help("Choose the key for this shortcut.")
+
+            KeyboardShortcutToken(text: shortcutDisplay)
+        }
+    }
+
+    private var bindingActionSubtitle: String {
+        if !hasModifiers {
+            return "Choose at least one modifier before saving the binding."
+        }
+
+        if hasEnabledConflict {
+            return "This shortcut can be saved, but it will need review before it registers."
+        }
+
+        return "Save this shortcut to the local binding list."
+    }
+
+    private var bindingActionStatusText: String {
+        if !hasModifiers {
+            return "Incomplete"
+        }
+
+        return hasEnabledConflict ? "Conflict" : "Ready"
+    }
+
+    private var bindingActionStatusStyle: ClearGlassStatusStyle {
+        if !hasModifiers {
+            return .secondary
+        }
+
+        return hasEnabledConflict ? .warning : .success
     }
 
     @ViewBuilder
@@ -727,6 +734,109 @@ private struct DynamicHotkeyComposer: View {
             .toggleStyle(.checkbox)
         Toggle("Control", isOn: $control)
             .toggleStyle(.checkbox)
+    }
+}
+
+private struct DynamicHotkeyComposerStep<Accessory: View>: View {
+    let number: Int
+    let systemImage: String
+    let title: String
+    let subtitle: String
+    var iconTint: Color = .secondary
+    @ViewBuilder let accessory: Accessory
+
+    init(
+        number: Int,
+        systemImage: String,
+        title: String,
+        subtitle: String,
+        iconTint: Color = .secondary,
+        @ViewBuilder accessory: () -> Accessory
+    ) {
+        self.number = number
+        self.systemImage = systemImage
+        self.title = title
+        self.subtitle = subtitle
+        self.iconTint = iconTint
+        self.accessory = accessory()
+    }
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            horizontalLayout
+            verticalLayout
+        }
+        .padding(.vertical, 9)
+    }
+
+    private var horizontalLayout: some View {
+        HStack(alignment: .top, spacing: 12) {
+            stepBadge
+                .padding(.top, 2)
+
+            labelContent
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            ClearGlassAccessoryCluster {
+                accessory
+            }
+            .layoutPriority(1)
+        }
+    }
+
+    private var verticalLayout: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 12) {
+                stepBadge
+                    .padding(.top, 2)
+
+                labelContent
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            ClearGlassAccessoryCluster(alignment: .leading, width: .flexible) {
+                accessory
+            }
+            .padding(.leading, 38)
+        }
+    }
+
+    private var stepBadge: some View {
+        ZStack {
+            Circle()
+                .fill(iconTint.opacity(0.14))
+
+            Text(number.formatted())
+                .font(.caption.weight(.semibold).monospacedDigit())
+                .foregroundStyle(iconTint)
+        }
+        .frame(width: 26, height: 26)
+        .overlay {
+            Circle()
+                .stroke(iconTint.opacity(0.28), lineWidth: 0.5)
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var labelContent: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 8) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundStyle(iconTint)
+                    .frame(width: 18)
+
+                Text(title)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.primary)
+            }
+
+            Text(subtitle)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .lineLimit(3)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 }
 
@@ -858,29 +968,15 @@ private struct DynamicHotkeyBindingRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Button(action: onSelect) {
-                HStack(spacing: 10) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 7)
-                            .fill(status.style.tint.opacity(isSelected ? 0.18 : 0.10))
-
-                        Image(systemName: presentation.systemImage)
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundStyle(status.style.tint)
-                    }
-                    .frame(width: 30, height: 30)
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(presentation.title)
-                            .font(.body)
-                            .lineLimit(1)
-
-                        Text(presentation.subtitle)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
+                ClearGlassRowAnatomy(
+                    systemImage: presentation.systemImage,
+                    iconTint: status.style.tint,
+                    iconStyle: .tile,
+                    title: presentation.title,
+                    subtitle: presentation.subtitle,
+                    subtitleFont: .caption,
+                    subtitleLineLimit: 1
+                ) {
                     Text(shortcutDisplay)
                         .font(.system(.body, design: .monospaced))
                         .lineLimit(1)
@@ -952,23 +1048,23 @@ private struct DynamicHotkeyBindingInspector: View {
 
                 Divider()
 
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 8) {
-                        actionButtons(for: binding)
-                    }
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        actionButtons(for: binding)
-                    }
+                ClearGlassActionStrip(
+                    "Binding Actions",
+                    subtitle: "Refresh registration, reset suggested group shortcuts, disable, or delete this binding.",
+                    systemImage: "keyboard",
+                    statusText: status.label,
+                    statusStyle: status.style
+                ) {
+                    actionButtons(for: binding)
                 }
-                .controlSize(.small)
             } else {
                 SettingsUnavailableGate(
                     .emptyData,
                     title: "No Binding Selected",
                     message: "Select a binding to inspect registration status and actions.",
                     systemImage: "keyboard",
-                    minHeight: 300
+                    minHeight: 300,
+                    nextSteps: ["Create a binding above.", "Select an existing binding from the list."]
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -1013,29 +1109,29 @@ private struct DynamicHotkeyBindingInspector: View {
     @ViewBuilder
     private func actionButtons(for binding: HotkeyBinding) -> some View {
         Button("Refresh Registration", systemImage: "arrow.clockwise", action: onRefresh)
-            .labelStyle(.iconOnly)
-            .help("Refresh Registration")
-
-        if canResetToSuggestedShortcut {
-            Button("Reset Suggested Shortcut", systemImage: "arrow.counterclockwise") {
-                onReset(binding)
-            }
-            .labelStyle(.iconOnly)
-            .help("Reset suggested shortcut")
-        }
+            .buttonStyle(.borderedProminent)
+            .help("Refresh this shortcut registration status.")
 
         Button("Disable", systemImage: "pause.circle") {
             onDisable(binding)
         }
-        .labelStyle(.iconOnly)
-        .help("Disable")
         .disabled(!binding.isEnabled)
+        .help(binding.isEnabled ? "Disable this shortcut binding." : "This shortcut binding is already disabled.")
 
-        Button("Delete", systemImage: "trash", role: .destructive) {
-            onDelete(binding)
+        Menu("More", systemImage: "ellipsis.circle") {
+            if canResetToSuggestedShortcut {
+                Button("Reset Suggested Shortcut", systemImage: "arrow.counterclockwise") {
+                    onReset(binding)
+                }
+            }
+
+            Divider()
+
+            Button("Delete", systemImage: "trash", role: .destructive) {
+                onDelete(binding)
+            }
         }
-        .labelStyle(.iconOnly)
-        .help("Delete")
+        .help("Open additional actions for this shortcut binding.")
     }
 }
 
@@ -1077,7 +1173,10 @@ private struct DynamicHotkeyUnavailableView: View {
             title: title,
             message: message,
             systemImage: systemImage,
-            minHeight: 320
+            minHeight: 320,
+            nextSteps: hasBindings
+                ? ["Clear the search or choose All.", "Select a binding to inspect details."]
+                : ["Choose an action, modifier, and key above.", "Use Add Binding to save the shortcut."]
         )
         .frame(maxWidth: .infinity, minHeight: 320)
     }

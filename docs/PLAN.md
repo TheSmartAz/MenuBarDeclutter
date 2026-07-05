@@ -1,84 +1,71 @@
 # MenuBarDeclutter Plan
 
-MenuBarDeclutter is a native macOS 26.0+ menu bar decluttering utility. The project starts with a privacy-first Basic Mode that uses public AppKit `NSStatusItem` behavior and SwiftUI settings surfaces, then layers opt-in Pro features only after explicit permission boundaries are designed.
+Last reviewed: 2026-07-05
 
-## Phase 0: Bootstrap
+MenuBarDeclutter is a native macOS 26.0+ menu bar decluttering utility built with Swift, AppKit, and SwiftUI. The current release line is `v0.1.10` build `11`. It is a release-hardening checkpoint, not a new feature promotion.
 
-Status: implemented.
+## Current Product Shape
 
-- Native SwiftUI app lifecycle with an AppKit delegate.
-- LSUIElement menu bar utility baseline.
-- Temporary status item with Settings, Diagnostics, About, and Quit commands.
-- SwiftUI settings skeleton for General, Privacy, and Diagnostics.
-- UserDefaults-backed settings store.
-- In-memory diagnostics logger.
-- Documentation, scripts, and unit tests for pure logic.
+Stable Basic Mode is the product core:
 
-## Phase 1: No-Permission Core Hiding MVP
-
-Status: implemented.
-
-- Square-length control item (`NSStatusItem`) and variable-length separator, with SF Symbol chevrons and accessibility labels.
-- `HidingService`/`ScreenGeometryService`/`SeparatorController` for `max(width * 2, 1200)` capped at `10000` collapsed length; persistence of `isCollapsed`; screen-parameters-change observer.
-- First-run drag hint, menu actions (Expand/Collapse/Toggle/Reset Separator Length/Settings/Diagnostics/About/Quit), and manual QA.
-
-## Phase 2: Basic UX Polish
-
-Status: implemented.
-
-- `HidingVisibilityState` (collapsed / expanded / revealAll) and per-separator state.
-- Auto-rehide (one-shot `RehideController` with postponement heuristics).
-- Hover reveal (`HoverRevealController` polling `NSEvent.mouseLocation`).
-- Optional always-hidden separator.
-- Global hotkey (Carbon `RegisterEventHotKey`, default Option+Command+B), no Input Monitoring required.
-- Option-click reveal all.
-- Separator visuals toggle.
-
-## Phase 3: Settings, Onboarding, Launch at Login, Diagnostics Export
-
-Status: implemented.
-
-- Full Settings UI: General, Behavior, Privacy, Diagnostics, Advanced (new tab).
-- First-run Onboarding (SwiftUI paged flow in an AppKit window) with `hasCompletedOnboarding` gating and "Show Onboarding Again" from Settings.
-- Launch at Login via `SMAppService.mainApp` (ServiceManagement); never auto-enabled; errors surfaced in Diagnostics.
-- Privacy-safe Diagnostics export to `.txt`/`.json` (excludes screenshots, screen contents, personal paths, network data).
-- Application Support directory tree (`Diagnostics/`, `Profiles/`, `Backups/`) created lazily.
-- App version, marketing version, and build number metadata in Settings.
-- Reset App Layout and Reset All Settings actions.
-- macOS 26-friendly Settings styling (light/dark, increased contrast, reduce transparency, no custom transparent effects).
-- `scripts/notarize_template.sh` and an expanded `docs/release-checklist.md`.
-- Manual QA + unit tests for the new pure logic.
-
-## Phase 4-9: Pro Features And Hardening
-
-Status: implemented.
-
-- Opt-in Accessibility discovery, Find Icon, Second Bar, explicit icon moving, profiles, smart triggers, URL automation, health checks, recovery, Safe Mode, and macOS 26 hardening.
-- Basic Mode remains fully usable with Pro Mode disabled or permission unavailable.
-- Icon moving is disabled by default and only runs after explicit user action.
-- Profiles apply conservative Basic settings and never silently run bulk icon moves.
-
-## Phase 9.1: Alpha RC Validation And Release Hardening
-
-Status: implemented.
-
-- Canonical shared scheme: `MenuBarDeclutter`.
-- Deprecated compatibility scheme retained: `MenuBar-Manager`.
-- Privacy boundary verification script and docs.
-- Alpha QA matrix, run template, known-risk docs, and release checklist.
-- Settings now labels risky Pro surfaces as experimental and provides global Pause All Automation.
-- Diagnostics now includes category/severity filters, copy-selected event, filtered export, experimental state, automation pause state, and Launch at Login status.
-- Launch at Login settings now show `SMAppService` status and provide an Open Login Items Settings recovery action.
-
-## Future Phases
-
-- Phase 10 visual capture research remains postponed. No ScreenCaptureKit,
-  Screen Recording, Apple Events, Input Monitoring, or network access should be
-  added without a separate opt-in privacy/design review.
-
-## Product Principles
-
+- App-owned `NSStatusItem` control and separator items provide expand, collapse, reveal all, and always-hidden reveal.
+- Basic hiding, Guided Manual Arrange, Launch at Login, diagnostics, backup/restore, health, recovery, and Safe Mode remain usable without sensitive permissions.
 - Basic Mode must not request Accessibility, Screen Recording, Apple Events, Input Monitoring, or network access.
-- System integration must use public APIs only.
-- Pure logic should stay testable outside AppKit and SwiftUI.
-- Manual QA must cover menu bar, display, permission, and launch behavior that cannot be unit tested reliably.
+
+Preview surfaces are opt-in or gated:
+
+- Pro Accessibility Discovery, Find Icon, Second Bar, Workspaces, Workspace Integration, Function Bar, Set Builder, linked/detached Groups, Info Strip, Placement Planner, New Item Inbox, Crowded Reveal Rescue, Profiles, Smart Triggers, Dynamic Hotkeys, Private Access, App Intents, URL automation, import/export, and Accurate Icons.
+- Preview features must degrade gracefully when Pro Mode, Accessibility Discovery, Accessibility permission, Screen Recording, Labs gates, or Private Access gates are unavailable.
+
+Labs and Experimental:
+
+- Menu Bar Spacing remains Labs.
+- Assisted Move / Icon Moving remains Experimental, disabled by default, and user-triggered only.
+
+## Active Work Priorities
+
+1. Keep Basic Mode reliable and permission-free.
+2. Keep the current v0.1.10 docs, support docs, release docs, and QA docs aligned with source.
+3. Record hardware-only QA honestly: external displays, notch behavior, hands-on Safe Mode launch, physical Command-drag placement, and real permission prompts can remain `PARTIAL` or `BLOCKED` when the local environment cannot exercise them.
+4. Keep Preview, Labs, and Experimental surfaces labeled clearly in code, docs, release notes, and support docs.
+5. Treat Developer ID signing, notarization, stapling, public distribution, network/cloud features, and private/offscreen menu bar capture as out of scope until explicitly requested.
+
+## Implementation Boundaries
+
+- Use Swift, AppKit, and SwiftUI only.
+- Use AppKit `NSStatusItem` for real menu bar status item control.
+- Use SwiftUI for Settings, onboarding, diagnostics, search panels, second bar, workspaces, profile, and preview UI.
+- Do not use Electron, private APIs, GPL/source-available code from similar utilities, telemetry, analytics, cloud sync, or remote config.
+- Keep service ownership in focused classes and coordinators instead of growing `AppDelegate`.
+- Add unit tests for pure logic and manual QA docs for system behavior that cannot be automated.
+
+## Current Validation Commands
+
+Canonical project inspection:
+
+```sh
+xcodebuild -list
+```
+
+Canonical build:
+
+```sh
+xcodebuild -scheme MenuBarDeclutter -destination 'platform=macOS' build CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO
+```
+
+Focused logic tests:
+
+```sh
+scripts/run_logic_tests.sh
+```
+
+Current release/risk gates:
+
+```sh
+scripts/qa_preflight.sh
+scripts/verify_privacy_boundary.sh
+scripts/build_release.sh --dry-run --install --verify-installed
+scripts/qa_installed_app_smoke.sh --app-path /Applications/MenuBarDeclutter.app
+```
+
+Direct full-scheme `xcodebuild test` remains useful, but this local environment has documented Xcode LaunchServices/UI-runner failures before assertions. Use split unit/UI lanes and record exact infra failures when that occurs.

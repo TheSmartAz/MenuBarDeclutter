@@ -41,7 +41,7 @@ Diagnostics export is explicit user action only. Exports include app version, ma
 - `MenuBar-ManagerTests/DiagnosticsExportTests.swift`
 - `MenuBar-ManagerTests/LiveDiagnosticsStatusTests.swift`
 - `MenuBar-ManagerTests/HealthReportTests.swift`
-- Manual QA: `docs/testing/manual-v0.1.3-system-qa.md`
+- Manual QA: `docs/testing/manual-qa.md`
 - Privacy QA: `docs/testing/privacy-qa.md`
 
 ## Known Limitations

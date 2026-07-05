@@ -74,13 +74,26 @@ struct IconGroupEditorView: View {
 
             Spacer()
 
+            HStack(spacing: 6) {
+                GroupEditorHeaderBadge(
+                    title: draft.isEnabled ? "Enabled" : "Disabled",
+                    systemImage: draft.isEnabled ? "checkmark.circle" : "pause.circle",
+                    tint: draft.isEnabled ? .green : .secondary
+                )
+
+                GroupEditorHeaderBadge(
+                    title: draft.itemRefs.count == 1 ? "1 Item" : "\(draft.itemRefs.count) Items",
+                    systemImage: "menubar.rectangle",
+                    tint: .accentColor
+                )
+            }
+
             if draft.isProtected {
-                Label("Protected", systemImage: "lock.fill")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color(nsColor: .quaternaryLabelColor).opacity(0.12), in: .capsule)
+                GroupEditorHeaderBadge(
+                    title: "Protected",
+                    systemImage: "lock.fill",
+                    tint: .orange
+                )
             }
         }
         .padding(.horizontal, 20)
@@ -166,8 +179,15 @@ struct IconGroupEditorView: View {
 
         editorSection("Item References", subtitle: "References can match by bundle ID, app name, title, snapshot ID, or zone.") {
             if draft.itemRefs.isEmpty {
-                ContentUnavailableView("No Items", systemImage: "menubar.rectangle", description: Text("Add at least one item reference before saving."))
-                    .frame(maxWidth: .infinity, minHeight: 136)
+                SettingsUnavailableGate(
+                    .emptyData,
+                    title: "No Items Yet",
+                    message: "Add at least one manual criterion or Optional Pro snapshot before saving this group.",
+                    systemImage: "menubar.rectangle",
+                    minHeight: 150,
+                    nextSteps: ["Add a Bundle ID, App Name, or Title Contains rule below.", "Use Optional Pro snapshots when discovery is available."]
+                )
+                .frame(maxWidth: .infinity, minHeight: 150)
             } else {
                 ForEach(Array(draft.itemRefs.enumerated()), id: \.element.id) { index, ref in
                     IconGroupEditorItemRow(
@@ -292,6 +312,7 @@ struct IconGroupEditorView: View {
             .padding(.vertical, 5)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
+            .shadow(color: .black.opacity(0.025), radius: 4, x: 0, y: 1)
             .overlay {
                 RoundedRectangle(cornerRadius: 8)
                     .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
@@ -319,6 +340,7 @@ struct IconGroupEditorView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.vertical, 8)
+        .contentShape(.rect)
     }
 
     private var editorDivider: some View {
@@ -406,6 +428,25 @@ private struct GroupEditorSymbol: View {
     }
 }
 
+private struct GroupEditorHeaderBadge: View {
+    let title: String
+    let systemImage: String
+    let tint: Color
+
+    var body: some View {
+        Label(title, systemImage: systemImage)
+            .font(.caption)
+            .foregroundStyle(tint)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(tint.opacity(0.10), in: .capsule)
+            .overlay {
+                Capsule()
+                    .stroke(tint.opacity(0.22), lineWidth: 0.5)
+            }
+    }
+}
+
 private struct GroupEditorColorSwatch: View {
     let colorName: String?
 
@@ -463,6 +504,8 @@ private struct ManualReferenceEntryRow: View {
             Button("Add", systemImage: "plus") {
                 onAdd()
             }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
             .disabled(trimmedText.isEmpty)
         }
         .padding(.vertical, 8)
@@ -507,6 +550,7 @@ private struct IconGroupEditorItemRow: View {
             }
             .labelStyle(.iconOnly)
             .buttonStyle(.borderless)
+            .foregroundStyle(.secondary)
             .help("Remove Item")
         }
         .padding(.vertical, 8)

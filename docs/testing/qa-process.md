@@ -7,7 +7,7 @@ Allowed manual results are `PASS`, `FAIL`, `BLOCKED`, `NOT TESTED`, and `PARTIAL
 ## Source Of Truth
 
 - This file decides which QA lane applies.
-- `docs/testing/alpha-rc-qa-matrix.md` is the broad coverage catalog for real macOS validation.
+- `docs/testing/macos26-test-matrix.md` is the broad coverage catalog for real macOS validation.
 - `docs/testing/v0.1-regression-suite.md` is the release execution checklist for stable v0.1 claims.
 - `docs/testing/dogfood/` contains conditional dogfood gates for daily-use and feature-specific validation.
 - `docs/release/v0.1.10-release-runbook.md` is the current release-candidate command sequence.
@@ -136,12 +136,12 @@ Developer ID export, notarization, stapling, and public distribution remain out 
 - Do not repeat privacy checks manually when `scripts/verify_privacy_boundary.sh`
   proves the static/source/bundle invariant. Manual privacy QA should focus on
   runtime prompts and user-facing degraded states.
-- Treat `alpha-rc-qa-matrix.md` as a catalog, not a mandatory per-change checklist.
+- Treat `macos26-test-matrix.md` as a catalog, not a mandatory per-change checklist.
 - Treat `v0.1-regression-suite.md` as a release checklist, not a patch checklist.
 
 ## Non-Negotiable Boundaries
 
 - Basic Mode must remain fully usable without Accessibility, Screen Recording, Apple Events, Input Monitoring, or network access.
 - Pro Mode must remain explicit opt-in and degrade gracefully when permissions are missing or revoked.
-- Icon Moving remains Labs-only, disabled by default, and must not block Basic Mode.
+- Icon Moving remains Experimental, disabled by default, user-triggered only, and must not block Basic Mode.
 - Manual QA blockers must be recorded rather than hidden. Hardware-unavailable rows may be `BLOCKED` if the release claim is scoped accordingly.

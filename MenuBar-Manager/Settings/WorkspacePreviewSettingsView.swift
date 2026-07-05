@@ -52,6 +52,7 @@ struct WorkspacePreviewSettingsView: View {
             "Workspaces",
             subtitle: "Switch between local Workspace sets and configure app-owned preview surfaces.",
             badges: [.preview, .privacySafe],
+            style: .tool,
             sectionAnchors: [
                 ClearGlassPageAnchor("Gates", systemImage: "switch.2", targetID: "Preview Gates"),
                 ClearGlassPageAnchor("Active", systemImage: "rectangle.3.group", targetID: "Active Workspace"),
@@ -254,35 +255,48 @@ struct WorkspacePreviewSettingsView: View {
             "Quick Actions",
             subtitle: "Local app-owned shortcuts for the active Workspace."
         ) {
-            ClearGlassButtonGrid(minimumItemWidth: 150) {
+            ClearGlassActionStrip(
+                "Workspace Actions",
+                subtitle: "Open app-owned preview surfaces or create Workspace records without touching the system menu bar.",
+                systemImage: "bolt",
+                statusText: settingsStore.workspacesPreviewEnabled ? "Ready" : "Preview Off",
+                statusStyle: settingsStore.workspacesPreviewEnabled ? .success : .secondary
+            ) {
                 Button("Show Function Bar", systemImage: "menubar.rectangle") {
                     showFunctionBar()
                 }
+                .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("workspaces.quickAction.showFunctionBar")
                 .disabled(functionBarControlsDisabled)
 
                 Button("Show Info Strip", systemImage: "info.circle") {
                     showInfoStrip()
                 }
+                .accessibilityIdentifier("workspaces.quickAction.showInfoStrip")
                 .disabled(infoStripControlsDisabled || !activeInfoStripConfig.isEnabled)
 
-                Button("Open Set Builder", systemImage: "slider.horizontal.3") {
-                    setBuilderViewModel.selectWorkspace(id: switchingService.activeWorkspace().id)
-                }
-                .disabled(!settingsStore.workspacesPreviewEnabled || !settingsStore.setBuilderPreviewEnabled)
+                Menu("More", systemImage: "ellipsis.circle") {
+                    Button("Open Set Builder", systemImage: "slider.horizontal.3") {
+                        setBuilderViewModel.selectWorkspace(id: switchingService.activeWorkspace().id)
+                    }
+                    .disabled(!settingsStore.workspacesPreviewEnabled || !settingsStore.setBuilderPreviewEnabled)
 
-                Button("Review New Items", systemImage: "tray.full") {
-                    onOpenFindRescue?()
-                }
+                    Button("Review New Items", systemImage: "tray.full") {
+                        onOpenFindRescue?()
+                    }
 
-                Button("Create Workspace", systemImage: "plus") {
-                    setBuilderViewModel.createWorkspace()
-                    refreshAfterWorkspaceMutation()
-                }
+                    Divider()
 
-                Button("Duplicate Workspace", systemImage: "doc.on.doc") {
-                    setBuilderViewModel.selectedWorkspaceID = switchingService.activeWorkspace().id
-                    setBuilderViewModel.duplicateSelectedWorkspace()
-                    refreshAfterWorkspaceMutation()
+                    Button("Create Workspace", systemImage: "plus") {
+                        setBuilderViewModel.createWorkspace()
+                        refreshAfterWorkspaceMutation()
+                    }
+
+                    Button("Duplicate Workspace", systemImage: "doc.on.doc") {
+                        setBuilderViewModel.selectedWorkspaceID = switchingService.activeWorkspace().id
+                        setBuilderViewModel.duplicateSelectedWorkspace()
+                        refreshAfterWorkspaceMutation()
+                    }
                 }
             }
 
@@ -341,8 +355,15 @@ struct WorkspacePreviewSettingsView: View {
             subtitle: "Reusable Groups can appear in multiple Workspaces; detached copies stay one-off."
         ) {
             if state.activeLinkedGroupRows.isEmpty {
-                ContentUnavailableView("No linked Groups in this Workspace.", systemImage: "person.2")
-                    .frame(maxWidth: .infinity, minHeight: 120)
+                SettingsUnavailableGate(
+                    .emptyData,
+                    title: "No Linked Groups",
+                    message: "Linked Groups will appear here when this Workspace reuses a saved Group.",
+                    systemImage: "person.2",
+                    minHeight: 140,
+                    nextSteps: ["Open Set Builder.", "Insert a saved Group as a linked reference."]
+                )
+                .frame(maxWidth: .infinity, minHeight: 140)
             } else {
                 VStack(spacing: 0) {
                     ForEach(Array(state.activeLinkedGroupRows.enumerated()), id: \.element.id) { offset, row in
@@ -381,23 +402,34 @@ struct WorkspacePreviewSettingsView: View {
                 functionBarEnabled: settingsStore.functionBarPreviewEnabled
             )
 
-            ClearGlassButtonGrid(minimumItemWidth: 150) {
+            ClearGlassActionStrip(
+                "Preview Actions",
+                subtitle: "Show or hide the app-owned Function Bar and Info Strip previews.",
+                systemImage: "menubar.rectangle",
+                statusText: settingsStore.functionBarPreviewEnabled ? "Function Bar On" : "Function Bar Off",
+                statusStyle: settingsStore.functionBarPreviewEnabled ? .success : .secondary
+            ) {
                 Button("Show Function Bar", systemImage: "menubar.rectangle") {
                     showFunctionBar()
                 }
+                .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("workspaces.previewControls.showFunctionBar")
                 .disabled(!settingsStore.workspacesPreviewEnabled || !settingsStore.functionBarPreviewEnabled)
-
-                Button("Hide", systemImage: "xmark.circle") {
-                    hideFunctionBar()
-                }
 
                 Button("Show Info Strip", systemImage: "info.circle") {
                     showInfoStrip()
                 }
+                .accessibilityIdentifier("workspaces.previewControls.showInfoStrip")
                 .disabled(!settingsStore.workspacesPreviewEnabled || !settingsStore.infoStripPreviewEnabled)
 
-                Button("Recovery", systemImage: "cross.case") {
-                    onOpenRecovery?()
+                Menu("More", systemImage: "ellipsis.circle") {
+                    Button("Hide Function Bar", systemImage: "xmark.circle") {
+                        hideFunctionBar()
+                    }
+
+                    Button("Open Recovery", systemImage: "cross.case") {
+                        onOpenRecovery?()
+                    }
                 }
             }
 
@@ -717,6 +749,7 @@ struct WorkspacePreviewSettingsView: View {
                 Button("Open Info Strip Preview", systemImage: "info.circle") {
                     showInfoStrip()
                 }
+                .accessibilityIdentifier("workspaces.infoStrip.openPreview")
                 .disabled(infoStripControlsDisabled || !activeInfoStripConfig.isEnabled)
 
                 Button("Save Workspace Info Strip", systemImage: "square.and.arrow.down") {
@@ -823,8 +856,15 @@ struct WorkspacePreviewSettingsView: View {
             if settingsStore.setBuilderPreviewEnabled {
                 SetBuilderView(viewModel: setBuilderViewModel)
             } else {
-                ContentUnavailableView("Set Builder Disabled", systemImage: "rectangle.3.group")
-                    .frame(maxWidth: .infinity, minHeight: 220)
+                SettingsUnavailableGate(
+                    .previewDisabled,
+                    title: "Set Builder Disabled",
+                    message: "Turn on Set Builder to edit local Workspace records.",
+                    systemImage: "rectangle.3.group",
+                    minHeight: 220,
+                    nextSteps: ["Enable Workspaces Preview.", "Turn on the Set Builder gate above."]
+                )
+                .frame(maxWidth: .infinity, minHeight: 220)
             }
         }
     }

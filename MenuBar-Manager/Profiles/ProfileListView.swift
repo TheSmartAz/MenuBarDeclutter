@@ -43,6 +43,7 @@ struct ProfileListView: View {
             "Profiles",
             subtitle: "Save, preview, and apply local menu bar layouts.",
             badges: [.preview, .privacySafe],
+            style: .tool,
             sectionAnchors: [
                 ClearGlassPageAnchor("Profiles", systemImage: "person.crop.rectangle.stack"),
                 ClearGlassPageAnchor("Smart Triggers", systemImage: "bolt")
@@ -56,6 +57,23 @@ struct ProfileListView: View {
 
             ClearGlassSection("Profiles", subtitle: "Create, edit, preview, apply, import, and export local layouts.") {
                 VStack(alignment: .leading, spacing: 12) {
+                    ClearGlassActionStrip(
+                        "Profile Library Actions",
+                        subtitle: "Start with a saved layout, then edit, dry-run, apply, or export it from the detail pane.",
+                        systemImage: "person.crop.rectangle.stack",
+                        statusText: profileStore.profiles.isEmpty ? "Empty" : "\(profileStore.profiles.count) Profiles",
+                        statusStyle: profileStore.profiles.isEmpty ? .secondary : .success
+                    ) {
+                        Button("Create Profile", systemImage: "plus") {
+                            createProfile()
+                        }
+                        .buttonStyle(.borderedProminent)
+
+                        Button("Import Profile", systemImage: "square.and.arrow.down") {
+                            importProfile()
+                        }
+                    }
+
                     ClearGlassPaneLayout(primaryWidth: 300, spacing: 14) {
                         profileLibrary
                     } detail: {
@@ -102,17 +120,10 @@ struct ProfileListView: View {
 
                 Spacer()
 
-                Button("Create Profile", systemImage: "plus") {
-                    createProfile()
-                }
-                .labelStyle(.iconOnly)
-                .help("Create Profile")
-
-                Button("Import Profile", systemImage: "square.and.arrow.down") {
-                    importProfile()
-                }
-                .labelStyle(.iconOnly)
-                .help("Import Profile")
+                Text("\(filteredProfiles.count) of \(profileStore.profiles.count)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
             }
 
             SearchField("Search Profiles", text: $searchText)
@@ -126,7 +137,10 @@ struct ProfileListView: View {
                             ? "Create a profile to save a local menu bar layout."
                             : "Try a different profile name, note, or bundle ID.",
                         systemImage: "person.crop.rectangle.stack",
-                        minHeight: 220
+                        minHeight: 220,
+                        nextSteps: searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            ? ["Create a profile from the current layout.", "Use Dry Run before applying changes."]
+                            : ["Clear the search to return to all profiles."]
                     ) {
                         if searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                             Button("Create Profile", systemImage: "plus") {
@@ -204,7 +218,8 @@ struct ProfileListView: View {
                     title: "No Profile Selected",
                     message: "Create or select a profile to edit its local layout settings.",
                     systemImage: "person.crop.rectangle.stack",
-                    minHeight: 300
+                    minHeight: 300,
+                    nextSteps: ["Create a profile from the action strip.", "Select a profile from the library to edit it."]
                 ) {
                     Button("Create Profile", systemImage: "plus") {
                         createProfile()
@@ -216,22 +231,14 @@ struct ProfileListView: View {
     }
 
     private var profileActionPanel: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 8) {
-                profileActionButtons
-            }
-
-            VStack(alignment: .leading, spacing: 8) {
-                profileActionButtons
-            }
-        }
-        .controlSize(.small)
-        .padding(10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 8))
-        .overlay {
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color(nsColor: .separatorColor).opacity(0.42), lineWidth: 0.5)
+        ClearGlassActionStrip(
+            "Profile Actions",
+            subtitle: "Save the draft before running or exporting this profile.",
+            systemImage: "play.circle",
+            statusText: dryRunSummary == nil ? "Draft" : "Dry Run",
+            statusStyle: dryRunSummary == nil ? .secondary : .success
+        ) {
+            profileActionButtons
         }
     }
 
@@ -240,11 +247,17 @@ struct ProfileListView: View {
         Button("Save", systemImage: "checkmark", action: saveDraft)
             .buttonStyle(.borderedProminent)
 
-        Button("Dry Run", systemImage: "doc.text.magnifyingglass", action: runDryRun)
         Button("Apply", systemImage: "play", action: applyDraft)
-        Button("Export", systemImage: "square.and.arrow.up", action: exportDraft)
-        Button("Duplicate", systemImage: "plus.square.on.square", action: duplicateSelected)
-        Button("Delete", systemImage: "trash", role: .destructive, action: deleteSelected)
+
+        Menu("More", systemImage: "ellipsis.circle") {
+            Button("Dry Run", systemImage: "doc.text.magnifyingglass", action: runDryRun)
+            Button("Export", systemImage: "square.and.arrow.up", action: exportDraft)
+            Button("Duplicate", systemImage: "plus.square.on.square", action: duplicateSelected)
+
+            Divider()
+
+            Button("Delete", systemImage: "trash", role: .destructive, action: deleteSelected)
+        }
     }
 
     private var triggerSection: some View {
@@ -341,7 +354,8 @@ struct ProfileListView: View {
                     title: "No Triggers",
                     message: "Add a rule to apply the selected profile automatically.",
                     systemImage: "bolt.badge.xmark",
-                    minHeight: 150
+                    minHeight: 150,
+                    nextSteps: ["Select a profile.", "Choose a local trigger rule above."]
                 )
                 .frame(maxWidth: .infinity, minHeight: 150)
             } else {
@@ -530,68 +544,27 @@ private struct ProfileOverviewStrip: View {
     let triggerCount: Int
     let automationPaused: Bool
 
-    private let columns = [
-        GridItem(.adaptive(minimum: 150), spacing: 10)
-    ]
-
     var body: some View {
-        LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
-            ProfileOverviewPill(
+        ClearGlassOverviewStrip([
+            ClearGlassOverviewMetric(
                 title: "Profiles",
                 value: "\(profileCount)",
                 systemImage: "person.crop.rectangle.stack",
                 style: .secondary
-            )
-
-            ProfileOverviewPill(
+            ),
+            ClearGlassOverviewMetric(
                 title: "Triggers",
                 value: "\(triggerCount)",
                 systemImage: "bolt",
                 style: .info
-            )
-
-            ProfileOverviewPill(
+            ),
+            ClearGlassOverviewMetric(
                 title: "Automation",
                 value: automationPaused ? "Paused" : "Ready",
                 systemImage: automationPaused ? "pause.circle" : "checkmark.circle",
                 style: automationPaused ? .warning : .success
             )
-        }
-    }
-}
-
-private struct ProfileOverviewPill: View {
-    let title: String
-    let value: String
-    let systemImage: String
-    let style: ClearGlassStatusStyle
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: systemImage)
-                .font(.system(size: 16, weight: .regular))
-                .foregroundStyle(style.tint)
-                .frame(width: 20)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Text(value)
-                    .font(.callout)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-            }
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
-        .overlay {
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
-        }
+        ])
     }
 }
 

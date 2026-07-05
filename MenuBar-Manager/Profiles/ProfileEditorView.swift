@@ -225,6 +225,7 @@ private struct ProfileEditorSection<Content: View>: View {
             .padding(.vertical, 5)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
+            .shadow(color: .black.opacity(0.025), radius: 4, x: 0, y: 1)
             .overlay {
                 RoundedRectangle(cornerRadius: 8)
                     .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)

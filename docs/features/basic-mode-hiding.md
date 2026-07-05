@@ -46,7 +46,7 @@ Basic Mode does not request Accessibility, Screen Recording, Apple Events, Input
 - `MenuBar-ManagerTests/HidingVisibilityStateTests.swift`
 - `MenuBar-ManagerTests/ScreenGeometryServiceTests.swift`
 - `MenuBar-ManagerTests/StatusBarMenuBuilderTests.swift`
-- Manual QA: `docs/testing/manual-v0.1.3-system-qa.md`
+- Manual QA: `docs/testing/manual-qa.md`
 
 ## Known Limitations
 

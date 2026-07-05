@@ -29,10 +29,11 @@ final class MenuBarDeclutterUITests: XCTestCase {
         assertElement("recovery.lostIcons.actions", in: app)
         assertButton("Expand", in: app)
         assertButton("Reveal All", in: app)
-        assertButton("Reset Layout", in: app)
-        assertButton("Open Guide", in: app)
+        assertButton("More", in: app)
         assertButton("Refresh", in: app)
         assertButton("Fix Automatically", in: app)
+        let scrollView = app.scrollViews["settings.page.recovery"]
+        assertButton("Reset Layout", in: app, scrolling: scrollView)
         assertButton("Recreate", in: app)
         assertButton("Reset Basic Mode", in: app)
         assertButton("Disable Optional Pro", in: app)
@@ -158,10 +159,11 @@ final class MenuBarDeclutterUITests: XCTestCase {
         XCTAssertTrue(scrollView.waitForExistence(timeout: 5), "Expected Second Bar settings page to scroll.")
 
         assertStaticText("Second Bar", in: app)
-        assertStaticText("Second Bar uses Accessibility snapshots and app bundle icons. It does not use Screen Recording or captured menu bar pixels.", in: app)
+        assertStaticText("Show in status menu", in: app)
         assertStaticText("Optional Pro", in: app, scrolling: scrollView, maxSwipes: 4)
-        assertStaticText("Unavailable", in: app, scrolling: scrollView, maxSwipes: 2)
+        assertStaticText("Off", in: app, scrolling: scrollView, maxSwipes: 2)
         assertStaticText("Accessibility Permission", in: app, scrolling: scrollView, maxSwipes: 2)
+        assertStaticText("Not Requested", in: app, scrolling: scrollView, maxSwipes: 2)
         assertButton("Open Privacy Settings", in: app, scrolling: scrollView, maxSwipes: 2)
     }
 
@@ -177,9 +179,8 @@ final class MenuBarDeclutterUITests: XCTestCase {
         assertStaticText("How menu bar hiding works", in: app)
         assertElement("arrange.action.expand", in: app, scrolling: scrollView)
         assertElement("arrange.action.collapse", in: app, scrolling: scrollView)
-        assertElement("arrange.action.revealAll", in: app, scrolling: scrollView)
-        assertElement("arrange.action.resetLayout", in: app, scrolling: scrollView)
-        assertElement("arrange.action.showDragHint", in: app, scrolling: scrollView)
+        assertStaticText("Placement Test Actions", in: app, scrolling: scrollView)
+        assertButton("More", in: app, scrolling: scrollView)
     }
 
     @MainActor
@@ -203,6 +204,27 @@ final class MenuBarDeclutterUITests: XCTestCase {
             app.staticTexts["Command Center: Find Icon"].exists,
             "Find & Rescue should not expose internal Command Center terminology."
         )
+    }
+
+    @MainActor
+    func testWorkspacesCanShowFunctionBarFromSettings() throws {
+        let app = launchApp(opening: ["--ui-testing-show-workspaces", "--ui-testing-enable-workspace-panels"])
+
+        assertElement("settings.page.workspacesPreview", in: app, timeout: 10)
+        let scrollView = app.scrollViews["settings.page.workspacesPreview"]
+        clickElement("workspaces.quickAction.showFunctionBar", in: app, scrolling: scrollView)
+        assertElement("functionBar.preview", in: app, timeout: 10)
+        assertStaticText("Preview", in: app, timeout: 10)
+    }
+
+    @MainActor
+    func testWorkspacesCanShowInfoStripFromSettings() throws {
+        let app = launchApp(opening: ["--ui-testing-show-workspaces", "--ui-testing-enable-workspace-panels"])
+
+        assertElement("settings.page.workspacesPreview", in: app, timeout: 10)
+        let scrollView = app.scrollViews["settings.page.workspacesPreview"]
+        clickElement("workspaces.quickAction.showInfoStrip", in: app, scrolling: scrollView)
+        assertElement("infoStrip.preview", in: app, timeout: 10)
     }
 
     @MainActor
@@ -371,17 +393,46 @@ final class MenuBarDeclutterUITests: XCTestCase {
     }
 
     @MainActor
-    func testFocusAppsPanelEscapeDismisses() throws {
+    func testFloatingPanelsExposeIntegratedControlsForAccessibility() throws {
+        let availablePanelArguments = [
+            "--ui-testing-pro-discovery-enabled",
+            "--ui-testing-accessibility-granted",
+            "--ui-testing-seed-menu-bar-items"
+        ]
+
+        let searchApp = launchApp(opening: ["--ui-testing-show-search"] + availablePanelArguments)
+        assertElement("search.field", in: searchApp, timeout: 10)
+        assertElement("search.filter", in: searchApp)
+        assertElement("search.refresh", in: searchApp)
+        assertElement("search.results", in: searchApp)
+        terminateApplication(searchApp)
+
+        let secondBarApp = launchApp(opening: ["--ui-testing-show-second-bar"] + availablePanelArguments)
+        assertElement("secondBar.search", in: secondBarApp, timeout: 10)
+        assertElement("secondBar.filter", in: secondBarApp)
+        assertElement("secondBar.refresh", in: secondBarApp)
+        assertElement("secondBar.itemCount", in: secondBarApp)
+        assertElement("secondBar.items", in: secondBarApp)
+        terminateApplication(secondBarApp)
+
+        let groupApp = launchApp(opening: "--ui-testing-show-group-panel")
+        defer { terminateApplication(groupApp) }
+        assertElement("groupPanel.search", in: groupApp, timeout: 10)
+        assertElement("groupPanel.items", in: groupApp)
+    }
+
+    @MainActor
+    func testGroupPanelEscapeDismisses() throws {
         let app = launchApp(opening: "--ui-testing-show-group-panel")
 
         assertElement("groupPanel.panel", in: app, timeout: 10)
-        assertStaticText("Focus Apps", in: app)
+        assertStaticText("Pinned Tools", in: app)
         RunLoop.current.run(until: Date().addingTimeInterval(0.25))
         app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
 
         XCTAssertFalse(
             app.descendants(matching: .any)["groupPanel.panel"].waitForExistence(timeout: 3),
-            "Expected Escape to dismiss the floating Focus Apps panel."
+            "Expected Escape to dismiss the floating Group Panel."
         )
     }
 
@@ -410,10 +461,10 @@ final class MenuBarDeclutterUITests: XCTestCase {
         let groupApp = launchApp(opening: "--ui-testing-show-group-panel")
         defer { terminateApplication(groupApp) }
         assertElement("groupPanel.panel", in: groupApp, timeout: 10)
-        assertStaticText("Focus Apps", in: groupApp)
+        assertStaticText("Pinned Tools", in: groupApp)
 
         let groupAttachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-        groupAttachment.name = "Floating Panel - Focus Apps"
+        groupAttachment.name = "Floating Panel - Group Panel"
         groupAttachment.lifetime = .keepAlways
         add(groupAttachment)
     }
@@ -585,6 +636,51 @@ final class MenuBarDeclutterUITests: XCTestCase {
         XCTAssertTrue(
             app.buttons[label].waitForExistence(timeout: timeout),
             "Expected button '\(label)' to exist.",
+            file: file,
+            line: line
+        )
+    }
+
+    @MainActor
+    private func clickElement(
+        _ identifier: String,
+        in app: XCUIApplication,
+        scrolling scrollView: XCUIElement,
+        maxSwipes: Int = 6,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let element = app.descendants(matching: .any)[identifier]
+        if element.waitForExistence(timeout: 1) {
+            XCTAssertTrue(
+                element.isEnabled,
+                "Expected element '\(identifier)' to be enabled.",
+                file: file,
+                line: line
+            )
+            element.click()
+            return
+        }
+
+        for _ in 0..<maxSwipes {
+            if scrollView.waitForExistence(timeout: 1) {
+                scrollDownOneStep(scrollView)
+            }
+
+            if element.waitForExistence(timeout: 1) {
+                XCTAssertTrue(
+                    element.isEnabled,
+                    "Expected element '\(identifier)' to be enabled.",
+                    file: file,
+                    line: line
+                )
+                element.click()
+                return
+            }
+        }
+
+        XCTFail(
+            "Expected element '\(identifier)' to exist after scrolling.",
             file: file,
             line: line
         )

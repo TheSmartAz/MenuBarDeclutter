@@ -1,75 +1,101 @@
 # Release Checklist
 
-Phases covered by this checklist:
-- Phase 0–3 (Settings, Onboarding, Launch at Login, Diagnostics export)
-- Phase 4–9.1 Pro features and Alpha RC hardening are now implemented behind explicit opt-in boundaries.
+Last reviewed: 2026-07-05
 
-## Build
+This checklist covers the current v0.1.10 local/internal release stance. Developer ID signing, notarization, stapling, and public distribution are out of scope until explicitly requested.
 
-- Confirm project targets macOS 26.0+ only.
-- Run the canonical commands (the scripts pick the active scheme and print the exact `xcodebuild` command before running):
-  - `scripts/build_debug.sh`
-  - `scripts/build_release.sh --dry-run`
-  - `scripts/test.sh`
-- Confirm unit tests pass (Swift Testing + XCTest). `scripts/test.sh` defaults to the focused hosted unit lane.
-- Run `scripts/test.sh --ui` only when the local UI runner is explicitly part of the pass.
-- Confirm scripts print the exact `xcodebuild` command before execution.
-- Canonical local Alpha RC build commands use CI-style ad-hoc/no-account signing overrides. Unit tests use project local signing defaults so Xcode can launch the hosted test app:
-  - `xcodebuild build -scheme MenuBarDeclutter -destination 'platform=macOS' CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO`
-  - `xcodebuild test -scheme MenuBarDeclutter -destination 'platform=macOS' -only-testing:MenuBarDeclutterTests -enableCodeCoverage NO`
-- Deprecated fallback scheme retained during transition:
-  - `xcodebuild test -scheme MenuBar-Manager -destination 'platform=macOS' -only-testing:MenuBarDeclutterTests -enableCodeCoverage NO`
+## Build And Test
+
+- Confirm project identity and schemes:
+
+  ```sh
+  xcodebuild -list
+  ```
+
+- Run a canonical build:
+
+  ```sh
+  xcodebuild -scheme MenuBarDeclutter -destination 'platform=macOS' build CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO
+  ```
+
+- Run focused logic tests when touching pure logic:
+
+  ```sh
+  scripts/run_logic_tests.sh
+  ```
+
+- For release/risk changes, run the current preflight:
+
+  ```sh
+  scripts/qa_preflight.sh
+  ```
+
+- If direct full-scheme `xcodebuild test` fails before tests attach because of the local Xcode LaunchServices/UI-runner issue, record the exact failure and include split-lane or focused test evidence.
 
 ## Privacy
 
-- Confirm Basic Mode does not request Accessibility, Screen Recording, Apple Events, Input Monitoring, or network access.
-- Confirm Pro-only permissions are not reachable without explicit opt-in (Phase 4+ boundary).
-- Review stored data and keep it minimal — only UserDefaults settings, in-memory diagnostics ring buffer (≤200 events), and exported diagnostics files the user explicitly chooses.
-- Confirm the exported diagnostics bundle excludes screenshots, screen contents, personal file paths, and network data.
-- Confirm onboarding content documents the no-permissions Basic Mode behavior.
-- Confirm `SMAppService.mainApp.register()` is only ever called when the user explicitly enables "Launch at Login" — never auto-enabled.
-- Run `scripts/verify_privacy_boundary.sh`.
-- Confirm Diagnostics filtered export excludes screenshots, screen contents, live search text, selected item identity, personal file paths, and network data.
-- Confirm `scripts/qa_network_watch.sh MenuBarDeclutter` shows no unexpected network connections during manual QA.
+- Confirm Basic Mode does not request Accessibility, Screen Recording, Apple Events, Input Monitoring, network access, telemetry, cloud sync, or ScreenCaptureKit.
+- Confirm Optional Pro Discovery checks Accessibility without prompting by default and prompts only from explicit user action.
+- Confirm Accurate Icons is the only Screen Recording/ScreenCaptureKit path, is off by default, and is scoped to local visible rendered thumbnails.
+- Confirm Apple Events usage strings, Input Monitoring usage strings, network entitlements, analytics SDKs, telemetry, remote config, cloud sync, crash upload, and private menu bar APIs are absent.
+- Confirm diagnostics exports exclude screenshots, screen contents, rendered icon thumbnails, live search text, selected item identity, network data, and sensitive personal paths by default.
+- Run:
+
+  ```sh
+  scripts/verify_privacy_boundary.sh
+  ```
+
+- For installed builds, run:
+
+  ```sh
+  APP_PATH=/Applications/MenuBarDeclutter.app scripts/verify_privacy_boundary.sh
+  ```
 
 ## App Behavior
 
-- Confirm `LSUIElement` removes the Dock icon (accessory activation policy).
-- Confirm status item appears and menu commands work.
-- Confirm Settings and Diagnostics open from the status menu.
-- Confirm Onboarding appears on first launch and is gated by `SettingsStore.hasCompletedOnboarding`.
-- Confirm "Show Onboarding Again" in Settings → General re-presents it.
-- Confirm Launch at Login registers and unregisters via `SMAppService.mainApp` without any other permission prompt.
-- Confirm Launch at Login status is visible in Settings and Diagnostics.
-- Confirm "Open Login Items Settings" opens the correct System Settings surface.
-- Confirm Diagnostics export save panel writes a privacy-safe `.txt` or `.json` bundle to the user-chosen location.
-- Confirm Diagnostics category/severity filters, copy selected event, and export filtered diagnostics work.
-- Confirm "Pause Automation" / "Resume Automation" appears in the status menu and stops/starts smart trigger evaluation.
-- Confirm Settings -> Advanced labels icon moving as experimental and shows the warning before enablement.
-- Confirm Reset App Layout and Reset All Settings restore defaults without requiring relaunch.
-- Confirm Quit works from the status menu.
+- Confirm `LSUIElement`/accessory behavior removes the Dock icon.
+- Confirm status item appears and Basic menu commands work.
+- Confirm Settings, Recovery, Diagnostics, Onboarding replay, and Quit work from app surfaces.
+- Confirm Launch at Login registers/unregisters only after explicit user opt-in.
+- Confirm Safe Mode, reset layout, reset settings, and recovery actions remain reachable when optional features fail.
+- Confirm Workspaces, Function Bar, Info Strip, Set Builder, and Groups are app-owned Preview UI and do not claim to replace the macOS system menu bar.
+- Confirm Experimental Icon Moving is disabled by default and cannot run from launch, wake, profiles, smart triggers, URL automation, or App Intents.
 
-## Distribution
+## Release Artifact
 
-- Revisit App Sandbox entitlements before distribution. Current local-alpha builds are intentionally non-sandboxed for opt-in Pro Accessibility Discovery; keep hardened runtime, no-network entitlements, and sensitive usage-string absence verified.
-- Confirm hardened runtime metadata for local Release/dry-run artifacts where available.
-- Do not require, configure, or assume Developer ID signing, notarization, or stapling for the current release stance.
-- Treat `scripts/notarize_template.sh`, `docs/release/notarization-setup.md`, and `docs/release/notarization-runbook.md` as deferred templates until Developer ID distribution is explicitly requested.
-- Confirm license audit remains clean (no GPL or source-available code from Ice, Thaw, SaneBar, or similar menu bar utilities).
-- Complete `docs/release/alpha-rc-checklist.md`.
-- Include `docs/release/alpha-rc-known-limitations.md` in release notes.
+- Run the dry-run release flow:
 
-## macOS 26 matrix (manual QA)
+  ```sh
+  scripts/build_release.sh --dry-run
+  ```
 
-See `docs/testing/manual-qa.md` for the full Phase 3 manual checklist, including:
-- Light/dark, increased contrast, reduce transparency, transparent menu bar.
-- External display tests.
-- Launch at Login enable/disable.
-- Quit/relaunch and restart-macOS cases where possible.
+- For installed-app claims, run:
 
-For Alpha RC, also complete:
+  ```sh
+  scripts/build_release.sh --dry-run --install --verify-installed
+  scripts/qa_installed_app_smoke.sh --app-path /Applications/MenuBarDeclutter.app
+  ```
 
-- `docs/testing/privacy-qa.md`
-- `docs/testing/alpha-rc-qa-matrix.md`
-- `docs/testing/alpha-rc-qa-run-template.md`
-- `docs/testing/known-risk-areas.md`
+- Confirm artifact identity: `MenuBarDeclutter`, version `0.1.10`, build `11`.
+- Confirm the installed bundle has the expected URL scheme and app category.
+- Confirm no Developer ID/notarization success is claimed unless that work has explicitly entered scope.
+- Record any local `spctl` instability separately from app launch/runtime behavior.
+
+## Manual QA
+
+Use:
+
+- `docs/testing/qa-process.md`
+- `docs/testing/manual-qa.md`
+- `docs/testing/macos26-test-matrix.md`
+- `docs/testing/manual-v0.1.10-results.md`
+
+Hardware-only rows can be `BLOCKED` or `PARTIAL` when the local setup lacks the required hardware or permission state. Do not convert unavailable hardware checks into release claims.
+
+## Documentation
+
+- Update `docs/project-summary.md` for user-facing project status changes.
+- Update `docs/architecture/architecture-overview.md` for service/coordinator or permission-boundary changes.
+- Update `docs/privacy/privacy-boundary.md` for any permission, data, diagnostic, capture, or network-adjacent change.
+- Update active feature/support docs for public wording changes.
+- Move superseded phase/version docs to `docs/archives/` rather than leaving stale current claims in active docs.

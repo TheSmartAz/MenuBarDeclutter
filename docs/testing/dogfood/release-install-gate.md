@@ -2,7 +2,7 @@
 
 Installed-app validation belongs after the fixture and Basic dogfood gate are usable.
 
-Allowed results: PASS, FAIL, BLOCKED, NOT TESTED.
+Allowed results: PASS, FAIL, BLOCKED, PARTIAL, NOT TESTED.
 
 | Scenario | Result | Notes |
 | --- | --- | --- |
@@ -13,8 +13,7 @@ Allowed results: PASS, FAIL, BLOCKED, NOT TESTED.
 | Restart login test | NOT TESTED | |
 | Codesign verification | NOT TESTED | |
 | Hardened runtime verification | NOT TESTED | |
-| Notarization placeholder or real notarization | NOT TESTED | |
-| Staple notarization ticket if available | NOT TESTED | |
+| Developer ID/notarization out-of-scope status recorded | NOT TESTED | Current project stance does not require Developer ID signing, notarization, or stapling. |
 | `spctl` verification | NOT TESTED | |
 | LSUIElement behavior from installed app | NOT TESTED | |
 | URL scheme opens installed app | NOT TESTED | |

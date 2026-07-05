@@ -1,46 +1,95 @@
 # Privacy Boundary
 
-MenuBarDeclutter Alpha RC keeps Basic Mode permission-free and local-only.
+Last reviewed: 2026-07-05
+
+MenuBarDeclutter is local-first. Basic Mode is permission-free. Optional Pro and Preview features are separately gated and must degrade without breaking Basic Mode.
 
 ## Basic Mode
 
-- Uses public AppKit `NSStatusItem` behavior to expand, collapse, and reveal menu bar items.
-- Requires no Accessibility, Screen Recording, Apple Events, Input Monitoring, or network access.
-- Hover reveal polls `NSEvent.mouseLocation` in-process and does not install event taps.
-- Global hotkeys use Carbon `RegisterEventHotKey` and do not require Input Monitoring.
-- Diagnostics and health reports are exported only after explicit user action.
+Basic Mode includes:
 
-## Pro Mode
+- Expand, collapse, toggle, reveal all, and always-hidden reveal.
+- App-owned `NSStatusItem` control and separator behavior.
+- Auto-rehide, hover reveal, separator visuals, and Basic visibility hotkey.
+- Guided Manual Arrange through normal macOS Command-drag.
+- Launch at Login after explicit user opt-in.
+- Diagnostics export, backup/restore, health, recovery, Safe Mode, reset layout, and reset settings.
 
-- Pro Mode is opt-in.
-- Accessibility is checked without prompting by default.
-- The Accessibility prompt appears only after the user explicitly requests permission.
-- Find Icon, Second Bar, and explicit icon moving degrade gracefully when Pro Mode, Accessibility Discovery, or permission is missing.
-- Icon moving is experimental, disabled by default, Pro-only, and user-triggered.
+Basic Mode does not request or require:
+
+- Accessibility
+- Screen Recording
+- Apple Events
+- Input Monitoring
+- Network access
+- Telemetry, analytics, cloud sync, crash upload, remote config, or update checks
+- ScreenCaptureKit
+
+## Optional Pro Discovery
+
+Pro Accessibility Discovery is opt-in and read-only.
+
+- Accessibility status checks do not prompt by default.
+- The system Accessibility prompt appears only after an explicit user action.
+- Scans run only when Pro Mode, Accessibility Discovery, and Accessibility permission are all enabled.
+- Discovery reads public Accessibility metadata such as labels, ownership, frames, and roles.
+- Discovery does not click, drag, activate third-party items, record the screen, use private APIs, or use the network.
+
+If permission is denied, revoked, or unavailable, Find Icon, Second Bar, placement helpers, groups, workspace assignment, and diagnostics show unavailable or degraded states. Basic Mode remains usable.
+
+## Accurate Icons
+
+Accurate Icons is a separate Preview capability for local rendered thumbnails.
+
+- It is off by default.
+- It can request Screen Recording only from explicit Accurate Icons controls.
+- It uses public ScreenCaptureKit visible-region capture only after Screen Recording is already granted.
+- It crops small thumbnails for currently visible menu bar items and stores them locally.
+- It does not capture offscreen/private menu bar items, use private APIs, use Apple Events, use Input Monitoring, or use network access.
+
+If Screen Recording is missing or revoked, UI surfaces fall back to stale thumbnails or app icons. Basic Mode and Pro metadata discovery continue according to their own gates.
+
+## Automation
+
+Local automation routes through the same command gates as manual UI.
+
+- `menubardeclutter://` URL commands are local commands addressed to this app.
+- App Intents and dynamic hotkeys route through `MenuBarCommandRouter`.
+- Automation pause stops smart trigger and URL-command execution without blocking manual Basic Mode commands.
+- Profiles apply conservative Basic settings and report move requirements instead of silently running bulk icon moves.
+- Experimental Icon Moving is user-triggered only and must not run from launch, wake, profiles, triggers, URL automation, or App Intents.
 
 ## Local Data
 
-- Application Support data stays under `Application Support/MenuBarDeclutter/`.
-- Profiles and triggers are local JSON.
-- Health markers and reports are local files.
-- URL automation is local and command-limited to expand, collapse, reveal-all, Second Bar, and apply-profile-by-name commands.
+Local data stays under UserDefaults and `Application Support/MenuBarDeclutter/`.
 
-## Exclusions
+Stored data can include:
 
-MenuBarDeclutter does not use ScreenCaptureKit, Screen Recording, Apple Events, Input Monitoring, telemetry, cloud sync, or network access through Phase 9.1.
+- Settings
+- Diagnostics exports explicitly written by the user
+- Profiles, triggers, workspaces, groups, hotkeys, and import/export backups
+- Dogfood runs and notes when Dogfood Mode is enabled
+- Accurate Icons thumbnail cache when that feature is enabled
+- Safe Mode and health marker files
 
-Diagnostics exports exclude screenshots, screen contents, live search text, selected item identity, personal file paths outside explicit App Support display, and network data.
+Diagnostics exports exclude screenshots, screen contents, rendered icon thumbnails, live search text, selected item identity, network data, and sensitive personal file paths by default.
 
 ## Verification
 
-Run:
+Source/privacy verification:
 
 ```sh
 scripts/verify_privacy_boundary.sh
 ```
 
-For a built app bundle:
+Installed bundle verification:
 
 ```sh
-APP_PATH=/path/to/MenuBarDeclutter.app scripts/verify_privacy_boundary.sh
+APP_PATH=/Applications/MenuBarDeclutter.app scripts/verify_privacy_boundary.sh
+```
+
+Installed smoke:
+
+```sh
+scripts/qa_installed_app_smoke.sh --app-path /Applications/MenuBarDeclutter.app
 ```

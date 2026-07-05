@@ -40,7 +40,7 @@ Icon Moving is explicit user action only. It requires Pro Mode, Accessibility Di
 ## Verification
 
 - `MenuBar-ManagerTests/IconMovePlanningTests.swift`
-- Manual QA: `docs/testing/manual-v0.1.3-system-qa.md`
+- Manual QA: `docs/testing/manual-qa.md`
 - Dogfood fixture QA: `docs/testing/dogfood/icon-moving-experimental-gate.md`
 
 ## Known Limitations

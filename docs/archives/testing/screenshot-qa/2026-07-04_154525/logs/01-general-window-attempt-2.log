@@ -1,0 +1,2 @@
+error: no matching window for owner 'MenuBarDeclutter' pid '66773' within 20.0s
+diagnostic: no on-screen windows owned by MenuBarDeclutter pid '66773'

@@ -1,6 +1,6 @@
 # MenuBarDeclutter Project Summary
 
-Last reviewed: 2026-07-04
+Last reviewed: 2026-07-05
 
 MenuBarDeclutter is a native macOS 26.0+ menu bar decluttering utility built with Swift, AppKit, and SwiftUI. The current Xcode project is `MenuBar-Manager.xcodeproj`; the canonical scheme, app target, product, executable, and display identity are `MenuBarDeclutter`. The older `MenuBar-Manager` scheme is retained as a compatibility fallback, and `MenuBarFixtureApp` is a separate local QA fixture target.
 
@@ -97,7 +97,7 @@ Basic Mode is usable without Accessibility, Screen Recording, Apple Events, Inpu
 
 The project has unit tests for pure logic such as settings migration, hiding state, rehide/hover logic, scans, search ranking, second bar placement, profiles, triggers, command routing, groups, private access, layout, workspaces, diagnostics, import/export, and recovery. UI tests cover installed surfaces and visual smoke flows.
 
-The v0.1.10 docs record successful local automated gates for build-for-testing, split unit/UI test lanes, privacy verification, dry-run packaging, installed-app verification, and screenshot QA. Direct full `xcodebuild test` is documented as blocked by an Xcode LaunchServices runner issue in this environment, while split unit and UI lanes passed. Hardware-only manual QA for external displays, notch behavior, and some hands-on permission/menu cases remains partial or blocked in the documented local setup.
+The v0.1.10 docs record successful local automated gates for build-for-testing, split unit/UI test lanes, privacy verification, dry-run packaging, installed-app verification, installed-app smoke, and screenshot QA. Direct full `xcodebuild test` is documented as blocked by an Xcode LaunchServices runner issue in this environment, while split unit and UI lanes passed. A 2026-07-04 follow-up added focused Workspaces-to-Function-Bar/Info-Strip UI coverage and verified it compiles, but local UI-test execution is still blocked by runner startup failures before assertions. Hardware-only manual QA for external displays, notch behavior, and some hands-on permission/menu cases remains partial or blocked in the documented local setup.
 
 ## Important Source And Doc Entry Points
 
@@ -105,4 +105,9 @@ The v0.1.10 docs record successful local automated gates for build-for-testing, 
 - Settings and user surfaces: `MenuBar-Manager/Settings/`, `MenuBar-Manager/Onboarding/`, `MenuBar-Manager/Search/`, `MenuBar-Manager/SecondBar/`, `MenuBar-Manager/FunctionBar/`, `MenuBar-Manager/InfoStrip/`, `MenuBar-Manager/Groups/`, `MenuBar-Manager/SetBuilder/`.
 - Runtime services: `MenuBar-Manager/StatusBar/`, `MenuBar-Manager/Hiding/`, `MenuBar-Manager/Layout/`, `MenuBar-Manager/Accessibility/`, `MenuBar-Manager/Health/`, `MenuBar-Manager/CommandCenter/`, `MenuBar-Manager/Profiles/`, `MenuBar-Manager/Workspaces/`.
 - Core local state: `MenuBar-Manager/Core/`, `MenuBar-Manager/Migration/`, `MenuBar-Manager/PrivateAccess/`, `MenuBar-Manager/Dogfood/`.
-- Current docs: `README.md`, `docs/architecture/architecture-overview.md`, `docs/release/v0.1.10-release-notes.md`, `docs/release/v0.1.10-feature-status-audit.md`, `docs/release/v0.1.10-known-limitations.md`, `docs/privacy/v0.1.10-privacy-claims.md`, and `docs/progress/phase-23-v0.1.10-release-hardening.md`.
+- Active docs index: `docs/README.md`.
+- Current architecture and plan: `docs/architecture/architecture-overview.md`, `docs/PLAN.md`.
+- Current privacy docs: `docs/privacy/privacy-boundary.md`, `docs/privacy/v0.1.10-privacy-claims.md`, `docs/privacy/v0.1.10-workspaces-privacy.md`.
+- Current release docs: `docs/release/v0.1.10-release-notes.md`, `docs/release/v0.1.10-feature-status-audit.md`, `docs/release/v0.1.10-known-limitations.md`, `docs/release/v0.1.10-release-runbook.md`, `docs/release/v0.1.10-release-checklist.md`.
+- Current QA docs: `docs/testing/qa-process.md`, `docs/testing/manual-qa.md`, `docs/testing/macos26-test-matrix.md`, `docs/testing/manual-v0.1.10-results.md`.
+- Historical phase/version docs: `docs/archives/`.

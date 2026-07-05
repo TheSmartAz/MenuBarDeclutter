@@ -106,6 +106,71 @@ enum SettingsCommandPaletteEntrySource: String, Hashable {
     case action
 }
 
+enum SettingsCommandPaletteResultGroupKind: String, CaseIterable, Hashable, Identifiable {
+    case primarySettings
+    case moreSettings
+    case legacyRoutes
+    case advancedMatches
+    case localActions
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .primarySettings:
+            "Primary Settings"
+        case .moreSettings:
+            "More Settings"
+        case .legacyRoutes:
+            "Legacy Routes"
+        case .advancedMatches:
+            "Advanced Matches"
+        case .localActions:
+            "Local Actions"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .primarySettings:
+            "sidebar.left"
+        case .moreSettings:
+            "ellipsis.circle"
+        case .legacyRoutes:
+            "arrow.triangle.branch"
+        case .advancedMatches:
+            "sparkles"
+        case .localActions:
+            "bolt"
+        }
+    }
+
+    var helpText: String {
+        switch self {
+        case .primarySettings:
+            "Settings that are visible in the main sidebar."
+        case .moreSettings:
+            "Settings that live under the More sidebar group."
+        case .legacyRoutes:
+            "Older or deep settings routes kept searchable for compatibility."
+        case .advancedMatches:
+            "Advanced feature aliases that route to the closest settings page."
+        case .localActions:
+            "Privacy-safe local actions available from Settings."
+        }
+    }
+}
+
+struct SettingsCommandPaletteResultGroup: Identifiable, Hashable {
+    let kind: SettingsCommandPaletteResultGroupKind
+    let entries: [SettingsCommandPaletteEntry]
+
+    var id: String { kind.id }
+    var title: String { kind.title }
+    var systemImage: String { kind.systemImage }
+    var helpText: String { kind.helpText }
+}
+
 struct SettingsCommandPaletteEntry: Identifiable, Hashable {
     let id: String
     let title: String
@@ -155,6 +220,14 @@ struct SettingsCommandPaletteIndex {
         let matches = entries.filter { $0.matches(query) }
         guard let limit else { return matches }
         return Array(matches.prefix(limit))
+    }
+
+    static func resultGroups(for entries: [SettingsCommandPaletteEntry]) -> [SettingsCommandPaletteResultGroup] {
+        SettingsCommandPaletteResultGroupKind.allCases.compactMap { kind in
+            let groupEntries = entries.filter { $0.resultGroupKind == kind }
+            guard !groupEntries.isEmpty else { return nil }
+            return SettingsCommandPaletteResultGroup(kind: kind, entries: groupEntries)
+        }
     }
 
     static func searchTokens(in query: String) -> [String] {
@@ -225,6 +298,25 @@ struct SettingsCommandPaletteIndex {
                     keywords: [action.searchKeywords]
                 )
             }
+    }
+}
+
+extension SettingsCommandPaletteEntry {
+    var resultGroupKind: SettingsCommandPaletteResultGroupKind {
+        switch source {
+        case .visibleSettings:
+            .primarySettings
+        case .advancedSettings:
+            if let destination, SettingsSection.moreSidebarSections.contains(destination) {
+                .moreSettings
+            } else {
+                .legacyRoutes
+            }
+        case .advancedAlias:
+            .advancedMatches
+        case .action:
+            .localActions
+        }
     }
 }
 

@@ -1,0 +1,3 @@
+status	slug	label	kind	window_id	x	y	width	height	layer	title	path	args
+skipped	01-general	General	settings									--ui-testing --ui-testing-appearance-light --ui-testing-show-general
+skipped	02-hide-reveal	Hide & Reveal	settings									--ui-testing --ui-testing-appearance-light --ui-testing-show-hide-reveal

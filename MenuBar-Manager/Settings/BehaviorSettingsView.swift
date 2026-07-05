@@ -12,7 +12,13 @@ struct BehaviorSettingsView: View {
         ClearGlassSettingsPage(
             "Hide & Reveal",
             subtitle: "Control how hidden menu bar items reveal, collapse, and respond to shortcuts.",
-            badges: [.stable, .privacySafe, .basicMode]
+            badges: [.stable, .privacySafe, .basicMode],
+            sectionAnchors: [
+                ClearGlassPageAnchor("Reveal", systemImage: "eye"),
+                ClearGlassPageAnchor("Hidden Zones", systemImage: "square.dashed"),
+                ClearGlassPageAnchor("Separators", systemImage: "parallelpipe"),
+                ClearGlassPageAnchor("Keyboard Shortcut", systemImage: "keyboard")
+            ]
         ) {
             BehaviorSummaryStrip(
                 autoRehideEnabled: settingsStore.autoRehideEnabled,
@@ -33,53 +39,69 @@ struct BehaviorSettingsView: View {
 
     private var revealSection: some View {
         ClearGlassSection("Reveal", subtitle: "Choose how hidden items temporarily come back into view.") {
-            BehaviorToggleRow(
+            BehaviorControlGroup(
+                "Auto-Rehide",
+                subtitle: "Collapse hidden items again after a timed reveal.",
                 systemImage: "clock",
-                title: "Re-hide after reveal",
-                subtitle: "Collapse hidden items again after a short delay.",
-                isOn: $settingsStore.autoRehideEnabled
-            )
+                statusText: settingsStore.autoRehideEnabled ? "On" : "Off",
+                statusStyle: settingsStore.autoRehideEnabled ? .info : .secondary
+            ) {
+                BehaviorToggleRow(
+                    systemImage: "power",
+                    title: "Enable Auto-Rehide",
+                    subtitle: "Collapse hidden items again after a short delay.",
+                    isOn: $settingsStore.autoRehideEnabled
+                )
+
+                ClearGlassDivider()
+
+                ClearGlassSliderRow(
+                    "Delay",
+                    subtitle: settingsStore.autoRehideEnabled
+                        ? "Countdown before hidden items collapse again."
+                        : "Enable auto-rehide to use this delay.",
+                    value: $settingsStore.autoRehideDelaySeconds,
+                    in: 0...60,
+                    step: 1,
+                    valueSuffix: "s",
+                    valueFractionLength: 0
+                )
+                .disabled(!settingsStore.autoRehideEnabled)
+                .opacity(settingsStore.autoRehideEnabled ? 1 : 0.72)
+            }
 
             ClearGlassDivider()
 
-            ClearGlassSliderRow(
-                "Delay",
-                subtitle: settingsStore.autoRehideEnabled
-                    ? "Countdown before hidden items collapse again."
-                    : "Enable re-hide after reveal to use this delay.",
-                value: $settingsStore.autoRehideDelaySeconds,
-                in: 0...60,
-                step: 1,
-                valueSuffix: "s",
-                valueFractionLength: 0
-            )
-            .disabled(!settingsStore.autoRehideEnabled)
-            .opacity(settingsStore.autoRehideEnabled ? 1 : 0.72)
-
-            ClearGlassDivider()
-
-            BehaviorToggleRow(
+            BehaviorControlGroup(
+                "Hover Reveal",
+                subtitle: "Reveal hidden items while the pointer is near the menu bar.",
                 systemImage: "eye",
-                title: "Reveal on hover",
-                subtitle: "Show hidden items while the pointer is near the menu bar.",
-                isOn: $settingsStore.hoverRevealEnabled
-            )
+                statusText: settingsStore.hoverRevealEnabled ? "On" : "Off",
+                statusStyle: settingsStore.hoverRevealEnabled ? .info : .secondary
+            ) {
+                BehaviorToggleRow(
+                    systemImage: "cursorarrow.motionlines",
+                    title: "Enable Hover Reveal",
+                    subtitle: "Show hidden items while the pointer is near the menu bar.",
+                    isOn: $settingsStore.hoverRevealEnabled
+                )
 
-            ClearGlassDivider()
+                ClearGlassDivider()
 
-            ClearGlassSliderRow(
-                "Polling Interval",
-                subtitle: settingsStore.hoverRevealEnabled
-                    ? "Lower values feel more responsive and use slightly more CPU."
-                    : "Enable reveal on hover to tune pointer polling.",
-                value: $settingsStore.hoverRevealPollingIntervalSeconds,
-                in: AppConstants.minHoverRevealPollingIntervalSeconds...1.0,
-                step: 0.05,
-                valueSuffix: "s",
-                valueFractionLength: 2
-            )
-            .disabled(!settingsStore.hoverRevealEnabled)
-            .opacity(settingsStore.hoverRevealEnabled ? 1 : 0.72)
+                ClearGlassSliderRow(
+                    "Polling Interval",
+                    subtitle: settingsStore.hoverRevealEnabled
+                        ? "Lower values feel more responsive and use slightly more CPU."
+                        : "Enable hover reveal to tune pointer polling.",
+                    value: $settingsStore.hoverRevealPollingIntervalSeconds,
+                    in: AppConstants.minHoverRevealPollingIntervalSeconds...1.0,
+                    step: 0.05,
+                    valueSuffix: "s",
+                    valueFractionLength: 2
+                )
+                .disabled(!settingsStore.hoverRevealEnabled)
+                .opacity(settingsStore.hoverRevealEnabled ? 1 : 0.72)
+            }
 
             ClearGlassDivider()
 
@@ -93,25 +115,41 @@ struct BehaviorSettingsView: View {
 
     private var hiddenZonesSection: some View {
         ClearGlassSection("Hidden Zones", subtitle: "Keep sensitive or noisy items separate from the main reveal group.") {
-            BehaviorToggleRow(
+            BehaviorControlGroup(
+                "Always-Hidden Zone",
+                subtitle: "Keep a second group collapsed during normal reveals.",
                 systemImage: "square.dashed",
-                title: "Always-hidden zone",
-                subtitle: "Items beyond the second separator stay hidden when the primary zone expands.",
-                isOn: $settingsStore.alwaysHiddenEnabled
-            )
+                statusText: settingsStore.alwaysHiddenEnabled ? "On" : "Off",
+                statusStyle: settingsStore.alwaysHiddenEnabled ? .info : .secondary
+            ) {
+                BehaviorToggleRow(
+                    systemImage: "square.dashed",
+                    title: "Enable Always-Hidden Zone",
+                    subtitle: "Items beyond the second separator stay hidden when the primary zone expands.",
+                    isOn: $settingsStore.alwaysHiddenEnabled
+                )
+
+                ClearGlassDivider()
+
+                AlwaysHiddenZonePreview(isEnabled: settingsStore.alwaysHiddenEnabled)
+            }
 
             ClearGlassDivider()
 
-            AlwaysHiddenZonePreview(isEnabled: settingsStore.alwaysHiddenEnabled)
-
-            ClearGlassDivider()
-
-            BehaviorToggleRow(
+            BehaviorControlGroup(
+                "Reveal Override",
+                subtitle: "Allow an intentional temporary reveal of both hidden groups.",
                 systemImage: "cursorarrow.click",
-                title: "Option-click reveals all",
-                subtitle: "Temporarily reveal both primary hidden items and always-hidden items.",
-                isOn: $settingsStore.revealAllOnOptionClick
-            )
+                statusText: settingsStore.revealAllOnOptionClick ? "On" : "Off",
+                statusStyle: settingsStore.revealAllOnOptionClick ? .info : .secondary
+            ) {
+                BehaviorToggleRow(
+                    systemImage: "option",
+                    title: "Option-click reveals all",
+                    subtitle: "Temporarily reveal both primary hidden items and always-hidden items.",
+                    isOn: $settingsStore.revealAllOnOptionClick
+                )
+            }
         }
     }
 
@@ -138,32 +176,34 @@ struct BehaviorSettingsView: View {
 
     private var keyboardShortcutSection: some View {
         ClearGlassSection("Keyboard Shortcut", subtitle: "Show or hide all hidden items without leaving the keyboard.") {
-            BehaviorToggleRow(
+            BehaviorControlGroup(
+                "Global Shortcut",
+                subtitle: "Toggle hidden items from the keyboard without elevated permissions.",
                 systemImage: "keyboard",
-                title: "Global hotkey",
-                subtitle: "The shortcut works without Accessibility, Screen Recording, Apple Events, or Input Monitoring.",
-                isOn: $settingsStore.globalHotkeyEnabled
-            )
-
-            ClearGlassDivider()
-
-            ClearGlassValueRow(
-                "Current Hotkey",
-                subtitle: settingsStore.globalHotkeyEnabled
-                    ? "Active shortcut for toggling hidden items."
-                    : "Enable the global hotkey to activate this shortcut."
+                statusText: settingsStore.globalHotkeyEnabled ? "On" : "Off",
+                statusStyle: settingsStore.globalHotkeyEnabled ? .info : .secondary
             ) {
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 10) {
-                        hotkeyControls
-                    }
+                BehaviorToggleRow(
+                    systemImage: "keyboard",
+                    title: "Enable Global Hotkey",
+                    subtitle: "The shortcut works without Accessibility, Screen Recording, Apple Events, or Input Monitoring.",
+                    isOn: $settingsStore.globalHotkeyEnabled
+                )
 
-                    VStack(alignment: .trailing, spacing: 8) {
+                ClearGlassDivider()
+
+                ClearGlassValueRow(
+                    "Current Hotkey",
+                    subtitle: settingsStore.globalHotkeyEnabled
+                        ? "Active shortcut for toggling hidden items."
+                        : "Enable the global hotkey to activate this shortcut."
+                ) {
+                    ClearGlassAccessoryCluster(spacing: 10) {
                         hotkeyControls
                     }
                 }
+                .opacity(settingsStore.globalHotkeyEnabled ? 1 : 0.72)
             }
-            .opacity(settingsStore.globalHotkeyEnabled ? 1 : 0.72)
         }
     }
 
@@ -181,6 +221,80 @@ struct BehaviorSettingsView: View {
                 onChange?()
             }
             .disabled(!settingsStore.globalHotkeyEnabled)
+            .help(settingsStore.globalHotkeyEnabled ? "Reset the global hotkey to the default shortcut." : "Enable the global hotkey before resetting it.")
+        }
+    }
+}
+
+private struct BehaviorControlGroup<Content: View>: View {
+    private let title: String
+    private let subtitle: String
+    private let systemImage: String
+    private let statusText: String
+    private let statusStyle: ClearGlassStatusStyle
+    @ViewBuilder private let content: Content
+
+    init(
+        _ title: String,
+        subtitle: String,
+        systemImage: String,
+        statusText: String,
+        statusStyle: ClearGlassStatusStyle,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.systemImage = systemImage
+        self.statusText = statusText
+        self.statusStyle = statusStyle
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: 10) {
+                    header
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    ClearGlassStatusValue(text: statusText, style: statusStyle)
+                        .padding(.top, 1)
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    header
+                    ClearGlassStatusValue(text: statusText, style: statusStyle)
+                }
+            }
+            .padding(.horizontal, 2)
+
+            VStack(spacing: 0) {
+                content
+            }
+        }
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var header: some View {
+        HStack(alignment: .top, spacing: 9) {
+            Image(systemName: systemImage)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(statusStyle.tint)
+                .frame(width: 18)
+                .padding(.top, 2)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 }
@@ -193,76 +307,33 @@ private struct BehaviorSummaryStrip: View {
     let globalHotkeyEnabled: Bool
     let hotkeyText: String
 
-    private let columns = [
-        GridItem(.adaptive(minimum: 150), spacing: 10)
-    ]
-
     var body: some View {
-        LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
-            BehaviorSummaryPill(
+        ClearGlassOverviewStrip([
+            ClearGlassOverviewMetric(
                 title: "Auto-Rehide",
                 value: autoRehideEnabled ? "\(Int(autoRehideDelaySeconds))s" : "Off",
                 systemImage: "clock",
                 style: autoRehideEnabled ? .info : .secondary
-            )
-
-            BehaviorSummaryPill(
+            ),
+            ClearGlassOverviewMetric(
                 title: "Hover Reveal",
                 value: hoverRevealEnabled ? "On" : "Off",
                 systemImage: "eye",
                 style: hoverRevealEnabled ? .info : .secondary
-            )
-
-            BehaviorSummaryPill(
+            ),
+            ClearGlassOverviewMetric(
                 title: "Hidden Zone",
                 value: alwaysHiddenEnabled ? "On" : "Off",
                 systemImage: "square.dashed",
                 style: alwaysHiddenEnabled ? .info : .secondary
-            )
-
-            BehaviorSummaryPill(
+            ),
+            ClearGlassOverviewMetric(
                 title: "Shortcut",
                 value: globalHotkeyEnabled ? hotkeyText : "Off",
                 systemImage: "keyboard",
                 style: globalHotkeyEnabled ? .info : .secondary
             )
-        }
-    }
-}
-
-private struct BehaviorSummaryPill: View {
-    let title: String
-    let value: String
-    let systemImage: String
-    let style: ClearGlassStatusStyle
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: systemImage)
-                .font(.system(size: 16, weight: .regular))
-                .foregroundStyle(style.tint)
-                .frame(width: 20)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Text(value)
-                    .font(.callout)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.82)
-            }
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
-        .overlay {
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
-        }
+        ])
     }
 }
 
@@ -273,21 +344,16 @@ private struct BehaviorToggleRow: View {
     @Binding var isOn: Bool
 
     var body: some View {
-        ClearGlassControlRow(
+        ClearGlassStatusControlRow(
             systemImage: systemImage,
             title: title,
             subtitle: subtitle,
-            iconTint: isOn ? .accentColor : .secondary
+            iconTint: isOn ? .accentColor : .secondary,
+            statusText: isOn ? "On" : "Off",
+            statusStyle: isOn ? .info : .secondary
         ) {
-            HStack(spacing: 12) {
-                ClearGlassStatusValue(
-                    text: isOn ? "On" : "Off",
-                    style: isOn ? .info : .secondary
-                )
-
-                Toggle(title, isOn: $isOn)
-                    .labelsHidden()
-            }
+            Toggle(title, isOn: $isOn)
+                .labelsHidden()
         }
     }
 }

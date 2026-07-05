@@ -1,8 +1,8 @@
 # Manual QA Results - v0.1.10
 
-Status: recorded. Automated/source/privacy/release gates passed; physical hardware-only checks are partial or blocked where unavailable.
+Status: recorded. Automated/source/privacy/release gates passed; physical hardware-only checks are partial or blocked where unavailable. A 2026-07-04 continuation added focused Workspaces panel UI coverage and refreshed installed-bundle verification. Installed-app smoke now passes; local Workspaces panel UI execution remains blocked by Xcode UI-runner startup failures before assertions.
 
-Run date: 2026-07-03
+Run date: 2026-07-03; continuation 2026-07-04
 
 App build: v0.1.10 build 11
 
@@ -19,11 +19,11 @@ App build: v0.1.10 build 11
 | --- | --- | --- |
 | Basic Mode | PASS | Split build/test/privacy/release gates passed; Basic Mode remains permission-free. |
 | Workspaces | PASS | Workspaces Settings visual smoke and unit/source privacy boundary checks passed. |
-| Function Bar | PARTIAL | Unit/source coverage passed; hands-on live panel toggle from Workspaces was not performed. |
-| Info Strip | PARTIAL | Unit/source coverage passed; hands-on live panel toggle from Workspaces was not performed. |
+| Function Bar | PARTIAL / BLOCKED-INFRA | Unit/source coverage passed. Focused UI coverage for showing Function Bar from Workspaces settings was added and compiled, but local UI-test execution was blocked before assertions by an Xcode runner LaunchServices failure. Hands-on live panel toggle from Workspaces was not performed. |
+| Info Strip | PARTIAL / BLOCKED-INFRA | Unit/source coverage passed. Focused UI coverage for showing Info Strip from Workspaces settings was added and compiled, but local UI-test execution was blocked before assertions by an Xcode runner LaunchServices failure. Hands-on live panel toggle from Workspaces was not performed. |
 | Set Builder | PASS | Set Builder/Workspace preview unit and source gates passed with no schema or permission expansion. |
 | Find & Rescue | PASS | UI tests passed for Find & Rescue primary actions, Search unavailable state, floating Find Icon, and Escape dismissal. |
-| Recovery/Safe Mode | PARTIAL | Recovery UI workflow passed; Safe Mode source/unit coverage passed. Option-launch hands-on Safe Mode was not performed. |
+| Recovery/Safe Mode | PARTIAL | Recovery UI workflow passed; Safe Mode source/unit coverage passed. The 2026-07-04 installed smoke verified one-shot Safe Mode flag consumption and normal relaunch. Option-launch hands-on Safe Mode was not performed. |
 | Privacy prompts | PASS | Privacy UI test and installed-bundle privacy verification passed after the final installed app rerun. |
 | Diagnostics export | PASS | Diagnostics exporter tests and privacy verifier passed; manual file export was not separately performed. |
 | Display/notch coverage | PARTIAL | UI screenshots used the built-in display and modeled notch avoidance tests passed; hands-on notch edge placement was not performed. External display coverage is blocked. |
@@ -37,3 +37,15 @@ App build: v0.1.10 build 11
 - Latest split UI result bundle: `Test-MenuBarDeclutter-2026.07.03_04-32-46--0700.xcresult` with 17 UI tests passed.
 - Final installed focused screenshot QA contact sheet: `/tmp/MenuBarDeclutter-installed-focused-qa-after-polish-2026-07-03/contact-sheet.png`.
 - Release artifact refreshed at 2026-07-03 04:41 PDT: `build/Dist/MenuBarDeclutter-v0.1.10-alpha.zip`. The default dry-run packaging flow does not create `build/Dist/MenuBarDeclutter-v0.1.10.zip` unless explicitly requested.
+
+## 2026-07-04 Continuation Evidence
+
+- `xcodebuild -scheme MenuBarDeclutter -destination 'platform=macOS' build CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO`: PASS, `** BUILD SUCCEEDED **`.
+- `xcodebuild test -scheme MenuBarDeclutterLogicTests -destination 'platform=macOS,arch=arm64' -derivedDataPath build/DerivedData/logic-xcodebuild-test`: PASS, 36 tests in 7 suites passed.
+- `xcodebuild build-for-testing -scheme MenuBarDeclutter -destination 'platform=macOS,arch=arm64' -derivedDataPath build/DerivedData/ui-build-for-testing CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO`: PASS, `** TEST BUILD SUCCEEDED **`; the new Workspaces panel UI tests compile.
+- Focused Workspaces panel UI execution with `testWorkspacesCanShowFunctionBarFromSettings` and `testWorkspacesCanShowInfoStripFromSettings`: BLOCKED-INFRA. One run reached `MenuBarDeclutterUITests-Runner` but timed out enabling automation mode; a follow-up after terminating the installed app returned to `IDELaunchServicesLauncher - Failed to Launch (Failed to send resume to target process...)` before app assertions ran.
+- `scripts/build_release.sh --dry-run --install --verify-installed`: PASS, refreshed `/Applications/MenuBarDeclutter.app` and `build/Dist/MenuBarDeclutter-v0.1.10-alpha.zip`.
+- `APP_PATH=/Applications/MenuBarDeclutter.app scripts/verify_privacy_boundary.sh`: PASS, including installed-bundle privacy and entitlement checks.
+- `scripts/qa_installed_app_smoke.sh --app-path /Applications/MenuBarDeclutter.app`: PASS. Installed app launched, URL scheme commands reused the installed PID, installed privacy verification passed, no network sockets were observed, the one-shot Safe Mode flag was consumed, and normal relaunch succeeded.
+- `spctl --assess --type execute -vvv /Applications/MenuBarDeclutter.app`: BLOCKED-INFRA / expected dry-run instability. It still reports `Too many open files`; controlled launch logs showed syspolicyd UNIX error 24 / SecStaticCode failures while the app itself stayed running.
+- `system_profiler SPDisplaysDataType`: PARTIAL display coverage, built-in Liquid Retina XDR display only; no external display attached.

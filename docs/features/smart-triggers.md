@@ -40,7 +40,7 @@ Smart Triggers use local public system signals. They do not use network access, 
 - `MenuBar-ManagerTests/TriggerRuleEvaluatorTests.swift`
 - `MenuBar-ManagerTests/TriggerServiceTests.swift`
 - `MenuBar-ManagerTests/TriggerServicePersistenceTests.swift`
-- Manual QA: `docs/testing/manual-v0.1.3-system-qa.md`
+- Manual QA: `docs/testing/manual-qa.md`
 
 ## Known Limitations
 

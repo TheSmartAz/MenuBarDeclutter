@@ -30,30 +30,36 @@ struct NewItemInboxReviewView: View {
     }
 
     private var unavailableView: some View {
-        ContentUnavailableView {
-            Label("New Item Inbox Unavailable", systemImage: "tray")
-        } description: {
-            Text("Optional Pro Discovery and Accessibility permission are required.")
-        } actions: {
+        SettingsUnavailableGate(
+            .permissionMissing(),
+            title: "New Item Inbox Unavailable",
+            message: "Optional Pro Discovery and Accessibility permission are required.",
+            systemImage: "tray",
+            minHeight: 150,
+            nextSteps: ["Enable Optional Pro Discovery.", "Grant Accessibility permission."]
+        ) {
             Button("Open Privacy", systemImage: "hand.raised") {
                 onOpenPrivacy?()
             }
         }
-        .frame(maxWidth: .infinity, minHeight: 132)
+        .frame(maxWidth: .infinity, minHeight: 150)
         .accessibilityIdentifier("newItemInbox.unavailable")
     }
 
     private var emptyView: some View {
-        ContentUnavailableView {
-            Label("No New Items", systemImage: "tray")
-        } description: {
-            Text("Newly discovered menu bar items will appear here.")
-        } actions: {
+        SettingsUnavailableGate(
+            .emptyData,
+            title: "No New Items",
+            message: "Newly discovered menu bar items will appear here.",
+            systemImage: "tray",
+            minHeight: 150,
+            nextSteps: ["Refresh Menu Bar Items when discovery is ready.", "Use Arrange to review current placement."]
+        ) {
             Button("Open Arrange", systemImage: "arrow.up.left.and.arrow.down.right") {
                 onOpenArrange?()
             }
         }
-        .frame(maxWidth: .infinity, minHeight: 132)
+        .frame(maxWidth: .infinity, minHeight: 150)
         .accessibilityIdentifier("newItemInbox.empty")
     }
 
@@ -187,14 +193,9 @@ private struct NewItemInboxReviewRowView: View {
                 Button("Arrange", systemImage: "arrow.up.left.and.arrow.down.right") {
                     onOpenArrange?()
                 }
+                .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier("newItemInbox.row.openArrange")
                 .accessibilityLabel("Open Arrange")
-
-                Button("Find", systemImage: "magnifyingglass") {
-                    onOpenFindIcon?()
-                }
-                .accessibilityIdentifier("newItemInbox.row.openFind")
-                .accessibilityLabel("Open Find Icon")
 
                 Menu("Review", systemImage: "checklist") {
                     ForEach(row.actions) { action in
@@ -203,48 +204,60 @@ private struct NewItemInboxReviewRowView: View {
                 }
                 .accessibilityIdentifier("newItemInbox.row.reviewMenu")
 
-                Menu("Workspace", systemImage: "rectangle.3.group") {
-                    Button("Assign to Current Workspace", systemImage: "rectangle.3.group") {
-                        onAssignToCurrentWorkspace(row.id)
+                Menu("More", systemImage: "ellipsis.circle") {
+                    Button("Find", systemImage: "magnifyingglass") {
+                        onOpenFindIcon?()
                     }
-
-                    if !workspaceOptions.isEmpty {
-                        Divider()
-                        ForEach(workspaceOptions) { workspace in
-                            Button(workspace.title, systemImage: "rectangle.3.group") {
-                                onAssignToWorkspace(row.id, workspace.id)
-                            }
-                        }
-                    }
-                }
-                .accessibilityIdentifier("newItemInbox.row.workspaceMenu")
-
-                Menu("Group", systemImage: "person.2") {
-                    if groupOptions.isEmpty {
-                        Button("Open Groups", systemImage: "person.2") {
-                            onOpenGroups?()
-                        }
-                    } else {
-                        ForEach(groupOptions) { group in
-                            Button(group.title, systemImage: "person.2") {
-                                onAssignToGroup(row.id, group.id)
-                            }
-                        }
-                    }
+                    .accessibilityIdentifier("newItemInbox.row.openFind")
+                    .accessibilityLabel("Open Find Icon")
 
                     Divider()
 
-                    Button("Create Group with Item", systemImage: "plus") {
-                        onCreateGroup(row.id)
-                    }
-                }
-                .accessibilityIdentifier("newItemInbox.row.groupMenu")
+                    Menu("Workspace", systemImage: "rectangle.3.group") {
+                        Button("Assign to Current Workspace", systemImage: "rectangle.3.group") {
+                            onAssignToCurrentWorkspace(row.id)
+                        }
 
-                Button("Dismiss", systemImage: "checkmark.circle") {
-                    onDismiss(row.id)
+                        if !workspaceOptions.isEmpty {
+                            Divider()
+                            ForEach(workspaceOptions) { workspace in
+                                Button(workspace.title, systemImage: "rectangle.3.group") {
+                                    onAssignToWorkspace(row.id, workspace.id)
+                                }
+                            }
+                        }
+                    }
+                    .accessibilityIdentifier("newItemInbox.row.workspaceMenu")
+
+                    Menu("Group", systemImage: "person.2") {
+                        if groupOptions.isEmpty {
+                            Button("Open Groups", systemImage: "person.2") {
+                                onOpenGroups?()
+                            }
+                        } else {
+                            ForEach(groupOptions) { group in
+                                Button(group.title, systemImage: "person.2") {
+                                    onAssignToGroup(row.id, group.id)
+                                }
+                            }
+                        }
+
+                        Divider()
+
+                        Button("Create Group with Item", systemImage: "plus") {
+                            onCreateGroup(row.id)
+                        }
+                    }
+                    .accessibilityIdentifier("newItemInbox.row.groupMenu")
+
+                    Divider()
+
+                    Button("Dismiss", systemImage: "checkmark.circle") {
+                        onDismiss(row.id)
+                    }
+                    .accessibilityIdentifier("newItemInbox.row.dismiss")
+                    .accessibilityLabel("Dismiss New Item")
                 }
-                .accessibilityIdentifier("newItemInbox.row.dismiss")
-                .accessibilityLabel("Dismiss New Item")
             }
             .buttonStyle(.bordered)
             .controlSize(.small)

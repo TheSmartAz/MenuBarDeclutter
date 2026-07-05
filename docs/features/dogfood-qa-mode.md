@@ -44,7 +44,8 @@ Dogfood Mode is local-only. It stores run/checklist/notes/export bundles under A
 - `MenuBar-ManagerTests/DogfoodStoreTests.swift`
 - `MenuBar-ManagerTests/QAScriptsTests.swift`
 - `docs/testing/dogfood/`
-- `docs/progress/PROGRESS-phase-9.2.md`
+- `docs/testing/dogfood/`
+- Historical dogfood progress is archived under `docs/archives/progress/`.
 
 ## Known Limitations
 

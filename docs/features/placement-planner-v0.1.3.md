@@ -25,4 +25,4 @@ Placement Planner does not claim stable automated moving, bulk movement, or broa
 - `Phase14ProductDietTests`
 - `IconMovePlanningTests`
 - `AppSupportPathsTests`
-- `docs/testing/manual-v0.1.3-system-qa.md`
+- `docs/testing/manual-qa.md`

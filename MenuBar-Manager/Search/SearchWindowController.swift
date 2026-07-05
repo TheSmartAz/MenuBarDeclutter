@@ -60,7 +60,8 @@ final class SearchWindowController: NSWindowController, NSWindowDelegate {
             onOpenPrivacySettings: onOpenPrivacySettings,
             onDismiss: { [weak panel] in
                 panel?.close()
-            }
+            },
+            initialQuery: FloatingPanelSearchUITestingArguments.query(for: .findIcon)
         )
 
         panel.contentViewController = NSHostingController(rootView: rootView)

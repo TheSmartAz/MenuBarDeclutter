@@ -36,7 +36,7 @@ Profiles are stored locally under `Application Support/MenuBarDeclutter/profiles
 
 - `MenuBar-ManagerTests/ProfileStoreTests.swift`
 - `MenuBar-ManagerTests/ProfileApplicationDryRunTests.swift`
-- Manual QA: `docs/testing/manual-v0.1.3-system-qa.md`
+- Manual QA: `docs/testing/manual-qa.md`
 
 ## Known Limitations
 

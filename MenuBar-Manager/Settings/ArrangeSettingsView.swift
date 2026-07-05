@@ -61,25 +61,30 @@ struct ArrangeSettingsView: View {
                 style: readiness.clearGlassStyle
             )
 
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 10) {
-                    Button("Expand", systemImage: "eye") {
-                        onExpand?()
-                    }
-                    .accessibilityIdentifier("arrange.action.expand")
+            ClearGlassActionStrip(
+                "Placement Test Actions",
+                subtitle: "Run the two common visibility checks first; keep repair and guidance commands in More.",
+                systemImage: readiness.systemImage,
+                statusText: readiness.displayName,
+                statusStyle: readiness.clearGlassStyle
+            ) {
+                Button("Expand", systemImage: "eye") {
+                    onExpand?()
+                }
+                .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("arrange.action.expand")
 
-                    Button("Collapse", systemImage: "eye.slash") {
-                        onCollapse?()
-                    }
-                    .accessibilityIdentifier("arrange.action.collapse")
+                Button("Collapse", systemImage: "eye.slash") {
+                    onCollapse?()
+                }
+                .accessibilityIdentifier("arrange.action.collapse")
 
+                Menu("More", systemImage: "ellipsis.circle") {
                     Button("Reveal All", systemImage: "rectangle.expand.vertical") {
                         onRevealAll?()
                     }
                     .accessibilityIdentifier("arrange.action.revealAll")
-                }
 
-                HStack(spacing: 10) {
                     Button("Reset Layout", systemImage: "arrow.counterclockwise") {
                         onResetLayout?()
                     }
@@ -91,9 +96,6 @@ struct ArrangeSettingsView: View {
                     .accessibilityIdentifier("arrange.action.showDragHint")
                 }
             }
-            .buttonStyle(.bordered)
-            .controlSize(.regular)
-            .frame(maxWidth: .infinity, alignment: .leading)
 
             if readiness.status != .ready {
                 ClearGlassInlineMessage(
@@ -118,12 +120,15 @@ struct ArrangeSettingsView: View {
             )
 
             if plan.items.isEmpty {
-                ContentUnavailableView(
-                    plannerEmptyTitle(plan.state),
+                SettingsUnavailableGate(
+                    .emptyData,
+                    title: plannerEmptyTitle(plan.state),
+                    message: plannerStateText(plan.state),
                     systemImage: "sparkles",
-                    description: Text(plannerStateText(plan.state))
+                    minHeight: 160,
+                    nextSteps: ["Enable Optional Pro Discovery for richer suggestions.", "Refresh Menu Bar Items after permission changes."]
                 )
-                .frame(maxWidth: .infinity, minHeight: 150)
+                .frame(maxWidth: .infinity, minHeight: 160)
             } else {
                 VStack(spacing: 0) {
                     let displayedItems = Array(plan.items.prefix(10))
@@ -270,6 +275,23 @@ struct ArrangeSettingsView: View {
 }
 
 private extension BasicModeReadiness {
+    var displayName: String {
+        switch status {
+        case .ready:
+            "Ready"
+        case .runtimeUnavailable:
+            "Waiting"
+        case .primarySeparatorMissing:
+            "Needs Reset"
+        case .primarySeparatorTooShortForCollapsedState:
+            "Check Layout"
+        case .alwaysHiddenSeparatorMissing:
+            "Always Hidden"
+        case .alwaysHiddenSeparatorTooShortForCollapsedState:
+            "Check Hidden Zone"
+        }
+    }
+
     var clearGlassStyle: ClearGlassStatusStyle {
         switch tone {
         case .ready:

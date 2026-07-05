@@ -9,7 +9,7 @@ Date: 2026-07-03
 - Updated release identity to `MARKETING_VERSION = 0.1.10` and `CURRENT_PROJECT_VERSION = 11`.
 - Updated current-facing release tooling/help copy to the v0.1.10 release line.
 - Updated current-facing README, roadmap, support, feature, privacy, design, release, and manual QA docs for v0.1.10.
-- Created `docs/plans/PHASE-23.md`.
+- Created the historical Phase 23 plan, now archived under `docs/archives/plans/PHASE-23.md`.
 - Created v0.1.10 release hardening docs under `docs/release/`, `docs/privacy/`, `docs/design/`, `docs/features/`, and `docs/testing/`.
 - Added stable UI test anchors for Privacy Pro Discovery and Second Bar unavailable states.
 - Hardened release-gate UI tests around Settings visual smoke, Arrange, floating panels, and Privacy Pro Discovery.
@@ -32,12 +32,12 @@ Date: 2026-07-03
 | `xcodebuild build-for-testing -scheme MenuBarDeclutter -destination 'platform=macOS'` | PASS | Latest split-lane build ended with `** TEST BUILD SUCCEEDED **`. |
 | `xcodebuild test-without-building -scheme MenuBarDeclutter -destination 'platform=macOS' -only-testing:MenuBarDeclutterTests` | PASS | Latest unit run: 564 Swift/unit tests in 77 suites passed. Result bundle: `Test-MenuBarDeclutter-2026.07.03_04-44-54--0700.xcresult`. |
 | `xcodebuild test-without-building -scheme MenuBarDeclutter -destination 'platform=macOS' -only-testing:MenuBarDeclutterUITests` | PASS | Latest UI split run: 17 UI tests passed with 0 failures. Result bundle: `Test-MenuBarDeclutter-2026.07.03_04-32-46--0700.xcresult`. |
-| `APP_PATH=/Applications/MenuBarDeclutter.app scripts/verify_privacy_boundary.sh` | PASS | Source and installed bundle checks passed after the final polish: no ScreenCaptureKit import/link, no Screen Recording/Apple Events/Input Monitoring usage strings, no network entitlements, and no direct network/analytics SDK usage. |
+| `APP_PATH=/Applications/MenuBarDeclutter.app scripts/verify_privacy_boundary.sh` | PASS | Source and installed bundle checks passed after the final polish: ScreenCaptureKit and the Screen Recording usage string are scoped to Accurate Icons, Apple Events/Input Monitoring usage strings are absent, no network entitlements are present, and no direct network/analytics SDK usage was found. |
 | `scripts/build_release.sh --dry-run` | PASS | Archive, export, package, and artifact verification passed. Artifact: `build/Dist/MenuBarDeclutter-v0.1.10-alpha.zip`; the default dry-run packaging flow does not create a non-alpha zip copy. Expected non-notarized dry-run `spctl` and stapler warnings were non-blocking. |
-| `scripts/build_release.sh --dry-run --install --verify-installed` | PASS | Final rerun after accessibility/menu polish installed `/Applications/MenuBarDeclutter.app` at 2026-07-03 04:41 PDT; installed-app verification passed with version `0.1.10`, build `11`, privacy strings absent, no network entitlements, hardened runtime metadata present, and no ScreenCaptureKit link. |
+| `scripts/build_release.sh --dry-run --install --verify-installed` | PASS | Final rerun after accessibility/menu polish installed `/Applications/MenuBarDeclutter.app` at 2026-07-03 04:41 PDT; installed-app verification passed with version `0.1.10`, build `11`, scoped Accurate Icons Screen Recording usage, no Apple Events/Input Monitoring strings, no network entitlements, and hardened runtime metadata present. |
 | `OUTPUT_DIR=/tmp/MenuBarDeclutter-installed-focused-qa-after-polish-2026-07-03 CAPTURE_ATTEMPTS=2 scripts/qa_capture_ui_screenshots.sh --app-path /Applications/MenuBarDeclutter.app --focused-only` | PASS | Captured the focused installed surfaces and floating panels; contact sheet: `/tmp/MenuBarDeclutter-installed-focused-qa-after-polish-2026-07-03/contact-sheet.png`. |
 | Targeted v0.2 overclaim search | PASS | Hits were only v0.2 guardrails or historical progress notes, not current shipped claims or artifact names. |
-| Targeted forbidden capability search | PASS | Hits were verifier scripts only; no app code or project file additions for ScreenCaptureKit, Screen Recording usage strings, Apple Events usage strings, Input Monitoring usage strings, direct network clients, analytics SDKs, telemetry, cloud sync, or private API additions. |
+| Targeted forbidden capability search | PASS | ScreenCaptureKit hits were scoped to the Accurate Icons module and verifier checks. No unscoped app code or project additions for Apple Events usage strings, Input Monitoring usage strings, direct network clients, analytics SDKs, telemetry, cloud sync, or private API additions were found. |
 | Current-facing v0.1.9 stale search | PASS | Hits are deliberate v0.1.9 baseline context in v0.1.10 docs, not stale build/version settings. |
 | `git diff --check` | PASS | No whitespace errors. |
 
@@ -59,6 +59,20 @@ Environment:
 
 ## Open Blockers
 
-- No automated, privacy, packaging, or installed-app blocker remains.
+- As of the 2026-07-03 release gate, no automated, privacy, packaging, or installed-app verification blocker remained.
 - Physical external display coverage is blocked in this local session because no external display was available.
 - Hands-on notch and Option-launch Safe Mode checks were not performed; they are recorded as partial because automated/unit/UI coverage passed but physical confirmation was not run.
+- The 2026-07-04 follow-up added new focused Workspaces panel UI tests; they compile, but their local execution remains blocked by Xcode runner LaunchServices failure before assertions.
+
+## 2026-07-04 Continuation
+
+- Added focused UI coverage for opening Function Bar and Info Strip from Workspaces settings.
+- Added UI-test-only state seeding with `--ui-testing-enable-workspace-panels` so the new Workspaces panel tests do not mutate normal user defaults.
+- Added stable accessibility identifiers to Workspaces panel launch controls.
+- Verified `xcodebuild -scheme MenuBarDeclutter -destination 'platform=macOS' build CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO` passed.
+- Verified `xcodebuild test -scheme MenuBarDeclutterLogicTests -destination 'platform=macOS,arch=arm64' -derivedDataPath build/DerivedData/logic-xcodebuild-test` passed with 36 tests in 7 suites.
+- Verified `xcodebuild build-for-testing -scheme MenuBarDeclutter -destination 'platform=macOS,arch=arm64' -derivedDataPath build/DerivedData/ui-build-for-testing CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO` passed, so the new UI tests compile.
+- Verified `APP_PATH=/Applications/MenuBarDeclutter.app scripts/verify_privacy_boundary.sh` passed against the refreshed installed bundle.
+- Focused Workspaces panel UI execution is still `BLOCKED-INFRA` locally. One run timed out enabling automation mode; a follow-up after terminating the installed app failed with `IDELaunchServicesLauncher - Failed to Launch` before assertions.
+- Installed Basic Mode smoke now passes locally: installed launch, URL reuse, installed privacy verification, no-network socket probe, one-shot Safe Mode flag consumption, and normal relaunch succeeded.
+- Direct `spctl --assess` against the non-notarized dry-run installed app still reports `Too many open files`; controlled launch logs show syspolicyd UNIX error 24 / SecStaticCode failures while the app itself stays running.

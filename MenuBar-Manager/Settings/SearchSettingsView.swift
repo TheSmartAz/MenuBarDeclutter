@@ -24,6 +24,22 @@ struct SearchSettingsView: View {
         return anchors
     }
 
+    private var accessibilityPermissionStatus: AccessibilityPermissionStatus {
+        permissionService?.status ?? .notRequested
+    }
+
+    private var proModeRequirementStatus: String {
+        settingsStore.proModeEnabled ? "On" : "Off"
+    }
+
+    private var discoveryRequirementStatus: String {
+        settingsStore.accessibilityDiscoveryEnabled ? "On" : "Off"
+    }
+
+    private var permissionRequirementStatus: String {
+        accessibilityPermissionStatus == .granted ? "Granted" : accessibilityPermissionStatus.displayName
+    }
+
     var body: some View {
         ClearGlassSettingsPage(
             "Search",
@@ -34,7 +50,7 @@ struct SearchSettingsView: View {
             ClearGlassSection("Find Icon", subtitle: "Status menu entry point and selection behavior.") {
                 FeatureGateNotice(
                     .preview,
-                    text: "Preview in v0.1.3. The panel can open from Basic Mode; results show Unavailable until Optional Pro discovery and Accessibility permission are available."
+                    text: "Preview in v0.1.3. The panel can open from Basic Mode; results stay gated until Optional Pro discovery and Accessibility permission are ready."
                 )
 
                 ClearGlassDivider()
@@ -111,11 +127,11 @@ struct SearchSettingsView: View {
                 }
             }
 
-            ClearGlassSection("Optional Pro Requirements", subtitle: "Find Icon results show Unavailable until these private-access requirements are satisfied.") {
+            ClearGlassSection("Optional Pro Requirements", subtitle: "Find Icon results stay gated until these private-access requirements are satisfied.") {
                 SearchRequirementRow(
                     title: "Optional Pro",
                     detail: "Private menu bar item discovery is available only after opt-in.",
-                    status: settingsStore.proModeEnabled ? "Optional Pro" : "Unavailable",
+                    status: proModeRequirementStatus,
                     isSatisfied: settingsStore.proModeEnabled,
                     systemImage: "star"
                 )
@@ -125,7 +141,7 @@ struct SearchSettingsView: View {
                 SearchRequirementRow(
                     title: "Accessibility Discovery",
                     detail: "Allow the app to discover menu bar items locally.",
-                    status: settingsStore.accessibilityDiscoveryEnabled ? "Optional Pro" : "Unavailable",
+                    status: discoveryRequirementStatus,
                     isSatisfied: settingsStore.accessibilityDiscoveryEnabled,
                     systemImage: "figure.circle"
                 )
@@ -135,8 +151,8 @@ struct SearchSettingsView: View {
                 SearchRequirementRow(
                     title: "Accessibility Permission",
                     detail: "Grant permission before the app can read menu bar item labels and frames.",
-                    status: permissionService?.status == .granted ? "Optional Pro" : "Unavailable",
-                    isSatisfied: permissionService?.status == .granted,
+                    status: permissionRequirementStatus,
+                    isSatisfied: accessibilityPermissionStatus == .granted,
                     systemImage: "hand.raised",
                     actionTitle: "Open Privacy Settings",
                     action: onOpenPrivacySettings

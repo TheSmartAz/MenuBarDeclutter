@@ -113,7 +113,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         )
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 820, height: 660),
+            contentRect: NSRect(x: 0, y: 0, width: 820, height: 720),
             styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -127,7 +127,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         window.backgroundColor = .windowBackgroundColor
         window.isOpaque = true
         window.isReleasedWhenClosed = false
-        window.minSize = NSSize(width: 820, height: 620)
+        window.minSize = NSSize(width: 820, height: 700)
 
         super.init(window: window)
 

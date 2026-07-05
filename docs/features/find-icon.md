@@ -25,7 +25,7 @@ Find Icon is a private-access surface for locating menu bar items by app name, t
 
 ## Privacy And Permissions
 
-Find Icon requires the Pro Accessibility discovery index. It does not click, drag, activate, record the screen, sample pixels, use ScreenCaptureKit, use the network, or export live query/selected item identity.
+Find Icon requires the Pro Accessibility discovery index. It does not click, drag, activate, request Screen Recording on its own, use the network, or export live query/selected item identity. When Accurate Icons is enabled from Privacy settings, shared local rendered thumbnails can replace app-icon fallbacks.
 
 ## Implementation
 
@@ -42,7 +42,7 @@ Find Icon requires the Pro Accessibility discovery index. It does not click, dra
 - `MenuBar-ManagerTests/SearchServiceTests.swift`
 - `MenuBar-ManagerTests/HotkeyModelTests.swift`
 - UI tests for unavailable states
-- Manual QA: `docs/testing/manual-v0.1.3-system-qa.md`
+- Manual QA: `docs/testing/manual-qa.md`
 
 ## Known Limitations
 

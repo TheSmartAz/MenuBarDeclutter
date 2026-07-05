@@ -86,13 +86,15 @@ struct DiagnosticsSettingsView: View {
                     ClearGlassPageAnchorBar(anchors: pageSectionAnchors) { anchor in
                         scroll(to: anchor, using: proxy)
                     }
-                    .padding(.horizontal, 22)
+                    .padding(.horizontal, ClearGlassSettingsPageStyle.tool.horizontalPadding)
                     .padding(.vertical, 8)
+                    .frame(maxWidth: ClearGlassSettingsPageStyle.tool.maxContentWidth, alignment: .leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
                     Divider()
 
                     ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 14) {
+                        LazyVStack(alignment: .leading, spacing: ClearGlassSettingsPageStyle.tool.contentSpacing) {
                             Color.clear
                                 .frame(height: 0)
                                 .id(ClearGlassPageAnchor.top.targetID)
@@ -158,8 +160,11 @@ struct DiagnosticsSettingsView: View {
                             )
                             .id("Events")
                         }
-                        .padding(.horizontal, 22)
-                        .padding(.vertical, 16)
+                        .padding(.horizontal, ClearGlassSettingsPageStyle.tool.horizontalPadding)
+                        .padding(.top, ClearGlassSettingsPageStyle.tool.topPadding)
+                        .padding(.bottom, ClearGlassSettingsPageStyle.tool.bottomPadding)
+                        .frame(maxWidth: ClearGlassSettingsPageStyle.tool.maxContentWidth, alignment: .topLeading)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
                     }
                 }
             }
@@ -459,87 +464,45 @@ private struct DiagnosticsSummaryStrip: View {
     let liveStatus: LiveDiagnosticsStatus
     let settingsStore: SettingsStore
 
-    private let columns = [
-        GridItem(.adaptive(minimum: 180, maximum: 260), spacing: 10, alignment: .top)
-    ]
-
     var body: some View {
-        LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
-            summaryTiles
-        }
-    }
-
-    @ViewBuilder
-    private var summaryTiles: some View {
-        DiagnosticsMetricTile(
-            title: "Visibility",
-            value: liveStatus.visibilityState.rawValue,
-            systemImage: "eye"
-        )
-        DiagnosticsMetricTile(
-            title: "Accessibility",
-            value: liveStatus.accessibilityPermissionStatus.displayName,
-            systemImage: "accessibility",
-            valueStyle: liveStatus.accessibilityPermissionStatus == .granted ? .green : .orange
-        )
-        DiagnosticsMetricTile(
-            title: "Scanned",
-            value: liveStatus.scannedMenuBarItems.count.formatted(.number),
-            systemImage: "menubar.rectangle"
-        )
-        DiagnosticsMetricTile(
-            title: "Search Index",
-            value: liveStatus.searchIndexItemCount.formatted(.number),
-            systemImage: "magnifyingglass"
-        )
-        DiagnosticsMetricTile(
-            title: "Second Bar",
-            value: liveStatus.secondBarVisible ? "Visible" : "Hidden",
-            systemImage: "rectangle.bottomthird.inset.filled"
-        )
-        DiagnosticsMetricTile(
-            title: "Automation",
-            value: (settingsStore.automationPaused || liveStatus.automationPaused) ? "Paused" : "Ready",
-            systemImage: "pause.circle",
-            valueStyle: (settingsStore.automationPaused || liveStatus.automationPaused) ? .orange : .secondary
-        )
-    }
-}
-
-private struct DiagnosticsMetricTile: View {
-    let title: String
-    let value: String
-    let systemImage: String
-    var valueStyle: Color = .primary
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: systemImage)
-                .font(.title3)
-                .foregroundStyle(.secondary)
-                .frame(width: 24)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text(value)
-                    .font(.callout)
-                    .foregroundStyle(valueStyle)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-            }
-
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 9)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .controlBackgroundColor).opacity(0.55), in: .rect(cornerRadius: 7))
-        .overlay {
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.3))
-        }
+        ClearGlassOverviewStrip([
+            ClearGlassOverviewMetric(
+                title: "Visibility",
+                value: liveStatus.visibilityState.rawValue,
+                systemImage: "eye",
+                style: .secondary
+            ),
+            ClearGlassOverviewMetric(
+                title: "Accessibility",
+                value: liveStatus.accessibilityPermissionStatus.displayName,
+                systemImage: "accessibility",
+                style: liveStatus.accessibilityPermissionStatus == .granted ? .success : .warning
+            ),
+            ClearGlassOverviewMetric(
+                title: "Scanned",
+                value: liveStatus.scannedMenuBarItems.count.formatted(.number),
+                systemImage: "menubar.rectangle",
+                style: liveStatus.scannedMenuBarItems.isEmpty ? .secondary : .info
+            ),
+            ClearGlassOverviewMetric(
+                title: "Search Index",
+                value: liveStatus.searchIndexItemCount.formatted(.number),
+                systemImage: "magnifyingglass",
+                style: liveStatus.searchIndexItemCount == 0 ? .secondary : .info
+            ),
+            ClearGlassOverviewMetric(
+                title: "Second Bar",
+                value: liveStatus.secondBarVisible ? "Visible" : "Hidden",
+                systemImage: "rectangle.bottomthird.inset.filled",
+                style: liveStatus.secondBarVisible ? .info : .secondary
+            ),
+            ClearGlassOverviewMetric(
+                title: "Automation",
+                value: (settingsStore.automationPaused || liveStatus.automationPaused) ? "Paused" : "Ready",
+                systemImage: "pause.circle",
+                style: (settingsStore.automationPaused || liveStatus.automationPaused) ? .warning : .success
+            )
+        ], maximumColumnCount: 3)
     }
 }
 
@@ -601,9 +564,11 @@ private struct DiagnosticsToolbar: View {
 
             toolbarControls
         }
-        .padding(.horizontal, 22)
+        .padding(.horizontal, 32)
         .padding(.top, 18)
         .padding(.bottom, 12)
+        .frame(maxWidth: ClearGlassSettingsPageStyle.tool.maxContentWidth, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(nsColor: .windowBackgroundColor))
     }
 
@@ -624,12 +589,15 @@ private struct DiagnosticsToolbar: View {
 
             Button("Copy Selected", systemImage: "doc.on.doc", action: onCopySelected)
                 .disabled(!canCopySelected)
+                .help(canCopySelected ? "Copy selected diagnostic events." : "Select one or more events before copying.")
 
             Button("Export Filtered…", systemImage: "square.and.arrow.up", action: onExport)
                 .disabled(filteredEventCount == 0)
+                .help(filteredEventCount == 0 ? "No diagnostic events match the current filters." : "Export the currently filtered diagnostic events.")
 
             Button("Clear", systemImage: "trash", action: clear)
                 .disabled(eventCount == 0)
+                .help(eventCount == 0 ? "There are no diagnostic events to clear." : "Clear diagnostic events from the current log view.")
         }
         .controlSize(.small)
     }
@@ -651,12 +619,16 @@ private struct DiagnosticsToolbar: View {
                 HStack(spacing: 8) {
                     exportFormatPicker
                     Spacer()
-                    actionButtons
+                    ClearGlassAccessoryCluster {
+                        actionButtons
+                    }
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
                     exportFormatPicker
-                    actionButtons
+                    ClearGlassAccessoryCluster(alignment: .leading, width: .flexible) {
+                        actionButtons
+                    }
                 }
             }
         }
@@ -664,13 +636,16 @@ private struct DiagnosticsToolbar: View {
     }
 
     private var actionButtons: some View {
-        HStack(spacing: 8) {
+        Group {
             Button("Copy Selected", systemImage: "doc.on.doc", action: onCopySelected)
                 .disabled(!canCopySelected)
+                .help(canCopySelected ? "Copy selected diagnostic events." : "Select one or more events before copying.")
             Button("Export Filtered…", systemImage: "square.and.arrow.up", action: onExport)
                 .disabled(filteredEventCount == 0)
+                .help(filteredEventCount == 0 ? "No diagnostic events match the current filters." : "Export the currently filtered diagnostic events.")
             Button("Clear", systemImage: "trash", action: clear)
                 .disabled(eventCount == 0)
+                .help(eventCount == 0 ? "There are no diagnostic events to clear." : "Clear diagnostic events from the current log view.")
         }
     }
 
@@ -699,6 +674,7 @@ private struct DiagnosticsToolbar: View {
         .labelsHidden()
         .pickerStyle(.segmented)
         .frame(minWidth: 120, idealWidth: 180, maxWidth: 200)
+        .help("Filter diagnostic events by severity.")
     }
 
     private var categoryPicker: some View {
@@ -712,6 +688,7 @@ private struct DiagnosticsToolbar: View {
         }
         .labelsHidden()
         .frame(minWidth: 120, idealWidth: 170, maxWidth: 220)
+        .help("Filter diagnostic events by category.")
     }
 
     private var exportFormatPicker: some View {
@@ -724,6 +701,7 @@ private struct DiagnosticsToolbar: View {
         .labelsHidden()
         .pickerStyle(.segmented)
         .frame(minWidth: 70, idealWidth: 90, maxWidth: 100)
+        .help("Choose the export format for diagnostic events.")
     }
 }
 
@@ -747,19 +725,25 @@ private struct DiagnosticEventList: View {
     var body: some View {
         DiagnosticsPanel("Diagnostic Events", systemImage: "list.bullet.rectangle") {
             if diagnosticsLogger.events.isEmpty {
-                ContentUnavailableView(
-                    "No Events",
+                SettingsUnavailableGate(
+                    .emptyData,
+                    title: "No Events",
+                    message: "Diagnostics events will appear here as the app runs.",
                     systemImage: "list.bullet.rectangle",
-                    description: Text("Diagnostics events will appear here as the app runs.")
+                    minHeight: 160,
+                    nextSteps: ["Use the app normally.", "Run Health to produce diagnostic context."]
                 )
-                    .frame(maxWidth: .infinity, minHeight: 160)
+                .frame(maxWidth: .infinity, minHeight: 160)
             } else if filteredEvents.isEmpty {
-                ContentUnavailableView(
-                    "No Matching Events",
+                SettingsUnavailableGate(
+                    .noMatches,
+                    title: "No Matching Events",
+                    message: "Adjust the severity or category filters to show more events.",
                     systemImage: "line.3.horizontal.decrease.circle",
-                    description: Text("Adjust the severity or category filters to show more events.")
+                    minHeight: 160,
+                    nextSteps: ["Choose All severities.", "Clear the category filter."]
                 )
-                    .frame(maxWidth: .infinity, minHeight: 160)
+                .frame(maxWidth: .infinity, minHeight: 160)
             } else {
                 VStack(spacing: 0) {
                     DiagnosticEventTableHeader()
@@ -870,34 +854,27 @@ private struct HealthStatusSection: View {
                         .foregroundStyle(.secondary)
                 }
 
-                VStack(alignment: .leading, spacing: 6) {
-                    ViewThatFits(in: .horizontal) {
-                        HStack(spacing: 8) {
-                            fixButton
-                            resetButton
-                            disableProButton
-                        }
+                ClearGlassActionStrip(
+                    "Health Recovery Actions",
+                    subtitle: "Apply focused repairs first; keep mode changes, exports, and safe launch tools in More.",
+                    systemImage: "wrench.and.screwdriver",
+                    statusText: liveStatus.healthReport?.status.displayName ?? "Unknown",
+                    statusStyle: liveStatus.healthReport == nil ? .secondary : (liveStatus.healthReport?.isHealthy == false ? .warning : .success)
+                ) {
+                    fixButton
+                        .buttonStyle(.borderedProminent)
 
-                        VStack(alignment: .leading, spacing: 6) {
-                            fixButton
-                            resetButton
-                            disableProButton
-                        }
-                    }
+                    resetButton
 
-                    ViewThatFits(in: .horizontal) {
-                        HStack(spacing: 8) {
-                            exportButton
-                            safeModeButton
-                        }
+                    Menu("More", systemImage: "ellipsis.circle") {
+                        disableProButton
 
-                        VStack(alignment: .leading, spacing: 6) {
-                            exportButton
-                            safeModeButton
-                        }
+                        Divider()
+
+                        exportButton
+                        safeModeButton
                     }
                 }
-                .buttonStyle(.bordered)
             }
         }
     }
@@ -969,31 +946,36 @@ private struct HealthIssueRow: View {
     let issue: HealthIssue
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack {
-                Text(issue.severity.displayName.uppercased())
-                    .font(.caption)
-                    .bold()
-                    .foregroundStyle(issue.severity == .critical ? .red : .orange)
+        ClearGlassRowAnatomy(
+            systemImage: issueIcon,
+            iconTint: issueStyle.tint,
+            iconStyle: .tile,
+            title: issue.title,
+            subtitle: issueDetailText,
+            titleFont: .body.weight(.semibold),
+            subtitleFont: .caption,
+            subtitleLineLimit: 3,
+            statusText: issue.severity.displayName,
+            statusStyle: issueStyle
+        )
+        .padding(.vertical, 6)
+        .clearGlassInteractionFeedback(.row, help: "\(issue.title). \(issueDetailText)")
+    }
 
-                Text(issue.title)
-                    .bold()
+    private var issueStyle: ClearGlassStatusStyle {
+        issue.severity == .critical ? .danger : .warning
+    }
 
-                Spacer()
-            }
+    private var issueIcon: String {
+        issue.severity == .critical ? "xmark.octagon" : "exclamationmark.triangle"
+    }
 
-            Text(issue.detail)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .textSelection(.enabled)
-
-            if let action = issue.recoveryAction {
-                Text(action.displayName)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+    private var issueDetailText: String {
+        if let action = issue.recoveryAction {
+            return "\(issue.detail) Recovery: \(action.displayName)."
         }
-        .padding(.vertical, 2)
+
+        return issue.detail
     }
 }
 
@@ -1011,12 +993,15 @@ private struct ScreenStatusSection: View {
             },
             content: {
                 if screens.isEmpty {
-                    ContentUnavailableView(
-                        "No Screens Reported",
+                    SettingsUnavailableGate(
+                        .emptyData,
+                        title: "No Screens Reported",
+                        message: "Display snapshots will appear after the screen list refreshes.",
                         systemImage: "display",
-                        description: Text("Display snapshots will appear after the screen list refreshes.")
+                        minHeight: 130,
+                        nextSteps: ["Click Refresh above.", "Check the exported diagnostics if the list stays empty."]
                     )
-                    .frame(maxWidth: .infinity, minHeight: 120)
+                    .frame(maxWidth: .infinity, minHeight: 130)
                 } else {
                     VStack(spacing: 0) {
                         ScreenTableHeader()
@@ -1404,12 +1389,15 @@ private struct LiveMenuBarSnapshotSection: View {
             }
 
             if liveStatus.scannedMenuBarItems.isEmpty {
-                ContentUnavailableView(
-                    "No Accessibility Snapshots",
+                SettingsUnavailableGate(
+                    .emptyData,
+                    title: "No Accessibility Snapshots",
+                    message: "Menu bar item snapshots appear after an Optional Pro Accessibility scan.",
                     systemImage: "menubar.rectangle",
-                    description: Text("Menu bar item snapshots appear after an Optional Pro Accessibility scan.")
+                    minHeight: 130,
+                    nextSteps: ["Enable Optional Pro Discovery.", "Refresh Menu Bar Items after permission is granted."]
                 )
-                .frame(maxWidth: .infinity, minHeight: 120)
+                .frame(maxWidth: .infinity, minHeight: 130)
             } else {
                 MenuBarSnapshotTable(snapshots: liveStatus.scannedMenuBarItems)
                     .frame(minHeight: 180, maxHeight: 240)

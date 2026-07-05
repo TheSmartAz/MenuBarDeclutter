@@ -1,12 +1,14 @@
 # Automation Roadmap
 
-Phase 8 implements lightweight local automation with a custom URL scheme rather than a full AppleScript dictionary.
+Last reviewed: 2026-07-05
 
-## Implemented in Phase 8
+MenuBarDeclutter automation is local and command-gated. It does not add Apple Events control of other apps, Input Monitoring, network access, telemetry, cloud sync, or background icon moving.
 
-The app registers `menubardeclutter://` in `Info.plist` and installs a `kAEGetURL` handler at launch.
+## Implemented
 
-Supported commands:
+The app registers `menubardeclutter://` in `Info.plist` and installs a local URL handler at launch.
+
+Supported URL commands:
 
 - `menubardeclutter://expand`
 - `menubardeclutter://collapse`
@@ -22,23 +24,26 @@ open 'menubardeclutter://collapse'
 open 'menubardeclutter://profile/Work'
 ```
 
+App Intents and dynamic hotkeys are also wired through the shared command router where implemented.
+
 ## Safety Rules
 
-- URL automation is local-only.
-- URL automation does not add network access.
-- URL automation does not request Screen Recording, Input Monitoring, or Accessibility by itself.
-- URL automation does not run icon moving.
-- Applying a profile through URL automation uses the same conservative profile application path as the Settings UI.
+- Automation is local-only.
+- Automation does not add network access.
+- Automation does not request Screen Recording, Input Monitoring, Apple Events, or Accessibility by itself.
+- Automation does not run Icon Moving.
+- Applying a profile through automation uses the same conservative profile path as Settings.
 - Missing or unknown profiles are logged to Diagnostics and do not crash the app.
+- Global automation pause rejects trigger and URL automation while preserving manual Basic Mode commands.
 
-## Future AppleScript / Shortcuts Scope
+## Future Scope
 
-A future phase can add a small scripting dictionary or App Shortcuts layer for:
+Future work can add a small AppleScript dictionary or richer App Shortcuts for:
 
-- applying a profile by name,
-- reading the current visibility state,
-- expanding/collapsing/reveal-all,
-- showing or hiding the Second Bar,
-- listing profile names.
+- Applying a profile by name.
+- Reading current visibility state.
+- Expanding, collapsing, or reveal-all.
+- Showing or hiding app-owned panels.
+- Listing profile names.
 
-Icon moving should remain out of automatic scripting by default. If automation support is ever added for moves, it should require a separate explicit opt-in, confirmation policy, and clear diagnostics.
+Icon Moving should remain out of automatic scripting by default. Any automation support for moves would require a separate explicit opt-in, confirmation policy, and diagnostics trail.

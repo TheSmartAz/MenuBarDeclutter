@@ -35,10 +35,10 @@ Launch at Login does not require Accessibility, Apple Events, Input Monitoring, 
 
 - `MenuBar-ManagerTests/LaunchAtLoginServiceTests.swift`
 - Installed-app docs under `docs/testing/installed-app-qa.md`
-- Release workflow docs under `docs/release/phase-9.3-installed-alpha.md`
+- Current release workflow docs under `docs/release/v0.1.10-release-runbook.md`
 
 ## Known Limitations
 
 - Xcode and DerivedData runs can report misleading `SMAppService` state.
 - Restart/login-cycle behavior must be validated manually from an installed app.
-- Public release validation depends on signed/notarized distribution once credentials are available.
+- Developer ID signing, notarization, stapling, and public distribution remain out of scope until explicitly requested. Current validation is installed local dry-run behavior.

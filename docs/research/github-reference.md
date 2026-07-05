@@ -18,4 +18,4 @@ Before using any third-party code, record:
 - Whether reuse is allowed for this project.
 - What was reused, if anything.
 
-Phase 0 reused no third-party code.
+Current implementation reused no third-party code.

@@ -77,16 +77,23 @@ struct RecoverySettingsView: View {
 
     private var healthSection: some View {
         ClearGlassSection("Health", subtitle: "Check and repair known local app state issues.") {
-            HStack(spacing: 10) {
+            ClearGlassActionStrip(
+                "Health Actions",
+                subtitle: "Refresh the local health report first, then apply automatic repairs when issues are detected.",
+                systemImage: "stethoscope",
+                statusText: liveStatus?.healthReport?.status.displayName ?? "Unknown",
+                statusStyle: liveStatus?.healthReport?.isHealthy == false ? .warning : .secondary
+            ) {
                 Button("Refresh", systemImage: "arrow.clockwise") {
                     onRunHealthCheck?()
                 }
+                .buttonStyle(.borderedProminent)
 
                 Button("Fix Automatically", systemImage: "wrench.and.screwdriver") {
                     onFixHealthIssues?()
                 }
+                .disabled(liveStatus?.healthReport?.isHealthy != false)
             }
-            .buttonStyle(.bordered)
 
             ClearGlassInlineMessage(
                 text: "Health checks stay local and do not upload diagnostics.",
@@ -187,24 +194,32 @@ struct RecoverySettingsView: View {
                 style: .info
             )
 
-            HStack(spacing: 10) {
+            ClearGlassActionStrip(
+                "Visibility Recovery Actions",
+                subtitle: "Try visibility commands first; keep layout repair and guidance in More.",
+                systemImage: "lifepreserver",
+                statusText: "Basic Mode",
+                statusStyle: .success
+            ) {
                 Button("Expand", systemImage: "eye") {
                     onExpand?()
                 }
+                .buttonStyle(.borderedProminent)
 
                 Button("Reveal All", systemImage: "rectangle.expand.vertical") {
                     onRevealAll?()
                 }
 
-                Button("Reset Layout", systemImage: "arrow.counterclockwise") {
-                    onResetLayout?()
-                }
+                Menu("More", systemImage: "ellipsis.circle") {
+                    Button("Reset Layout", systemImage: "arrow.counterclockwise") {
+                        onResetLayout?()
+                    }
 
-                Button("Open Guide", systemImage: "questionmark.circle") {
-                    onOpenTroubleshootingGuide?()
+                    Button("Open Guide", systemImage: "questionmark.circle") {
+                        onOpenTroubleshootingGuide?()
+                    }
                 }
             }
-            .buttonStyle(.bordered)
             .accessibilityIdentifier("recovery.lostIcons.actions")
         }
     }
@@ -305,16 +320,22 @@ struct RecoverySettingsView: View {
 
     private var exportSection: some View {
         ClearGlassSection("Diagnostics and Backups", subtitle: "Stable support actions stay here; migration complexity stays Advanced.") {
-            HStack(spacing: 10) {
+            ClearGlassActionStrip(
+                "Support Package Actions",
+                subtitle: "Export diagnostics locally or open the full import/export workflow.",
+                systemImage: "doc.badge.gearshape",
+                statusText: "Local",
+                statusStyle: .success
+            ) {
                 Button("Export Diagnostics", systemImage: "square.and.arrow.up") {
                     exportDiagnostics()
                 }
+                .buttonStyle(.borderedProminent)
 
                 Button("Import / Export", systemImage: "arrow.up.arrow.down") {
                     onOpenImportExport?()
                 }
             }
-            .buttonStyle(.bordered)
 
             if let exportError {
                 ClearGlassInlineMessage(
@@ -447,51 +468,33 @@ private struct RecoveryOverviewStrip: View {
     let safeModeActive: Bool
     let proModeEnabled: Bool
 
-    private let columns = [
-        GridItem(.adaptive(minimum: 150), spacing: 8)
-    ]
-
     var body: some View {
-        LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
-            overviewPill("Health", value: healthStatus, systemImage: "heart.text.square", style: issueCount == 0 ? .success : .warning)
-            overviewPill("Issues", value: "\(issueCount)", systemImage: "exclamationmark.triangle", style: issueCount == 0 ? .success : .warning)
-            overviewPill("Safe Mode", value: safeModeActive ? "Active" : "Off", systemImage: "lifepreserver", style: safeModeActive ? .warning : .secondary)
-            overviewPill("Optional Pro", value: proModeEnabled ? "On" : "Off", systemImage: "star", style: proModeEnabled ? .info : .secondary)
-        }
-    }
-
-    private func overviewPill(
-        _ title: String,
-        value: String,
-        systemImage: String,
-        style: ClearGlassStatusStyle
-    ) -> some View {
-        HStack(spacing: 9) {
-            Image(systemName: systemImage)
-                .font(.system(size: 16, weight: .regular))
-                .foregroundStyle(style.tint)
-                .frame(width: 19)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Text(value)
-                    .font(.callout)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.82)
-            }
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
-        .overlay {
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
-        }
+        ClearGlassOverviewStrip([
+            ClearGlassOverviewMetric(
+                title: "Health",
+                value: healthStatus,
+                systemImage: "heart.text.square",
+                style: issueCount == 0 ? .success : .warning
+            ),
+            ClearGlassOverviewMetric(
+                title: "Issues",
+                value: "\(issueCount)",
+                systemImage: "exclamationmark.triangle",
+                style: issueCount == 0 ? .success : .warning
+            ),
+            ClearGlassOverviewMetric(
+                title: "Safe Mode",
+                value: safeModeActive ? "Active" : "Off",
+                systemImage: "lifepreserver",
+                style: safeModeActive ? .warning : .secondary
+            ),
+            ClearGlassOverviewMetric(
+                title: "Optional Pro",
+                value: proModeEnabled ? "On" : "Off",
+                systemImage: "star",
+                style: proModeEnabled ? .info : .secondary
+            )
+        ])
     }
 }
 

@@ -1,0 +1,14 @@
+status	slug	label	kind	window_id	x	y	width	height	layer	title	path	args
+skipped	01-general	General	settings									--ui-testing --ui-testing-appearance-light --ui-testing-show-general
+captured	02-hide-reveal	Hide & Reveal	settings	25812	902	304	822	674	0	MenuBarDeclutter Settings	screenshots/02-hide-reveal.png	--ui-testing --ui-testing-appearance-light --ui-testing-show-hide-reveal
+captured	03-arrange	Arrange	settings	25822	903	305	820	672	0	MenuBarDeclutter Settings	screenshots/03-arrange.png	--ui-testing --ui-testing-appearance-light --ui-testing-show-arrange --ui-testing-seed-menu-bar-items
+captured	04-find-rescue	Find & Rescue	settings	25831	903	305	820	672	0	MenuBarDeclutter Settings	screenshots/04-find-rescue.png	--ui-testing --ui-testing-appearance-light --ui-testing-show-find-rescue --ui-testing-seed-menu-bar-items
+captured	05-workspaces	Workspaces	settings	25841	903	305	820	672	0	MenuBarDeclutter Settings	screenshots/05-workspaces.png	--ui-testing --ui-testing-appearance-light --ui-testing-show-workspaces
+captured	06-privacy	Privacy	settings	25852	903	305	820	672	0	MenuBarDeclutter Settings	screenshots/06-privacy.png	--ui-testing --ui-testing-appearance-light --ui-testing-show-privacy
+captured	07-recovery	Recovery	settings	25861	903	305	820	672	0	MenuBarDeclutter Settings	screenshots/07-recovery.png	--ui-testing --ui-testing-appearance-light --ui-testing-show-recovery
+captured	08-advanced	Advanced	settings	25871	903	305	820	672	0	MenuBarDeclutter Settings	screenshots/08-advanced.png	--ui-testing --ui-testing-appearance-light --ui-testing-show-advanced
+captured	21-floating-find-icon	Floating Find Icon	panel	25881	904	34	560	460	3	Find Icon	screenshots/21-floating-find-icon.png	--ui-testing --ui-testing-appearance-light --ui-testing-show-search
+captured	22-floating-second-bar	Floating Second Bar	panel	25890	574	42	660	360	3	Second Bar	screenshots/22-floating-second-bar.png	--ui-testing --ui-testing-appearance-light --ui-testing-show-second-bar
+captured	23-floating-group-panel	Floating Group Panel	panel	25900	624	200	560	420	3	Focus Apps	screenshots/23-floating-group-panel.png	--ui-testing --ui-testing-appearance-light --ui-testing-show-group-panel
+captured	24-onboarding-welcome	Onboarding Welcome	onboarding	25914	904	284	700	612	0	MenuBarDeclutter Setup	screenshots/24-onboarding-welcome.png	--ui-testing --ui-testing-appearance-light --ui-testing-show-onboarding
+captured	25-onboarding-privacy	Onboarding Privacy	onboarding	25923	904	284	700	612	0	MenuBarDeclutter Setup	screenshots/25-onboarding-privacy.png	--ui-testing --ui-testing-appearance-light --ui-testing-show-onboarding-privacy

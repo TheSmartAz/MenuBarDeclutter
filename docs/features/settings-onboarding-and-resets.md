@@ -59,7 +59,7 @@ Settings, onboarding, resets, migration, and Application Support directory creat
 - `MenuBar-ManagerTests/OnboardingStepTests.swift`
 - `MenuBar-ManagerTests/AppSupportPathsTests.swift`
 - UI tests in `MenuBarDeclutterUITests/`
-- Manual QA: `docs/testing/manual-v0.1.3-system-qa.md`
+- Manual QA: `docs/testing/manual-qa.md`
 
 ## Known Limitations
 

@@ -13,7 +13,9 @@ struct PrivateAccessSettingsView: View {
         ClearGlassSettingsPage(
             "Private Access",
             subtitle: "Gate sensitive app actions with LocalAuthentication. No biometric data is stored by MenuBarDeclutter.",
-            badges: [.preview, .privacySafe]
+            badges: [.preview, .privacySafe],
+            style: .tool,
+            sectionAnchors: pageSectionAnchors
         ) {
             PrivateAccessOverview(
                 isEnabled: settingsStore.privateAccessEnabled,
@@ -27,6 +29,20 @@ struct PrivateAccessSettingsView: View {
             commandCenterSection
             privacyBoundarySection
         }
+    }
+
+    private var pageSectionAnchors: [ClearGlassPageAnchor] {
+        var anchors = [
+            ClearGlassPageAnchor("Lock", systemImage: "lock"),
+            ClearGlassPageAnchor("Protected Surfaces", systemImage: "shield")
+        ]
+
+        if !commandAvailabilities.isEmpty {
+            anchors.append(ClearGlassPageAnchor("Protected Action Status", systemImage: "checkmark.shield"))
+        }
+
+        anchors.append(ClearGlassPageAnchor("Privacy Boundary", systemImage: "hand.raised"))
+        return anchors
     }
 
     private var lockSection: some View {
@@ -47,45 +63,63 @@ struct PrivateAccessSettingsView: View {
 
             ClearGlassDivider()
 
-            PrivateAccessToggleRow(
-                systemImage: "lock.fill",
-                title: "Enable Private Access",
-                subtitle: "Authenticate with Touch ID or device password before turning Private Access on.",
-                isOn: privateAccessEnabledBinding,
-                isEnabled: !isEnablingPrivateAccess
-            )
+            PrivateAccessLockControlGroup(
+                "Policy",
+                subtitle: "Turn protection on and choose the allowed authentication fallback.",
+                systemImage: "lock.shield"
+            ) {
+                PrivateAccessToggleRow(
+                    systemImage: "lock.fill",
+                    title: "Enable Private Access",
+                    subtitle: "Authenticate with Touch ID or device password before turning Private Access on.",
+                    isOn: privateAccessEnabledBinding,
+                    isEnabled: !isEnablingPrivateAccess
+                )
 
-            ClearGlassDivider()
+                ClearGlassDivider()
 
-            PrivateAccessToggleRow(
-                systemImage: "key.fill",
-                title: "Allow Device Password Fallback",
-                subtitle: "Use device-owner authentication when Touch ID is unavailable.",
-                isOn: $settingsStore.privateAccessAllowDevicePasswordFallback,
-                onChange: notifyChanged
-            )
-
-            ClearGlassDivider()
-
-            ClearGlassSliderRow(
-                "Unlock Duration",
-                subtitle: "How long a successful unlock remains active.",
-                value: $settingsStore.privateAccessUnlockDurationSeconds,
-                in: AppConstants.minPrivateAccessUnlockDurationSeconds...AppConstants.maxPrivateAccessUnlockDurationSeconds,
-                step: 30,
-                valueSuffix: "s"
-            )
-            .onChange(of: settingsStore.privateAccessUnlockDurationSeconds) { _, _ in
-                notifyChanged()
+                PrivateAccessToggleRow(
+                    systemImage: "key.fill",
+                    title: "Allow Device Password Fallback",
+                    subtitle: "Use device-owner authentication when Touch ID is unavailable.",
+                    isOn: $settingsStore.privateAccessAllowDevicePasswordFallback,
+                    onChange: notifyChanged
+                )
             }
 
             ClearGlassDivider()
 
-            lockActionControls
+            PrivateAccessLockControlGroup(
+                "Unlock Duration",
+                subtitle: "Tune how long one successful authentication keeps protected actions available.",
+                systemImage: "timer"
+            ) {
+                ClearGlassSliderRow(
+                    "Session Length",
+                    subtitle: "How long a successful unlock remains active.",
+                    value: $settingsStore.privateAccessUnlockDurationSeconds,
+                    in: AppConstants.minPrivateAccessUnlockDurationSeconds...AppConstants.maxPrivateAccessUnlockDurationSeconds,
+                    step: 30,
+                    valueSuffix: "s"
+                )
+                .onChange(of: settingsStore.privateAccessUnlockDurationSeconds) { _, _ in
+                    notifyChanged()
+                }
+            }
 
-            if let testStatus {
-                ClearGlassDivider()
-                ClearGlassInlineMessage(text: testStatus, systemImage: "info.circle")
+            ClearGlassDivider()
+
+            PrivateAccessLockControlGroup(
+                "Session Actions",
+                subtitle: "Test authentication and clear the current unlock without changing policy.",
+                systemImage: "touchid"
+            ) {
+                lockActionControls
+
+                if let testStatus {
+                    ClearGlassDivider()
+                    ClearGlassInlineMessage(text: testStatus, systemImage: "info.circle")
+                }
             }
 
             if !settingsStore.privateAccessEnabled {
@@ -208,16 +242,9 @@ struct PrivateAccessSettingsView: View {
     }
 
     private var lockActionControls: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 10) {
-                lockButtons
-                lockStatus
-            }
-
-            VStack(alignment: .leading, spacing: 8) {
-                lockButtons
-                lockStatus
-            }
+        ClearGlassAccessoryCluster(alignment: .leading, spacing: 10, width: .flexible) {
+            lockButtons
+            lockStatus
         }
         .controlSize(.small)
         .padding(.vertical, 8)
@@ -236,12 +263,14 @@ struct PrivateAccessSettingsView: View {
                 }
             }
             .disabled(!settingsStore.privateAccessEnabled)
+            .help(settingsStore.privateAccessEnabled ? "Test the current Private Access authentication policy." : "Enable Private Access before testing authentication.")
 
             Button("Clear Unlock Session", systemImage: "lock") {
                 coordinator?.clearUnlock()
                 testStatus = "Unlock session cleared."
             }
             .disabled(coordinator == nil)
+            .help(coordinator == nil ? "Authentication service is unavailable." : "End the current Private Access unlock session.")
         }
     }
 
@@ -320,46 +349,89 @@ struct PrivateAccessSettingsView: View {
     }
 }
 
+private struct PrivateAccessLockControlGroup<Content: View>: View {
+    private let title: String
+    private let subtitle: String
+    private let systemImage: String
+    @ViewBuilder private let content: Content
+
+    init(
+        _ title: String,
+        subtitle: String,
+        systemImage: String,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.systemImage = systemImage
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 9) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 18)
+                    .padding(.top, 2)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(3)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(.horizontal, 2)
+
+            VStack(spacing: 0) {
+                content
+            }
+        }
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
 private struct PrivateAccessOverview: View {
     let isEnabled: Bool
     let isUnlocked: Bool?
     let protectedCount: Int
     let allowsPasswordFallback: Bool
 
-    private let columns = [
-        GridItem(.adaptive(minimum: 150), spacing: 10)
-    ]
-
     var body: some View {
-        LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
-            PrivateAccessOverviewPill(
+        ClearGlassOverviewStrip([
+            ClearGlassOverviewMetric(
                 title: "Private Access",
                 value: isEnabled ? "On" : "Off",
                 systemImage: isEnabled ? "lock.fill" : "lock.open",
                 style: isEnabled ? .success : .secondary
-            )
-
-            PrivateAccessOverviewPill(
+            ),
+            ClearGlassOverviewMetric(
                 title: "Session",
                 value: sessionText,
                 systemImage: isUnlocked == true ? "lock.open" : "lock",
                 style: sessionStyle
-            )
-
-            PrivateAccessOverviewPill(
+            ),
+            ClearGlassOverviewMetric(
                 title: "Protected",
                 value: "\(protectedCount)",
                 systemImage: "shield.lefthalf.filled",
                 style: protectedCount > 0 ? .info : .secondary
-            )
-
-            PrivateAccessOverviewPill(
+            ),
+            ClearGlassOverviewMetric(
                 title: "Fallback",
                 value: allowsPasswordFallback ? "Allowed" : "Touch ID",
                 systemImage: "key",
                 style: allowsPasswordFallback ? .info : .secondary
             )
-        }
+        ], minimumItemWidth: 210, maximumColumnCount: 2)
     }
 
     private var sessionText: String {
@@ -370,42 +442,6 @@ private struct PrivateAccessOverview: View {
     private var sessionStyle: ClearGlassStatusStyle {
         guard isEnabled else { return .secondary }
         return isUnlocked == true ? .success : .warning
-    }
-}
-
-private struct PrivateAccessOverviewPill: View {
-    let title: String
-    let value: String
-    let systemImage: String
-    let style: ClearGlassStatusStyle
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: systemImage)
-                .font(.system(size: 16, weight: .regular))
-                .foregroundStyle(style.tint)
-                .frame(width: 20)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Text(value)
-                    .font(.callout)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.82)
-            }
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
-        .overlay {
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
-        }
     }
 }
 

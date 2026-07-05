@@ -35,6 +35,34 @@ struct SecondBarRootView: View {
         items.filter { $0.zone == .alwaysHidden }
     }
 
+    init(
+        settingsStore: SettingsStore,
+        permissionService: AccessibilityPermissionService,
+        liveStatus: LiveDiagnosticsStatus,
+        itemMemoryStore: MenuBarItemMemoryStore,
+        onRefresh: @escaping () -> Void,
+        onCommand: @escaping (MenuBarCommand) -> MenuBarCommandResult,
+        onMove: (@MainActor (MenuBarItemSnapshot, IconMoveCommand) async -> IconMoveResult)?,
+        groupsProvider: @escaping () -> [IconGroup],
+        onSettingsChanged: @escaping () -> Void,
+        onOpenPrivacySettings: @escaping () -> Void,
+        onDismiss: @escaping () -> Void,
+        initialQuery: String = ""
+    ) {
+        self.settingsStore = settingsStore
+        self.permissionService = permissionService
+        self.liveStatus = liveStatus
+        self.itemMemoryStore = itemMemoryStore
+        self.onRefresh = onRefresh
+        self.onCommand = onCommand
+        self.onMove = onMove
+        self.groupsProvider = groupsProvider
+        self.onSettingsChanged = onSettingsChanged
+        self.onOpenPrivacySettings = onOpenPrivacySettings
+        self.onDismiss = onDismiss
+        _searchQuery = State(initialValue: initialQuery)
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             if secondBarIsAvailable {
@@ -43,10 +71,12 @@ struct SecondBarRootView: View {
                 Divider()
 
                 if items.isEmpty {
-                    ContentUnavailableView(
-                        emptyStateTitle,
+                    UnavailablePanel(
+                        title: emptyStateTitle,
+                        message: emptyStateDescription,
                         systemImage: searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? selectedFilter.systemImage : "magnifyingglass",
-                        description: Text(emptyStateDescription)
+                        primaryAction: emptyStatePrimaryAction,
+                        secondaryAction: emptyStateSecondaryAction
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .accessibilityIdentifier("secondBar.empty")
@@ -108,6 +138,14 @@ struct SecondBarRootView: View {
             viewModel.moveSelection(by: 1, in: items)
             return .handled
         }
+        .onKeyPress(.downArrow) {
+            viewModel.moveSelection(by: 1, in: items)
+            return .handled
+        }
+        .onKeyPress(.upArrow) {
+            viewModel.moveSelection(by: -1, in: items)
+            return .handled
+        }
         .onKeyPress(.return) {
             activateSelected()
             return .handled
@@ -126,6 +164,9 @@ struct SecondBarRootView: View {
         if !secondBarIsAvailable {
             return 360
         }
+        if items.isEmpty {
+            return 320
+        }
         return settingsStore.secondBarShowLabels ? 274 : 228
     }
 
@@ -135,9 +176,10 @@ struct SecondBarRootView: View {
 
     private var header: some View {
         HStack(spacing: 10) {
-            SearchField(
+            IntegratedSearchField(
                 "Search hidden items",
                 text: $searchQuery,
+                font: .system(size: 15, weight: .regular),
                 autoFocus: true,
                 isEnabled: secondBarIsAvailable,
                 accessibilityIdentifier: "secondBar.search",
@@ -147,22 +189,11 @@ struct SecondBarRootView: View {
             }
 
             if secondBarIsAvailable {
-                HStack(spacing: 6) {
-                    Image(systemName: "menubar.rectangle")
-                        .foregroundStyle(.secondary)
-
-                    Text(items.count, format: .number)
-                        .font(.caption.monospacedDigit())
-                        .bold()
-                }
-                .padding(.horizontal, 9)
-                .padding(.vertical, 6)
-                .background(Color(nsColor: .controlBackgroundColor), in: .capsule)
-                .overlay {
-                    Capsule()
-                        .stroke(Color(nsColor: .separatorColor).opacity(0.45), lineWidth: 0.5)
-                }
-                .accessibilityLabel("\(items.count) hidden item\(items.count == 1 ? "" : "s") available")
+                FloatingPanelToolbarBadge(
+                    items.count.formatted(),
+                    systemImage: "menubar.rectangle",
+                    accessibilityLabel: "\(items.count) hidden item\(items.count == 1 ? "" : "s") available"
+                )
                 .accessibilityIdentifier("secondBar.itemCount")
 
                 Button("Refresh", systemImage: "arrow.clockwise") {
@@ -171,6 +202,7 @@ struct SecondBarRootView: View {
                 .labelStyle(.iconOnly)
                 .buttonStyle(.bordered)
                 .help("Refresh Menu Bar Items")
+                .accessibilityIdentifier("secondBar.refresh")
             }
         }
         .controlSize(.small)
@@ -180,19 +212,24 @@ struct SecondBarRootView: View {
 
     private var filterBar: some View {
         HStack(spacing: 10) {
-            Picker("Filter", selection: $selectedFilter) {
-                ForEach(MenuBarItemCollectionFilter.secondBarFilters) { filter in
-                    Text(filter.shortDisplayName)
-                        .tag(filter)
+            ScrollView(.horizontal) {
+                Picker("Filter", selection: $selectedFilter) {
+                    ForEach(MenuBarItemCollectionFilter.secondBarFilters) { filter in
+                        Text(filter.shortDisplayName)
+                            .tag(filter)
+                    }
                 }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .fixedSize()
+                .accessibilityLabel("Second Bar filter")
+                .accessibilityValue(selectedFilter.displayName)
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .frame(maxWidth: 420)
+            .accessibilityIdentifier("secondBar.filter")
+            .scrollIndicators(.hidden)
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             secondBarFilterResetButton
-
-            Spacer(minLength: 0)
         }
         .padding(.horizontal, 18)
         .padding(.bottom, 10)
@@ -212,6 +249,7 @@ struct SecondBarRootView: View {
             .buttonStyle(.bordered)
             .controlSize(.small)
             .help("Clear Recent Items")
+            .accessibilityIdentifier("secondBar.clearRecent")
         case .favorites where itemMemoryStore.favoriteCount > 0:
             Button("Clear Favorites", systemImage: "star.slash") {
                 itemMemoryStore.resetFavorites()
@@ -222,6 +260,7 @@ struct SecondBarRootView: View {
             .buttonStyle(.bordered)
             .controlSize(.small)
             .help("Clear Favorites")
+            .accessibilityIdentifier("secondBar.clearFavorites")
         default:
             EmptyView()
         }
@@ -255,6 +294,7 @@ struct SecondBarRootView: View {
                     .padding(.bottom, 9)
                 }
                 .scrollIndicators(.hidden)
+                .accessibilityIdentifier("secondBar.items")
                 .onChange(of: viewModel.selectedID) { _, newValue in
                     guard let newValue else { return }
                     if accessibilityReduceMotion {
@@ -270,30 +310,31 @@ struct SecondBarRootView: View {
     }
 
     private var footer: some View {
-        HStack(spacing: 10) {
-            Image(systemName: secondBarIsAvailable ? "return" : "info.circle")
-                .foregroundStyle(.secondary)
+        FloatingPanelFooter(
+            leadingTitle: footerMessage,
+            leadingSystemImage: secondBarIsAvailable ? "return" : "info.circle",
+            trailingTitle: secondBarFooterTrailingTitle,
+            trailingSystemImage: secondBarFooterTrailingSystemImage,
+            trailingTint: secondBarFooterTrailingTint
+        )
+    }
 
-            Text(footerMessage)
-                .foregroundStyle(.secondary)
-
-            Spacer()
-
-            if secondBarIsAvailable, let statusMessage {
-                Text(statusMessage)
-                    .lineLimit(1)
-                    .foregroundStyle(.secondary)
-            } else if secondBarIsAvailable {
-                Label("Optional Pro", systemImage: "checkmark.shield")
-                    .foregroundStyle(.green)
-            } else {
-                Text("Unavailable")
-                    .foregroundStyle(.secondary)
-            }
+    private var secondBarFooterTrailingTitle: String {
+        if secondBarIsAvailable, let statusMessage {
+            return statusMessage
         }
-        .font(.caption)
-        .padding(.horizontal, 18)
-        .padding(.vertical, 10)
+        if secondBarIsAvailable {
+            return "Optional Pro"
+        }
+        return "Unavailable"
+    }
+
+    private var secondBarFooterTrailingSystemImage: String? {
+        secondBarIsAvailable && statusMessage == nil ? "checkmark.shield" : nil
+    }
+
+    private var secondBarFooterTrailingTint: Color {
+        secondBarIsAvailable && statusMessage == nil ? .green : .secondary
     }
 
     private var footerMessage: String {
@@ -306,7 +347,7 @@ struct SecondBarRootView: View {
         if liveStatus.iconMoveInProgress {
             return "Icon move in progress..."
         }
-        return "Return reveals and highlights. Click original icon manually."
+        return "Return reveals the original item. Click it in the menu bar to open."
     }
 
     private var emptyStateTitle: String {
@@ -356,6 +397,28 @@ struct SecondBarRootView: View {
             return "Favorite a hidden item from its context menu to keep it here."
         default:
             return "Refresh menu bar items after hiding icons with the separators."
+        }
+    }
+
+    private var emptyStatePrimaryAction: UnavailablePanel.Action? {
+        if !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return UnavailablePanel.Action(title: "Clear Search", systemImage: "xmark.circle") {
+                searchQuery = ""
+                refreshItems()
+            }
+        }
+
+        return UnavailablePanel.Action(title: "Refresh", systemImage: "arrow.clockwise") {
+            onRefresh()
+            refreshItems()
+        }
+    }
+
+    private var emptyStateSecondaryAction: UnavailablePanel.Action? {
+        guard selectedFilter != .all else { return nil }
+        return UnavailablePanel.Action(title: "Show All", systemImage: "line.3.horizontal.decrease.circle", style: .secondary) {
+            selectedFilter = .all
+            refreshItems()
         }
     }
 
@@ -449,6 +512,11 @@ struct SecondBarRootView: View {
         }
         .buttonStyle(.plain)
         .id(snapshot.id)
+        .onHover { isHovered in
+            if isHovered {
+                viewModel.selectedID = snapshot.id
+            }
+        }
         .disabled(liveStatus.iconMoveInProgress)
         .contextMenu {
             Button("Reveal", systemImage: "eye") {

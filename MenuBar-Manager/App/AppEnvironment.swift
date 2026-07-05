@@ -1178,6 +1178,10 @@ final class AppEnvironment {
             diagnosticsLogger.log("Safe Mode skipped Optional Pro Accessibility scans.", level: .warning)
             return
         }
+        guard !FloatingPanelSearchUITestingArguments.usesSeededMenuBarItems else {
+            diagnosticsLogger.log("UI testing seeded menu bar items retained; skipped startup AX scan.", level: .debug)
+            return
+        }
         menuBarScanCoordinator.scanCompleted = { [weak self] result in
             self?.menuBarIconCaptureCoordinator.refreshVisibleIconsIfAllowed(
                 snapshots: result.snapshots,
@@ -1858,6 +1862,21 @@ final class AppEnvironment {
 
     func showWorkspacePreview() {
         showSettings(section: .workspacesPreview)
+    }
+
+    func prepareWorkspacePanelUITestingState() {
+        settingsStore.workspacesPreviewEnabled = true
+        settingsStore.functionBarPreviewEnabled = true
+        settingsStore.infoStripPreviewEnabled = true
+        settingsStore.functionBarCloseOnOutsideClick = false
+        settingsStore.infoStripCloseOnOutsideClick = false
+
+        var activeWorkspace = workspaceSwitchingService.activeWorkspace()
+        activeWorkspace.infoStripConfig.isEnabled = true
+        _ = workspaceSwitchingService.updateWorkspace(activeWorkspace)
+
+        setBuilderViewModel.refresh()
+        refreshWorkspacePreviewRuntime()
     }
 
     @discardableResult

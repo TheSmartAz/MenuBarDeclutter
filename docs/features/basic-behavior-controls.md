@@ -40,7 +40,7 @@ These controls do not use event taps and do not require Input Monitoring. Hover 
 - `MenuBar-ManagerTests/HotkeyModelTests.swift`
 - `MenuBar-ManagerTests/HotkeyCallbackResolverTests.swift`
 - `MenuBar-ManagerTests/HidingVisibilityStateTests.swift`
-- Manual QA: `docs/testing/manual-v0.1.3-system-qa.md`
+- Manual QA: `docs/testing/manual-qa.md`
 
 ## Known Limitations
 

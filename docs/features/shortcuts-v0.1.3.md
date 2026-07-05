@@ -34,4 +34,4 @@ Shortcuts run local app commands. They do not add telemetry, cloud sync, network
 
 - `AppIntentExecutionServiceTests`
 - `MenuBarCommandRouterTests`
-- `docs/testing/manual-v0.1.3-shortcuts-qa.md`
+- `docs/testing/manual-qa.md`

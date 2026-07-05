@@ -483,7 +483,13 @@ deep_settings_surfaces=(
 floating_panel_surfaces=(
   "panel|21-floating-find-icon|Floating Find Icon|optional|--ui-testing-show-search|Find Icon"
   "panel|22-floating-second-bar|Floating Second Bar|optional|--ui-testing-show-second-bar|Second Bar"
-  "panel|23-floating-group-panel|Floating Group Panel|optional|--ui-testing-show-group-panel|Focus Apps"
+  "panel|23-floating-group-panel|Floating Group Panel|optional|--ui-testing-show-group-panel|Pinned Tools"
+  "panel|26-floating-find-icon-typed|Floating Find Icon - Typed|optional|--ui-testing-show-search --ui-testing-pro-discovery-enabled --ui-testing-accessibility-granted --ui-testing-seed-menu-bar-items --ui-testing-find-icon-query=Fant|Find Icon"
+  "panel|27-floating-find-icon-no-results|Floating Find Icon - No Results|optional|--ui-testing-show-search --ui-testing-pro-discovery-enabled --ui-testing-accessibility-granted --ui-testing-seed-menu-bar-items --ui-testing-find-icon-query=NoSuchIcon|Find Icon"
+  "panel|28-floating-second-bar-typed|Floating Second Bar - Typed|optional|--ui-testing-show-second-bar --ui-testing-pro-discovery-enabled --ui-testing-accessibility-granted --ui-testing-seed-menu-bar-items --ui-testing-second-bar-query=Drop|Second Bar"
+  "panel|29-floating-second-bar-no-results|Floating Second Bar - No Results|optional|--ui-testing-show-second-bar --ui-testing-pro-discovery-enabled --ui-testing-accessibility-granted --ui-testing-seed-menu-bar-items --ui-testing-second-bar-query=NoSuchIcon|Second Bar"
+  "panel|30-floating-group-panel-typed|Floating Group Panel - Typed|optional|--ui-testing-show-group-panel --ui-testing-group-panel-query=Drop|Pinned Tools"
+  "panel|31-floating-group-panel-no-results|Floating Group Panel - No Results|optional|--ui-testing-show-group-panel --ui-testing-group-panel-query=NoSuchIcon|Pinned Tools"
 )
 
 onboarding_surfaces=(

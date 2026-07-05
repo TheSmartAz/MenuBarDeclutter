@@ -100,7 +100,7 @@ private struct SearchZoneBadge: View {
             .background(badgeFill, in: .capsule)
             .overlay {
                 Capsule()
-                    .stroke(badgeStroke, lineWidth: 1)
+                    .stroke(badgeStroke, lineWidth: DesignTokens.Stroke.hairline)
             }
             .foregroundStyle(badgeForeground)
     }

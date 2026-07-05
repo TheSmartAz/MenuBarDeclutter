@@ -204,7 +204,7 @@ struct QAScriptsTests {
         #expect(text.contains("--pid \"$owner_pid\""))
         #expect(text.contains("panel|21-floating-find-icon|Floating Find Icon|optional|--ui-testing-show-search|Find Icon"))
         #expect(text.contains("panel|22-floating-second-bar|Floating Second Bar|optional|--ui-testing-show-second-bar|Second Bar"))
-        #expect(text.contains("panel|23-floating-group-panel|Floating Group Panel|optional|--ui-testing-show-group-panel|Focus Apps"))
+        #expect(text.contains("panel|23-floating-group-panel|Floating Group Panel|optional|--ui-testing-show-group-panel|Pinned Tools"))
         #expect(text.contains("window_id\\tx\\ty\\twidth\\theight\\tlayer\\ttitle\\tpath\\targs"))
     }
 

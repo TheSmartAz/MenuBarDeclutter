@@ -34,4 +34,4 @@ It is not a live system menu bar clone. Some menu extras may not expose useful m
 - `SecondBarPositioningServiceTests`
 - `SecondBarViewModelTests`
 - `MenuBarCommandRouterTests`
-- `docs/testing/manual-v0.1.3-system-qa.md`
+- `docs/testing/manual-qa.md`

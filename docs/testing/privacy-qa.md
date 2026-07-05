@@ -1,7 +1,7 @@
 # Privacy QA
 
-Use this checklist for Alpha RC validation and privacy-sensitive changes. For
-routine patch scope, first choose the appropriate lane in
+Use this checklist for current release validation and privacy-sensitive changes.
+For routine patch scope, first choose the appropriate lane in
 `docs/testing/qa-process.md`.
 
 `scripts/verify_privacy_boundary.sh` is the source of truth for
@@ -9,7 +9,7 @@ static/source/bundle privacy checks. Manual privacy QA should focus on runtime
 prompts, explicit opt-in, permission revocation, degraded states, diagnostics
 export review, and network observation.
 
-Mark each item PASS, FAIL, BLOCKED, or NOT TESTED.
+Mark each item `PASS`, `FAIL`, `BLOCKED`, `PARTIAL`, or `NOT TESTED`.
 
 ## Static Verification
 
@@ -44,6 +44,16 @@ Mark each item PASS, FAIL, BLOCKED, or NOT TESTED.
 | Icon moving disabled by default | No move is available until explicitly enabled | NOT TESTED | |
 | Enable icon moving | Experimental warning appears before enablement | NOT TESTED | |
 
+## Accurate Icons Runtime
+
+| Scenario | Expected Result | Result | Notes |
+| --- | --- | --- | --- |
+| Accurate Icons disabled | No Screen Recording prompt appears | NOT TESTED | |
+| Enable Accurate Icons without requesting permission | UI shows missing permission without prompting automatically | NOT TESTED | |
+| Request Screen Recording from Accurate Icons | System Screen Recording flow appears from explicit action | NOT TESTED | |
+| Revoke Screen Recording | Surfaces degrade to stale thumbnails or app icons; Basic Mode still works | NOT TESTED | |
+| Diagnostics export after capture | Export excludes rendered thumbnails and screen contents | NOT TESTED | |
+
 ## Network Watch
 
 Run:
@@ -52,4 +62,4 @@ Run:
 scripts/qa_network_watch.sh MenuBarDeclutter
 ```
 
-Expected: no network connections in Basic Mode or implemented Pro Mode features.
+Expected: no network connections in Basic Mode, Optional Pro Discovery, Accurate Icons, or current Preview/Labs/Experimental surfaces.

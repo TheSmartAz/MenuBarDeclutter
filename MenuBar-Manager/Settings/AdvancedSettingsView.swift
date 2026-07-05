@@ -37,6 +37,7 @@ struct AdvancedSettingsView: View {
             "Advanced",
             subtitle: "Low-level separator, local path, and Labs controls.",
             badges: [.privacySafe, .diagnostics, .labs],
+            style: .tool,
             sectionAnchors: [
                 ClearGlassPageAnchor("Advanced-only", systemImage: "list.bullet.rectangle", targetID: "Advanced-Only Controls"),
                 ClearGlassPageAnchor("Separators", systemImage: "ruler", targetID: "Separator Geometry"),
@@ -389,13 +390,16 @@ private struct AdvancedFeatureDirectoryRow: View {
 
                 Spacer(minLength: 16)
 
-                actionView
+                ClearGlassAccessoryCluster {
+                    actionView
+                }
             }
 
             VStack(alignment: .leading, spacing: 9) {
                 rowLabel
-                actionView
-                    .frame(maxWidth: .infinity, alignment: .trailing)
+                ClearGlassAccessoryCluster {
+                    actionView
+                }
             }
         }
         .padding(.vertical, 10)
@@ -507,76 +511,33 @@ private extension ProductFeatureStatus {
 private struct AdvancedOverviewStrip: View {
     @Bindable var settingsStore: SettingsStore
 
-    private let columns = [
-        GridItem(.adaptive(minimum: 150), spacing: 8)
-    ]
-
     var body: some View {
-        LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
-            AdvancedOverviewPill(
+        ClearGlassOverviewStrip([
+            ClearGlassOverviewMetric(
                 title: "Expanded",
                 value: settingsStore.expandedSeparatorLength.formatted(.number.precision(.fractionLength(0))) + " pt",
                 systemImage: "ruler",
                 style: .secondary
-            )
-
-            AdvancedOverviewPill(
+            ),
+            ClearGlassOverviewMetric(
                 title: "Collapsed",
                 value: settingsStore.collapsedSeparatorLengthOverride == nil ? "Auto" : "Custom",
                 systemImage: "arrow.left.and.right",
                 style: settingsStore.collapsedSeparatorLengthOverride == nil ? .success : .info
-            )
-
-            AdvancedOverviewPill(
+            ),
+            ClearGlassOverviewMetric(
                 title: "Automation",
                 value: settingsStore.automationPaused ? "Paused" : "Ready",
                 systemImage: settingsStore.automationPaused ? "pause.circle" : "checkmark.circle",
                 style: settingsStore.automationPaused ? .warning : .success
-            )
-
-            AdvancedOverviewPill(
+            ),
+            ClearGlassOverviewMetric(
                 title: "Icon Moving",
                 value: settingsStore.iconMovingEnabled ? "On" : "Off",
                 systemImage: "arrow.up.left.and.arrow.down.right",
                 style: settingsStore.iconMovingEnabled ? .warning : .secondary
             )
-        }
-    }
-}
-
-private struct AdvancedOverviewPill: View {
-    let title: String
-    let value: String
-    let systemImage: String
-    var style: ClearGlassStatusStyle
-
-    var body: some View {
-        HStack(spacing: 9) {
-            Image(systemName: systemImage)
-                .font(.system(size: 16, weight: .regular))
-                .foregroundStyle(style.tint)
-                .frame(width: 19)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Text(value)
-                    .font(.callout)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.82)
-            }
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
-        .overlay {
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
-        }
+        ])
     }
 }
 
