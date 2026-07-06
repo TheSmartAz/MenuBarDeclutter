@@ -19,6 +19,12 @@ scripts/qa_second_bar_manual_gate_audit.sh \
 
 Use `--retry-result retried-pass` or `--retry-result retried-fail` after testing the retry control. For stricter sign-off runs, add `--require-notch-avoidance` after testing notch fallback placement, and `--require-failure-row` after testing stale or failed activation retry. The audit reads only sanitized diagnostics metadata and writes markdown rows that can be reviewed before being added to this file.
 
+After adding reviewed rows to this file, check the required matrix breadth:
+
+```sh
+scripts/qa_second_bar_matrix_coverage.sh docs/testing/pro-second-bar-direct-activation-matrix.md
+```
+
 The lower-level row generator remains available when only matrix rows are needed:
 
 ```sh
@@ -59,3 +65,4 @@ scripts/qa_second_bar_activation_matrix.sh --app-category utility --dynamic-icon
 3. When a compact-strip activation fails, confirm the strip remains open, click `Retry`, and record the retry result.
 4. Do not attach screenshots, raw screen captures, or rendered icon thumbnail files.
 5. If a failure is reproducible with a public app, add the app category and behavior notes; otherwise keep the entry generic.
+6. Run `scripts/qa_second_bar_matrix_coverage.sh` before marking the direct activation matrix complete.

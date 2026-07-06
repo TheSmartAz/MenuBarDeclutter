@@ -14,6 +14,7 @@ struct QAScriptsTests {
             "scripts/qa_installed_app_smoke.sh",
             "scripts/qa_second_bar_activation_matrix.sh",
             "scripts/qa_second_bar_manual_gate_audit.sh",
+            "scripts/qa_second_bar_matrix_coverage.sh",
             "scripts/verify_privacy_boundary.sh",
             "scripts/test.sh",
             "scripts/export_visual_smoke_screenshots.sh",
@@ -65,6 +66,7 @@ struct QAScriptsTests {
             "scripts/qa_installed_app_smoke.sh",
             "scripts/qa_second_bar_activation_matrix.sh",
             "scripts/qa_second_bar_manual_gate_audit.sh",
+            "scripts/qa_second_bar_matrix_coverage.sh",
             "scripts/verify_privacy_boundary.sh",
             "scripts/test.sh",
             "scripts/export_visual_smoke_screenshots.sh",
@@ -406,6 +408,72 @@ struct QAScriptsTests {
         #expect(process.terminationStatus == 0, "stderr: \(error)")
         #expect(output.contains("| 2026-07-06 | 26.0 | 0.1.10 build 11 | calendar | hidden | yes | PASS | retried-pass | item-1 | hidden | 3 | none | Activated menu item |"))
         #expect(!output.contains("Other log"))
+    }
+
+    @Test func secondBarMatrixCoverageScriptChecksRequiredHandsOnBreadth() throws {
+        let root = Self.repositoryRoot()
+        let tempDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("SecondBarMatrixCoverage-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDirectory) }
+
+        let matrixURL = tempDirectory.appendingPathComponent("matrix.md")
+        let matrix = """
+        | Date | macOS Build | App Build | App Category | Item Zone | Dynamic Icon | Activation Result | Retry Result | targetID | targetZone | visitedElementCount | axError | Notes |
+        | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: | --- | --- |
+        | 2026-07-06 | 26.0 | 0.1.10 build 11 | utility | hidden | no | PASS | not-needed | utility-1 | hidden | 4 | none | utility template item |
+        | 2026-07-06 | 26.0 | 0.1.10 build 11 | template | hidden | no | PASS | not-needed | utility-2 | hidden | 5 | none | common monochrome item |
+        | 2026-07-06 | 26.0 | 0.1.10 build 11 | calendar | hidden | yes | PASS | not-needed | dynamic-1 | hidden | 6 | none | colored dynamic calendar item |
+        | 2026-07-06 | 26.0 | 0.1.10 build 11 | sync | hidden | yes | PASS | not-needed | dynamic-2 | hidden | 7 | none | stateful sync item |
+        | 2026-07-06 | 26.0 | 0.1.10 build 11 | popover | hidden | no | PASS | not-needed | popover-1 | hidden | 4 | none | popover-style item |
+        | 2026-07-06 | 26.0 | 0.1.10 build 11 | popover | hidden | no | PASS | not-needed | popover-2 | hidden | 5 | none | custom popover item |
+        | 2026-07-06 | 26.0 | 0.1.10 build 11 | menu | hidden | no | PASS | not-needed | menu-1 | hidden | 4 | none | menu-style item |
+        | 2026-07-06 | 26.0 | 0.1.10 build 11 | menu | hidden | no | PASS | not-needed | menu-2 | hidden | 5 | none | standard menu item |
+        | 2026-07-06 | 26.0 | 0.1.10 build 11 | utility | hidden | no | FAIL_STALE_METADATA | retried-pass | stale-1 | hidden | 1 | none | relaunch owner app after scan; stale metadata |
+        | 2026-07-06 | 26.0 | 0.1.10 build 11 | utility | hidden | no | BLOCKED | not-needed | permission-1 | hidden | 0 | none | Accessibility permission revoked; readiness gate blocked activation |
+        """
+        try matrix.write(to: matrixURL, atomically: true, encoding: .utf8)
+
+        let passProcess = Process()
+        passProcess.executableURL = URL(fileURLWithPath: "/bin/bash")
+        passProcess.arguments = [
+            root.appendingPathComponent("scripts/qa_second_bar_matrix_coverage.sh").path,
+            matrixURL.path
+        ]
+        let passOutputPipe = Pipe()
+        let passErrorPipe = Pipe()
+        passProcess.standardOutput = passOutputPipe
+        passProcess.standardError = passErrorPipe
+
+        try passProcess.run()
+        passProcess.waitUntilExit()
+
+        let passOutput = String(data: passOutputPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        let passError = String(data: passErrorPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+
+        #expect(passProcess.terminationStatus == 0, "stdout: \(passOutput)\nstderr: \(passError)")
+        #expect(passOutput.contains("Utility/template icon PASS rows - 2/2"))
+        #expect(passOutput.contains("Colored/dynamic icon PASS rows - 2/2"))
+        #expect(passOutput.contains("Second Bar direct activation matrix coverage passed."))
+
+        let failProcess = Process()
+        failProcess.executableURL = URL(fileURLWithPath: "/bin/bash")
+        failProcess.arguments = [
+            root.appendingPathComponent("scripts/qa_second_bar_matrix_coverage.sh").path,
+            "--min-popover", "3",
+            matrixURL.path
+        ]
+        let failOutputPipe = Pipe()
+        let failErrorPipe = Pipe()
+        failProcess.standardOutput = failOutputPipe
+        failProcess.standardError = failErrorPipe
+
+        try failProcess.run()
+        failProcess.waitUntilExit()
+
+        let failOutput = String(data: failOutputPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        #expect(failProcess.terminationStatus == 1)
+        #expect(failOutput.contains("FAIL: Popover-style PASS rows - 2/3"))
     }
 
     @Test func secondBarManualGateAuditChecksReadinessRuntimeAndActivationEvidence() throws {
