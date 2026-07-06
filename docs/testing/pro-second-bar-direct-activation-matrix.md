@@ -6,13 +6,24 @@ Use this matrix to collect third-party compact strip activation behavior. Record
 
 ## Helper Script
 
-After exporting diagnostics as JSON, generate draft matrix rows with:
+After exporting diagnostics as JSON, run the manual gate audit first. It checks
+the readiness/runtime evidence and can generate draft matrix rows in one pass:
+
+```sh
+scripts/qa_second_bar_manual_gate_audit.sh \
+  --matrix-output docs/testing/pro-second-bar-direct-activation-matrix.generated.md \
+  --app-category utility \
+  --dynamic-icon no \
+  path/to/diagnostics.json
+```
+
+Use `--retry-result retried-pass` or `--retry-result retried-fail` after testing the retry control. For stricter sign-off runs, add `--require-notch-avoidance` after testing notch fallback placement, and `--require-failure-row` after testing stale or failed activation retry. The audit reads only sanitized diagnostics metadata and writes markdown rows that can be reviewed before being added to this file.
+
+The lower-level row generator remains available when only matrix rows are needed:
 
 ```sh
 scripts/qa_second_bar_activation_matrix.sh --app-category utility --dynamic-icon no path/to/diagnostics.json
 ```
-
-Use `--retry-result retried-pass` or `--retry-result retried-fail` after testing the retry control. The script reads only sanitized diagnostics metadata and prints markdown rows that can be reviewed before being added to this file.
 
 ## Result Values
 
@@ -44,7 +55,7 @@ Use `--retry-result retried-pass` or `--retry-result retried-fail` after testing
 ## Diagnostics To Capture
 
 1. Export diagnostics after each failure.
-2. Run `scripts/qa_second_bar_activation_matrix.sh` against the JSON export, then review the generated row for `targetID`, `targetZone`, `matrixResult`, `visitedElementCount`, `axError`, and `message`.
+2. Run `scripts/qa_second_bar_manual_gate_audit.sh` against the JSON export, then review the generated row for `targetID`, `targetZone`, `matrixResult`, `visitedElementCount`, `axError`, and `message`.
 3. When a compact-strip activation fails, confirm the strip remains open, click `Retry`, and record the retry result.
 4. Do not attach screenshots, raw screen captures, or rendered icon thumbnail files.
 5. If a failure is reproducible with a public app, add the app category and behavior notes; otherwise keep the entry generic.

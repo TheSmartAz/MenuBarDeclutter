@@ -13,6 +13,7 @@ struct QAScriptsTests {
             "scripts/qa_dogfood_preflight.sh",
             "scripts/qa_installed_app_smoke.sh",
             "scripts/qa_second_bar_activation_matrix.sh",
+            "scripts/qa_second_bar_manual_gate_audit.sh",
             "scripts/verify_privacy_boundary.sh",
             "scripts/test.sh",
             "scripts/export_visual_smoke_screenshots.sh",
@@ -63,6 +64,7 @@ struct QAScriptsTests {
             "scripts/verify_installed_app.sh",
             "scripts/qa_installed_app_smoke.sh",
             "scripts/qa_second_bar_activation_matrix.sh",
+            "scripts/qa_second_bar_manual_gate_audit.sh",
             "scripts/verify_privacy_boundary.sh",
             "scripts/test.sh",
             "scripts/export_visual_smoke_screenshots.sh",
@@ -298,6 +300,123 @@ struct QAScriptsTests {
         #expect(process.terminationStatus == 0, "stderr: \(error)")
         #expect(output.contains("| 2026-07-06 | 26.0 | 0.1.10 build 11 | calendar | hidden | yes | PASS | retried-pass | item-1 | hidden | 3 | none | Activated menu item |"))
         #expect(!output.contains("Other log"))
+    }
+
+    @Test func secondBarManualGateAuditChecksReadinessRuntimeAndActivationEvidence() throws {
+        let root = Self.repositoryRoot()
+        let tempDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("SecondBarManualGateAudit-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDirectory) }
+
+        let diagnosticsURL = tempDirectory.appendingPathComponent("diagnostics.json")
+        let matrixURL = tempDirectory.appendingPathComponent("matrix.md")
+        let fixture = """
+        {
+          "application": {
+            "marketingVersion": "0.1.10",
+            "buildNumber": "11"
+          },
+          "system": {
+            "macOSVersion": "26.0"
+          },
+          "secondBarReadiness": {
+            "readinessState": "ready",
+            "readinessTitle": "Ready",
+            "readinessMessage": "Second Bar is ready.",
+            "isReady": true,
+            "entitlement": "licensed",
+            "entitlementActive": true,
+            "accessibilityDiscoveryEnabled": true,
+            "accessibilityPermission": "granted",
+            "accurateIconsEnabled": true,
+            "screenCapturePermission": "granted",
+            "primaryClickOptIn": true,
+            "primaryClickRoute": "toggleCompactStrip",
+            "safeModeActive": false
+          },
+          "secondBarRuntime": {
+            "visible": false,
+            "itemCount": 3,
+            "currentScreen": "screen-1",
+            "lastPosition": "x 100, y 24, 166 x 42",
+            "iconWarmUpInProgress": false,
+            "lastIconWarmUpResult": "Refreshed 3 thumbnail(s)",
+            "lastCompactVisibleItemCount": 2,
+            "lastCompactOverflowItemCount": 1,
+            "lastCompactFallbackIconCount": 0,
+            "lastCompactScanState": "Fresh",
+            "lastCompactAvoidedNotch": true,
+            "lastActivationResult": "success",
+            "lastActivationMatrixResult": "PASS",
+            "lastActivationTargetZone": "hidden",
+            "lastActivationVisitedElementCount": 4,
+            "lastActivationAXError": null
+          },
+          "logs": [
+            {
+              "timestamp": "2026-07-06T10:01:00Z",
+              "message": "Second Bar activation result: success.",
+              "metadata": {
+                "targetID": "item-1",
+                "targetZone": "hidden",
+                "matrixResult": "PASS",
+                "visitedElementCount": "4",
+                "axError": "none",
+                "message": "Menu bar item activated."
+              }
+            },
+            {
+              "timestamp": "2026-07-06T10:02:00Z",
+              "message": "Second Bar activation result: actionFailed.",
+              "metadata": {
+                "targetID": "item-2",
+                "targetZone": "hidden",
+                "matrixResult": "FAIL_AX_PRESS",
+                "visitedElementCount": "5",
+                "axError": "cannotComplete",
+                "message": "Menu bar item did not accept AXPress."
+              }
+            }
+          ]
+        }
+        """
+        try fixture.write(to: diagnosticsURL, atomically: true, encoding: .utf8)
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/bash")
+        process.arguments = [
+            root.appendingPathComponent("scripts/qa_second_bar_manual_gate_audit.sh").path,
+            "--require-notch-avoidance",
+            "--require-failure-row",
+            "--max-fallback-icons", "0",
+            "--matrix-output", matrixURL.path,
+            "--date", "2026-07-06",
+            "--app-category", "calendar",
+            "--dynamic-icon", "yes",
+            "--retry-result", "retried-pass",
+            diagnosticsURL.path
+        ]
+        let outputPipe = Pipe()
+        let errorPipe = Pipe()
+        process.standardOutput = outputPipe
+        process.standardError = errorPipe
+
+        try process.run()
+        process.waitUntilExit()
+
+        let output = String(data: outputPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        let error = String(data: errorPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        let matrix = try String(contentsOf: matrixURL, encoding: .utf8)
+
+        #expect(process.terminationStatus == 0, "stdout: \(output)\nstderr: \(error)")
+        #expect(output.contains("PASS: Readiness is ready"))
+        #expect(output.contains("PASS: Direct activation PASS coverage - 1 PASS row(s)"))
+        #expect(output.contains("PASS: Direct activation failure coverage - 1 failure row(s)"))
+        #expect(output.contains("Second Bar manual gate audit passed"))
+        #expect(matrix.contains("| Date | macOS Build | App Build | App Category | Item Zone | Dynamic Icon | Activation Result | Retry Result | targetID | targetZone | visitedElementCount | axError | Notes |"))
+        #expect(matrix.contains("| 2026-07-06 | 26.0 | 0.1.10 build 11 | calendar | hidden | yes | PASS | retried-pass | item-1 | hidden | 4 | none | Menu bar item activated. |"))
+        #expect(matrix.contains("FAIL_AX_PRESS"))
     }
 
     @Test func fixtureTargetIsMarkedSkipInstall() throws {
