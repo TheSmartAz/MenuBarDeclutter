@@ -111,12 +111,15 @@ struct MenuBarIconAppearanceResolver {
             return nil
         }
 
+        let appearanceName = NSApp?.effectiveAppearance.name.rawValue
+            ?? NSAppearance.Name.aqua.rawValue
+
         return MenuBarIconCacheKey(
             identityFingerprint: snapshot.id,
             displayID: display.displayID,
             backingScale: display.backingScale,
             menuBarHeight: frame.height,
-            appearanceName: NSApp.effectiveAppearance.name.rawValue
+            appearanceName: appearanceName
         )
     }
 }

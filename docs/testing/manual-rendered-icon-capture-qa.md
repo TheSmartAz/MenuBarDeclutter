@@ -6,6 +6,10 @@
 - Screen Recording is not granted at the start of the first pass.
 - A mix of template, colored, text-like, and dynamic menu bar items is visible.
 
+## Automated Evidence
+
+- `removeAllClearsRenderedAndStaleIconLookups`: PASS in the app-hosted test bundle; verifies rendered cache lookup, stale rendered fallback after menu bar height changes, and cache clear removing both live and stale lookups.
+
 ## Checks
 
 | Area | Steps | Expected |
