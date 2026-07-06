@@ -179,6 +179,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let shouldSeedMenuBarItems = launchArguments.contains("--ui-testing-seed-menu-bar-items")
+        let shouldSeedRenderedIcons = launchArguments.contains("--ui-testing-seed-rendered-icons")
 
         if launchArguments.contains("--ui-testing-show-onboarding-privacy") {
             environment.showOnboarding(stepID: "privacy")
@@ -237,6 +238,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             environment.settingsStore.secondBarCloseOnOutsideClick = false
             environment.showSecondBar()
+        } else if launchArguments.contains("--ui-testing-show-compact-second-bar") {
+            if shouldSeedMenuBarItems {
+                seedMenuBarItemsUITestingSnapshot(environment)
+            }
+            if shouldSeedRenderedIcons {
+                environment.seedRenderedIconsForUITesting(itemIDs: [
+                    "ui-test-calendar",
+                    "ui-test-sync"
+                ])
+            }
+            environment.showCompactSecondBarForUITesting()
         } else if launchArguments.contains("--ui-testing-show-group-panel") {
             seedMenuBarItemsUITestingSnapshot(environment)
             environment.showGroupPanel(makeUITestingIconGroup())
@@ -248,6 +260,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Task { @MainActor in
                 try? await Task.sleep(nanoseconds: 700_000_000)
                 seedMenuBarItemsUITestingSnapshot(environment)
+                if shouldSeedRenderedIcons {
+                    environment.seedRenderedIconsForUITesting(itemIDs: [
+                        "ui-test-calendar",
+                        "ui-test-sync"
+                    ])
+                }
             }
         }
     }

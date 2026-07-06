@@ -155,6 +155,7 @@ private struct CompactStripItemButton: View {
         .contentShape(.rect(cornerRadius: DesignTokens.Radius.control))
         .help("Activate \(displayTitle)")
         .accessibilityLabel("Activate \(displayTitle)")
+        .accessibilityIdentifier("secondBar.compact.item.\(snapshot.id)")
     }
 
     private var displayTitle: String {
@@ -184,6 +185,7 @@ private struct CompactStripOverflowButton: View {
             }
             .help("Open Second Bar Manage Panel")
             .accessibilityLabel("\(count) more Second Bar items")
+            .accessibilityIdentifier("secondBar.compact.overflow")
     }
 }
 

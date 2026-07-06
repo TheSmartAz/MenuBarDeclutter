@@ -132,6 +132,27 @@ final class MenuBarDeclutterUITests: XCTestCase {
     }
 
     @MainActor
+    func testCompactSecondBarShowsReadyHiddenItems() throws {
+        let app = launchApp(opening: [
+            "--ui-testing-show-compact-second-bar",
+            "--ui-testing-pro-discovery-enabled",
+            "--ui-testing-accessibility-granted",
+            "--ui-testing-accurate-icons-enabled",
+            "--ui-testing-screen-capture-granted",
+            "--ui-testing-seed-menu-bar-items",
+            "--ui-testing-seed-rendered-icons"
+        ])
+
+        assertElement("secondBar.compactStrip", in: app, timeout: 10)
+        assertElement("secondBar.compact.item.ui-test-calendar", in: app)
+        assertElement("secondBar.compact.item.ui-test-sync", in: app)
+        XCTAssertFalse(app.descendants(matching: .any)["secondBar.compact.item.ui-test-vpn"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["secondBar.compact.item.ui-test-wifi"].exists)
+        assertButton("Manage Second Bar", in: app)
+        assertButton("Second Bar Settings", in: app)
+    }
+
+    @MainActor
     func testStatusMenuShortcutVisibilityDoesNotBlockDirectPanels() throws {
         let hiddenShortcutArguments = [
             "--ui-testing-hide-status-shortcuts",

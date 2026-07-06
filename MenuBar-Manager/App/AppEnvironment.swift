@@ -1872,6 +1872,63 @@ final class AppEnvironment {
         menuBarItemSurfaceCoordinator.showSecondBar()
     }
 
+    func showCompactSecondBarForUITesting() {
+        guard ProcessInfo.processInfo.arguments.contains("--ui-testing") else {
+            return
+        }
+
+        _ = handleStatusItemPrimaryClick(anchorFrame: nil)
+    }
+
+    func seedRenderedIconsForUITesting(itemIDs: Set<MenuBarItemSnapshot.ID>) {
+        guard ProcessInfo.processInfo.arguments.contains("--ui-testing") else {
+            return
+        }
+
+        let resolver = MenuBarIconAppearanceResolver()
+        for snapshot in liveStatus.scannedMenuBarItems where itemIDs.contains(snapshot.id) {
+            guard let frame = snapshot.frame,
+                  let cacheKey = resolver.cacheKey(for: snapshot),
+                  let image = Self.makeUITestingRenderedIconImage(seed: snapshot.id) else {
+                continue
+            }
+
+            menuBarRenderedIconCache.cache(MenuBarIconSnapshot(
+                identity: MenuBarIconIdentity(snapshot: snapshot),
+                image: image,
+                frameInScreenPoints: frame,
+                scale: NSScreen.main?.backingScaleFactor ?? 2,
+                cacheKey: cacheKey,
+                source: .renderedCapture,
+                capturedAt: Date()
+            ))
+        }
+    }
+
+    private static func makeUITestingRenderedIconImage(seed: String) -> CGImage? {
+        let size = 24
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        guard let context = CGContext(
+            data: nil,
+            width: size,
+            height: size,
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else {
+            return nil
+        }
+
+        let hash = UInt(bitPattern: seed.hashValue)
+        let red = CGFloat((hash & 0xFF0000) >> 16) / 255
+        let green = CGFloat((hash & 0x00FF00) >> 8) / 255
+        let blue = CGFloat(hash & 0x0000FF) / 255
+        context.setFillColor(NSColor(red: red, green: green, blue: blue, alpha: 1).cgColor)
+        context.fillEllipse(in: CGRect(x: 4, y: 4, width: 16, height: 16))
+        return context.makeImage()
+    }
+
     func showWorkspacePreview() {
         showSettings(section: .workspacesPreview)
     }

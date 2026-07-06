@@ -46,7 +46,7 @@ struct SecondBarSettingsView: View {
             ClearGlassSection("Second Bar", subtitle: "Status menu entry point and panel behavior.") {
                 FeatureGateNotice(
                     .preview,
-                    text: "Second Bar is a Preview surface. The panel can open from Basic Mode; hidden-item metadata stays gated until Optional Pro discovery and Accessibility permission are ready."
+                    text: "Second Bar is a Preview surface. Opening it stays blocked until Optional Pro, Accessibility Discovery, Accessibility permission, Accurate Icons, and Screen Recording are ready."
                 )
 
                 ClearGlassDivider()
@@ -54,7 +54,7 @@ struct SecondBarSettingsView: View {
                 ClearGlassControlRow(
                     systemImage: "menubar.rectangle",
                     title: "Show in status menu",
-                    subtitle: "Keep the Second Bar shortcut visible in the status menu. Direct links and automation still open the gated panel.",
+                    subtitle: "Keep the Second Bar shortcut visible in the status menu. Direct links and automation use the same readiness gate.",
                     iconTint: .blue
                 ) {
                     Toggle("Show Second Bar in status menu", isOn: $settingsStore.secondBarEnabled)
@@ -107,7 +107,7 @@ struct SecondBarSettingsView: View {
                 )
 
                 ClearGlassInlineMessage(
-                    text: "Basic Mode hiding stays available without this panel. Optional Pro Second Bar uses Accessibility snapshots and can use Accurate Icons thumbnails only when you enable that separate permission path.",
+                    text: "Basic Mode hiding stays available without Second Bar. Optional Pro Second Bar uses Accessibility snapshots and Accurate Icons only after explicit setup.",
                     systemImage: "checkmark.shield",
                     style: .success
                 )

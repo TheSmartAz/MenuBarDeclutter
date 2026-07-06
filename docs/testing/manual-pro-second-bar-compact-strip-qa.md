@@ -13,6 +13,8 @@ This checklist covers the Pro compact Second Bar strip. These behaviors require 
 | Latest installed app | PASS | `scripts/build_release.sh --dry-run --install --verify-installed` refreshed `/Applications/MenuBarDeclutter.app` at 2026-07-06 00:53 PDT and verified `0.1.10` build `11`. |
 | Installed privacy and network boundary | PASS | `scripts/qa_installed_app_smoke.sh --app-path /Applications/MenuBarDeclutter.app` passed installed privacy checks and observed no network sockets. |
 | Settings setup visibility | PASS | Screenshot QA captured Privacy and Second Bar settings after the setup checklist was added; the latest full settings run is `docs/testing/screenshot-qa/2026-07-06_073635/`. |
+| Compact strip UI-test hook compiles | PASS | Added `--ui-testing-show-compact-second-bar` with seeded rendered icons and `testCompactSecondBarShowsReadyHiddenItems`; `xcodebuild build-for-testing -scheme MenuBarDeclutter -destination 'platform=macOS,arch=arm64' -derivedDataPath build/DerivedData/ui-compact-strip CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO -quiet` passed. |
+| Compact strip UI-test execution | BLOCKED-INFRA | Focused `xcodebuild test-without-building` for `testCompactSecondBarShowsReadyHiddenItems` did not materialize workers and surfaced the macOS `XCTest is trying to Enable UI Automation` authorization prompt before app assertions. |
 | Real permission prompts | NOT TESTED | Accessibility and Screen Recording prompt behavior requires explicit hands-on interaction with macOS Privacy & Security panes. |
 | Compact strip ready-state behavior | NOT TESTED | Accurate Icons warm-up, real third-party item inclusion, notch-edge placement, and direct activation require live menu bar items and granted permissions. |
 
