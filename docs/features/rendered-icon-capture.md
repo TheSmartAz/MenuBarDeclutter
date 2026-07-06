@@ -2,7 +2,7 @@
 
 Status: Opt-in, public API only.
 
-Accurate Icons treats a discovered menu bar item as rendered pixels plus metadata, not as an app bundle icon. When enabled, MenuBarDeclutter captures small menu bar item thumbnails locally and uses them in Second Bar, Find Icon, item settings, and group picker surfaces before falling back to app icons. Pro Second Bar compact strip readiness requires Accurate Icons plus Screen Recording so the strip can show prepared rendered icons.
+Accurate Icons treats a discovered menu bar item as rendered pixels plus metadata, not as an app bundle icon. When enabled, MenuBarDeclutter captures small menu bar item thumbnails locally and uses them in Second Bar, Find Icon, item settings, and group picker surfaces before falling back to app icons. Pro Second Bar compact strip readiness requires Accurate Icons plus Screen Recording so the rendered-icon path is available, while individual compact strip items can still fall back to app or placeholder icons when a specific thumbnail is missing.
 
 ## Permission Boundary
 

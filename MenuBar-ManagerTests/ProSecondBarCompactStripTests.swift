@@ -82,7 +82,7 @@ struct ProSecondBarCompactStripTests {
         ) == .toggleInlineVisibility)
     }
 
-    @Test func compactStripIncludesOnlyHiddenAccurateIconReadyItemsInOriginalOrder() {
+    @Test func compactStripIncludesHiddenItemsEvenWhenAccurateIconsAreNotReady() {
         let snapshots = [
             snapshot("visible", zone: .visible),
             snapshot("hidden-a", zone: .hidden),
@@ -96,10 +96,31 @@ struct ProSecondBarCompactStripTests {
             maxVisibleItems: 8
         )
 
-        #expect(plan.visibleItems.map(\.id) == ["hidden-a", "hidden-c"])
+        #expect(plan.visibleItems.map(\.id) == ["hidden-a", "hidden-b", "hidden-c"])
         #expect(plan.hiddenOverflowCount == 0)
         #expect(plan.needsAccurateIconCount == 1)
+        #expect(plan.totalAdditionalCount == 0)
         #expect(plan.scanState == .fresh)
+    }
+
+    @Test func compactStripAdditionalCountTracksOverflowNotMissingAccurateIcons() {
+        let snapshots = [
+            snapshot("a", zone: .hidden),
+            snapshot("b", zone: .hidden),
+            snapshot("c", zone: .hidden)
+        ]
+
+        let plan = SecondBarCompactStripPlanner.plan(
+            snapshots: snapshots,
+            accurateIconReadyIDs: ["a"],
+            maxVisibleItems: 2
+        )
+
+        #expect(plan.visibleItems.map(\.id) == ["a", "b"])
+        #expect(plan.hiddenOverflowCount == 1)
+        #expect(plan.needsAccurateIconCount == 2)
+        #expect(plan.totalAdditionalCount == 1)
+        #expect(plan.hasAdditionalItems)
     }
 
     @Test func compactStripKeepsOneLineAndReportsOverflow() {

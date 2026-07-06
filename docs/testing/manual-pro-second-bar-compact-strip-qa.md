@@ -21,6 +21,7 @@ This checklist covers the Pro compact Second Bar strip. These behaviors require 
 | Primary-click opt-in gate | PASS | `primaryClickRequiresExplicitSecondBarOptInBeforeUsingCompactStrip` verifies Pro readiness alone does not reroute the status item click; compact strip routing requires `Use menu bar icon for Second Bar`, and revoked readiness shows requirements only after that opt-in. |
 | Activation failure retry state | PASS | `activationFailureFeedbackRetainsRetryTarget` verifies failed compact-strip activation feedback keeps the failed snapshot so the strip can show a `Retry` control instead of closing or losing the target. |
 | Safe Mode primary-click suppression | PASS | `primaryClickRoutesSafeModeToInlineEvenWhenReadyAndOptedIn` verifies Safe Mode suppresses compact-strip primary-click routing even when Pro, readiness, and explicit opt-in are all enabled. |
+| Compact strip item inclusion | PASS | `compactStripIncludesHiddenItemsEvenWhenAccurateIconsAreNotReady` verifies Hidden-zone items stay visible even when a specific rendered thumbnail is missing, and `compactStripAdditionalCountTracksOverflowNotMissingAccurateIcons` verifies `+N` counts only one-line overflow. |
 | Compact strip scan state | PASS | `compactStripPlanReportsNoScanWhenNoScanTimeIsAvailable` and `compactStripPlanReportsStaleScanWhenLastScanIsOld` verify the strip distinguishes no scan, stale scan, and fresh scan instead of treating all empty states as no hidden icons. |
 | Compact strip screenshot QA | PASS | `scripts/qa_capture_ui_screenshots.sh --build --focused-only --output-dir docs/testing/screenshot-qa/2026-07-06_secondbar-compact-strip` captured 20 surfaces with 0 skipped and 0 failed. Manifest row `32-compact-second-bar` captured a `166x42` `Second Bar Compact Strip` window using full readiness gates, primary-click opt-in, seeded menu bar items, and seeded rendered icons. |
 | Warm-up diagnostics | PASS | Live diagnostics now reports `Icon Warm-up Running` and `Last Icon Warm-up` for Second Bar, so hands-on Accurate Icons warm-up runs can verify completion without inspecting private thumbnails. |
@@ -102,13 +103,13 @@ This checklist covers the Pro compact Second Bar strip. These behaviors require 
 
 ## Item Inclusion
 
-1. Confirm Hidden-zone items with prepared Accurate Icons appear in the compact strip.
+1. Confirm Hidden-zone items appear in the compact strip.
 2. Confirm Visible-zone items do not appear.
 3. Confirm Always Hidden items do not appear.
 4. Confirm the MenuBarDeclutter status item does not appear.
 5. Add more Hidden-zone items than fit in one row.
-6. Confirm extra ready items are represented by `+N`.
-7. Confirm hidden items that still need Accurate Icons contribute to the additional count.
+6. Confirm extra Hidden-zone items that do not fit are represented by `+N`.
+7. Confirm a Hidden-zone item without a prepared rendered thumbnail remains in the strip with an app or placeholder fallback icon and does not inflate `+N` unless it is actually overflow.
 8. Clear or block scanning and confirm an empty strip says `No scan yet` instead of `No hidden icons`.
 9. Let the latest scan become stale and confirm ready icons remain visible with a `Scan stale` badge.
 10. Click the Manage/Search control and confirm the full Second Bar panel opens.

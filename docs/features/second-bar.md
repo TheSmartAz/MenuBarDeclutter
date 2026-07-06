@@ -8,7 +8,7 @@ Second Bar is a Pro find-and-rescue surface for hidden and always-hidden menu ba
 - Opens a one-line compact strip from the primary status item when the Pro Second Bar readiness gate passes and `Use menu bar icon for Second Bar` is enabled.
 - Displays hidden and always-hidden items from the local Accessibility snapshot.
 - Shows rendered thumbnails or app fallback icons, app names, optional item titles, and zone badges in the management panel.
-- Shows Hidden-zone Accurate Icons in the compact strip, with overflow represented by `+N`.
+- Shows Hidden-zone items in the compact strip using rendered thumbnails when available and app/placeholder fallback icons otherwise, with overflow represented by `+N`.
 - Provides a search field for hidden items.
 - Supports keyboard navigation and Escape close.
 - Supports placement below the menu bar, near the mouse, or at the last position.
@@ -24,7 +24,7 @@ Second Bar is a Pro find-and-rescue surface for hidden and always-hidden menu ba
 3. Enable `Use menu bar icon for Second Bar` if primary clicks should open the compact strip.
 4. Hide items with the Basic Mode separator.
 5. Click the MenuBarDeclutter status item to open the compact strip.
-6. Click a prepared third-party icon for optimistic direct activation, or use Manage/Search to open the larger Second Bar panel.
+6. Click a third-party icon for optimistic direct activation, or use Manage/Search to open the larger Second Bar panel.
 7. Search or navigate to an item in the management panel.
 8. Use item actions for reveal, highlight, Find Icon, groups, and gated assisted-move dry runs.
 
@@ -60,7 +60,7 @@ Primary-click routing is a separate opt-in and defaults off. Disabling Pro clear
 
 ## Known Limitations
 
-- Second Bar is not a pixel-perfect captured duplicate of the real menu bar. Accurate Icons improves individual icon thumbnails when the item is capturable, but offscreen/overflow items can still use stale images or be excluded from the compact strip until prepared.
+- Second Bar is not a pixel-perfect captured duplicate of the real menu bar. Accurate Icons improves individual icon thumbnails when the item is capturable, but some compact strip items can still use stale rendered images, app icons, or placeholder fallback icons until capture succeeds.
 - Some menu bar items may lack useful Accessibility labels or ownership metadata.
 - Display, notch, Spaces, and sleep/wake behavior require hands-on QA.
 - Experimental move attempts remain explicitly gated and are not broad automated clicking.

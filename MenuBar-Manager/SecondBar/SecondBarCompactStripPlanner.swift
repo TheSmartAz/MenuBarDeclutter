@@ -22,11 +22,11 @@ nonisolated struct SecondBarCompactStripPlan: Equatable, Sendable {
     let scanState: SecondBarCompactStripScanState
 
     var totalAdditionalCount: Int {
-        hiddenOverflowCount + needsAccurateIconCount
+        hiddenOverflowCount
     }
 
     var hasAdditionalItems: Bool {
-        totalAdditionalCount > 0
+        hiddenOverflowCount > 0
     }
 }
 
@@ -41,14 +41,13 @@ nonisolated enum SecondBarCompactStripPlanner {
         now: Date = Date()
     ) -> SecondBarCompactStripPlan {
         let hiddenItems = snapshots.filter { $0.zone == .hidden }
-        let readyItems = hiddenItems.filter { accurateIconReadyIDs.contains($0.id) }
         let visibleLimit = max(0, maxVisibleItems)
-        let visibleItems = Array(readyItems.prefix(visibleLimit))
+        let visibleItems = Array(hiddenItems.prefix(visibleLimit))
 
         return SecondBarCompactStripPlan(
             visibleItems: visibleItems,
-            hiddenOverflowCount: max(0, readyItems.count - visibleItems.count),
-            needsAccurateIconCount: hiddenItems.count - readyItems.count,
+            hiddenOverflowCount: max(0, hiddenItems.count - visibleItems.count),
+            needsAccurateIconCount: hiddenItems.filter { !accurateIconReadyIDs.contains($0.id) }.count,
             scanState: scanState(lastScanTime: lastScanTime, now: now)
         )
     }

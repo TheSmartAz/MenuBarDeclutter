@@ -40,10 +40,10 @@ The compact strip is a one-line, menu-bar-like app-owned floating surface.
 
 - It shows Hidden zone items only.
 - It excludes Always Hidden by default.
-- It admits items with Accurate Icons ready.
+- It admits Hidden-zone items even when a specific rendered thumbnail is not ready; Accurate Icons is the setup gate, while individual items can fall back to app or placeholder icons.
 - It is icon-only by default; names are available through tooltips and accessibility labels.
 - Its order follows the real Hidden zone order until Set support exists.
-- Overflow remains one line and appears as `+N`, which opens the Manage Panel.
+- Overflow remains one line and appears as `+N`, which opens the Manage Panel. `+N` counts items that do not fit, not items whose rendered thumbnail is still missing.
 - If no Accessibility scan is available, it shows `No scan yet` instead of claiming there are no hidden icons.
 - If the latest Accessibility scan is stale, it keeps any ready icons visible and marks the strip as `Scan stale`.
 - Search/Manage and Settings are fixed compact controls on the right.
@@ -75,7 +75,7 @@ Opening the strip must not trigger a scan or screen capture. It reads the latest
 The existing large Second Bar panel remains the management surface.
 
 - Search Hidden and Always Hidden.
-- Show needs-icon and activation-health states.
+- Show needs-icon, fallback-icon, and activation-health states.
 - Refresh Accurate Icons explicitly.
 - Carry future Set management.
 - Keep favorites and recents out of compact strip ordering until Set support exists.
