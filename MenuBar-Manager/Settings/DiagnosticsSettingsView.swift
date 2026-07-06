@@ -1304,6 +1304,11 @@ private struct LiveStatusSecondBarGrid: View {
             LiveStatusRowData(label: "Last Compact Fallback Icons", value: liveStatus.secondBarLastCompactFallbackIconCount.formatted(.number)),
             LiveStatusRowData(label: "Last Compact Scan", value: liveStatus.secondBarLastCompactScanState ?? "—"),
             LiveStatusRowData(label: "Last Compact Avoided Notch", value: liveStatus.secondBarLastCompactAvoidedNotch?.yesNoText ?? "—"),
+            LiveStatusRowData(label: "Last Activation Result", value: liveStatus.secondBarLastActivationResult ?? "—"),
+            LiveStatusRowData(label: "Last Activation Matrix", value: liveStatus.secondBarLastActivationMatrixResult ?? "—"),
+            LiveStatusRowData(label: "Last Activation Zone", value: liveStatus.secondBarLastActivationTargetZone ?? "—"),
+            LiveStatusRowData(label: "Last Activation Visited", value: liveStatus.secondBarLastActivationVisitedElementCount?.formatted(.number) ?? "—"),
+            LiveStatusRowData(label: "Last Activation AX Error", value: liveStatus.secondBarLastActivationAXError ?? "—"),
             LiveStatusRowData(label: "Icon Warm-up Running", value: liveStatus.secondBarIconWarmUpInProgress.yesNoText),
             LiveStatusRowData(label: "Last Icon Warm-up", value: liveStatus.secondBarLastIconWarmUpResult ?? "—")
         ]

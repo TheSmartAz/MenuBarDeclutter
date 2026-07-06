@@ -317,7 +317,12 @@ struct DiagnosticsExportTests {
             lastCompactOverflowItemCount: 2,
             lastCompactFallbackIconCount: 1,
             lastCompactScanState: "Fresh",
-            lastCompactAvoidedNotch: true
+            lastCompactAvoidedNotch: true,
+            lastActivationResult: "actionFailed",
+            lastActivationMatrixResult: "FAIL_AX_PRESS",
+            lastActivationTargetZone: "hidden",
+            lastActivationVisitedElementCount: 5,
+            lastActivationAXError: "cannotComplete"
         )
 
         let snapshot = exporter.makeSnapshot(
@@ -340,6 +345,11 @@ struct DiagnosticsExportTests {
         #expect(try #require(secondBarRuntime["lastCompactFallbackIconCount"] as? Int) == 1)
         #expect(try #require(secondBarRuntime["lastCompactScanState"] as? String) == "Fresh")
         #expect(try #require(secondBarRuntime["lastCompactAvoidedNotch"] as? Bool))
+        #expect(try #require(secondBarRuntime["lastActivationResult"] as? String) == "actionFailed")
+        #expect(try #require(secondBarRuntime["lastActivationMatrixResult"] as? String) == "FAIL_AX_PRESS")
+        #expect(try #require(secondBarRuntime["lastActivationTargetZone"] as? String) == "hidden")
+        #expect(try #require(secondBarRuntime["lastActivationVisitedElementCount"] as? Int) == 5)
+        #expect(try #require(secondBarRuntime["lastActivationAXError"] as? String) == "cannotComplete")
 
         let text = String(data: try exporter.serialize(snapshot, format: .txt), encoding: .utf8) ?? ""
         #expect(text.contains("Second Bar Runtime"))
@@ -350,6 +360,11 @@ struct DiagnosticsExportTests {
         #expect(text.contains("Last Compact Fallback Icons: 1"))
         #expect(text.contains("Last Compact Scan: Fresh"))
         #expect(text.contains("Last Compact Avoided Notch: true"))
+        #expect(text.contains("Last Activation Result: actionFailed"))
+        #expect(text.contains("Last Activation Matrix Result: FAIL_AX_PRESS"))
+        #expect(text.contains("Last Activation Target Zone: hidden"))
+        #expect(text.contains("Last Activation Visited Elements: 5"))
+        #expect(text.contains("Last Activation AX Error: cannotComplete"))
     }
 
     @Test func txtExportIsHumanReadableAndExcludesByDesign() throws {

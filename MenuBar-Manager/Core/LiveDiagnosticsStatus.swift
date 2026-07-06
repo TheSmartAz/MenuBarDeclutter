@@ -55,6 +55,11 @@ final class LiveDiagnosticsStatus {
     var secondBarLastCompactFallbackIconCount: Int = 0
     var secondBarLastCompactScanState: String? = nil
     var secondBarLastCompactAvoidedNotch: Bool? = nil
+    var secondBarLastActivationResult: String? = nil
+    var secondBarLastActivationMatrixResult: String? = nil
+    var secondBarLastActivationTargetZone: String? = nil
+    var secondBarLastActivationVisitedElementCount: Int? = nil
+    var secondBarLastActivationAXError: String? = nil
     var iconMoveInProgress: Bool = false
     var lastIconMoveResult: String? = nil
     var lastIconMoveError: String? = nil
@@ -130,6 +135,17 @@ final class LiveDiagnosticsStatus {
 
     func updateSecondBarCompactPlacement(avoidedNotch: Bool) {
         setIfChanged(\.secondBarLastCompactAvoidedNotch, to: avoidedNotch)
+    }
+
+    func updateSecondBarDirectActivation(
+        result: MenuBarItemDirectActivationResult,
+        targetZone: MenuBarZone
+    ) {
+        setIfChanged(\.secondBarLastActivationResult, to: result.status.rawValue)
+        setIfChanged(\.secondBarLastActivationMatrixResult, to: result.matrixOutcome.rawValue)
+        setIfChanged(\.secondBarLastActivationTargetZone, to: targetZone.rawValue)
+        setIfChanged(\.secondBarLastActivationVisitedElementCount, to: result.visitedElementCount)
+        setIfChanged(\.secondBarLastActivationAXError, to: result.axErrorDescription)
     }
 
     func updateSearchAndSecondBarItemCounts(_ counts: LiveDiagnosticsMenuBarItemCounts) {

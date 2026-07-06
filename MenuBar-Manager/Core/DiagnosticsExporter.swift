@@ -186,6 +186,11 @@ struct DiagnosticsExporter {
         let lastCompactFallbackIconCount: Int
         let lastCompactScanState: String?
         let lastCompactAvoidedNotch: Bool?
+        let lastActivationResult: String?
+        let lastActivationMatrixResult: String?
+        let lastActivationTargetZone: String?
+        let lastActivationVisitedElementCount: Int?
+        let lastActivationAXError: String?
     }
 
     struct WorkspacePreviewDiagnosticsSnapshot: Codable, Equatable, Sendable {
@@ -562,6 +567,11 @@ struct DiagnosticsExporter {
             lines.append("Last Compact Fallback Icons: \(secondBarRuntime.lastCompactFallbackIconCount)")
             lines.append("Last Compact Scan: \(secondBarRuntime.lastCompactScanState ?? "—")")
             lines.append("Last Compact Avoided Notch: \(secondBarRuntime.lastCompactAvoidedNotch.map { String($0) } ?? "—")")
+            lines.append("Last Activation Result: \(secondBarRuntime.lastActivationResult ?? "—")")
+            lines.append("Last Activation Matrix Result: \(secondBarRuntime.lastActivationMatrixResult ?? "—")")
+            lines.append("Last Activation Target Zone: \(secondBarRuntime.lastActivationTargetZone ?? "—")")
+            lines.append("Last Activation Visited Elements: \(secondBarRuntime.lastActivationVisitedElementCount.map { String($0) } ?? "—")")
+            lines.append("Last Activation AX Error: \(secondBarRuntime.lastActivationAXError ?? "—")")
             lines.append("")
         }
         if let workspacePreview = snapshot.workspacePreview {

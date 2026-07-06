@@ -1,3 +1,4 @@
+import ApplicationServices
 import Foundation
 import Testing
 @testable import MenuBarDeclutter
@@ -125,6 +126,21 @@ struct LiveDiagnosticsStatusTests {
         #expect(liveStatus.secondBarLastCompactFallbackIconCount == 2)
         #expect(liveStatus.secondBarLastCompactScanState == "Stale")
         #expect(liveStatus.secondBarLastCompactAvoidedNotch == true)
+    }
+
+    @Test func applyingSecondBarDirectActivationUpdatesPrivacySafeDiagnostics() {
+        let liveStatus = LiveDiagnosticsStatus()
+
+        liveStatus.updateSecondBarDirectActivation(
+            result: .actionFailed(error: .cannotComplete, visitedElementCount: 5),
+            targetZone: .hidden
+        )
+
+        #expect(liveStatus.secondBarLastActivationResult == "actionFailed")
+        #expect(liveStatus.secondBarLastActivationMatrixResult == "FAIL_AX_PRESS")
+        #expect(liveStatus.secondBarLastActivationTargetZone == "hidden")
+        #expect(liveStatus.secondBarLastActivationVisitedElementCount == 5)
+        #expect(liveStatus.secondBarLastActivationAXError != nil)
     }
 
     @Test func applyingStatusBarVisibilityUpdatesRelatedDiagnostics() {

@@ -1032,7 +1032,12 @@ struct SettingsRootView: View {
             lastCompactOverflowItemCount: liveStatus.secondBarLastCompactOverflowItemCount,
             lastCompactFallbackIconCount: liveStatus.secondBarLastCompactFallbackIconCount,
             lastCompactScanState: liveStatus.secondBarLastCompactScanState,
-            lastCompactAvoidedNotch: liveStatus.secondBarLastCompactAvoidedNotch
+            lastCompactAvoidedNotch: liveStatus.secondBarLastCompactAvoidedNotch,
+            lastActivationResult: liveStatus.secondBarLastActivationResult,
+            lastActivationMatrixResult: liveStatus.secondBarLastActivationMatrixResult,
+            lastActivationTargetZone: liveStatus.secondBarLastActivationTargetZone,
+            lastActivationVisitedElementCount: liveStatus.secondBarLastActivationVisitedElementCount,
+            lastActivationAXError: liveStatus.secondBarLastActivationAXError
         )
     }
 

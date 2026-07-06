@@ -2513,6 +2513,10 @@ final class AppEnvironment {
         }
 
         let result = menuBarItemDirectActivationService.activate(snapshot: snapshot)
+        liveStatus.updateSecondBarDirectActivation(
+            result: result,
+            targetZone: snapshot.zone
+        )
         diagnosticsLogger.log(
             "Second Bar activation result: \(result.status.rawValue).",
             level: result.didActivate ? .debug : .warning,
