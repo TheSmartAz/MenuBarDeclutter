@@ -49,6 +49,20 @@ struct DogfoodStoreTests {
         ])
     }
 
+    @Test func defaultProAssistedChecklistTracksSecondBarCompletionGates() {
+        let titles = DogfoodChecklistItem.defaultItems
+            .filter { $0.gate == .proAssisted }
+            .map(\.title)
+
+        #expect(titles.contains("Second Bar setup gates ready"))
+        #expect(titles.contains("Second Bar compact strip opens and closes"))
+        #expect(titles.contains("Second Bar Accurate Icons warm-up"))
+        #expect(titles.contains("Second Bar notch placement"))
+        #expect(titles.contains("Second Bar external display placement"))
+        #expect(titles.contains("Second Bar direct activation matrix"))
+        #expect(titles.contains("Second Bar manual gate audit passes"))
+    }
+
     @Test func exportBundleKeepsPrivacyExclusionsExplicit() throws {
         let root = try Self.makeTempRoot()
         defer { try? FileManager.default.removeItem(at: root) }

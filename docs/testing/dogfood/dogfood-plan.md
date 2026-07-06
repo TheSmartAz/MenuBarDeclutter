@@ -24,6 +24,7 @@ Each run should record:
 - Accessibility grant/revoke: Gate B.
 - Icon moving: Gate D.
 - External display, notch, sleep/wake, Space behavior: Gate A and Gate C.
+- Pro Second Bar completion evidence: Gate C plus `scripts/qa_second_bar_manual_gate_audit.sh` against a hands-on diagnostics JSON export.
 - Profiles, triggers, Safe Mode: Gate C.
 - Installed Launch at Login: Gate E.
 - Interactive network watch: Gate E manual evidence only.
