@@ -28,3 +28,7 @@ run:
 ```sh
 scripts/qa_second_bar_signoff_audit.sh
 ```
+
+For the diagnostics-backed dogfood preflight hook, set
+`SECOND_BAR_AUDIT_MIN_WARMED_ICONS` when the Accurate Icons warm-up threshold
+should be stricter than the default of one refreshed thumbnail.

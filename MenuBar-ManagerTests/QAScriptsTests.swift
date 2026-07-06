@@ -179,6 +179,7 @@ struct QAScriptsTests {
         #expect(text.contains("qa_second_bar_manual_gate_audit.sh"))
         #expect(text.contains("SECOND_BAR_AUDIT_REQUIRE_NOTCH"))
         #expect(text.contains("SECOND_BAR_AUDIT_REQUIRE_FAILURE_ROW"))
+        #expect(text.contains("SECOND_BAR_AUDIT_MIN_WARMED_ICONS"))
         #expect(text.contains("SECOND_BAR_AUDIT_MATRIX_OUTPUT"))
         #expect(text.contains("DOGFOOD_SECOND_BAR_AUDIT_ONLY"))
         #expect(text.contains("Second Bar manual gate audit skipped"))
@@ -634,12 +635,41 @@ struct QAScriptsTests {
 
         #expect(process.terminationStatus == 0, "stdout: \(output)\nstderr: \(error)")
         #expect(output.contains("PASS: Readiness is ready"))
+        #expect(output.contains("PASS: Last icon warm-up result - Refreshed 3 thumbnail(s) (3 >= 1)"))
         #expect(output.contains("PASS: Direct activation PASS coverage - 1 PASS row(s)"))
         #expect(output.contains("PASS: Direct activation failure coverage - 1 failure row(s)"))
         #expect(output.contains("Second Bar manual gate audit passed"))
         #expect(matrix.contains("| Date | macOS Build | App Build | App Category | Item Zone | Dynamic Icon | Activation Result | Retry Result | targetID | targetZone | visitedElementCount | axError | Notes |"))
         #expect(matrix.contains("| 2026-07-06 | 26.0 | 0.1.10 build 11 | calendar | hidden | yes | PASS | retried-pass | item-1 | hidden | 4 | none | Menu bar item activated. |"))
         #expect(matrix.contains("FAIL_AX_PRESS"))
+
+        let staleWarmUpDiagnosticsURL = tempDirectory.appendingPathComponent("stale-warm-up.json")
+        let staleWarmUpFixture = Self.secondBarManualGateAuditFixture.replacing(
+            "\"lastIconWarmUpResult\": \"Refreshed 3 thumbnail(s)\"",
+            with: "\"lastIconWarmUpResult\": \"Refreshed 0 thumbnail(s)\""
+        )
+        try staleWarmUpFixture.write(to: staleWarmUpDiagnosticsURL, atomically: true, encoding: .utf8)
+
+        let warmUpFailureProcess = Process()
+        warmUpFailureProcess.executableURL = URL(fileURLWithPath: "/bin/bash")
+        warmUpFailureProcess.arguments = [
+            root.appendingPathComponent("scripts/qa_second_bar_manual_gate_audit.sh").path,
+            staleWarmUpDiagnosticsURL.path
+        ]
+        let warmUpFailureOutputPipe = Pipe()
+        let warmUpFailureErrorPipe = Pipe()
+        warmUpFailureProcess.standardOutput = warmUpFailureOutputPipe
+        warmUpFailureProcess.standardError = warmUpFailureErrorPipe
+
+        try warmUpFailureProcess.run()
+        warmUpFailureProcess.waitUntilExit()
+
+        let warmUpFailureOutput = String(
+            data: warmUpFailureOutputPipe.fileHandleForReading.readDataToEndOfFile(),
+            encoding: .utf8
+        ) ?? ""
+        #expect(warmUpFailureProcess.terminationStatus == 1)
+        #expect(warmUpFailureOutput.contains("FAIL: Last icon warm-up result - expected at least 1 refreshed icon(s), got \"Refreshed 0 thumbnail(s)\""))
     }
 
     private static let secondBarManualGateAuditFixture = """

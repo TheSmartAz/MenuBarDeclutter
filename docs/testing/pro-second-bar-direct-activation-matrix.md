@@ -19,6 +19,10 @@ scripts/qa_second_bar_manual_gate_audit.sh \
 
 Use `--retry-result retried-pass` or `--retry-result retried-fail` after testing the retry control. For stricter sign-off runs, add `--require-notch-avoidance` after testing notch fallback placement, and `--require-failure-row` after testing stale or failed activation retry. The audit reads only sanitized diagnostics metadata and writes markdown rows that can be reviewed before being added to this file.
 
+The audit also checks the last Accurate Icons warm-up result and requires at
+least one refreshed thumbnail by default. Use `--min-warmed-icons N` only when
+the tested setup intentionally needs a different threshold.
+
 After adding reviewed rows to this file, check the required matrix breadth:
 
 ```sh

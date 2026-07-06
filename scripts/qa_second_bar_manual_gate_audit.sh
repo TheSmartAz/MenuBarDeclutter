@@ -10,6 +10,7 @@ Usage:
 
 Options:
   --min-visible-items N        Required last compact visible item count. Default: 1.
+  --min-warmed-icons N         Required refreshed thumbnail count from the last warm-up. Default: 1.
   --max-fallback-icons N       Optional maximum last compact fallback icon count.
   --require-notch-avoidance    Require the last compact placement to report notch avoidance.
   --require-failure-row        Require at least one non-PASS direct activation log row.
@@ -21,12 +22,14 @@ Options:
   -h, --help                   Show this help.
 
 Audits a diagnostics JSON export after hands-on Pro Second Bar compact-strip QA.
-The audit is privacy-safe: it checks readiness, aggregate compact-strip runtime
-fields, and direct-activation result metadata already present in diagnostics.
+The audit is privacy-safe: it checks readiness, Accurate Icons warm-up,
+aggregate compact-strip runtime fields, and direct-activation result metadata
+already present in diagnostics.
 USAGE
 }
 
 MIN_VISIBLE_ITEMS=1
+MIN_WARMED_ICONS=1
 MAX_FALLBACK_ICONS=""
 REQUIRE_NOTCH_AVOIDANCE=0
 REQUIRE_FAILURE_ROW=0
@@ -41,6 +44,10 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --min-visible-items)
       MIN_VISIBLE_ITEMS="${2:-}"
+      shift 2
+      ;;
+    --min-warmed-icons)
+      MIN_WARMED_ICONS="${2:-}"
       shift 2
       ;;
     --max-fallback-icons)
@@ -112,6 +119,11 @@ if ! [[ "$MIN_VISIBLE_ITEMS" =~ ^[0-9]+$ ]]; then
   exit 2
 fi
 
+if ! [[ "$MIN_WARMED_ICONS" =~ ^[0-9]+$ ]]; then
+  echo "--min-warmed-icons must be a non-negative integer." >&2
+  exit 2
+fi
+
 if [[ -n "$MAX_FALLBACK_ICONS" ]] && ! [[ "$MAX_FALLBACK_ICONS" =~ ^[0-9]+$ ]]; then
   echo "--max-fallback-icons must be a non-negative integer." >&2
   exit 2
@@ -123,6 +135,7 @@ if ! command -v ruby >/dev/null 2>&1; then
 fi
 
 export SECOND_BAR_MIN_VISIBLE_ITEMS="$MIN_VISIBLE_ITEMS"
+export SECOND_BAR_MIN_WARMED_ICONS="$MIN_WARMED_ICONS"
 export SECOND_BAR_MAX_FALLBACK_ICONS="$MAX_FALLBACK_ICONS"
 export SECOND_BAR_REQUIRE_NOTCH_AVOIDANCE="$REQUIRE_NOTCH_AVOIDANCE"
 export SECOND_BAR_REQUIRE_FAILURE_ROW="$REQUIRE_FAILURE_ROW"
@@ -141,6 +154,10 @@ def integer_value(value)
   Integer(value)
 rescue ArgumentError, TypeError
   nil
+end
+
+def first_integer_in_text(value)
+  value.to_s.scan(/\d+/).first&.to_i
 end
 
 def pass(label, detail)
@@ -201,6 +218,21 @@ runtime = document["secondBarRuntime"]
 if runtime.nil?
   fail_item(failures, "Second Bar runtime", "missing secondBarRuntime block")
 else
+  expect_false(failures, "Icon warm-up running", runtime["iconWarmUpInProgress"])
+
+  min_warmed_icons = integer_value(ENV.fetch("SECOND_BAR_MIN_WARMED_ICONS", "1")) || 1
+  warm_up_result = runtime["lastIconWarmUpResult"].to_s
+  warmed_icon_count = first_integer_in_text(warm_up_result)
+  if warmed_icon_count && warmed_icon_count >= min_warmed_icons
+    pass("Last icon warm-up result", "#{warm_up_result} (#{warmed_icon_count} >= #{min_warmed_icons})")
+  else
+    fail_item(
+      failures,
+      "Last icon warm-up result",
+      "expected at least #{min_warmed_icons} refreshed icon(s), got #{runtime["lastIconWarmUpResult"].inspect}"
+    )
+  end
+
   min_visible_items = integer_value(ENV.fetch("SECOND_BAR_MIN_VISIBLE_ITEMS", "1")) || 1
   visible_count = integer_value(runtime["lastCompactVisibleItemCount"])
   if visible_count && visible_count >= min_visible_items
