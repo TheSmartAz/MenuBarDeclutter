@@ -252,6 +252,56 @@ struct DiagnosticsExportTests {
         #expect(text.contains("Set Builder Unresolved Proxies: 1"))
     }
 
+    @Test func jsonExportCanIncludeSecondBarReadinessDiagnostics() throws {
+        let exporter = makeExporter()
+        let store = makeStore()
+        let logger = DiagnosticsLogger()
+        let input = ProSecondBarReadinessInput(
+            entitlement: .licensed,
+            accessibilityDiscoveryEnabled: true,
+            accessibilityPermission: .granted,
+            accurateIconsEnabled: true,
+            screenCapturePermission: .notGranted
+        )
+        let readiness = DiagnosticsExporter.SecondBarReadinessDiagnosticsSnapshot(
+            input: input,
+            readiness: ProSecondBarReadiness.evaluate(input),
+            primaryClickOptIn: true,
+            safeModeActive: false
+        )
+
+        let snapshot = exporter.makeSnapshot(
+            settingsStore: store,
+            logger: logger,
+            secondBarReadiness: readiness
+        )
+        let data = try exporter.serialize(snapshot, format: .json)
+        let object = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let secondBarReadiness = try #require(object["secondBarReadiness"] as? [String: Any])
+
+        #expect(try #require(secondBarReadiness["readinessState"] as? String) == "screenRecordingMissing")
+        #expect(try #require(secondBarReadiness["readinessTitle"] as? String) == "Screen Recording Required")
+        let readinessMessage = try #require(secondBarReadiness["readinessMessage"] as? String)
+        #expect(readinessMessage.contains("Screen Recording"))
+        #expect(try #require(secondBarReadiness["isReady"] as? Bool) == false)
+        #expect(try #require(secondBarReadiness["entitlement"] as? String) == "licensed")
+        #expect(try #require(secondBarReadiness["entitlementActive"] as? Bool) == true)
+        #expect(try #require(secondBarReadiness["accessibilityDiscoveryEnabled"] as? Bool) == true)
+        #expect(try #require(secondBarReadiness["accessibilityPermission"] as? String) == "granted")
+        #expect(try #require(secondBarReadiness["accurateIconsEnabled"] as? Bool) == true)
+        #expect(try #require(secondBarReadiness["screenCapturePermission"] as? String) == "notGranted")
+        #expect(try #require(secondBarReadiness["primaryClickOptIn"] as? Bool) == true)
+        #expect(try #require(secondBarReadiness["primaryClickRoute"] as? String) == "showSecondBarRequirements")
+        #expect(try #require(secondBarReadiness["safeModeActive"] as? Bool) == false)
+
+        let text = String(data: try exporter.serialize(snapshot, format: .txt), encoding: .utf8) ?? ""
+        #expect(text.contains("Second Bar Readiness"))
+        #expect(text.contains("State: screenRecordingMissing"))
+        #expect(text.contains("Title: Screen Recording Required"))
+        #expect(text.contains("Screen Recording Permission: notGranted"))
+        #expect(text.contains("Primary Click Route: showSecondBarRequirements"))
+    }
+
     @Test func txtExportIsHumanReadableAndExcludesByDesign() throws {
         let exporter = makeExporter()
         let store = makeStore()

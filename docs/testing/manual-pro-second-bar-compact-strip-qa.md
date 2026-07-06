@@ -24,6 +24,7 @@ This checklist covers the Pro compact Second Bar strip. These behaviors require 
 | Compact strip scan state | PASS | `compactStripPlanReportsNoScanWhenNoScanTimeIsAvailable` and `compactStripPlanReportsStaleScanWhenLastScanIsOld` verify the strip distinguishes no scan, stale scan, and fresh scan instead of treating all empty states as no hidden icons. |
 | Compact strip screenshot QA | PASS | `scripts/qa_capture_ui_screenshots.sh --build --focused-only --output-dir docs/testing/screenshot-qa/2026-07-06_secondbar-compact-strip` captured 20 surfaces with 0 skipped and 0 failed. Manifest row `32-compact-second-bar` captured a `166x42` `Second Bar Compact Strip` window using full readiness gates, primary-click opt-in, seeded menu bar items, and seeded rendered icons. |
 | Warm-up diagnostics | PASS | Live diagnostics now reports `Icon Warm-up Running` and `Last Icon Warm-up` for Second Bar, so hands-on Accurate Icons warm-up runs can verify completion without inspecting private thumbnails. |
+| Readiness diagnostics export | PASS | Diagnostics exports can include a privacy-safe `secondBarReadiness` block with readiness state, title/message, entitlement, Accessibility Discovery, Accessibility permission, Accurate Icons, Screen Recording, primary-click route, and Safe Mode state. `jsonExportCanIncludeSecondBarReadinessDiagnostics` covers JSON and text output. |
 | Compact strip UI-test execution | BLOCKED-INFRA | Focused `xcodebuild test-without-building` for `testCompactSecondBarShowsReadyHiddenItems` did not materialize workers and surfaced the macOS `XCTest is trying to Enable UI Automation` authorization prompt before app assertions. |
 | Real permission prompts | NOT TESTED | Accessibility and Screen Recording prompt behavior requires explicit hands-on interaction with macOS Privacy & Security panes. |
 | Compact strip ready-state behavior | NOT TESTED | Accurate Icons warm-up, real third-party item inclusion, notch-edge placement, and direct activation require live menu bar items and granted permissions. |
@@ -54,6 +55,7 @@ This checklist covers the Pro compact Second Bar strip. These behaviors require 
 12. Click `Warm Up Icons` after the checklist is ready.
 13. Confirm hidden items may briefly reveal, thumbnails refresh, and the previous visibility state is restored.
 14. Open Settings -> Diagnostics and confirm Second Bar live status shows `Icon Warm-up Running` returning to `No` and `Last Icon Warm-up` reporting the refreshed thumbnail count.
+15. Export diagnostics as JSON or text and confirm the Second Bar readiness section records the current readiness state, missing gate, primary-click route, and Safe Mode state without screenshot or icon identity data.
 
 ## Basic Mode
 

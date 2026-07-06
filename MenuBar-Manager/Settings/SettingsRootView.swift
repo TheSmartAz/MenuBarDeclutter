@@ -882,6 +882,7 @@ struct SettingsRootView: View {
                 onResetBasicMode: actions.resetBasicMode,
                 onDisableProMode: actions.disableProMode,
                 onEnterSafeModeNextLaunch: actions.enterSafeModeNextLaunch,
+                secondBarReadinessDiagnosticsProvider: makeSecondBarReadinessDiagnosticsSnapshot,
                 workspacePreviewDiagnosticsProvider: makeWorkspacePreviewDiagnosticsSnapshot
             )
         case .advanced:
@@ -994,6 +995,26 @@ struct SettingsRootView: View {
             functionBar: functionDiagnostics,
             setBuilder: setBuilderViewModel.diagnosticsSnapshot,
             infoStrip: infoDiagnostics
+        )
+    }
+
+    private func makeSecondBarReadinessDiagnosticsSnapshot() -> DiagnosticsExporter.SecondBarReadinessDiagnosticsSnapshot? {
+        let accessibilityPermission = accessibilityPermissionService?.currentStatus
+            ?? settingsStore.lastAccessibilityPermissionStatus.flatMap(AccessibilityPermissionStatus.init(rawValue:))
+            ?? .notRequested
+        let screenCapturePermission = screenCapturePermissionService?.refreshStatus() ?? .unknown
+        let input = ProSecondBarReadinessInput(
+            entitlement: settingsStore.proModeEnabled ? .licensed : .basic,
+            accessibilityDiscoveryEnabled: settingsStore.accessibilityDiscoveryEnabled,
+            accessibilityPermission: accessibilityPermission,
+            accurateIconsEnabled: settingsStore.renderedIconCaptureEnabled,
+            screenCapturePermission: screenCapturePermission
+        )
+        return DiagnosticsExporter.SecondBarReadinessDiagnosticsSnapshot(
+            input: input,
+            readiness: ProSecondBarReadiness.evaluate(input),
+            primaryClickOptIn: settingsStore.secondBarPrimaryClickEnabled,
+            safeModeActive: liveStatus?.safeModeActive ?? false
         )
     }
 

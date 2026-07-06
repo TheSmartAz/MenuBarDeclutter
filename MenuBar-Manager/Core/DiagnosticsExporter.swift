@@ -97,9 +97,80 @@ struct DiagnosticsExporter {
         let architecture: String
         let screens: [ScreenSnapshot]
         let settings: SettingsSnapshot
+        let secondBarReadiness: SecondBarReadinessDiagnosticsSnapshot?
         let workspacePreview: WorkspacePreviewDiagnosticsSnapshot?
         let events: [DiagnosticEvent]
         let dogfood: DogfoodDiagnosticsMetadata?
+    }
+
+    struct SecondBarReadinessDiagnosticsSnapshot: Codable, Equatable, Sendable {
+        let readinessState: String
+        let readinessTitle: String
+        let readinessMessage: String
+        let isReady: Bool
+        let entitlement: String
+        let entitlementActive: Bool
+        let accessibilityDiscoveryEnabled: Bool
+        let accessibilityPermission: String
+        let accurateIconsEnabled: Bool
+        let screenCapturePermission: String
+        let primaryClickOptIn: Bool
+        let primaryClickRoute: String
+        let safeModeActive: Bool
+
+        init(
+            input: ProSecondBarReadinessInput,
+            readiness: ProSecondBarReadinessResult,
+            primaryClickOptIn: Bool,
+            safeModeActive: Bool
+        ) {
+            self.readinessState = readiness.state.rawValue
+            self.readinessTitle = readiness.state.displayTitle
+            self.readinessMessage = readiness.state.message
+            self.isReady = readiness.isReady
+            self.entitlement = Self.entitlementValue(readiness.entitlement)
+            self.entitlementActive = readiness.entitlement.isActive
+            self.accessibilityDiscoveryEnabled = input.accessibilityDiscoveryEnabled
+            self.accessibilityPermission = input.accessibilityPermission.rawValue
+            self.accurateIconsEnabled = input.accurateIconsEnabled
+            self.screenCapturePermission = input.screenCapturePermission.rawValue
+            self.primaryClickOptIn = primaryClickOptIn
+            self.primaryClickRoute = Self.primaryClickRouteValue(StatusBarPrimaryClickRouter.route(
+                entitlement: readiness.entitlement,
+                readiness: readiness.state,
+                primaryClickOptIn: primaryClickOptIn,
+                safeModeActive: safeModeActive
+            ))
+            self.safeModeActive = safeModeActive
+        }
+
+        private static func entitlementValue(_ entitlement: ProEntitlementState) -> String {
+            switch entitlement {
+            case .basic:
+                "basic"
+            case .trialAvailable:
+                "trialAvailable"
+            case .trialActive:
+                "trialActive"
+            case .licensed:
+                "licensed"
+            case .expired:
+                "expired"
+            case .unavailable:
+                "unavailable"
+            }
+        }
+
+        private static func primaryClickRouteValue(_ route: StatusBarPrimaryClickRoute) -> String {
+            switch route {
+            case .toggleInlineVisibility:
+                "toggleInlineVisibility"
+            case .toggleCompactStrip:
+                "toggleCompactStrip"
+            case .showSecondBarRequirements:
+                "showSecondBarRequirements"
+            }
+        }
     }
 
     struct WorkspacePreviewDiagnosticsSnapshot: Codable, Equatable, Sendable {
@@ -238,6 +309,7 @@ struct DiagnosticsExporter {
     func makeSnapshot(
         settingsStore: SettingsStore,
         logger: DiagnosticsLogger,
+        secondBarReadiness: SecondBarReadinessDiagnosticsSnapshot? = nil,
         workspacePreview: WorkspacePreviewDiagnosticsSnapshot? = nil,
         events: [DiagnosticEvent]? = nil
     ) -> Snapshot {
@@ -251,6 +323,7 @@ struct DiagnosticsExporter {
             architecture: architectureProvider(),
             screens: screensProvider(),
             settings: makeSettingsSnapshot(settingsStore),
+            secondBarReadiness: secondBarReadiness,
             workspacePreview: workspacePreview,
             events: events ?? logger.events,
             dogfood: makeDogfoodMetadata(settingsStore)
@@ -442,6 +515,23 @@ struct DiagnosticsExporter {
         lines.append("== Settings ==")
         lines.append(contentsOf: Self.settingsPlainTextLines(for: snapshot.settings))
         lines.append("")
+        if let secondBarReadiness = snapshot.secondBarReadiness {
+            lines.append("== Second Bar Readiness ==")
+            lines.append("State: \(secondBarReadiness.readinessState)")
+            lines.append("Title: \(secondBarReadiness.readinessTitle)")
+            lines.append("Message: \(secondBarReadiness.readinessMessage)")
+            lines.append("Ready: \(secondBarReadiness.isReady)")
+            lines.append("Entitlement: \(secondBarReadiness.entitlement)")
+            lines.append("Entitlement Active: \(secondBarReadiness.entitlementActive)")
+            lines.append("Accessibility Discovery Enabled: \(secondBarReadiness.accessibilityDiscoveryEnabled)")
+            lines.append("Accessibility Permission: \(secondBarReadiness.accessibilityPermission)")
+            lines.append("Accurate Icons Enabled: \(secondBarReadiness.accurateIconsEnabled)")
+            lines.append("Screen Recording Permission: \(secondBarReadiness.screenCapturePermission)")
+            lines.append("Primary Click Opt-in: \(secondBarReadiness.primaryClickOptIn)")
+            lines.append("Primary Click Route: \(secondBarReadiness.primaryClickRoute)")
+            lines.append("Safe Mode Active: \(secondBarReadiness.safeModeActive)")
+            lines.append("")
+        }
         if let workspacePreview = snapshot.workspacePreview {
             lines.append("== Workspace Preview Diagnostics ==")
             lines.append("Workspaces: \(workspacePreview.workspaces.workspaceCount)")
@@ -586,6 +676,7 @@ struct DiagnosticsExporter {
         let system: System
         let screens: [ScreenSnapshot]
         let settings: SettingsSnapshot
+        let secondBarReadiness: SecondBarReadinessDiagnosticsSnapshot?
         let workspacePreview: WorkspacePreviewDiagnosticsSnapshot?
         let logs: [Log]
         let excludedByDesign: [String]
@@ -598,6 +689,7 @@ struct DiagnosticsExporter {
             self.system = System(snapshot: snapshot)
             self.screens = snapshot.screens
             self.settings = snapshot.settings
+            self.secondBarReadiness = snapshot.secondBarReadiness
             self.workspacePreview = snapshot.workspacePreview
             self.logs = snapshot.events.map(Log.init(event:))
             self.excludedByDesign = DiagnosticsExporter.excludedByDesign
@@ -613,6 +705,7 @@ struct DiagnosticsExporter {
             case system
             case screens
             case settings
+            case secondBarReadiness
             case workspacePreview
             case logs
             case excludedByDesign
@@ -627,6 +720,7 @@ struct DiagnosticsExporter {
             try container.encode(system, forKey: .system)
             try container.encode(screens, forKey: .screens)
             try container.encode(settings, forKey: .settings)
+            try container.encodeIfPresent(secondBarReadiness, forKey: .secondBarReadiness)
             try container.encodeIfPresent(workspacePreview, forKey: .workspacePreview)
             try container.encode(logs, forKey: .logs)
             try container.encode(excludedByDesign, forKey: .excludedByDesign)
