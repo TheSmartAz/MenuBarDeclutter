@@ -13,6 +13,17 @@ nonisolated enum SecondBarCompactStripScanState: Equatable, Sendable {
             true
         }
     }
+
+    var diagnosticsLabel: String {
+        switch self {
+        case .fresh:
+            "Fresh"
+        case .stale:
+            "Stale"
+        case .noScan:
+            "No Scan"
+        }
+    }
 }
 
 nonisolated struct SecondBarCompactStripPlan: Equatable, Sendable {

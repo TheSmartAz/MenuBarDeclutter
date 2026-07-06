@@ -50,6 +50,10 @@ final class LiveDiagnosticsStatus {
     var secondBarLastPosition: String? = nil
     var secondBarIconWarmUpInProgress: Bool = false
     var secondBarLastIconWarmUpResult: String? = nil
+    var secondBarLastCompactVisibleItemCount: Int = 0
+    var secondBarLastCompactOverflowItemCount: Int = 0
+    var secondBarLastCompactFallbackIconCount: Int = 0
+    var secondBarLastCompactScanState: String? = nil
     var iconMoveInProgress: Bool = false
     var lastIconMoveResult: String? = nil
     var lastIconMoveError: String? = nil
@@ -114,6 +118,13 @@ final class LiveDiagnosticsStatus {
         if let result {
             setIfChanged(\.secondBarLastIconWarmUpResult, to: result)
         }
+    }
+
+    func updateSecondBarCompactStrip(plan: SecondBarCompactStripPlan) {
+        setIfChanged(\.secondBarLastCompactVisibleItemCount, to: plan.visibleItems.count)
+        setIfChanged(\.secondBarLastCompactOverflowItemCount, to: plan.hiddenOverflowCount)
+        setIfChanged(\.secondBarLastCompactFallbackIconCount, to: plan.needsAccurateIconCount)
+        setIfChanged(\.secondBarLastCompactScanState, to: plan.scanState.diagnosticsLabel)
     }
 
     func updateSearchAndSecondBarItemCounts(_ counts: LiveDiagnosticsMenuBarItemCounts) {

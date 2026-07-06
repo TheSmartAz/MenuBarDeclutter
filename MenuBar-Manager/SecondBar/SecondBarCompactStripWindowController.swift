@@ -172,6 +172,7 @@ final class SecondBarCompactStripWindowController: NSWindowController, NSWindowD
         switch visibleContent {
         case .compact:
             rootContent = .ready(plan: plan)
+            liveStatus.updateSecondBarCompactStrip(plan: plan)
         case .requirements(let readiness):
             rootContent = .requirements(readiness)
         }

@@ -1296,6 +1296,10 @@ private struct LiveStatusSecondBarGrid: View {
             LiveStatusRowData(label: "Second Bar Items", value: liveStatus.secondBarItemCount.formatted(.number)),
             LiveStatusRowData(label: "Second Bar Screen", value: liveStatus.secondBarCurrentScreen ?? "—"),
             LiveStatusRowData(label: "Second Bar Position", value: liveStatus.secondBarLastPosition ?? "—"),
+            LiveStatusRowData(label: "Last Compact Visible", value: liveStatus.secondBarLastCompactVisibleItemCount.formatted(.number)),
+            LiveStatusRowData(label: "Last Compact Overflow", value: liveStatus.secondBarLastCompactOverflowItemCount.formatted(.number)),
+            LiveStatusRowData(label: "Last Compact Fallback Icons", value: liveStatus.secondBarLastCompactFallbackIconCount.formatted(.number)),
+            LiveStatusRowData(label: "Last Compact Scan", value: liveStatus.secondBarLastCompactScanState ?? "—"),
             LiveStatusRowData(label: "Icon Warm-up Running", value: liveStatus.secondBarIconWarmUpInProgress.yesNoText),
             LiveStatusRowData(label: "Last Icon Warm-up", value: liveStatus.secondBarLastIconWarmUpResult ?? "—")
         ]
