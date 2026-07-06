@@ -13,6 +13,7 @@ struct SecondBarSettingsView: View {
 
     private var pageSectionAnchors: [ClearGlassPageAnchor] {
         var anchors = [
+            ClearGlassPageAnchor("Pro Second Bar Setup", systemImage: "checklist"),
             ClearGlassPageAnchor("Second Bar", systemImage: "menubar.rectangle")
         ]
 
@@ -20,11 +21,8 @@ struct SecondBarSettingsView: View {
             anchors.append(ClearGlassPageAnchor("Panel Action Status", systemImage: "checkmark.seal"))
         }
 
-        anchors.append(contentsOf: [
-            ClearGlassPageAnchor("Pro Second Bar Setup", systemImage: "checklist"),
-            ClearGlassPageAnchor("Position & Appearance", systemImage: "slider.horizontal.3"),
-            ClearGlassPageAnchor("Preview", systemImage: "eye")
-        ])
+        anchors.append(ClearGlassPageAnchor("Position & Appearance", systemImage: "slider.horizontal.3"))
+        anchors.append(ClearGlassPageAnchor("Preview", systemImage: "eye"))
 
         return anchors
     }
@@ -36,6 +34,15 @@ struct SecondBarSettingsView: View {
             badges: [.preview],
             sectionAnchors: pageSectionAnchors
         ) {
+            ProSecondBarSetupChecklistView(
+                settingsStore: settingsStore,
+                permissionService: permissionService,
+                screenCapturePermissionService: screenCapturePermissionService,
+                iconCaptureCoordinator: iconCaptureCoordinator,
+                scanCoordinator: scanCoordinator,
+                onChange: onChange
+            )
+
             ClearGlassSection("Second Bar", subtitle: "Status menu entry point and panel behavior.") {
                 FeatureGateNotice(
                     .preview,
@@ -121,15 +128,6 @@ struct SecondBarSettingsView: View {
                     }
                 }
             }
-
-            ProSecondBarSetupChecklistView(
-                settingsStore: settingsStore,
-                permissionService: permissionService,
-                screenCapturePermissionService: screenCapturePermissionService,
-                iconCaptureCoordinator: iconCaptureCoordinator,
-                scanCoordinator: scanCoordinator,
-                onChange: onChange
-            )
 
             ClearGlassSection("Position & Appearance", subtitle: "Placement and visual density for the Second Bar.") {
                 ClearGlassValueRow("Position", subtitle: "Where the Second Bar appears.") {

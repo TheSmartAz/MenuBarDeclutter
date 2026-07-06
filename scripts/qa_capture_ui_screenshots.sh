@@ -314,7 +314,11 @@ launch_surface() {
   shift
 
   local executable="$APP_PATH/Contents/MacOS/$APP_EXECUTABLE_NAME"
-  local command=("$executable" --ui-testing "${UI_TESTING_APPEARANCE_ARGS[@]}" "$@")
+  local command=("$executable" --ui-testing)
+  if [[ "$APPEARANCE" == "light" || "$APPEARANCE" == "dark" ]]; then
+    command+=("${UI_TESTING_APPEARANCE_ARGS[@]}")
+  fi
+  command+=("$@")
 
   print_command "${command[@]}"
   "${command[@]}" > "$log_file" 2>&1 &
