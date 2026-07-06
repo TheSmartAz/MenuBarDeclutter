@@ -199,6 +199,7 @@ final class SecondBarCompactStripWindowController: NSWindowController, NSWindowD
         ))
         liveStatus.secondBarCurrentScreen = placement.screenID
         liveStatus.secondBarLastPosition = frameSummary(placement.frame)
+        liveStatus.updateSecondBarCompactPlacement(avoidedNotch: placement.avoidedNotch)
     }
 
     private func plan(

@@ -316,7 +316,8 @@ struct DiagnosticsExportTests {
             lastCompactVisibleItemCount: 3,
             lastCompactOverflowItemCount: 2,
             lastCompactFallbackIconCount: 1,
-            lastCompactScanState: "Fresh"
+            lastCompactScanState: "Fresh",
+            lastCompactAvoidedNotch: true
         )
 
         let snapshot = exporter.makeSnapshot(
@@ -338,6 +339,7 @@ struct DiagnosticsExportTests {
         #expect(try #require(secondBarRuntime["lastCompactOverflowItemCount"] as? Int) == 2)
         #expect(try #require(secondBarRuntime["lastCompactFallbackIconCount"] as? Int) == 1)
         #expect(try #require(secondBarRuntime["lastCompactScanState"] as? String) == "Fresh")
+        #expect(try #require(secondBarRuntime["lastCompactAvoidedNotch"] as? Bool))
 
         let text = String(data: try exporter.serialize(snapshot, format: .txt), encoding: .utf8) ?? ""
         #expect(text.contains("Second Bar Runtime"))
@@ -347,6 +349,7 @@ struct DiagnosticsExportTests {
         #expect(text.contains("Last Compact Overflow: 2"))
         #expect(text.contains("Last Compact Fallback Icons: 1"))
         #expect(text.contains("Last Compact Scan: Fresh"))
+        #expect(text.contains("Last Compact Avoided Notch: true"))
     }
 
     @Test func txtExportIsHumanReadableAndExcludesByDesign() throws {

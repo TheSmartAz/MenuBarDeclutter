@@ -23,7 +23,7 @@ This checklist covers the Pro compact Second Bar strip. These behaviors require 
 | Safe Mode primary-click suppression | PASS | `primaryClickRoutesSafeModeToInlineEvenWhenReadyAndOptedIn` verifies Safe Mode suppresses compact-strip primary-click routing even when Pro, readiness, and explicit opt-in are all enabled. |
 | Compact strip item inclusion | PASS | `compactStripIncludesHiddenItemsEvenWhenAccurateIconsAreNotReady` verifies Hidden-zone items stay visible even when a specific rendered thumbnail is missing, and `compactStripAdditionalCountTracksOverflowNotMissingAccurateIcons` verifies `+N` counts only one-line overflow. |
 | Compact strip scan state | PASS | `compactStripPlanReportsNoScanWhenNoScanTimeIsAvailable` and `compactStripPlanReportsStaleScanWhenLastScanIsOld` verify the strip distinguishes no scan, stale scan, and fresh scan instead of treating all empty states as no hidden icons. |
-| Compact strip diagnostics export | PASS | Diagnostics live status and export now record the last compact strip visible count, overflow count, fallback-icon count, and scan state. `applyingSecondBarCompactStripPlanUpdatesPrivacySafeDiagnostics` and `jsonExportCanIncludeSecondBarRuntimeDiagnostics` cover those aggregate values without item names or image data. |
+| Compact strip diagnostics export | PASS | Diagnostics live status and export now record the last compact strip visible count, overflow count, fallback-icon count, scan state, and whether the last compact placement used notch avoidance. `applyingSecondBarCompactStripPlanUpdatesPrivacySafeDiagnostics` and `jsonExportCanIncludeSecondBarRuntimeDiagnostics` cover those aggregate values without item names or image data. |
 | Compact strip screenshot QA | PASS | `scripts/qa_capture_ui_screenshots.sh --build --focused-only --output-dir docs/testing/screenshot-qa/2026-07-06_secondbar-requirements-states-final2` captured 24 surfaces with 0 skipped and 0 failed. Manifest rows `32-compact-second-bar` and `33-compact-second-bar-fallback-icons` captured `166x42` ready/fallback `Second Bar Compact Strip` windows, and rows `34-compact-second-bar-accessibility-required`, `35-compact-second-bar-accurate-icons-required`, and `36-compact-second-bar-screen-recording-required` captured compact requirements strips. The fallback row used only a partial rendered icon seed, and the Accessibility requirements row simulates permission revocation after startup so startup health does not reset the explicit primary-click opt-in. |
 | Warm-up diagnostics | PASS | Live diagnostics now reports `Icon Warm-up Running` and `Last Icon Warm-up` for Second Bar, so hands-on Accurate Icons warm-up runs can verify completion without inspecting private thumbnails. |
 | Readiness diagnostics export | PASS | Diagnostics exports can include a privacy-safe `secondBarReadiness` block with readiness state, title/message, entitlement, Accessibility Discovery, Accessibility permission, Accurate Icons, Screen Recording, primary-click route, and Safe Mode state. `jsonExportCanIncludeSecondBarReadinessDiagnostics` covers JSON and text output. |
@@ -100,7 +100,8 @@ This checklist covers the Pro compact Second Bar strip. These behaviors require 
 8. Confirm the strip falls back to the notch-left-edge-to-right-edge region.
 9. Confirm the strip is one row only.
 10. Confirm visible content uses icon-only buttons with tooltips/accessibility labels.
-11. Confirm the strip repositions or closes cleanly after display changes, Space changes, and wake.
+11. Open Settings -> Diagnostics and confirm `Last Compact Avoided Notch` reports `Yes` after the notch fallback placement.
+12. Confirm the strip repositions or closes cleanly after display changes, Space changes, and wake.
 
 ## Item Inclusion
 

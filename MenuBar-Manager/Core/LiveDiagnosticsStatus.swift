@@ -54,6 +54,7 @@ final class LiveDiagnosticsStatus {
     var secondBarLastCompactOverflowItemCount: Int = 0
     var secondBarLastCompactFallbackIconCount: Int = 0
     var secondBarLastCompactScanState: String? = nil
+    var secondBarLastCompactAvoidedNotch: Bool? = nil
     var iconMoveInProgress: Bool = false
     var lastIconMoveResult: String? = nil
     var lastIconMoveError: String? = nil
@@ -125,6 +126,10 @@ final class LiveDiagnosticsStatus {
         setIfChanged(\.secondBarLastCompactOverflowItemCount, to: plan.hiddenOverflowCount)
         setIfChanged(\.secondBarLastCompactFallbackIconCount, to: plan.needsAccurateIconCount)
         setIfChanged(\.secondBarLastCompactScanState, to: plan.scanState.diagnosticsLabel)
+    }
+
+    func updateSecondBarCompactPlacement(avoidedNotch: Bool) {
+        setIfChanged(\.secondBarLastCompactAvoidedNotch, to: avoidedNotch)
     }
 
     func updateSearchAndSecondBarItemCounts(_ counts: LiveDiagnosticsMenuBarItemCounts) {

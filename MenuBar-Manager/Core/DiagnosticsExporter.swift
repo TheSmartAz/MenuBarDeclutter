@@ -185,6 +185,7 @@ struct DiagnosticsExporter {
         let lastCompactOverflowItemCount: Int
         let lastCompactFallbackIconCount: Int
         let lastCompactScanState: String?
+        let lastCompactAvoidedNotch: Bool?
     }
 
     struct WorkspacePreviewDiagnosticsSnapshot: Codable, Equatable, Sendable {
@@ -560,6 +561,7 @@ struct DiagnosticsExporter {
             lines.append("Last Compact Overflow: \(secondBarRuntime.lastCompactOverflowItemCount)")
             lines.append("Last Compact Fallback Icons: \(secondBarRuntime.lastCompactFallbackIconCount)")
             lines.append("Last Compact Scan: \(secondBarRuntime.lastCompactScanState ?? "—")")
+            lines.append("Last Compact Avoided Notch: \(secondBarRuntime.lastCompactAvoidedNotch.map { String($0) } ?? "—")")
             lines.append("")
         }
         if let workspacePreview = snapshot.workspacePreview {

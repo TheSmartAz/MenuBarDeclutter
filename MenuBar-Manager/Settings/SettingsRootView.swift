@@ -1031,7 +1031,8 @@ struct SettingsRootView: View {
             lastCompactVisibleItemCount: liveStatus.secondBarLastCompactVisibleItemCount,
             lastCompactOverflowItemCount: liveStatus.secondBarLastCompactOverflowItemCount,
             lastCompactFallbackIconCount: liveStatus.secondBarLastCompactFallbackIconCount,
-            lastCompactScanState: liveStatus.secondBarLastCompactScanState
+            lastCompactScanState: liveStatus.secondBarLastCompactScanState,
+            lastCompactAvoidedNotch: liveStatus.secondBarLastCompactAvoidedNotch
         )
     }
 

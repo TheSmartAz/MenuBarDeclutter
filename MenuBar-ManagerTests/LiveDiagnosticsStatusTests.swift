@@ -118,11 +118,13 @@ struct LiveDiagnosticsStatusTests {
         )
 
         liveStatus.updateSecondBarCompactStrip(plan: plan)
+        liveStatus.updateSecondBarCompactPlacement(avoidedNotch: true)
 
         #expect(liveStatus.secondBarLastCompactVisibleItemCount == 2)
         #expect(liveStatus.secondBarLastCompactOverflowItemCount == 1)
         #expect(liveStatus.secondBarLastCompactFallbackIconCount == 2)
         #expect(liveStatus.secondBarLastCompactScanState == "Stale")
+        #expect(liveStatus.secondBarLastCompactAvoidedNotch == true)
     }
 
     @Test func applyingStatusBarVisibilityUpdatesRelatedDiagnostics() {

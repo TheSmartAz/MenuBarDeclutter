@@ -1303,6 +1303,7 @@ private struct LiveStatusSecondBarGrid: View {
             LiveStatusRowData(label: "Last Compact Overflow", value: liveStatus.secondBarLastCompactOverflowItemCount.formatted(.number)),
             LiveStatusRowData(label: "Last Compact Fallback Icons", value: liveStatus.secondBarLastCompactFallbackIconCount.formatted(.number)),
             LiveStatusRowData(label: "Last Compact Scan", value: liveStatus.secondBarLastCompactScanState ?? "—"),
+            LiveStatusRowData(label: "Last Compact Avoided Notch", value: liveStatus.secondBarLastCompactAvoidedNotch?.yesNoText ?? "—"),
             LiveStatusRowData(label: "Icon Warm-up Running", value: liveStatus.secondBarIconWarmUpInProgress.yesNoText),
             LiveStatusRowData(label: "Last Icon Warm-up", value: liveStatus.secondBarLastIconWarmUpResult ?? "—")
         ]
