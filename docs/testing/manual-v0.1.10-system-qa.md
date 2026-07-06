@@ -14,7 +14,7 @@ Environment:
 
 | Area | Result | Notes |
 | --- | --- | --- |
-| Launch app from a local build | PASS | Final `scripts/build_release.sh --dry-run --install --verify-installed` installed `/Applications/MenuBarDeclutter.app` at 2026-07-06 01:24 PDT; installed-app verification passed. UI launch tests passed in light and dark appearance earlier in the run. The 2026-07-06 installed smoke launched the refreshed installed app and completed successfully. Direct release verification still reports expected dry-run `spctl` rejection and missing stapler ticket for the non-notarized artifact. |
+| Launch app from a local build | PASS | Final `scripts/build_release.sh --dry-run --install --verify-installed` installed `/Applications/MenuBarDeclutter.app` at 2026-07-06 05:38 PDT; installed-app verification passed. UI launch tests passed in light and dark appearance earlier in the run. The 2026-07-06 installed smoke launched the refreshed installed app and completed successfully. Direct release verification still reports expected dry-run `spctl` rejection and missing stapler ticket for the non-notarized artifact. |
 | Basic Mode controls without Pro permissions | PASS | UI and unit tests passed with `--ui-testing` defaults resetting Pro Mode and Accessibility Discovery off. Privacy verifier confirmed Basic Mode remains permission-free, the only sensitive usage string is scoped to the separate Accurate Icons Screen Recording path, and no network entitlements are present. |
 | Settings opens to the eight-section sidebar | PASS | `testSettingsSidebarUsesFocusedSections`, `testRedesignedSettingsPagesVisualSmoke`, and the installed focused screenshot QA passed against General, Hide & Reveal, Arrange, Find & Rescue, Workspaces, Privacy, Recovery, and Advanced. |
 | No unexpected Basic Mode permission prompts | PASS | Final `APP_PATH=/Applications/MenuBarDeclutter.app scripts/verify_privacy_boundary.sh` passed and UI privacy workflow kept Request Permission disabled until explicit Pro controls. |
@@ -31,5 +31,5 @@ Environment:
 
 ## 2026-07-06 Follow-Up Evidence
 
-- `scripts/build_release.sh --dry-run --install --verify-installed` passed and refreshed `/Applications/MenuBarDeclutter.app` at 2026-07-06 01:24 PDT.
-- `scripts/qa_installed_app_smoke.sh --app-path /Applications/MenuBarDeclutter.app` passed: installed app launched, URL commands reused the installed PID, installed privacy verification passed, no network sockets were observed, the one-shot Safe Mode flag was consumed, and normal relaunch succeeded.
+- `scripts/build_release.sh --dry-run --install --verify-installed` passed and refreshed `/Applications/MenuBarDeclutter.app` at 2026-07-06 05:38 PDT.
+- `scripts/qa_installed_app_smoke.sh --app-path /Applications/MenuBarDeclutter.app` passed: installed app launched as PID `82129`, URL commands reused the installed PID, installed privacy verification passed, no network sockets were observed, the one-shot Safe Mode flag was consumed, and normal relaunch succeeded as PID `83323`.
