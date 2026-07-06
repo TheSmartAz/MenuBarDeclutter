@@ -16,6 +16,21 @@ This checklist covers the Pro compact Second Bar strip. These behaviors require 
 - Enable Accessibility Discovery only for Pro test cases.
 - Enable Accurate Icons only for ready-state test cases.
 
+## Pro Setup Flow
+
+1. Open Settings -> Privacy.
+2. Confirm `Pro Second Bar Setup` is visible near the top of the page.
+3. Starting from Basic Mode, confirm only `Optional Pro` is actionable and later steps are waiting.
+4. Click `Enable Pro` and confirm no macOS permission prompt appears.
+5. Click `Enable Discovery` and confirm no macOS permission prompt appears.
+6. Click `Request Permission` for Accessibility and confirm the macOS Accessibility permission flow is user-initiated.
+7. Enable Accurate Icons and confirm no Screen Recording prompt appears until its `Request Permission` button is clicked.
+8. Click `Request Permission` for Screen Recording and confirm the macOS Screen Recording flow is user-initiated.
+9. Confirm the setup checklist reports ready only when Optional Pro, Accessibility Discovery, Accessibility, Accurate Icons, and Screen Recording are all ready.
+10. Open Settings -> Second Bar and confirm the same setup checklist and readiness state are shown there.
+11. Click `Warm Up Icons` after the checklist is ready.
+12. Confirm hidden items may briefly reveal, thumbnails refresh, and the previous visibility state is restored.
+
 ## Basic Mode
 
 1. Reset to Basic Mode with Optional Pro disabled.
@@ -73,6 +88,7 @@ This checklist covers the Pro compact Second Bar strip. These behaviors require 
 5. Test an item whose owner app has quit or whose AX element changed since the last scan.
 6. Confirm activation failure leaves the strip open and shows a retry/failure state.
 7. Confirm failure is logged in diagnostics without revealing private item names beyond stable diagnostic IDs.
+8. Record failures in `docs/testing/pro-second-bar-direct-activation-matrix.md`.
 
 ## Regression Checks
 

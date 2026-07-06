@@ -669,6 +669,9 @@ struct SettingsRootView: View {
             SecondBarSettingsView(
                 settingsStore: settingsStore,
                 permissionService: accessibilityPermissionService,
+                screenCapturePermissionService: screenCapturePermissionService,
+                iconCaptureCoordinator: iconCaptureCoordinator,
+                scanCoordinator: menuBarScanCoordinator,
                 commandAvailability: commandSummary(for: MenuBarCommand(
                     action: .showSecondBar,
                     target: .secondBar,

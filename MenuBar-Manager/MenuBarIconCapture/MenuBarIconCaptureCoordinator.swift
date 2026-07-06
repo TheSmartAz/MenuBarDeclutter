@@ -70,6 +70,30 @@ final class MenuBarIconCaptureCoordinator {
             return
         }
 
+        _ = startRevealSweepCapture(
+            startMessage: "Rendered icon reveal-sweep capture started for \(reason).",
+            finishedMessage: { "Rendered icon reveal-sweep capture refreshed \($0) thumbnail(s)." }
+        )
+    }
+
+    @discardableResult
+    func warmUpSecondBarIconsIfAllowed(reason: String) -> Bool {
+        guard settingsStore.renderedIconCaptureEnabled,
+              permissionService.refreshStatus() == .granted else {
+            return false
+        }
+
+        return startRevealSweepCapture(
+            startMessage: "Rendered icon Second Bar warm-up started for \(reason).",
+            finishedMessage: { "Rendered icon Second Bar warm-up refreshed \($0) thumbnail(s)." }
+        )
+    }
+
+    @discardableResult
+    private func startRevealSweepCapture(
+        startMessage: String,
+        finishedMessage: @escaping (Int) -> String
+    ) -> Bool {
         revealSweepTask?.cancel()
         revealSweepTask = Task { @MainActor [weak self] in
             guard let self else { return }
@@ -80,7 +104,7 @@ final class MenuBarIconCaptureCoordinator {
             }
 
             self.diagnosticsLogger.log(
-                "Rendered icon reveal-sweep capture started for \(reason).",
+                startMessage,
                 level: .debug,
                 category: .scan
             )
@@ -99,11 +123,12 @@ final class MenuBarIconCaptureCoordinator {
             }
 
             self.diagnosticsLogger.log(
-                "Rendered icon reveal-sweep capture refreshed \(captured.count) thumbnail(s).",
+                finishedMessage(captured.count),
                 level: .debug,
                 category: .scan
             )
         }
+        return true
     }
 
     @discardableResult

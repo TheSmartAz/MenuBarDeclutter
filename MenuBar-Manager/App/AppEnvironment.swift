@@ -2449,8 +2449,11 @@ final class AppEnvironment {
             level: result.didActivate ? .debug : .warning,
             category: .layout,
             metadata: [
+                "targetID": snapshot.id,
+                "targetZone": snapshot.zone.rawValue,
                 "visitedElementCount": "\(result.visitedElementCount)",
-                "axError": result.axErrorDescription ?? "none"
+                "axError": result.axErrorDescription ?? "none",
+                "message": result.message
             ]
         )
         return result.didActivate

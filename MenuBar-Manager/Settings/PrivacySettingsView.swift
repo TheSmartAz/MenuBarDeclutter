@@ -27,6 +27,15 @@ struct PrivacySettingsView: View {
                 screenCaptureStatusStyle: screenCaptureStatusStyle
             )
 
+            ProSecondBarSetupChecklistView(
+                settingsStore: settingsStore,
+                permissionService: permissionService,
+                screenCapturePermissionService: screenCapturePermissionService,
+                iconCaptureCoordinator: iconCaptureCoordinator,
+                scanCoordinator: scanCoordinator,
+                onChange: onChange
+            )
+
             PrivacyTrustBoundarySummary(accessibilityIdentifier: "privacy.modeBoundary")
             basicModeSection
             proModeSection

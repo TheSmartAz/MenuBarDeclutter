@@ -3,6 +3,9 @@ import SwiftUI
 struct SecondBarSettingsView: View {
     @Bindable var settingsStore: SettingsStore
     var permissionService: AccessibilityPermissionService?
+    var screenCapturePermissionService: ScreenCapturePermissionService?
+    var iconCaptureCoordinator: MenuBarIconCaptureCoordinator?
+    var scanCoordinator: MenuBarScanCoordinator?
     var commandAvailability: MenuBarCommandAvailabilitySummary?
     var iconPanelAvailability: MenuBarCommandAvailabilitySummary?
     var onChange: (() -> Void)? = nil
@@ -18,28 +21,12 @@ struct SecondBarSettingsView: View {
         }
 
         anchors.append(contentsOf: [
+            ClearGlassPageAnchor("Pro Second Bar Setup", systemImage: "checklist"),
             ClearGlassPageAnchor("Position & Appearance", systemImage: "slider.horizontal.3"),
-            ClearGlassPageAnchor("Preview", systemImage: "eye"),
-            ClearGlassPageAnchor("Requirements", systemImage: "checklist")
+            ClearGlassPageAnchor("Preview", systemImage: "eye")
         ])
 
         return anchors
-    }
-
-    private var accessibilityPermissionStatus: AccessibilityPermissionStatus {
-        permissionService?.status ?? .notRequested
-    }
-
-    private var proModeRequirementStatus: String {
-        settingsStore.proModeEnabled ? "On" : "Off"
-    }
-
-    private var discoveryRequirementStatus: String {
-        settingsStore.accessibilityDiscoveryEnabled ? "On" : "Off"
-    }
-
-    private var permissionRequirementStatus: String {
-        accessibilityPermissionStatus == .granted ? "Granted" : accessibilityPermissionStatus.displayName
     }
 
     var body: some View {
@@ -135,6 +122,15 @@ struct SecondBarSettingsView: View {
                 }
             }
 
+            ProSecondBarSetupChecklistView(
+                settingsStore: settingsStore,
+                permissionService: permissionService,
+                screenCapturePermissionService: screenCapturePermissionService,
+                iconCaptureCoordinator: iconCaptureCoordinator,
+                scanCoordinator: scanCoordinator,
+                onChange: onChange
+            )
+
             ClearGlassSection("Position & Appearance", subtitle: "Placement and visual density for the Second Bar.") {
                 ClearGlassValueRow("Position", subtitle: "Where the Second Bar appears.") {
                     Picker("Position", selection: $settingsStore.secondBarPositionModeRaw) {
@@ -171,38 +167,6 @@ struct SecondBarSettingsView: View {
 
             ClearGlassSection("Preview", subtitle: "Example of the Second Bar with hidden items.") {
                 SecondBarPreviewStrip(showLabels: settingsStore.secondBarShowLabels)
-            }
-
-            ClearGlassSection("Optional Pro Requirements", subtitle: "Second Bar item metadata stays gated until these private-access requirements are satisfied.") {
-                SearchRequirementRow(
-                    title: "Optional Pro",
-                    detail: "Private menu bar item discovery is available only after opt-in.",
-                    status: proModeRequirementStatus,
-                    isSatisfied: settingsStore.proModeEnabled,
-                    systemImage: "star"
-                )
-
-                ClearGlassDivider()
-
-                SearchRequirementRow(
-                    title: "Accessibility Discovery",
-                    detail: "Allow the app to discover menu bar items locally.",
-                    status: discoveryRequirementStatus,
-                    isSatisfied: settingsStore.accessibilityDiscoveryEnabled,
-                    systemImage: "figure.circle"
-                )
-
-                ClearGlassDivider()
-
-                SearchRequirementRow(
-                    title: "Accessibility Permission",
-                    detail: "Grant permission before the app can read menu bar item labels and frames.",
-                    status: permissionRequirementStatus,
-                    isSatisfied: accessibilityPermissionStatus == .granted,
-                    systemImage: "hand.raised",
-                    actionTitle: "Open Privacy Settings",
-                    action: onOpenPrivacySettings
-                )
             }
         }
         .onSecondBarSettingsChanges(from: settingsStore, perform: onChange)
