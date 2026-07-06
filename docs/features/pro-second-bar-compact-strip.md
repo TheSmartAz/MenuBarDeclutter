@@ -63,7 +63,7 @@ Compact strip clicks are optimistic one-click activation.
 
 1. Prefer direct Accessibility press on the original menu bar item.
 2. Keep reveal plus simulated click plus restore as a Pro/Labs fallback until dogfood proves it stable.
-3. If activation fails, keep the item visible in the strip and show a lightweight retry or refresh state.
+3. If activation fails, keep the item visible in the strip and show a lightweight retry state.
 
 Opening the strip must not trigger a scan or screen capture. It reads the latest Accessibility snapshot and rendered-icon cache. Accurate Icons refreshes happen during onboarding warm-up, visible-item refreshes, or explicit user refresh actions.
 

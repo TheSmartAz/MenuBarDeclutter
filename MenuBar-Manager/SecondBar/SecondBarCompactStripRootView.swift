@@ -8,6 +8,17 @@ struct SecondBarCompactStripActivationFeedback: Equatable {
 
     let message: String
     let tone: Tone
+    let retrySnapshot: MenuBarItemSnapshot?
+
+    init(
+        message: String,
+        tone: Tone,
+        retrySnapshot: MenuBarItemSnapshot? = nil
+    ) {
+        self.message = message
+        self.tone = tone
+        self.retrySnapshot = retrySnapshot
+    }
 }
 
 struct SecondBarCompactStripRootView: View {
@@ -19,6 +30,7 @@ struct SecondBarCompactStripRootView: View {
     let content: Content
     let activationFeedback: SecondBarCompactStripActivationFeedback?
     let onActivate: (MenuBarItemSnapshot) -> Void
+    let onRetryActivation: (MenuBarItemSnapshot) -> Void
     let onOpenManage: () -> Void
     let onOpenSettings: () -> Void
     let onDismiss: () -> Void
@@ -31,6 +43,7 @@ struct SecondBarCompactStripRootView: View {
                     plan: plan,
                     activationFeedback: activationFeedback,
                     onActivate: onActivate,
+                    onRetryActivation: onRetryActivation,
                     onOpenManage: onOpenManage,
                     onOpenSettings: onOpenSettings
                 )
@@ -58,6 +71,7 @@ private struct ReadyCompactStripContent: View {
     let plan: SecondBarCompactStripPlan
     let activationFeedback: SecondBarCompactStripActivationFeedback?
     let onActivate: (MenuBarItemSnapshot) -> Void
+    let onRetryActivation: (MenuBarItemSnapshot) -> Void
     let onOpenManage: () -> Void
     let onOpenSettings: () -> Void
 
@@ -74,7 +88,10 @@ private struct ReadyCompactStripContent: View {
             }
 
             if let activationFeedback {
-                CompactStripFeedback(feedback: activationFeedback)
+                CompactStripFeedback(
+                    feedback: activationFeedback,
+                    onRetryActivation: onRetryActivation
+                )
             }
 
             Spacer(minLength: DesignTokens.Spacing.small)
@@ -214,16 +231,39 @@ private struct CompactStripIconButton: View {
 
 private struct CompactStripFeedback: View {
     let feedback: SecondBarCompactStripActivationFeedback
+    let onRetryActivation: (MenuBarItemSnapshot) -> Void
 
     var body: some View {
-        Label(feedback.message, systemImage: systemImage)
-            .labelStyle(.titleAndIcon)
-            .font(DesignTokens.Typography.caption)
-            .lineLimit(1)
-            .foregroundStyle(foregroundStyle)
-            .padding(.horizontal, DesignTokens.Spacing.small)
-            .frame(height: 28)
-            .background(foregroundStyle.opacity(0.10), in: .rect(cornerRadius: DesignTokens.Radius.control))
+        HStack(spacing: 6) {
+            Label(feedback.message, systemImage: systemImage)
+                .labelStyle(.titleAndIcon)
+                .lineLimit(1)
+
+            if let retrySnapshot = feedback.retrySnapshot {
+                Button {
+                    onRetryActivation(retrySnapshot)
+                } label: {
+                    Label("Retry Activation", systemImage: "arrow.clockwise")
+                        .labelStyle(.iconOnly)
+                        .frame(width: 22, height: 22)
+                }
+                .buttonStyle(.plain)
+                .font(DesignTokens.Typography.caption)
+                .background(.regularMaterial, in: .rect(cornerRadius: DesignTokens.Radius.control))
+                .overlay {
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.control)
+                        .strokeBorder(foregroundStyle.opacity(0.28), lineWidth: DesignTokens.Stroke.hairline)
+                }
+                .help("Retry activating the menu bar item")
+                .accessibilityLabel("Retry Activation")
+                .accessibilityIdentifier("secondBar.compact.retryActivation")
+            }
+        }
+        .font(DesignTokens.Typography.caption)
+        .foregroundStyle(foregroundStyle)
+        .padding(.horizontal, DesignTokens.Spacing.small)
+        .frame(height: 28)
+        .background(foregroundStyle.opacity(0.10), in: .rect(cornerRadius: DesignTokens.Radius.control))
     }
 
     private var systemImage: String {
@@ -286,6 +326,7 @@ private struct EmptyReadyState: View {
         )),
         activationFeedback: nil,
         onActivate: { _ in },
+        onRetryActivation: { _ in },
         onOpenManage: {},
         onOpenSettings: {},
         onDismiss: {}

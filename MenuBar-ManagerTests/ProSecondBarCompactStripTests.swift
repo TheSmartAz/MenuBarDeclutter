@@ -106,6 +106,17 @@ struct ProSecondBarCompactStripTests {
         #expect(plan.totalAdditionalCount == 2)
     }
 
+    @Test func activationFailureFeedbackRetainsRetryTarget() {
+        let failedSnapshot = snapshot("failed", zone: .hidden)
+        let feedback = SecondBarCompactStripActivationFeedback(
+            message: "Could not activate",
+            tone: .warning,
+            retrySnapshot: failedSnapshot
+        )
+
+        #expect(feedback.retrySnapshot == failedSnapshot)
+    }
+
     private func snapshot(_ id: String, zone: MenuBarZone) -> MenuBarItemSnapshot {
         TestSnapshots.makeSnapshot(
             id: id,

@@ -183,6 +183,9 @@ final class SecondBarCompactStripWindowController: NSWindowController, NSWindowD
             onActivate: { [weak self] snapshot in
                 self?.activate(snapshot)
             },
+            onRetryActivation: { [weak self] snapshot in
+                self?.activate(snapshot)
+            },
             onOpenManage: { [weak self] in
                 self?.openManage()
             },
@@ -227,7 +230,8 @@ final class SecondBarCompactStripWindowController: NSWindowController, NSWindowD
         guard onActivate(snapshot) else {
             activationFeedback = SecondBarCompactStripActivationFeedback(
                 message: "Could not activate",
-                tone: .warning
+                tone: .warning,
+                retrySnapshot: snapshot
             )
             renderAndPosition()
             diagnosticsLogger.log("Second Bar compact activation failed for \(snapshot.id).", level: .warning)

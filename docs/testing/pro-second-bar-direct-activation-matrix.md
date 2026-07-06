@@ -1,6 +1,6 @@
 # Pro Second Bar Direct Activation Matrix
 
-Last updated: 2026-07-05
+Last updated: 2026-07-06
 
 Use this matrix to collect third-party compact strip activation behavior. Record stable diagnostic IDs from logs, not private readable item names, unless the tester intentionally adds a public app label for local debugging.
 
@@ -16,9 +16,9 @@ Use this matrix to collect third-party compact strip activation behavior. Record
 
 ## Matrix
 
-| Date | macOS Build | App Build | App Category | Item Zone | Dynamic Icon | Activation Result | targetID | targetZone | visitedElementCount | axError | Notes |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: | --- | --- |
-| YYYY-MM-DD | 26.x | local/dev | chat/cloud/vpn/calendar/utility | hidden | yes/no | PASS | item-id | hidden | 0 | none |  |
+| Date | macOS Build | App Build | App Category | Item Zone | Dynamic Icon | Activation Result | Retry Result | targetID | targetZone | visitedElementCount | axError | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: | --- | --- |
+| YYYY-MM-DD | 26.x | local/dev | chat/cloud/vpn/calendar/utility | hidden | yes/no | PASS | not-needed/retried-pass/retried-fail | item-id | hidden | 0 | none |  |
 
 ## Required Coverage
 
@@ -35,5 +35,6 @@ Use this matrix to collect third-party compact strip activation behavior. Record
 
 1. Export diagnostics after each failure.
 2. Copy the `Second Bar activation result` log metadata fields: `targetID`, `targetZone`, `matrixResult`, `visitedElementCount`, `axError`, and `message`.
-3. Do not attach screenshots, raw screen captures, or rendered icon thumbnail files.
-4. If a failure is reproducible with a public app, add the app category and behavior notes; otherwise keep the entry generic.
+3. When a compact-strip activation fails, confirm the strip remains open, click `Retry`, and record the retry result.
+4. Do not attach screenshots, raw screen captures, or rendered icon thumbnail files.
+5. If a failure is reproducible with a public app, add the app category and behavior notes; otherwise keep the entry generic.
