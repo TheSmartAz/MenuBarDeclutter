@@ -26,6 +26,34 @@ struct AutomationURLHandlerTests {
         #expect(recorder.loggedCommandReason("proModeDisabled"))
     }
 
+    @Test func secondBarURLUsesFullReadinessGate() throws {
+        let url = try #require(URL(string: "menubardeclutter://second-bar"))
+
+        let missingIconsRecorder = AutomationRecorder()
+        missingIconsRecorder.proModeEnabled = true
+        missingIconsRecorder.accessibilityDiscoveryEnabled = true
+        missingIconsRecorder.screenRecordingGranted = true
+        #expect(!missingIconsRecorder.makeHandler().handle(url: url))
+        #expect(missingIconsRecorder.commands.isEmpty)
+        #expect(missingIconsRecorder.loggedCommandReason("accurateIconsDisabled"))
+
+        let missingScreenRecordingRecorder = AutomationRecorder()
+        missingScreenRecordingRecorder.proModeEnabled = true
+        missingScreenRecordingRecorder.accessibilityDiscoveryEnabled = true
+        missingScreenRecordingRecorder.accurateIconsEnabled = true
+        #expect(!missingScreenRecordingRecorder.makeHandler().handle(url: url))
+        #expect(missingScreenRecordingRecorder.commands.isEmpty)
+        #expect(missingScreenRecordingRecorder.loggedCommandReason("screenRecordingPermissionMissing"))
+
+        let readyRecorder = AutomationRecorder()
+        readyRecorder.proModeEnabled = true
+        readyRecorder.accessibilityDiscoveryEnabled = true
+        readyRecorder.accurateIconsEnabled = true
+        readyRecorder.screenRecordingGranted = true
+        #expect(readyRecorder.makeHandler().handle(url: url))
+        #expect(readyRecorder.commands == ["secondBar"])
+    }
+
     @Test func appliesProfileByDecodedName() throws {
         let recorder = AutomationRecorder(profilesThatApply: ["Work Mode"])
         let handler = recorder.makeHandler()
@@ -133,6 +161,8 @@ private final class AutomationRecorder {
     var automationEnabled = true
     var proModeEnabled = false
     var accessibilityDiscoveryEnabled = false
+    var accurateIconsEnabled = false
+    var screenRecordingGranted = false
     var commands: [String] = []
     var profileNames: [String] = []
     var groupPanelIDs: [UUID] = []
@@ -157,6 +187,7 @@ private final class AutomationRecorder {
         store.automationPaused = !automationEnabled
         store.proModeEnabled = proModeEnabled
         store.accessibilityDiscoveryEnabled = accessibilityDiscoveryEnabled
+        store.renderedIconCaptureEnabled = accurateIconsEnabled
         store.appIntentsCanApplyProfiles = true
         var handlers = MenuBarCommandHandlers()
         handlers.expand = { [self] in commands.append("expand") }
@@ -179,6 +210,7 @@ private final class AutomationRecorder {
             settingsStore: store,
             diagnosticsLogger: logger,
             accessibilityStatus: { .granted },
+            screenCaptureStatus: { [self] in screenRecordingGranted ? .granted : .notGranted },
             handlers: handlers
         )
 

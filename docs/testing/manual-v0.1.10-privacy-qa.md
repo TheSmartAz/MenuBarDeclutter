@@ -25,4 +25,5 @@ Environment:
 - `scripts/build_release.sh --dry-run --install --verify-installed`: PASS, refreshed and verified `/Applications/MenuBarDeclutter.app` at 2026-07-06 01:24 PDT.
 - `scripts/qa_installed_app_smoke.sh --app-path /Applications/MenuBarDeclutter.app`: PASS, including installed privacy verification, no-network socket probe, URL command reuse, and one-shot Safe Mode flag consumption.
 - `showSecondBarAppIntentUsesFullReadinessGate`: PASS in the app-hosted test bundle; Shortcuts/App Intent `Show Second Bar` blocks before execution when Accurate Icons or Screen Recording are missing and returns explicit gate results for both states.
+- `secondBarURLUsesFullReadinessGate`: PASS in the app-hosted test bundle; `menubardeclutter://second-bar` blocks before execution when Accurate Icons or Screen Recording are missing and does not bypass the shared Second Bar readiness chain.
 - Runtime Accessibility and Screen Recording permission prompt behavior for Pro Second Bar setup remains hands-on manual QA; no automatic prompt was exercised by the installed smoke.
