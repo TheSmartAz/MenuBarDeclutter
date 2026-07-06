@@ -63,6 +63,13 @@ final class AppEnvironment {
                 reason: "rendered icon reveal sweep"
             )
             return result?.snapshots ?? self.liveStatus.scannedMenuBarItems
+        },
+        secondBarWarmUpStatusHandler: { [weak self] inProgress, refreshedCount in
+            let result = refreshedCount.map { "Refreshed \($0) thumbnail(s)" }
+            self?.liveStatus.updateSecondBarIconWarmUp(
+                inProgress: inProgress,
+                result: result
+            )
         }
     )
 

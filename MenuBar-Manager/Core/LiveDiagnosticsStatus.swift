@@ -48,6 +48,8 @@ final class LiveDiagnosticsStatus {
     var secondBarItemCount: Int = 0
     var secondBarCurrentScreen: String? = nil
     var secondBarLastPosition: String? = nil
+    var secondBarIconWarmUpInProgress: Bool = false
+    var secondBarLastIconWarmUpResult: String? = nil
     var iconMoveInProgress: Bool = false
     var lastIconMoveResult: String? = nil
     var lastIconMoveError: String? = nil
@@ -102,6 +104,16 @@ final class LiveDiagnosticsStatus {
 
     func updateSecondBarItemCount(_ count: Int) {
         setIfChanged(\.secondBarItemCount, to: count)
+    }
+
+    func updateSecondBarIconWarmUp(
+        inProgress: Bool,
+        result: String?
+    ) {
+        setIfChanged(\.secondBarIconWarmUpInProgress, to: inProgress)
+        if let result {
+            setIfChanged(\.secondBarLastIconWarmUpResult, to: result)
+        }
     }
 
     func updateSearchAndSecondBarItemCounts(_ counts: LiveDiagnosticsMenuBarItemCounts) {

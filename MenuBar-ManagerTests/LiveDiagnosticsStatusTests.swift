@@ -81,6 +81,26 @@ struct LiveDiagnosticsStatusTests {
         #expect(liveStatus.searchLatestScanAgeSeconds == 42)
     }
 
+    @Test func applyingSecondBarIconWarmUpUpdatesPrivacySafeDiagnostics() {
+        let liveStatus = LiveDiagnosticsStatus()
+
+        liveStatus.updateSecondBarIconWarmUp(
+            inProgress: true,
+            result: nil
+        )
+
+        #expect(liveStatus.secondBarIconWarmUpInProgress)
+        #expect(liveStatus.secondBarLastIconWarmUpResult == nil)
+
+        liveStatus.updateSecondBarIconWarmUp(
+            inProgress: false,
+            result: "Refreshed 2 thumbnail(s)"
+        )
+
+        #expect(!liveStatus.secondBarIconWarmUpInProgress)
+        #expect(liveStatus.secondBarLastIconWarmUpResult == "Refreshed 2 thumbnail(s)")
+    }
+
     @Test func applyingStatusBarVisibilityUpdatesRelatedDiagnostics() {
         let liveStatus = LiveDiagnosticsStatus()
 
