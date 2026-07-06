@@ -52,7 +52,8 @@ App build: v0.1.10 build 11
 
 ## 2026-07-06 Continuation Evidence
 
-- `scripts/build_release.sh --dry-run --install --verify-installed`: PASS, refreshed `/Applications/MenuBarDeclutter.app` at 2026-07-06 00:53 PDT, verified `0.1.10` build `11`, and recreated `build/Dist/MenuBarDeclutter-v0.1.10-alpha.zip`.
+- `scripts/build_release.sh --dry-run --install --verify-installed`: PASS, refreshed `/Applications/MenuBarDeclutter.app` at 2026-07-06 01:24 PDT after the compact strip UI smoke hook, verified `0.1.10` build `11`, and recreated `build/Dist/MenuBarDeclutter-v0.1.10-alpha.zip`.
 - `scripts/qa_installed_app_smoke.sh --app-path /Applications/MenuBarDeclutter.app`: PASS. Installed app launched, URL scheme commands reused the installed PID, installed privacy verification passed, no network sockets were observed, the one-shot Safe Mode flag was consumed, and normal relaunch succeeded.
+- Focused `xcodebuild test-without-building` for `testCompactSecondBarShowsReadyHiddenItems`: BLOCKED-INFRA. The Xcode UI runner did not materialize workers and surfaced the macOS UI Automation authorization prompt before app assertions.
 - Release verification still reports expected dry-run notarization/stapling warnings: `spctl` rejects the non-notarized local app and `stapler` reports no ticket.
 - Pro Second Bar hands-on gates remain pending: real Accessibility prompt, real Screen Recording prompt, Accurate Icons warm-up, compact strip notch placement, and third-party direct activation require local user interaction with the system privacy panes and live menu bar items.
