@@ -93,7 +93,7 @@ final class MenuBarDeclutterUITests: XCTestCase {
     }
 
     @MainActor
-    func testDefaultGatedFeaturePanelsSkipLegacyEnableState() throws {
+    func testDefaultGatedFeaturePanelsUseCurrentGateSurfaces() throws {
         let searchApp = launchApp(opening: "--ui-testing-show-search")
         assertStaticText("Find Icon Unavailable", in: searchApp)
         XCTAssertFalse(searchApp.staticTexts["Find Icon Disabled"].waitForExistence(timeout: 1))
@@ -101,8 +101,8 @@ final class MenuBarDeclutterUITests: XCTestCase {
         terminateApplication(searchApp)
 
         let secondBarApp = launchApp(opening: "--ui-testing-show-second-bar")
-        assertElement("secondBar.unavailable", in: secondBarApp)
-        assertStaticText("Second Bar Unavailable", in: secondBarApp)
+        assertElement("secondBar.requirements", in: secondBarApp)
+        assertStaticText("Pro Required", in: secondBarApp)
         XCTAssertFalse(secondBarApp.staticTexts["Second Bar Disabled"].waitForExistence(timeout: 1))
         XCTAssertFalse(secondBarApp.buttons["Enable Second Bar"].exists)
     }
@@ -112,6 +112,8 @@ final class MenuBarDeclutterUITests: XCTestCase {
         let grantedArguments = [
             "--ui-testing-pro-discovery-enabled",
             "--ui-testing-accessibility-granted",
+            "--ui-testing-accurate-icons-enabled",
+            "--ui-testing-screen-capture-granted",
             "--ui-testing-seed-menu-bar-items"
         ]
 
@@ -135,6 +137,8 @@ final class MenuBarDeclutterUITests: XCTestCase {
             "--ui-testing-hide-status-shortcuts",
             "--ui-testing-pro-discovery-enabled",
             "--ui-testing-accessibility-granted",
+            "--ui-testing-accurate-icons-enabled",
+            "--ui-testing-screen-capture-granted",
             "--ui-testing-seed-menu-bar-items"
         ]
 
@@ -397,6 +401,8 @@ final class MenuBarDeclutterUITests: XCTestCase {
         let availablePanelArguments = [
             "--ui-testing-pro-discovery-enabled",
             "--ui-testing-accessibility-granted",
+            "--ui-testing-accurate-icons-enabled",
+            "--ui-testing-screen-capture-granted",
             "--ui-testing-seed-menu-bar-items"
         ]
 
@@ -448,11 +454,11 @@ final class MenuBarDeclutterUITests: XCTestCase {
         terminateApplication(searchApp)
 
         let secondBarApp = launchApp(opening: "--ui-testing-show-second-bar")
-        assertElement("secondBar.unavailable", in: secondBarApp, timeout: 10)
-        assertStaticText("Second Bar Unavailable", in: secondBarApp)
+        assertElement("secondBar.requirements", in: secondBarApp, timeout: 10)
+        assertStaticText("Pro Required", in: secondBarApp)
 
         let secondBarAttachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-        secondBarAttachment.name = "Floating Panel - Second Bar Unavailable"
+        secondBarAttachment.name = "Floating Panel - Second Bar Requirements"
         secondBarAttachment.lifetime = .keepAlways
         add(secondBarAttachment)
 

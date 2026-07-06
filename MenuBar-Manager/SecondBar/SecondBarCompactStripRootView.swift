@@ -1,0 +1,293 @@
+import SwiftUI
+
+struct SecondBarCompactStripActivationFeedback: Equatable {
+    enum Tone: Equatable {
+        case warning
+        case success
+    }
+
+    let message: String
+    let tone: Tone
+}
+
+struct SecondBarCompactStripRootView: View {
+    enum Content {
+        case ready(plan: SecondBarCompactStripPlan)
+        case requirements(ProSecondBarReadinessState)
+    }
+
+    let content: Content
+    let activationFeedback: SecondBarCompactStripActivationFeedback?
+    let onActivate: (MenuBarItemSnapshot) -> Void
+    let onOpenManage: () -> Void
+    let onOpenSettings: () -> Void
+    let onDismiss: () -> Void
+
+    var body: some View {
+        HStack(spacing: DesignTokens.Spacing.medium) {
+            switch content {
+            case .ready(let plan):
+                ReadyCompactStripContent(
+                    plan: plan,
+                    activationFeedback: activationFeedback,
+                    onActivate: onActivate,
+                    onOpenManage: onOpenManage,
+                    onOpenSettings: onOpenSettings
+                )
+            case .requirements(let readiness):
+                RequirementsCompactStripContent(
+                    readiness: readiness,
+                    onOpenSettings: onOpenSettings,
+                    onDismiss: onDismiss
+                )
+            }
+        }
+        .padding(.horizontal, DesignTokens.Spacing.medium)
+        .padding(.vertical, 5)
+        .frame(maxWidth: .infinity, minHeight: 42, maxHeight: 42)
+        .background(.ultraThinMaterial, in: .rect(cornerRadius: 13))
+        .overlay {
+            RoundedRectangle(cornerRadius: 13)
+                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.48), lineWidth: DesignTokens.Stroke.hairline)
+        }
+        .accessibilityIdentifier("secondBar.compactStrip")
+    }
+}
+
+private struct ReadyCompactStripContent: View {
+    let plan: SecondBarCompactStripPlan
+    let activationFeedback: SecondBarCompactStripActivationFeedback?
+    let onActivate: (MenuBarItemSnapshot) -> Void
+    let onOpenManage: () -> Void
+    let onOpenSettings: () -> Void
+
+    var body: some View {
+        HStack(spacing: DesignTokens.Spacing.small) {
+            if plan.visibleItems.isEmpty {
+                EmptyReadyState(needsAccurateIconCount: plan.needsAccurateIconCount)
+            } else {
+                ForEach(plan.visibleItems) { snapshot in
+                    CompactStripItemButton(snapshot: snapshot) {
+                        onActivate(snapshot)
+                    }
+                }
+            }
+
+            if let activationFeedback {
+                CompactStripFeedback(feedback: activationFeedback)
+            }
+
+            Spacer(minLength: DesignTokens.Spacing.small)
+
+            if plan.hasAdditionalItems {
+                CompactStripOverflowButton(
+                    count: plan.totalAdditionalCount,
+                    onOpenManage: onOpenManage
+                )
+            }
+
+            CompactStripIconButton(
+                title: "Manage Second Bar",
+                systemImage: "magnifyingglass",
+                action: onOpenManage
+            )
+            CompactStripIconButton(
+                title: "Second Bar Settings",
+                systemImage: "gearshape",
+                action: onOpenSettings
+            )
+        }
+    }
+}
+
+private struct RequirementsCompactStripContent: View {
+    let readiness: ProSecondBarReadinessState
+    let onOpenSettings: () -> Void
+    let onDismiss: () -> Void
+
+    var body: some View {
+        HStack(spacing: DesignTokens.Spacing.medium) {
+            Image(systemName: "shield.lefthalf.filled")
+                .font(.system(size: DesignTokens.IconSize.standard, weight: .semibold))
+                .foregroundStyle(.yellow)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(readiness.displayTitle)
+                    .font(DesignTokens.Typography.callout)
+                    .lineLimit(1)
+                Text(readiness.message)
+                    .font(DesignTokens.Typography.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: DesignTokens.Spacing.small)
+
+            CompactStripIconButton(
+                title: "Open Privacy Settings",
+                systemImage: "lock.shield",
+                action: onOpenSettings
+            )
+            CompactStripIconButton(
+                title: "Close",
+                systemImage: "xmark",
+                action: onDismiss
+            )
+        }
+        .accessibilityIdentifier("secondBar.requirements")
+    }
+}
+
+private struct CompactStripItemButton: View {
+    let snapshot: MenuBarItemSnapshot
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            MenuBarItemIconView(
+                snapshot: snapshot,
+                size: 24,
+                cornerRadius: 6
+            )
+        }
+        .buttonStyle(.plain)
+        .frame(width: 32, height: 32)
+        .contentShape(.rect(cornerRadius: DesignTokens.Radius.control))
+        .help("Activate \(displayTitle)")
+        .accessibilityLabel("Activate \(displayTitle)")
+    }
+
+    private var displayTitle: String {
+        DisplayString.firstNonEmpty([
+            snapshot.owningApplicationName,
+            snapshot.title,
+            snapshot.bundleIdentifier
+        ]) ?? "Menu Bar Item"
+    }
+}
+
+private struct CompactStripOverflowButton: View {
+    let count: Int
+    let onOpenManage: () -> Void
+
+    var body: some View {
+        Button("+\(count)", action: onOpenManage)
+            .buttonStyle(.plain)
+            .font(DesignTokens.Typography.caption)
+            .bold()
+            .foregroundStyle(.primary)
+            .frame(width: 34, height: 28)
+            .background(.regularMaterial, in: .rect(cornerRadius: DesignTokens.Radius.control))
+            .overlay {
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.control)
+                    .strokeBorder(Color(nsColor: .separatorColor).opacity(0.36), lineWidth: DesignTokens.Stroke.hairline)
+            }
+            .help("Open Second Bar Manage Panel")
+            .accessibilityLabel("\(count) more Second Bar items")
+    }
+}
+
+private struct CompactStripIconButton: View {
+    let title: String
+    let systemImage: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Label(title, systemImage: systemImage)
+                .labelStyle(.iconOnly)
+                .font(.system(size: 14, weight: .medium))
+                .frame(width: 28, height: 28)
+        }
+        .buttonStyle(.plain)
+        .background(.regularMaterial, in: .rect(cornerRadius: DesignTokens.Radius.control))
+        .overlay {
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.control)
+                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.36), lineWidth: DesignTokens.Stroke.hairline)
+        }
+        .help(title)
+        .accessibilityLabel(title)
+    }
+}
+
+private struct CompactStripFeedback: View {
+    let feedback: SecondBarCompactStripActivationFeedback
+
+    var body: some View {
+        Label(feedback.message, systemImage: systemImage)
+            .labelStyle(.titleAndIcon)
+            .font(DesignTokens.Typography.caption)
+            .lineLimit(1)
+            .foregroundStyle(foregroundStyle)
+            .padding(.horizontal, DesignTokens.Spacing.small)
+            .frame(height: 28)
+            .background(foregroundStyle.opacity(0.10), in: .rect(cornerRadius: DesignTokens.Radius.control))
+    }
+
+    private var systemImage: String {
+        switch feedback.tone {
+        case .warning:
+            "exclamationmark.triangle"
+        case .success:
+            "checkmark.circle"
+        }
+    }
+
+    private var foregroundStyle: Color {
+        switch feedback.tone {
+        case .warning:
+            .yellow
+        case .success:
+            .green
+        }
+    }
+}
+
+private struct EmptyReadyState: View {
+    let needsAccurateIconCount: Int
+
+    var body: some View {
+        Label(message, systemImage: "rectangle.dashed")
+            .font(DesignTokens.Typography.caption)
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+    }
+
+    private var message: String {
+        if needsAccurateIconCount > 0 {
+            return "Preparing icons"
+        }
+        return "No hidden icons"
+    }
+}
+
+#Preview {
+    SecondBarCompactStripRootView(
+        content: .ready(plan: SecondBarCompactStripPlan(
+            visibleItems: [
+                MenuBarItemSnapshot(
+                    id: "preview",
+                    title: "Sync",
+                    role: "AXMenuBarItem",
+                    subrole: nil,
+                    frame: .zero,
+                    owningProcessIdentifier: nil,
+                    owningApplicationName: "Example",
+                    bundleIdentifier: "com.example.app",
+                    zone: .hidden,
+                    isLikelySystemItem: false,
+                    scanTimestamp: Date()
+                )
+            ],
+            hiddenOverflowCount: 2,
+            needsAccurateIconCount: 1
+        )),
+        activationFeedback: nil,
+        onActivate: { _ in },
+        onOpenManage: {},
+        onOpenSettings: {},
+        onDismiss: {}
+    )
+    .frame(width: 520)
+    .padding()
+}

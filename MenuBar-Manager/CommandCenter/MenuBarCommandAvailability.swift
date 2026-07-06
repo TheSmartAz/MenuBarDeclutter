@@ -9,6 +9,8 @@ nonisolated enum MenuBarCommandGate: String, Equatable, Hashable, Sendable {
     case proMode
     case accessibilityDiscovery
     case accessibilityPermission
+    case accurateIcons
+    case screenRecording
     case featureEnabled
     case labs
     case privateAccess
@@ -111,6 +113,8 @@ private extension MenuBarCommandAction {
             "Icon Panel"
         case .showItemInSecondBar:
             "Show Item in Second Bar"
+        case .activateItem:
+            "Activate Item"
         case .revealItem:
             "Reveal Item"
         case .highlightItem:
@@ -206,6 +210,10 @@ private extension MenuBarCommandGate {
             "Accessibility Discovery"
         case .accessibilityPermission:
             "Accessibility Permission"
+        case .accurateIcons:
+            "Accurate Icons"
+        case .screenRecording:
+            "Screen Recording"
         case .featureEnabled:
             "Feature Enabled"
         case .labs:

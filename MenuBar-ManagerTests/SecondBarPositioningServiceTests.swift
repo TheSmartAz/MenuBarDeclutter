@@ -128,6 +128,50 @@ struct SecondBarPositioningServiceTests {
         #expect(!placement.frame.intersects(notch))
     }
 
+    @Test func compactStripUsesAnchorToRightEdgeWhenThereIsEnoughRoom() {
+        let service = SecondBarPositioningService()
+        let screen = makeScreen(
+            frame: CGRect(x: 0, y: 0, width: 1440, height: 900),
+            visibleFrame: CGRect(x: 0, y: 0, width: 1440, height: 875)
+        )
+
+        let placement = service.compactStripPlacement(
+            contentSize: CGSize(width: 320, height: 42),
+            anchorFrame: CGRect(x: 1050, y: 876, width: 24, height: 22),
+            mouseLocation: CGPoint(x: 1062, y: 888),
+            screens: [screen]
+        )
+
+        #expect(placement.screenID == "test")
+        #expect(placement.frame.minX == 1050)
+        #expect(placement.frame.maxX == screen.visibleFrame.maxX - 8)
+        #expect(placement.frame.maxY <= screen.visibleFrame.maxY)
+        #expect(!placement.avoidedNotch)
+    }
+
+    @Test func compactStripFallsBackToNotchLeftEdgeWhenAnchorRegionIsTooSmall() {
+        let service = SecondBarPositioningService()
+        let notch = CGRect(x: 600, y: 875, width: 240, height: 25)
+        let screen = makeScreen(
+            frame: CGRect(x: 0, y: 0, width: 1440, height: 900),
+            visibleFrame: CGRect(x: 0, y: 0, width: 1440, height: 875),
+            notchAvoidanceRect: notch
+        )
+
+        let placement = service.compactStripPlacement(
+            contentSize: CGSize(width: 420, height: 42),
+            anchorFrame: CGRect(x: 1320, y: 876, width: 24, height: 22),
+            mouseLocation: CGPoint(x: 1332, y: 888),
+            screens: [screen]
+        )
+
+        #expect(placement.screenID == "test")
+        #expect(placement.frame.minX == notch.minX)
+        #expect(placement.frame.maxX == screen.visibleFrame.maxX - 8)
+        #expect(placement.avoidedNotch)
+        #expect(!placement.frame.intersects(notch))
+    }
+
     @Test func screenSnapshotCacheReusesSnapshotsUntilInvalidated() {
         var providerCallCount = 0
         var screenWidth: CGFloat = 800

@@ -2,6 +2,24 @@ import AppKit
 
 @MainActor
 final class MenuBarItemSurfaceCoordinator {
+    private(set) lazy var secondBarCompactStripWindowController = SecondBarCompactStripWindowController(
+        settingsStore: settingsStore,
+        liveStatus: liveStatus,
+        positioningService: secondBarPositioningService,
+        diagnosticsLogger: diagnosticsLogger,
+        onActivate: { [weak self] snapshot in
+            self?.activateCompactStripItem(snapshot) == true
+        },
+        onOpenManage: { [weak self] in
+            _ = self?.routeCommand(MenuBarCommand(
+                action: .showSecondBar,
+                target: .secondBar,
+                source: .secondBar
+            ))
+        },
+        onOpenSettings: openPrivacySettings
+    )
+
     private(set) lazy var secondBarWindowController = SecondBarWindowController(
         settingsStore: settingsStore,
         permissionService: accessibilityPermissionService,
@@ -50,6 +68,7 @@ final class MenuBarItemSurfaceCoordinator {
     private let screenGeometry: ScreenGeometryService
     private let menuBarScanCoordinator: MenuBarScanCoordinator
     private let iconCaptureCoordinator: MenuBarIconCaptureCoordinator?
+    private let renderedIconCache: MenuBarRenderedIconCache
     private let liveStatusSynchronizer: AppEnvironmentLiveStatusSynchronizer
     private let secondBarPositioningService: SecondBarPositioningService
     private let isHoverRevealSuppressed: () -> Bool
@@ -144,6 +163,7 @@ final class MenuBarItemSurfaceCoordinator {
         accessibilityPermissionService: AccessibilityPermissionService,
         menuBarScanCoordinator: MenuBarScanCoordinator,
         iconCaptureCoordinator: MenuBarIconCaptureCoordinator? = nil,
+        renderedIconCache: MenuBarRenderedIconCache = .shared,
         liveStatusSynchronizer: AppEnvironmentLiveStatusSynchronizer,
         secondBarPositioningService: SecondBarPositioningService = SecondBarPositioningService(),
         separatorFramesProvider: @escaping () -> MenuBarSeparatorFrames,
@@ -168,6 +188,7 @@ final class MenuBarItemSurfaceCoordinator {
         self.accessibilityPermissionService = accessibilityPermissionService
         self.menuBarScanCoordinator = menuBarScanCoordinator
         self.iconCaptureCoordinator = iconCaptureCoordinator
+        self.renderedIconCache = renderedIconCache
         self.liveStatusSynchronizer = liveStatusSynchronizer
         self.secondBarPositioningService = secondBarPositioningService
         self.separatorFramesProvider = separatorFramesProvider
@@ -185,17 +206,41 @@ final class MenuBarItemSurfaceCoordinator {
     }
 
     func showSecondBar() {
+        secondBarCompactStripWindowController.hide()
         refreshMenuBarItems()
         secondBarWindowController.show()
     }
 
     func hideSecondBar() {
+        secondBarCompactStripWindowController.hide()
         secondBarWindowController.hide()
     }
 
     func toggleSecondBar() {
+        secondBarCompactStripWindowController.hide()
         refreshMenuBarItems()
         secondBarWindowController.toggle()
+    }
+
+    func toggleCompactSecondBar(anchorFrame: CGRect?) {
+        secondBarWindowController.hide()
+        let snapshots = compactStripSnapshots()
+        secondBarCompactStripWindowController.toggleCompactStrip(
+            snapshots: snapshots,
+            accurateIconReadyIDs: accurateIconReadyIDs(for: snapshots),
+            anchorFrame: anchorFrame
+        )
+    }
+
+    func showSecondBarRequirements(
+        _ readiness: ProSecondBarReadinessState,
+        anchorFrame: CGRect?
+    ) {
+        secondBarWindowController.hide()
+        secondBarCompactStripWindowController.showRequirements(
+            readiness,
+            anchorFrame: anchorFrame
+        )
     }
 
     func refreshSecondBarAfterSettingsChanged() {
@@ -253,6 +298,36 @@ final class MenuBarItemSurfaceCoordinator {
 
     private func availableGroups() -> [IconGroup] {
         IconGroupSort.sort(groupStore.groups).filter(\.isEnabled)
+    }
+
+    private func compactStripSnapshots() -> [MenuBarItemSnapshot] {
+        liveStatus.scannedMenuBarItems.filter { snapshot in
+            !isMenuBarDeclutterStatusItem(snapshot)
+        }
+    }
+
+    private func accurateIconReadyIDs(for snapshots: [MenuBarItemSnapshot]) -> Set<String> {
+        Set(snapshots.compactMap { snapshot in
+            renderedIconCache.resolvedImage(for: snapshot) == nil ? nil : snapshot.id
+        })
+    }
+
+    private func isMenuBarDeclutterStatusItem(_ snapshot: MenuBarItemSnapshot) -> Bool {
+        if let bundleIdentifier = snapshot.bundleIdentifier,
+           bundleIdentifier == Bundle.main.bundleIdentifier {
+            return true
+        }
+        return snapshot.owningApplicationName == "MenuBarDeclutter"
+    }
+
+    @discardableResult
+    private func activateCompactStripItem(_ snapshot: MenuBarItemSnapshot) -> Bool {
+        let result = routeCommand(MenuBarCommand(
+            action: .activateItem,
+            target: .menuBarItem(id: snapshot.id),
+            source: .secondBar
+        ))
+        return result.didRun
     }
 
     private func moveIcon(_ snapshot: MenuBarItemSnapshot, command: IconMoveCommand) async -> IconMoveResult {

@@ -18,6 +18,7 @@ final class AppEnvironment {
     let safeModeService: SafeModeService
     let safeModeLaunchState: SafeModeLaunchState
     let settingsMigrationResult: SettingsMigrationResult
+    let screenCapturePermissionService: ScreenCapturePermissionService
 
     let screenGeometry: ScreenGeometryService
     let hidingService: HidingService
@@ -38,8 +39,6 @@ final class AppEnvironment {
         promptTrustProvider: accessibilityPromptTrustProvider,
         systemSettingsOpener: accessibilitySystemSettingsOpener
     )
-
-    lazy var screenCapturePermissionService = ScreenCapturePermissionService()
 
     private lazy var menuBarRenderedIconCache: MenuBarRenderedIconCache = {
         let cache = MenuBarRenderedIconCache.shared
@@ -68,6 +67,10 @@ final class AppEnvironment {
     )
 
     private lazy var axMenuBarScanner = AXMenuBarScanner(
+        diagnosticsLogger: diagnosticsLogger
+    )
+
+    private lazy var menuBarItemDirectActivationService = MenuBarItemDirectActivationService(
         diagnosticsLogger: diagnosticsLogger
     )
 
@@ -507,9 +510,9 @@ final class AppEnvironment {
         hoverRevealSuppressionProvider: { [weak self] in
             self?.isHoverRevealCurrentlySuppressed() == true
         },
-        primaryClickPreviewAction: { [weak self] in
+        primaryClickAction: { [weak self] button in
             guard let self else { return false }
-            return self.showFunctionBarFromPrimaryClick()
+            return self.handleStatusItemPrimaryClick(anchorFrame: button.menuBarDeclutterScreenFrame)
         }
     )
 
@@ -540,6 +543,7 @@ final class AppEnvironment {
         accessibilityPermissionService: accessibilityPermissionService,
         menuBarScanCoordinator: menuBarScanCoordinator,
         iconCaptureCoordinator: menuBarIconCaptureCoordinator,
+        renderedIconCache: menuBarRenderedIconCache,
         liveStatusSynchronizer: liveStatusSynchronizer,
         separatorFramesProvider: { [weak self] in
             self?.currentSeparatorFrames() ?? AppEnvironment.emptySeparatorFrames
@@ -948,6 +952,9 @@ final class AppEnvironment {
         accessibilityStatus: { [weak self] in
             self?.accessibilityPermissionService.status ?? .notRequested
         },
+        screenCaptureStatus: { [weak self] in
+            self?.screenCapturePermissionService.refreshStatus() ?? .unknown
+        },
         privateAccess: protectedActionGate,
         handlers: makeCommandHandlers()
     )
@@ -999,6 +1006,7 @@ final class AppEnvironment {
         diagnosticsLogger: DiagnosticsLogger = DiagnosticsLogger(),
         appSupportPaths: AppSupportPaths = AppSupportPaths(),
         screenGeometry: ScreenGeometryService = ScreenGeometryService(),
+        screenCapturePermissionService: ScreenCapturePermissionService? = nil,
         launchAtLoginService: LaunchAtLoginService? = nil,
         reflectLaunchAtLoginOnStart: Bool = true,
         presentMigrationNoticeOnStart: Bool = true,
@@ -1023,6 +1031,7 @@ final class AppEnvironment {
         self.diagnosticsLogger = diagnosticsLogger
         self.appSupportPaths = appSupportPaths
         self.screenGeometry = screenGeometry
+        self.screenCapturePermissionService = screenCapturePermissionService ?? ScreenCapturePermissionService()
         self.reflectLaunchAtLoginOnStart = reflectLaunchAtLoginOnStart
         self.presentMigrationNoticeOnStart = presentMigrationNoticeOnStart
         self.accessibilityTrustProvider = accessibilityTrustProvider
@@ -1399,7 +1408,7 @@ final class AppEnvironment {
             "Unlock to reveal always-hidden menu bar items."
         case .showFindIcon:
             "Unlock to open Find Icon."
-        case .showSecondBar, .showIconPanel, .showItemInSecondBar:
+        case .showSecondBar, .showIconPanel, .showItemInSecondBar, .activateItem:
             "Unlock to open Second Bar."
         case .showGroupPanel:
             "Unlock to open this protected group."
@@ -1857,6 +1866,9 @@ final class AppEnvironment {
     }
 
     func showSecondBar() {
+        guard openSecondBarIfReady(anchorFrame: nil) else {
+            return
+        }
         menuBarItemSurfaceCoordinator.showSecondBar()
     }
 
@@ -1915,6 +1927,59 @@ final class AppEnvironment {
             source: .statusMenu
         ))
         return result.didRun
+    }
+
+    @discardableResult
+    private func handleStatusItemPrimaryClick(anchorFrame: CGRect?) -> Bool {
+        let readiness = currentProSecondBarReadiness()
+        switch StatusBarPrimaryClickRouter.route(
+            entitlement: currentProEntitlementState(),
+            readiness: readiness.state
+        ) {
+        case .toggleCompactStrip:
+            menuBarItemSurfaceCoordinator.toggleCompactSecondBar(anchorFrame: anchorFrame)
+            return true
+        case .showSecondBarRequirements:
+            menuBarItemSurfaceCoordinator.showSecondBarRequirements(
+                readiness.state,
+                anchorFrame: anchorFrame
+            )
+            return true
+        case .toggleInlineVisibility:
+            guard settingsStore.functionBarPrimaryClickEnabled else {
+                return false
+            }
+            return showFunctionBarFromPrimaryClick()
+        }
+    }
+
+    private func currentProEntitlementState() -> ProEntitlementState {
+        guard settingsStore.proModeEnabled else {
+            return .basic
+        }
+        return .licensed
+    }
+
+    private func currentProSecondBarReadiness() -> ProSecondBarReadinessResult {
+        ProSecondBarReadiness.evaluate(ProSecondBarReadinessInput(
+            entitlement: currentProEntitlementState(),
+            accessibilityDiscoveryEnabled: settingsStore.accessibilityDiscoveryEnabled,
+            accessibilityPermission: accessibilityPermissionService.currentStatus,
+            accurateIconsEnabled: settingsStore.renderedIconCaptureEnabled,
+            screenCapturePermission: screenCapturePermissionService.refreshStatus()
+        ))
+    }
+
+    private func openSecondBarIfReady(anchorFrame: CGRect?) -> Bool {
+        let readiness = currentProSecondBarReadiness()
+        guard readiness.isReady else {
+            menuBarItemSurfaceCoordinator.showSecondBarRequirements(
+                readiness.state,
+                anchorFrame: anchorFrame
+            )
+            return false
+        }
+        return true
     }
 
     func showInfoStripPreview() {
@@ -2142,7 +2207,11 @@ final class AppEnvironment {
     }
 
     func toggleSecondBar() {
-        menuBarItemSurfaceCoordinator.toggleSecondBar()
+        if liveStatus.secondBarVisible {
+            menuBarItemSurfaceCoordinator.hideSecondBar()
+        } else {
+            showSecondBar()
+        }
     }
 
     func refreshMenuBarItems() {
@@ -2219,6 +2288,9 @@ final class AppEnvironment {
         }
         handlers.showItemInSecondBar = { [weak self] itemID in
             self?.showMenuBarItemInSecondBar(id: itemID) == true
+        }
+        handlers.activateItem = { [weak self] itemID in
+            self?.activateMenuBarItem(id: itemID) == true
         }
         handlers.showGroupPanel = { [weak self] groupID in
             self?.showGroupPanel(id: groupID) == true
@@ -2365,6 +2437,25 @@ final class AppEnvironment {
         return true
     }
 
+    private func activateMenuBarItem(id: String) -> Bool {
+        guard let snapshot = liveStatus.scannedMenuBarItems.first(where: { $0.id == id }) else {
+            diagnosticsLogger.log("Second Bar activation target unavailable.", level: .warning, category: .layout)
+            return false
+        }
+
+        let result = menuBarItemDirectActivationService.activate(snapshot: snapshot)
+        diagnosticsLogger.log(
+            "Second Bar activation result: \(result.status.rawValue).",
+            level: result.didActivate ? .debug : .warning,
+            category: .layout,
+            metadata: [
+                "visitedElementCount": "\(result.visitedElementCount)",
+                "axError": result.axErrorDescription ?? "none"
+            ]
+        )
+        return result.didActivate
+    }
+
     private func showGroupPanel(id: UUID) -> Bool {
         groupStore.load()
         guard let group = groupStore.groups.first(where: { $0.id == id }) else {
@@ -2499,5 +2590,12 @@ final class AppEnvironment {
 
     func quit() {
         NSApp.terminate(nil)
+    }
+}
+
+private extension NSView {
+    var menuBarDeclutterScreenFrame: CGRect? {
+        guard let window else { return nil }
+        return window.convertToScreen(convert(bounds, to: nil))
     }
 }

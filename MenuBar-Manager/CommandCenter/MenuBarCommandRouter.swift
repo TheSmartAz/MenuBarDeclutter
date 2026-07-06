@@ -39,6 +39,7 @@ struct MenuBarCommandHandlers {
     var highlightItem: (String) -> Bool = { _ in false }
     var openOwningApp: (String) -> Bool = { _ in false }
     var showItemInSecondBar: (String) -> Bool = { _ in false }
+    var activateItem: (String) -> Bool = { _ in false }
     var showGroupPanel: (UUID) -> Bool = { _ in false }
     var revealGroup: (UUID) -> Bool = { _ in false }
     var createGroupFromItem: (String) -> Bool = { _ in false }
@@ -55,6 +56,7 @@ final class MenuBarCommandRouter {
     private let diagnosticsLogger: DiagnosticsLogger?
     private let safeModeActive: () -> Bool
     private let accessibilityStatus: () -> AccessibilityPermissionStatus
+    private let screenCaptureStatus: () -> ScreenCapturePermissionStatus
     private let privateAccess: (any MenuBarCommandPrivateAccessChecking)?
     private var handlers: MenuBarCommandHandlers
 
@@ -63,6 +65,7 @@ final class MenuBarCommandRouter {
         diagnosticsLogger: DiagnosticsLogger? = nil,
         safeModeActive: @escaping () -> Bool = { false },
         accessibilityStatus: @escaping () -> AccessibilityPermissionStatus = { .notRequested },
+        screenCaptureStatus: @escaping () -> ScreenCapturePermissionStatus = { .unknown },
         privateAccess: (any MenuBarCommandPrivateAccessChecking)? = nil,
         handlers: MenuBarCommandHandlers = MenuBarCommandHandlers()
     ) {
@@ -70,6 +73,7 @@ final class MenuBarCommandRouter {
         self.diagnosticsLogger = diagnosticsLogger
         self.safeModeActive = safeModeActive
         self.accessibilityStatus = accessibilityStatus
+        self.screenCaptureStatus = screenCaptureStatus
         self.privateAccess = privateAccess
         self.handlers = handlers
     }
@@ -177,6 +181,26 @@ final class MenuBarCommandRouter {
                 message: "This command requires Accessibility permission.",
                 diagnosticReason: "accessibilityPermissionMissing",
                 failedGate: .accessibilityPermission
+            )
+        }
+
+        if command.action.requiresSecondBarReadiness,
+           !settingsStore.renderedIconCaptureEnabled {
+            return .unavailable(
+                status: .requiresPermission,
+                message: "This command requires Accurate Icons.",
+                diagnosticReason: "accurateIconsDisabled",
+                failedGate: .accurateIcons
+            )
+        }
+
+        if command.action.requiresSecondBarReadiness,
+           screenCaptureStatus() != .granted {
+            return .unavailable(
+                status: .requiresPermission,
+                message: "This command requires Screen Recording permission.",
+                diagnosticReason: "screenRecordingPermissionMissing",
+                failedGate: .screenRecording
             )
         }
 
@@ -357,6 +381,10 @@ final class MenuBarCommandRouter {
         case .showItemInSecondBar:
             return executeItem(command, message: "Menu bar item shown in Second Bar.") { id in
                 handlers.showItemInSecondBar(id)
+            }
+        case .activateItem:
+            return executeItem(command, message: "Menu bar item activated.") { id in
+                handlers.activateItem(id)
             }
         case .highlightItem:
             return executeItem(command, message: "Menu bar item highlighted.") { id in
@@ -605,7 +633,7 @@ final class MenuBarCommandRouter {
         case .createGroupFromItem:
             if case .menuBarItem = command.target { return true }
             return false
-        case .revealItem, .highlightItem, .openOwningApp, .showItemInSecondBar,
+        case .revealItem, .highlightItem, .openOwningApp, .showItemInSecondBar, .activateItem,
              .dryRunMoveItem, .tryAssistedMoveItem, .experimentalActivateItem:
             if case .menuBarItem = command.target { return true }
             return false

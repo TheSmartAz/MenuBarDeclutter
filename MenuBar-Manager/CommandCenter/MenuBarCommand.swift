@@ -44,6 +44,7 @@ nonisolated enum MenuBarCommandAction: String, CaseIterable, Equatable, Hashable
     case hideSecondBar
     case showIconPanel
     case showItemInSecondBar
+    case activateItem
     case revealItem
     case highlightItem
     case openOwningApp
@@ -95,6 +96,7 @@ nonisolated enum MenuBarCommandAction: String, CaseIterable, Equatable, Hashable
     var requiresProMode: Bool {
         switch self {
         case .showFindIcon, .showSecondBar, .showIconPanel, .showItemInSecondBar,
+             .activateItem,
              .revealItem, .highlightItem, .openOwningApp, .revealGroup,
              .createGroupFromItem, .addItemToGroup, .removeItemFromGroup, .assignHotkey,
              .dryRunMoveItem, .tryAssistedMoveItem, .experimentalActivateItem:
@@ -107,6 +109,7 @@ nonisolated enum MenuBarCommandAction: String, CaseIterable, Equatable, Hashable
     var requiresAccessibilityDiscovery: Bool {
         switch self {
         case .showFindIcon, .showSecondBar, .showIconPanel, .showItemInSecondBar,
+             .activateItem,
              .revealItem, .highlightItem, .openOwningApp, .revealGroup,
              .createGroupFromItem, .addItemToGroup, .removeItemFromGroup,
              .dryRunMoveItem, .tryAssistedMoveItem, .experimentalActivateItem:
@@ -120,11 +123,20 @@ nonisolated enum MenuBarCommandAction: String, CaseIterable, Equatable, Hashable
         requiresAccessibilityDiscovery
     }
 
+    var requiresSecondBarReadiness: Bool {
+        switch self {
+        case .showSecondBar, .showItemInSecondBar, .activateItem:
+            true
+        default:
+            false
+        }
+    }
+
     var feature: MenuBarCommandFeature? {
         switch self {
         case .showFindIcon:
             .findIcon
-        case .showSecondBar, .hideSecondBar, .showItemInSecondBar:
+        case .showSecondBar, .hideSecondBar, .showItemInSecondBar, .activateItem:
             .secondBar
         case .showIconPanel:
             .iconPanel
@@ -188,7 +200,7 @@ nonisolated enum MenuBarCommandAction: String, CaseIterable, Equatable, Hashable
             return .alwaysHiddenZone
         case .showFindIcon:
             return .findIcon
-        case .showSecondBar, .showIconPanel, .showItemInSecondBar:
+        case .showSecondBar, .showIconPanel, .showItemInSecondBar, .activateItem:
             return .secondBar
         case .tryAssistedMoveItem, .experimentalActivateItem:
             return .iconMoving

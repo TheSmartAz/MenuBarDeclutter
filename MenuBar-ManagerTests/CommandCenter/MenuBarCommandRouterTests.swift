@@ -72,6 +72,42 @@ struct MenuBarCommandRouterTests {
         #expect(result.diagnosticReason == "accessibilityPermissionMissing")
     }
 
+    @Test func secondBarRequiresAccurateIconsAndScreenRecordingAfterAccessibility() {
+        let store = makeStore()
+        store.proModeEnabled = true
+        store.accessibilityDiscoveryEnabled = true
+        var didShow = false
+        var handlers = MenuBarCommandHandlers()
+        handlers.showSecondBar = { didShow = true }
+        let command = MenuBarCommand(action: .showSecondBar, target: .secondBar)
+
+        let missingIconsRouter = MenuBarCommandRouter(
+            settingsStore: store,
+            accessibilityStatus: { .granted },
+            screenCaptureStatus: { .granted },
+            handlers: handlers
+        )
+        #expect(missingIconsRouter.route(command).diagnosticReason == "accurateIconsDisabled")
+
+        store.renderedIconCaptureEnabled = true
+        let missingScreenRecordingRouter = MenuBarCommandRouter(
+            settingsStore: store,
+            accessibilityStatus: { .granted },
+            screenCaptureStatus: { .notGranted },
+            handlers: handlers
+        )
+        #expect(missingScreenRecordingRouter.route(command).diagnosticReason == "screenRecordingPermissionMissing")
+
+        let readyRouter = MenuBarCommandRouter(
+            settingsStore: store,
+            accessibilityStatus: { .granted },
+            screenCaptureStatus: { .granted },
+            handlers: handlers
+        )
+        #expect(readyRouter.route(command).status == .success)
+        #expect(didShow)
+    }
+
     @Test func appIntentProfileApplyRespectsAutomationPause() {
         let store = makeStore()
         store.appIntentsCanApplyProfiles = true
@@ -234,12 +270,14 @@ struct MenuBarCommandRouterTests {
         let store = makeStore()
         store.proModeEnabled = true
         store.accessibilityDiscoveryEnabled = true
+        store.renderedIconCaptureEnabled = true
         var didShow = false
         var handlers = MenuBarCommandHandlers()
         handlers.showSecondBar = { didShow = true }
         let router = MenuBarCommandRouter(
             settingsStore: store,
             accessibilityStatus: { .granted },
+            screenCaptureStatus: { .granted },
             privateAccess: PrivateAccessProbe(canAccess: false),
             handlers: handlers
         )
@@ -330,8 +368,10 @@ struct MenuBarCommandRouterTests {
         let store = makeStore()
         store.proModeEnabled = true
         store.accessibilityDiscoveryEnabled = true
+        store.renderedIconCaptureEnabled = true
         var highlightedID: String?
         var openedID: String?
+        var activatedID: String?
         var handlers = MenuBarCommandHandlers()
         handlers.highlightItem = { id in
             highlightedID = id
@@ -341,9 +381,14 @@ struct MenuBarCommandRouterTests {
             openedID = id
             return true
         }
+        handlers.activateItem = { id in
+            activatedID = id
+            return true
+        }
         let router = MenuBarCommandRouter(
             settingsStore: store,
             accessibilityStatus: { .granted },
+            screenCaptureStatus: { .granted },
             handlers: handlers
         )
 
@@ -355,11 +400,19 @@ struct MenuBarCommandRouterTests {
             action: .openOwningApp,
             target: .menuBarItem(id: "item-2")
         ))
+        let activateResult = router.route(MenuBarCommand(
+            action: .activateItem,
+            target: .menuBarItem(id: "item-3"),
+            source: .secondBar
+        ))
 
         #expect(highlightResult.status == .success)
         #expect(highlightedID == "item-1")
         #expect(openResult.status == .success)
         #expect(openedID == "item-2")
+        #expect(activateResult.status == .success)
+        #expect(activateResult.message == "Menu bar item activated.")
+        #expect(activatedID == "item-3")
     }
 
     @Test func createGroupFromItemRunsHandlerThroughRouter() {

@@ -59,6 +59,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let settingsStore = SettingsStore(defaults: defaults)
         let proDiscoveryEnabled = launchArguments.contains("--ui-testing-pro-discovery-enabled")
         let accessibilityGranted = launchArguments.contains("--ui-testing-accessibility-granted")
+        let accurateIconsEnabled = launchArguments.contains("--ui-testing-accurate-icons-enabled")
+        let screenCaptureGranted = launchArguments.contains("--ui-testing-screen-capture-granted")
         let hideStatusShortcuts = launchArguments.contains("--ui-testing-hide-status-shortcuts")
         let useSystemAccessibility = launchArguments.contains("--ui-testing-use-system-accessibility")
         settingsStore.hasCompletedOnboarding = true
@@ -71,11 +73,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .appendingPathComponent("MenuBarDeclutterUITests", isDirectory: true)
         try? FileManager.default.removeItem(at: baseURL)
 
+        let screenCapturePermissionService = ScreenCapturePermissionService(
+            preflightAccess: { screenCaptureGranted },
+            requestAccess: { screenCaptureGranted },
+            systemSettingsOpener: { false }
+        )
+
         let environment: AppEnvironment
         if useSystemAccessibility {
             environment = AppEnvironment(
                 settingsStore: settingsStore,
                 appSupportPaths: AppSupportPaths(baseURL: baseURL),
+                screenCapturePermissionService: screenCapturePermissionService,
                 reflectLaunchAtLoginOnStart: false,
                 presentMigrationNoticeOnStart: false
             )
@@ -83,6 +92,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             environment = AppEnvironment(
                 settingsStore: settingsStore,
                 appSupportPaths: AppSupportPaths(baseURL: baseURL),
+                screenCapturePermissionService: screenCapturePermissionService,
                 reflectLaunchAtLoginOnStart: false,
                 presentMigrationNoticeOnStart: false,
                 accessibilityTrustProvider: { accessibilityGranted },
@@ -94,6 +104,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if proDiscoveryEnabled {
             settingsStore.proModeEnabled = true
             settingsStore.accessibilityDiscoveryEnabled = true
+        }
+        if accurateIconsEnabled {
+            settingsStore.renderedIconCaptureEnabled = true
         }
         if hideStatusShortcuts {
             settingsStore.searchEnabled = false

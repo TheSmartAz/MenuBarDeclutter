@@ -848,6 +848,8 @@ struct SettingsRootView: View {
         case .automation:
             AutomationSettingsView(
                 settingsStore: settingsStore,
+                accessibilityPermissionService: accessibilityPermissionService,
+                screenCapturePermissionService: screenCapturePermissionService,
                 onChange: actions.automationSettingsChanged
             )
         case .importExport:

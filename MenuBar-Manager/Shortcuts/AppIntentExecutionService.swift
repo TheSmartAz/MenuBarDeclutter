@@ -29,6 +29,7 @@ final class AppIntentExecutionService {
         diagnosticsLogger: DiagnosticsLogger,
         safeModeActive: @escaping () -> Bool,
         accessibilityStatus: @escaping () -> AccessibilityPermissionStatus = { .granted },
+        screenCaptureStatus: @escaping () -> ScreenCapturePermissionStatus = { .unknown },
         privateAccess: (any MenuBarCommandPrivateAccessChecking)? = nil,
         expand: @escaping () -> Void,
         collapse: @escaping () -> Void,
@@ -64,6 +65,7 @@ final class AppIntentExecutionService {
             diagnosticsLogger: diagnosticsLogger,
             safeModeActive: safeModeActive,
             accessibilityStatus: accessibilityStatus,
+            screenCaptureStatus: screenCaptureStatus,
             privateAccess: privateAccess,
             handlers: handlers
         )

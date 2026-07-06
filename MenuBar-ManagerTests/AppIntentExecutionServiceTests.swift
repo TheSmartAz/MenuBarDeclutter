@@ -213,6 +213,37 @@ struct AppIntentExecutionServiceTests {
             appIntentsEnabled: true,
             proModeEnabled: true,
             accessibilityDiscoveryEnabled: true,
+            accessibilityGranted: false,
+            accurateIconsEnabled: true,
+            screenRecordingGranted: true,
+            canApplyProfiles: false,
+            canAccessLabs: false,
+            spacingLabsEnabled: false
+        ) == .accessibilityPermissionGated)
+        #expect(secondBarAction.status(
+            appIntentsEnabled: true,
+            proModeEnabled: true,
+            accessibilityDiscoveryEnabled: true,
+            accurateIconsEnabled: false,
+            screenRecordingGranted: true,
+            canApplyProfiles: false,
+            canAccessLabs: false,
+            spacingLabsEnabled: false
+        ) == .accurateIconsGated)
+        #expect(secondBarAction.status(
+            appIntentsEnabled: true,
+            proModeEnabled: true,
+            accessibilityDiscoveryEnabled: true,
+            accurateIconsEnabled: true,
+            screenRecordingGranted: false,
+            canApplyProfiles: false,
+            canAccessLabs: false,
+            spacingLabsEnabled: false
+        ) == .screenRecordingGated)
+        #expect(secondBarAction.status(
+            appIntentsEnabled: true,
+            proModeEnabled: true,
+            accessibilityDiscoveryEnabled: true,
             canApplyProfiles: false,
             canAccessLabs: false,
             spacingLabsEnabled: false
