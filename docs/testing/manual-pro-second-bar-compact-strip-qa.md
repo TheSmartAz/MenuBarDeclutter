@@ -19,6 +19,7 @@ This checklist covers the Pro compact Second Bar strip. These behaviors require 
 | Direct activation matrix logging | PASS | `directActivationResultsMapToMatrixOutcomes` verifies direct activation results map to the QA matrix `matrixResult` values, and runtime diagnostics now log `matrixResult` with the existing activation metadata. |
 | Direct activation matrix helper | PASS | `qa_second_bar_activation_matrix.sh` converts sanitized diagnostics JSON activation logs into markdown matrix rows so hands-on testers do not need to copy `targetID`, `targetZone`, `matrixResult`, `visitedElementCount`, `axError`, and `message` manually. |
 | Manual gate audit helper | PASS | `qa_second_bar_manual_gate_audit.sh` checks a hands-on diagnostics JSON export for ready Second Bar gates, compact-strip runtime evidence, direct activation PASS coverage, optional notch/failure coverage, and optional matrix-row output. `secondBarManualGateAuditChecksReadinessRuntimeAndActivationEvidence` covers the audit path with a sanitized fixture. |
+| Sign-off audit helper | PASS | `qa_second_bar_signoff_audit.sh` aggregates the manual QA evidence table, Gate C dogfood Second Bar rows, direct activation matrix coverage, and compact strip screenshot manifest. It intentionally fails until real Gate C dogfood rows and reviewed direct activation matrix rows are complete; `secondBarSignoffAuditAggregatesEvidenceAndFailsMissingDogfood` covers passing and failing fixture evidence. |
 | Primary-click opt-in gate | PASS | `primaryClickRequiresExplicitSecondBarOptInBeforeUsingCompactStrip` verifies Pro readiness alone does not reroute the status item click; compact strip routing requires `Use menu bar icon for Second Bar`, and revoked readiness shows requirements only after that opt-in. |
 | Activation failure retry state | PASS | `activationFailureFeedbackRetainsRetryTarget` verifies failed compact-strip activation feedback keeps the failed snapshot so the strip can show a `Retry` control instead of closing or losing the target. |
 | Safe Mode primary-click suppression | PASS | `primaryClickRoutesSafeModeToInlineEvenWhenReadyAndOptedIn` verifies Safe Mode suppresses compact-strip primary-click routing even when Pro, readiness, and explicit opt-in are all enabled. |
@@ -135,6 +136,7 @@ This checklist covers the Pro compact Second Bar strip. These behaviors require 
 12. Export diagnostics as JSON and run `scripts/qa_second_bar_manual_gate_audit.sh --matrix-output docs/testing/pro-second-bar-direct-activation-matrix.generated.md path/to/diagnostics.json`.
 13. For notch-specific sign-off, rerun the audit with `--require-notch-avoidance`; for retry/failure sign-off, rerun it with `--require-failure-row`.
 14. Review generated rows and copy accepted rows into `docs/testing/pro-second-bar-direct-activation-matrix.md`.
+15. After all Gate C Second Bar rows are updated, run `scripts/qa_second_bar_signoff_audit.sh` and keep working until it passes.
 
 ## Regression Checks
 

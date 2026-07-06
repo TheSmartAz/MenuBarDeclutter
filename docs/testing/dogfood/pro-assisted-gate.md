@@ -20,3 +20,11 @@ Allowed results: PASS, FAIL, BLOCKED, NOT TESTED.
 | URL automation expand/collapse/reveal-all | NOT TESTED | |
 | URL automation profile apply | NOT TESTED | |
 | No silent bulk icon moves | NOT TESTED | |
+
+After the Second Bar rows above are updated and reviewed direct activation rows
+have been copied into `docs/testing/pro-second-bar-direct-activation-matrix.md`,
+run:
+
+```sh
+scripts/qa_second_bar_signoff_audit.sh
+```

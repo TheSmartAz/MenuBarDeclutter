@@ -15,6 +15,7 @@ struct QAScriptsTests {
             "scripts/qa_second_bar_activation_matrix.sh",
             "scripts/qa_second_bar_manual_gate_audit.sh",
             "scripts/qa_second_bar_matrix_coverage.sh",
+            "scripts/qa_second_bar_signoff_audit.sh",
             "scripts/verify_privacy_boundary.sh",
             "scripts/test.sh",
             "scripts/export_visual_smoke_screenshots.sh",
@@ -67,6 +68,7 @@ struct QAScriptsTests {
             "scripts/qa_second_bar_activation_matrix.sh",
             "scripts/qa_second_bar_manual_gate_audit.sh",
             "scripts/qa_second_bar_matrix_coverage.sh",
+            "scripts/qa_second_bar_signoff_audit.sh",
             "scripts/verify_privacy_boundary.sh",
             "scripts/test.sh",
             "scripts/export_visual_smoke_screenshots.sh",
@@ -474,6 +476,123 @@ struct QAScriptsTests {
         let failOutput = String(data: failOutputPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
         #expect(failProcess.terminationStatus == 1)
         #expect(failOutput.contains("FAIL: Popover-style PASS rows - 2/3"))
+    }
+
+    @Test func secondBarSignoffAuditAggregatesEvidenceAndFailsMissingDogfood() throws {
+        let root = Self.repositoryRoot()
+        let tempDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("SecondBarSignoffAudit-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDirectory) }
+
+        let manualQAURL = tempDirectory.appendingPathComponent("manual.md")
+        let dogfoodURL = tempDirectory.appendingPathComponent("dogfood.md")
+        let matrixURL = tempDirectory.appendingPathComponent("matrix.md")
+        let manifestURL = tempDirectory.appendingPathComponent("manifest.tsv")
+
+        let manualQA = """
+        | Area | Result | Notes |
+        | --- | --- | --- |
+        | Latest installed app | PASS | |
+        | Installed privacy and network boundary | PASS | |
+        | App Intent readiness gate | PASS | |
+        | URL automation readiness gate | PASS | |
+        | Direct activation matrix logging | PASS | |
+        | Direct activation matrix helper | PASS | |
+        | Manual gate audit helper | PASS | |
+        | Primary-click opt-in gate | PASS | |
+        | Activation failure retry state | PASS | |
+        | Compact strip item inclusion | PASS | |
+        | Compact strip scan state | PASS | |
+        | Compact strip diagnostics export | PASS | |
+        | Compact strip screenshot QA | PASS | |
+        | Warm-up diagnostics | PASS | |
+        | Readiness diagnostics export | PASS | |
+        """
+        let dogfoodPass = """
+        | Scenario | Result | Notes |
+        | --- | --- | --- |
+        | Second Bar setup gates ready | PASS | |
+        | Second Bar compact strip opens and closes | PASS | |
+        | Second Bar Accurate Icons warm-up | PASS | |
+        | Second Bar notch placement | PASS | |
+        | Second Bar external display placement | PASS | |
+        | Second Bar direct activation matrix | PASS | |
+        | Second Bar manual gate audit passes | PASS | |
+        """
+        let matrix = """
+        | Date | macOS Build | App Build | App Category | Item Zone | Dynamic Icon | Activation Result | Retry Result | targetID | targetZone | visitedElementCount | axError | Notes |
+        | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: | --- | --- |
+        | 2026-07-06 | 26.0 | 0.1.10 build 11 | utility | hidden | no | PASS | not-needed | utility-1 | hidden | 4 | none | utility template item |
+        | 2026-07-06 | 26.0 | 0.1.10 build 11 | template | hidden | no | PASS | not-needed | utility-2 | hidden | 5 | none | common monochrome item |
+        | 2026-07-06 | 26.0 | 0.1.10 build 11 | calendar | hidden | yes | PASS | not-needed | dynamic-1 | hidden | 6 | none | colored dynamic calendar item |
+        | 2026-07-06 | 26.0 | 0.1.10 build 11 | sync | hidden | yes | PASS | not-needed | dynamic-2 | hidden | 7 | none | stateful sync item |
+        | 2026-07-06 | 26.0 | 0.1.10 build 11 | popover | hidden | no | PASS | not-needed | popover-1 | hidden | 4 | none | popover-style item |
+        | 2026-07-06 | 26.0 | 0.1.10 build 11 | popover | hidden | no | PASS | not-needed | popover-2 | hidden | 5 | none | custom popover item |
+        | 2026-07-06 | 26.0 | 0.1.10 build 11 | menu | hidden | no | PASS | not-needed | menu-1 | hidden | 4 | none | menu-style item |
+        | 2026-07-06 | 26.0 | 0.1.10 build 11 | menu | hidden | no | PASS | not-needed | menu-2 | hidden | 5 | none | standard menu item |
+        | 2026-07-06 | 26.0 | 0.1.10 build 11 | utility | hidden | no | FAIL_STALE_METADATA | retried-pass | stale-1 | hidden | 1 | none | relaunch owner app after scan; stale metadata |
+        | 2026-07-06 | 26.0 | 0.1.10 build 11 | utility | hidden | no | BLOCKED | not-needed | permission-1 | hidden | 0 | none | Accessibility permission revoked; readiness gate blocked activation |
+        """
+        let manifest = """
+        status\tslug\tlabel\tkind\twindow_id\tx\ty\twidth\theight\tlayer\ttitle\tpath\targs
+        captured\t32-compact-second-bar\tCompact Second Bar\tpanel\t1\t0\t0\t166\t42\t3\tSecond Bar Compact Strip\tscreenshots/32.png\t
+        captured\t33-compact-second-bar-fallback-icons\tCompact Second Bar - Fallback Icons\tpanel\t2\t0\t0\t166\t42\t3\tSecond Bar Compact Strip\tscreenshots/33.png\t
+        captured\t34-compact-second-bar-accessibility-required\tCompact Second Bar - Accessibility Required\tpanel\t3\t0\t0\t146\t42\t3\tSecond Bar Compact Strip\tscreenshots/34.png\t
+        captured\t35-compact-second-bar-accurate-icons-required\tCompact Second Bar - Accurate Icons Required\tpanel\t4\t0\t0\t146\t42\t3\tSecond Bar Compact Strip\tscreenshots/35.png\t
+        captured\t36-compact-second-bar-screen-recording-required\tCompact Second Bar - Screen Recording Required\tpanel\t5\t0\t0\t146\t42\t3\tSecond Bar Compact Strip\tscreenshots/36.png\t
+        """
+
+        try manualQA.write(to: manualQAURL, atomically: true, encoding: .utf8)
+        try dogfoodPass.write(to: dogfoodURL, atomically: true, encoding: .utf8)
+        try matrix.write(to: matrixURL, atomically: true, encoding: .utf8)
+        try manifest.write(to: manifestURL, atomically: true, encoding: .utf8)
+
+        let passProcess = Process()
+        passProcess.executableURL = URL(fileURLWithPath: "/bin/bash")
+        passProcess.arguments = [
+            root.appendingPathComponent("scripts/qa_second_bar_signoff_audit.sh").path,
+            "--manual-qa", manualQAURL.path,
+            "--dogfood-gate", dogfoodURL.path,
+            "--matrix", matrixURL.path,
+            "--screenshot-manifest", manifestURL.path
+        ]
+        let passOutputPipe = Pipe()
+        let passErrorPipe = Pipe()
+        passProcess.standardOutput = passOutputPipe
+        passProcess.standardError = passErrorPipe
+
+        try passProcess.run()
+        passProcess.waitUntilExit()
+
+        let passOutput = String(data: passOutputPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        let passError = String(data: passErrorPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+
+        #expect(passProcess.terminationStatus == 0, "stdout: \(passOutput)\nstderr: \(passError)")
+        #expect(passOutput.contains("PASS: Direct activation matrix coverage"))
+        #expect(passOutput.contains("PASS: Gate C dogfood - Second Bar direct activation matrix is PASS"))
+        #expect(passOutput.contains("Second Bar sign-off audit passed."))
+
+        let dogfoodFail = dogfoodPass.replacing(
+            "| Second Bar setup gates ready | PASS | |",
+            with: "| Second Bar setup gates ready | NOT TESTED | |"
+        )
+        try dogfoodFail.write(to: dogfoodURL, atomically: true, encoding: .utf8)
+
+        let failProcess = Process()
+        failProcess.executableURL = URL(fileURLWithPath: "/bin/bash")
+        failProcess.arguments = passProcess.arguments
+        let failOutputPipe = Pipe()
+        let failErrorPipe = Pipe()
+        failProcess.standardOutput = failOutputPipe
+        failProcess.standardError = failErrorPipe
+
+        try failProcess.run()
+        failProcess.waitUntilExit()
+
+        let failOutput = String(data: failOutputPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        #expect(failProcess.terminationStatus == 1)
+        #expect(failOutput.contains("FAIL: Gate C dogfood - Second Bar setup gates ready expected PASS, got NOT TESTED"))
     }
 
     @Test func secondBarManualGateAuditChecksReadinessRuntimeAndActivationEvidence() throws {
