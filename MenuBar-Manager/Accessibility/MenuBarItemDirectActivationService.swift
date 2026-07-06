@@ -11,12 +11,32 @@ nonisolated struct MenuBarItemDirectActivationResult: Equatable, Sendable {
         case missingTargetMetadata
     }
 
+    enum MatrixOutcome: String, Equatable, Sendable {
+        case pass = "PASS"
+        case failTargetNotFound = "FAIL_TARGET_NOT_FOUND"
+        case failAXPress = "FAIL_AX_PRESS"
+        case failMissingMetadata = "FAIL_MISSING_METADATA"
+    }
+
     let status: Status
     let message: String
     let visitedElementCount: Int
     let axErrorDescription: String?
 
     var didActivate: Bool { status == .success }
+
+    var matrixOutcome: MatrixOutcome {
+        switch status {
+        case .success:
+            .pass
+        case .targetNotFound:
+            .failTargetNotFound
+        case .actionFailed:
+            .failAXPress
+        case .missingTargetMetadata:
+            .failMissingMetadata
+        }
+    }
 
     static func success(visitedElementCount: Int) -> MenuBarItemDirectActivationResult {
         MenuBarItemDirectActivationResult(

@@ -2508,6 +2508,7 @@ final class AppEnvironment {
             metadata: [
                 "targetID": snapshot.id,
                 "targetZone": snapshot.zone.rawValue,
+                "matrixResult": result.matrixOutcome.rawValue,
                 "visitedElementCount": "\(result.visitedElementCount)",
                 "axError": result.axErrorDescription ?? "none",
                 "message": result.message

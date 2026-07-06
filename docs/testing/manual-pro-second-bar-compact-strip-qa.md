@@ -16,6 +16,7 @@ This checklist covers the Pro compact Second Bar strip. These behaviors require 
 | Compact strip UI-test hook compiles | PASS | Added `--ui-testing-show-compact-second-bar` with seeded rendered icons and `testCompactSecondBarShowsReadyHiddenItems`; `xcodebuild build-for-testing -scheme MenuBarDeclutter -destination 'platform=macOS,arch=arm64' -derivedDataPath build/DerivedData/ui-compact-strip CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO -quiet` passed. |
 | App Intent readiness gate | PASS | `showSecondBarAppIntentUsesFullReadinessGate` verifies the Shortcuts/App Intent entry point blocks before handler execution when Optional Pro, Accurate Icons, or Screen Recording are missing, and runs only when the full Second Bar readiness chain is satisfied. |
 | URL automation readiness gate | PASS | `secondBarURLUsesFullReadinessGate` verifies `menubardeclutter://second-bar` blocks before handler execution when Accurate Icons or Screen Recording are missing, and runs only when the full Second Bar readiness chain is satisfied. |
+| Direct activation matrix logging | PASS | `directActivationResultsMapToMatrixOutcomes` verifies direct activation results map to the QA matrix `matrixResult` values, and runtime diagnostics now log `matrixResult` with the existing activation metadata. |
 | Compact strip UI-test execution | BLOCKED-INFRA | Focused `xcodebuild test-without-building` for `testCompactSecondBarShowsReadyHiddenItems` did not materialize workers and surfaced the macOS `XCTest is trying to Enable UI Automation` authorization prompt before app assertions. |
 | Real permission prompts | NOT TESTED | Accessibility and Screen Recording prompt behavior requires explicit hands-on interaction with macOS Privacy & Security panes. |
 | Compact strip ready-state behavior | NOT TESTED | Accurate Icons warm-up, real third-party item inclusion, notch-edge placement, and direct activation require live menu bar items and granted permissions. |
@@ -102,7 +103,8 @@ This checklist covers the Pro compact Second Bar strip. These behaviors require 
 5. Test an item whose owner app has quit or whose AX element changed since the last scan.
 6. Confirm activation failure leaves the strip open and shows a retry/failure state.
 7. Confirm failure is logged in diagnostics without revealing private item names beyond stable diagnostic IDs.
-8. Record failures in `docs/testing/pro-second-bar-direct-activation-matrix.md`.
+8. Confirm the `Second Bar activation result` log includes `matrixResult`, `targetID`, `targetZone`, `visitedElementCount`, `axError`, and `message`.
+9. Record failures in `docs/testing/pro-second-bar-direct-activation-matrix.md`.
 
 ## Regression Checks
 

@@ -9,6 +9,7 @@ Use this matrix to collect third-party compact strip activation behavior. Record
 - `PASS`: Clicking the compact strip icon opens or performs the same action as the real menu bar item.
 - `FAIL_TARGET_NOT_FOUND`: The AX element was not found.
 - `FAIL_AX_PRESS`: The element was found but rejected `AXPress`.
+- `FAIL_MISSING_METADATA`: The saved target lacks enough owner metadata to attempt direct activation.
 - `FAIL_STALE_METADATA`: The owner app quit, relaunched, or moved its item after the scan.
 - `PARTIAL`: The app opens, but behavior differs from the real menu bar item.
 - `BLOCKED`: Permission, hardware, or setup state prevented the test.
@@ -33,6 +34,6 @@ Use this matrix to collect third-party compact strip activation behavior. Record
 ## Diagnostics To Capture
 
 1. Export diagnostics after each failure.
-2. Copy the `Second Bar activation result` log metadata fields: `targetID`, `targetZone`, `visitedElementCount`, `axError`, and `message`.
+2. Copy the `Second Bar activation result` log metadata fields: `targetID`, `targetZone`, `matrixResult`, `visitedElementCount`, `axError`, and `message`.
 3. Do not attach screenshots, raw screen captures, or rendered icon thumbnail files.
 4. If a failure is reproducible with a public app, add the app category and behavior notes; otherwise keep the entry generic.
