@@ -93,6 +93,45 @@ struct QAScriptsTests {
         }
     }
 
+    @Test func privacyVerifierKeepsSecondBarEntryPointsPromptFree() throws {
+        let root = Self.repositoryRoot()
+        let verifier = try String(
+            contentsOf: root.appendingPathComponent("scripts/verify_privacy_boundary.sh"),
+            encoding: .utf8
+        )
+
+        #expect(verifier.contains("check_second_bar_entrypoints_do_not_prompt"))
+        #expect(verifier.contains("Second Bar status and compact entry points do not request privacy prompts"))
+        #expect(verifier.contains("Explicit Screen Recording request buttons remain available for Accurate Icons"))
+
+        for file in [
+            "MenuBar-Manager/App/AppEnvironment.swift",
+            "MenuBar-Manager/CommandCenter/MenuBarCommandRouter.swift",
+            "MenuBar-Manager/SecondBar/ProSecondBarReadiness.swift",
+            "MenuBar-Manager/SecondBar/SecondBarCompactStripWindowController.swift",
+            "MenuBar-Manager/StatusBar/StatusBarMenuBuilder.swift"
+        ] {
+            let text = try String(contentsOf: root.appendingPathComponent(file), encoding: .utf8)
+            #expect(!text.contains("requestPromptFromUserAction"), "\(file) must not request Accessibility prompts.")
+            #expect(!text.contains("requestPermissionFromUserAction"), "\(file) must not request Screen Recording prompts.")
+            #expect(!text.contains("CGRequestScreenCaptureAccess"), "\(file) must not directly request Screen Recording.")
+        }
+
+        let setupChecklist = try String(
+            contentsOf: root.appendingPathComponent("MenuBar-Manager/Settings/ProSecondBarSetupChecklistView.swift"),
+            encoding: .utf8
+        )
+        let privacySettings = try String(
+            contentsOf: root.appendingPathComponent("MenuBar-Manager/Settings/PrivacySettingsView.swift"),
+            encoding: .utf8
+        )
+
+        #expect(setupChecklist.contains("requestPromptFromUserAction"))
+        #expect(setupChecklist.contains("requestPermissionFromUserAction"))
+        #expect(privacySettings.contains("requestPromptFromUserAction"))
+        #expect(privacySettings.contains("requestPermissionFromUserAction"))
+    }
+
     @Test func preflightUsesStableBuildForTestingLane() throws {
         let root = Self.repositoryRoot()
         let script = root.appendingPathComponent("scripts/qa_preflight.sh")
