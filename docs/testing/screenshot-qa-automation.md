@@ -67,6 +67,7 @@ It also attempts these floating panels when their launch switches are available:
 - Floating Find Icon
 - Floating Second Bar
 - Floating Group Panel
+- Compact Second Bar
 
 It also captures these onboarding launch-switch surfaces:
 

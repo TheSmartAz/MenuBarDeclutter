@@ -61,6 +61,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let accessibilityGranted = launchArguments.contains("--ui-testing-accessibility-granted")
         let accurateIconsEnabled = launchArguments.contains("--ui-testing-accurate-icons-enabled")
         let screenCaptureGranted = launchArguments.contains("--ui-testing-screen-capture-granted")
+        let secondBarPrimaryClickEnabled = launchArguments.contains("--ui-testing-second-bar-primary-click-enabled")
         let hideStatusShortcuts = launchArguments.contains("--ui-testing-hide-status-shortcuts")
         let useSystemAccessibility = launchArguments.contains("--ui-testing-use-system-accessibility")
         settingsStore.hasCompletedOnboarding = true
@@ -108,6 +109,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         if accurateIconsEnabled {
             settingsStore.renderedIconCaptureEnabled = true
+        }
+        if secondBarPrimaryClickEnabled {
+            settingsStore.secondBarPrimaryClickEnabled = true
         }
         if hideStatusShortcuts {
             settingsStore.searchEnabled = false

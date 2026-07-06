@@ -139,6 +139,7 @@ final class MenuBarDeclutterUITests: XCTestCase {
             "--ui-testing-accessibility-granted",
             "--ui-testing-accurate-icons-enabled",
             "--ui-testing-screen-capture-granted",
+            "--ui-testing-second-bar-primary-click-enabled",
             "--ui-testing-seed-menu-bar-items",
             "--ui-testing-seed-rendered-icons"
         ])

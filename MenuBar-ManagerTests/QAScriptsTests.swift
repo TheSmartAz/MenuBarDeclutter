@@ -202,9 +202,14 @@ struct QAScriptsTests {
 
         #expect(text.contains("--title-contains"))
         #expect(text.contains("--pid \"$owner_pid\""))
+        #expect(text.contains("WINDOW_MIN_HEIGHT=\"${WINDOW_MIN_HEIGHT:-40}\""))
         #expect(text.contains("panel|21-floating-find-icon|Floating Find Icon|optional|--ui-testing-show-search|Find Icon"))
-        #expect(text.contains("panel|22-floating-second-bar|Floating Second Bar|optional|--ui-testing-show-second-bar|Second Bar"))
+        #expect(text.contains("panel|22-floating-second-bar|Floating Second Bar|optional|--ui-testing-show-second-bar --ui-testing-pro-discovery-enabled --ui-testing-accessibility-granted --ui-testing-accurate-icons-enabled --ui-testing-screen-capture-granted --ui-testing-seed-menu-bar-items|Second Bar"))
         #expect(text.contains("panel|23-floating-group-panel|Floating Group Panel|optional|--ui-testing-show-group-panel|Pinned Tools"))
+        #expect(text.contains("panel|28-floating-second-bar-typed|Floating Second Bar - Typed|optional|--ui-testing-show-second-bar --ui-testing-pro-discovery-enabled --ui-testing-accessibility-granted --ui-testing-accurate-icons-enabled --ui-testing-screen-capture-granted --ui-testing-seed-menu-bar-items --ui-testing-second-bar-query=Drop|Second Bar"))
+        #expect(text.contains("panel|32-compact-second-bar|Compact Second Bar|optional|--ui-testing-show-compact-second-bar"))
+        #expect(text.contains("--ui-testing-second-bar-primary-click-enabled"))
+        #expect(text.contains("--ui-testing-seed-rendered-icons"))
         #expect(text.contains("window_id\\tx\\ty\\twidth\\theight\\tlayer\\ttitle\\tpath\\targs"))
     }
 
