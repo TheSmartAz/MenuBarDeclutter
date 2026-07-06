@@ -4,6 +4,7 @@ import AppKit
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private(set) var environment: AppEnvironment?
     private var launchKeepAliveStatusItem: NSStatusItem?
+    private var uiTestingAccessibilityTrustOverride: UITestingAccessibilityTrustOverride?
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         applyUITestingAppearanceOverride()
@@ -27,6 +28,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         seedRequestedUITestingPersistentStores(environment)
         environment.start()
         releaseLaunchKeepAliveStatusItemAfterStartup()
+        applyPostStartupUITestingPermissionOverrides(environment)
         openRequestedUITestingSurface(environment)
     }
 
@@ -80,6 +82,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             requestAccess: { screenCaptureGranted },
             systemSettingsOpener: { false }
         )
+        let accessibilityTrustOverride = UITestingAccessibilityTrustOverride(isGranted: accessibilityGranted)
+        uiTestingAccessibilityTrustOverride = accessibilityTrustOverride
 
         let environment: AppEnvironment
         if useSystemAccessibility {
@@ -97,8 +101,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 screenCapturePermissionService: screenCapturePermissionService,
                 reflectLaunchAtLoginOnStart: false,
                 presentMigrationNoticeOnStart: false,
-                accessibilityTrustProvider: { accessibilityGranted },
-                accessibilityPromptTrustProvider: { accessibilityGranted },
+                accessibilityTrustProvider: { accessibilityTrustOverride.isGranted },
+                accessibilityPromptTrustProvider: { accessibilityTrustOverride.isGranted },
                 accessibilitySystemSettingsOpener: { false }
             )
         }
@@ -120,6 +124,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         return environment
+    }
+
+    private func applyPostStartupUITestingPermissionOverrides(_ environment: AppEnvironment) {
+        guard launchArguments.contains("--ui-testing-accessibility-revoked-after-launch"),
+              let uiTestingAccessibilityTrustOverride else {
+            return
+        }
+
+        uiTestingAccessibilityTrustOverride.isGranted = false
+        environment.accessibilityPermissionService.markStale()
+        environment.liveStatus.accessibilityPermissionStatus = environment.accessibilityPermissionService.refreshStatus()
     }
 
     private func applyUITestingAppearanceOverride() {
@@ -655,5 +670,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return environment["XCTestConfigurationFilePath"] != nil
             || environment["XCInjectBundleInto"] != nil
             || environment["XCTestSessionIdentifier"] != nil
+    }
+}
+
+private final class UITestingAccessibilityTrustOverride {
+    var isGranted: Bool
+
+    init(isGranted: Bool) {
+        self.isGranted = isGranted
     }
 }

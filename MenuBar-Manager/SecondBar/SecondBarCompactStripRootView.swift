@@ -127,10 +127,19 @@ private struct RequirementsCompactStripContent: View {
     let onDismiss: () -> Void
 
     var body: some View {
+        ViewThatFits(in: .horizontal) {
+            fullContent
+            compactContent
+        }
+        .help("\(readiness.displayTitle). \(readiness.message)")
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(readiness.displayTitle). \(readiness.message)")
+        .accessibilityIdentifier("secondBar.requirements")
+    }
+
+    private var fullContent: some View {
         HStack(spacing: DesignTokens.Spacing.medium) {
-            Image(systemName: "shield.lefthalf.filled")
-                .font(.system(size: DesignTokens.IconSize.standard, weight: .semibold))
-                .foregroundStyle(.yellow)
+            statusIcon
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(readiness.displayTitle)
@@ -155,7 +164,46 @@ private struct RequirementsCompactStripContent: View {
                 action: onDismiss
             )
         }
-        .accessibilityIdentifier("secondBar.requirements")
+    }
+
+    private var compactContent: some View {
+        HStack(spacing: DesignTokens.Spacing.small) {
+            statusIcon
+            Text(compactTitle)
+                .font(DesignTokens.Typography.callout)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+
+            Spacer(minLength: 2)
+
+            CompactStripIconButton(
+                title: "Open Privacy Settings",
+                systemImage: "lock.shield",
+                action: onOpenSettings
+            )
+        }
+        .frame(minWidth: 130)
+    }
+
+    private var statusIcon: some View {
+        Image(systemName: "shield.lefthalf.filled")
+            .font(.system(size: DesignTokens.IconSize.standard, weight: .semibold))
+            .foregroundStyle(.yellow)
+    }
+
+    private var compactTitle: String {
+        switch readiness {
+        case .ready:
+            "Ready"
+        case .missingEntitlement:
+            "Pro"
+        case .accessibilityDiscoveryDisabled, .accessibilityPermissionMissing:
+            "Access"
+        case .accurateIconsDisabled:
+            "Icons"
+        case .screenRecordingMissing:
+            "Screen"
+        }
     }
 }
 
