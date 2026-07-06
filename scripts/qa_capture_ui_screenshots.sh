@@ -495,6 +495,7 @@ floating_panel_surfaces=(
   "panel|30-floating-group-panel-typed|Floating Group Panel - Typed|optional|--ui-testing-show-group-panel --ui-testing-group-panel-query=Drop|Pinned Tools"
   "panel|31-floating-group-panel-no-results|Floating Group Panel - No Results|optional|--ui-testing-show-group-panel --ui-testing-group-panel-query=NoSuchIcon|Pinned Tools"
   "panel|32-compact-second-bar|Compact Second Bar|optional|--ui-testing-show-compact-second-bar --ui-testing-pro-discovery-enabled --ui-testing-accessibility-granted --ui-testing-accurate-icons-enabled --ui-testing-screen-capture-granted --ui-testing-second-bar-primary-click-enabled --ui-testing-seed-menu-bar-items --ui-testing-seed-rendered-icons|Second Bar Compact Strip"
+  "panel|33-compact-second-bar-fallback-icons|Compact Second Bar - Fallback Icons|optional|--ui-testing-show-compact-second-bar --ui-testing-pro-discovery-enabled --ui-testing-accessibility-granted --ui-testing-accurate-icons-enabled --ui-testing-screen-capture-granted --ui-testing-second-bar-primary-click-enabled --ui-testing-seed-menu-bar-items --ui-testing-seed-partial-rendered-icons|Second Bar Compact Strip"
 )
 
 onboarding_surfaces=(

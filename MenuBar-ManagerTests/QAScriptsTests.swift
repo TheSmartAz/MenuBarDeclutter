@@ -210,8 +210,10 @@ struct QAScriptsTests {
         #expect(text.contains("panel|23-floating-group-panel|Floating Group Panel|optional|--ui-testing-show-group-panel|Pinned Tools"))
         #expect(text.contains("panel|28-floating-second-bar-typed|Floating Second Bar - Typed|optional|--ui-testing-show-second-bar --ui-testing-pro-discovery-enabled --ui-testing-accessibility-granted --ui-testing-accurate-icons-enabled --ui-testing-screen-capture-granted --ui-testing-seed-menu-bar-items --ui-testing-second-bar-query=Drop|Second Bar"))
         #expect(text.contains("panel|32-compact-second-bar|Compact Second Bar|optional|--ui-testing-show-compact-second-bar"))
+        #expect(text.contains("panel|33-compact-second-bar-fallback-icons|Compact Second Bar - Fallback Icons|optional|--ui-testing-show-compact-second-bar"))
         #expect(text.contains("--ui-testing-second-bar-primary-click-enabled"))
         #expect(text.contains("--ui-testing-seed-rendered-icons"))
+        #expect(text.contains("--ui-testing-seed-partial-rendered-icons"))
         #expect(text.contains("window_id\\tx\\ty\\twidth\\theight\\tlayer\\ttitle\\tpath\\targs"))
     }
 
