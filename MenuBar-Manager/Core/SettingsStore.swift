@@ -49,6 +49,7 @@ final class SettingsStore {
 
         // Phase 6 — Second Bar
         case secondBarEnabled
+        case secondBarPrimaryClickEnabled
         case secondBarShowHiddenItems
         case secondBarShowAlwaysHiddenItems
         case secondBarAutoCloseAfterSelection
@@ -213,6 +214,7 @@ final class SettingsStore {
         .searchRevealOnSelection: true,
         .searchHighlightOnSelection: true,
         .secondBarEnabled: true,
+        .secondBarPrimaryClickEnabled: false,
         .secondBarShowHiddenItems: true,
         .secondBarShowAlwaysHiddenItems: true,
         .secondBarAutoCloseAfterSelection: true,
@@ -441,6 +443,10 @@ final class SettingsStore {
 
     var secondBarEnabled: Bool {
         didSet { persist(secondBarEnabled, for: .secondBarEnabled) }
+    }
+
+    var secondBarPrimaryClickEnabled: Bool {
+        didSet { persist(secondBarPrimaryClickEnabled, for: .secondBarPrimaryClickEnabled) }
     }
 
     var secondBarShowHiddenItems: Bool {
@@ -1084,6 +1090,11 @@ final class SettingsStore {
         )
 
         self.secondBarEnabled = Self.bool(for: .secondBarEnabled, in: defaults)
+        self.secondBarPrimaryClickEnabled = Self.value(
+            for: .secondBarPrimaryClickEnabled,
+            default: Self.registeredDefault(.secondBarPrimaryClickEnabled),
+            in: defaults
+        )
         self.secondBarShowHiddenItems = Self.value(
             for: .secondBarShowHiddenItems,
             default: Self.registeredDefault(.secondBarShowHiddenItems),
@@ -1419,6 +1430,7 @@ final class SettingsStore {
         searchRevealOnSelection = Self.registeredDefault(.searchRevealOnSelection)
         searchHighlightOnSelection = Self.registeredDefault(.searchHighlightOnSelection)
         secondBarEnabled = Self.registeredDefault(.secondBarEnabled)
+        secondBarPrimaryClickEnabled = Self.registeredDefault(.secondBarPrimaryClickEnabled)
         secondBarShowHiddenItems = Self.registeredDefault(.secondBarShowHiddenItems)
         secondBarShowAlwaysHiddenItems = Self.registeredDefault(.secondBarShowAlwaysHiddenItems)
         secondBarAutoCloseAfterSelection = Self.registeredDefault(.secondBarAutoCloseAfterSelection)

@@ -119,6 +119,9 @@ struct SettingsMigrationService {
         repair(&repairedKeys, .secondBarEnabled) {
             settingsStore.secondBarEnabled = true
         }
+        repair(&repairedKeys, .secondBarPrimaryClickEnabled) {
+            settingsStore.secondBarPrimaryClickEnabled = false
+        }
         repair(&repairedKeys, .iconMovingEnabled) {
             settingsStore.iconMovingEnabled = false
         }
@@ -230,6 +233,7 @@ struct SettingsMigrationService {
             settingsStore.renderedIconRevealSweepEnabled == false &&
             settingsStore.searchEnabled == true &&
             settingsStore.secondBarEnabled == true &&
+            settingsStore.secondBarPrimaryClickEnabled == false &&
             settingsStore.iconMovingEnabled == false &&
             settingsStore.smartTriggersEnabled == false &&
             settingsStore.automationPaused == true &&
@@ -305,6 +309,8 @@ struct SettingsMigrationService {
             return settingsStore.searchHighlightOnSelection.description
         case .secondBarEnabled:
             return settingsStore.secondBarEnabled.description
+        case .secondBarPrimaryClickEnabled:
+            return settingsStore.secondBarPrimaryClickEnabled.description
         case .secondBarShowHiddenItems:
             return settingsStore.secondBarShowHiddenItems.description
         case .secondBarShowAlwaysHiddenItems:

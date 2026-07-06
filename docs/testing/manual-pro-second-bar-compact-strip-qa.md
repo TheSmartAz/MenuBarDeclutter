@@ -10,13 +10,14 @@ This checklist covers the Pro compact Second Bar strip. These behaviors require 
 
 | Area | Result | Notes |
 | --- | --- | --- |
-| Latest installed app | PASS | `scripts/build_release.sh --dry-run --install --verify-installed` refreshed `/Applications/MenuBarDeclutter.app` at 2026-07-06 05:38 PDT after direct activation matrix outcome logging and verified `0.1.10` build `11`. |
-| Installed privacy and network boundary | PASS | `scripts/qa_installed_app_smoke.sh --app-path /Applications/MenuBarDeclutter.app` passed installed privacy checks, observed no network sockets, verified URL command reuse with PID `82129`, and verified one-shot Safe Mode flag consumption with normal relaunch PID `83323`. |
+| Latest installed app | PASS | `scripts/build_release.sh --dry-run --install --verify-installed` refreshed `/Applications/MenuBarDeclutter.app` at 2026-07-06 05:53 PDT after primary-click opt-in and verified `0.1.10` build `11`. |
+| Installed privacy and network boundary | PASS | `scripts/qa_installed_app_smoke.sh --app-path /Applications/MenuBarDeclutter.app` passed installed privacy checks, observed no network sockets, verified URL command reuse with PID `52086`, and verified one-shot Safe Mode flag consumption with normal relaunch PID `52901`. |
 | Settings setup visibility | PASS | Screenshot QA captured Privacy and Second Bar settings after the setup checklist was added; the latest full settings run is `docs/testing/screenshot-qa/2026-07-06_073635/`. |
 | Compact strip UI-test hook compiles | PASS | Added `--ui-testing-show-compact-second-bar` with seeded rendered icons and `testCompactSecondBarShowsReadyHiddenItems`; `xcodebuild build-for-testing -scheme MenuBarDeclutter -destination 'platform=macOS,arch=arm64' -derivedDataPath build/DerivedData/ui-compact-strip CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO -quiet` passed. |
 | App Intent readiness gate | PASS | `showSecondBarAppIntentUsesFullReadinessGate` verifies the Shortcuts/App Intent entry point blocks before handler execution when Optional Pro, Accurate Icons, or Screen Recording are missing, and runs only when the full Second Bar readiness chain is satisfied. |
 | URL automation readiness gate | PASS | `secondBarURLUsesFullReadinessGate` verifies `menubardeclutter://second-bar` blocks before handler execution when Accurate Icons or Screen Recording are missing, and runs only when the full Second Bar readiness chain is satisfied. |
 | Direct activation matrix logging | PASS | `directActivationResultsMapToMatrixOutcomes` verifies direct activation results map to the QA matrix `matrixResult` values, and runtime diagnostics now log `matrixResult` with the existing activation metadata. |
+| Primary-click opt-in gate | PASS | `primaryClickRequiresExplicitSecondBarOptInBeforeUsingCompactStrip` verifies Pro readiness alone does not reroute the status item click; compact strip routing requires `Use menu bar icon for Second Bar`, and revoked readiness shows requirements only after that opt-in. |
 | Compact strip UI-test execution | BLOCKED-INFRA | Focused `xcodebuild test-without-building` for `testCompactSecondBarShowsReadyHiddenItems` did not materialize workers and surfaced the macOS `XCTest is trying to Enable UI Automation` authorization prompt before app assertions. |
 | Real permission prompts | NOT TESTED | Accessibility and Screen Recording prompt behavior requires explicit hands-on interaction with macOS Privacy & Security panes. |
 | Compact strip ready-state behavior | NOT TESTED | Accurate Icons warm-up, real third-party item inclusion, notch-edge placement, and direct activation require live menu bar items and granted permissions. |
@@ -43,8 +44,9 @@ This checklist covers the Pro compact Second Bar strip. These behaviors require 
 8. Click `Request Permission` for Screen Recording and confirm the macOS Screen Recording flow is user-initiated.
 9. Confirm the setup checklist reports ready only when Optional Pro, Accessibility Discovery, Accessibility, Accurate Icons, and Screen Recording are all ready.
 10. Open Settings -> Second Bar and confirm the same setup checklist and readiness state are shown first on the page.
-11. Click `Warm Up Icons` after the checklist is ready.
-12. Confirm hidden items may briefly reveal, thumbnails refresh, and the previous visibility state is restored.
+11. Confirm `Use menu bar icon for Second Bar` is available only after setup is ready.
+12. Click `Warm Up Icons` after the checklist is ready.
+13. Confirm hidden items may briefly reveal, thumbnails refresh, and the previous visibility state is restored.
 
 ## Basic Mode
 
@@ -54,34 +56,40 @@ This checklist covers the Pro compact Second Bar strip. These behaviors require 
 4. Left-click the MenuBarDeclutter status item.
 5. Confirm the existing inline hide/show behavior still runs.
 6. Confirm no compact strip is shown.
+7. Confirm `Use menu bar icon for Second Bar` is off.
 
 ## Pro Readiness Gate
 
-1. Enable Optional Pro and Second Bar.
-2. Disable Accessibility Discovery.
+1. Complete Pro Second Bar setup until the checklist is ready.
+2. Leave `Use menu bar icon for Second Bar` off.
 3. Left-click the MenuBarDeclutter status item.
-4. Confirm a compact requirements strip appears near the status item.
-5. Confirm it names Accessibility Discovery as missing.
-6. Enable Accessibility Discovery but deny or revoke Accessibility permission.
-7. Left-click again and confirm the requirements strip names Accessibility permission.
-8. Grant Accessibility, disable Accurate Icons, and left-click again.
-9. Confirm Accurate Icons is named as missing.
-10. Enable Accurate Icons but revoke Screen Recording.
-11. Confirm Screen Recording is named as missing.
-12. Confirm the status menu `Show Second Bar` command is blocked by the same missing gate.
+4. Confirm the existing inline hide/show behavior still runs and no compact strip appears.
+5. Enable `Use menu bar icon for Second Bar`.
+6. Disable Accessibility Discovery.
+7. Left-click the MenuBarDeclutter status item.
+8. Confirm a compact requirements strip appears near the status item.
+9. Confirm it names Accessibility Discovery as missing.
+10. Enable Accessibility Discovery but deny or revoke Accessibility permission.
+11. Left-click again and confirm the requirements strip names Accessibility permission.
+12. Grant Accessibility, disable Accurate Icons, and left-click again.
+13. Confirm Accurate Icons is named as missing.
+14. Enable Accurate Icons but revoke Screen Recording.
+15. Confirm Screen Recording is named as missing.
+16. Confirm the status menu `Show Second Bar` command is blocked by the same missing gate.
 
 ## Compact Strip Layout
 
 1. Grant Accessibility and Screen Recording, then prepare Accurate Icons.
-2. Move the MenuBarDeclutter status item so there is enough space to the right edge of the screen.
-3. Left-click the status item.
-4. Confirm the strip starts under the status item and extends toward the right screen edge.
-5. Move the status item close to the right edge so the status-item-to-edge region is too narrow.
-6. Left-click again.
-7. Confirm the strip falls back to the notch-left-edge-to-right-edge region.
-8. Confirm the strip is one row only.
-9. Confirm visible content uses icon-only buttons with tooltips/accessibility labels.
-10. Confirm the strip repositions or closes cleanly after display changes, Space changes, and wake.
+2. Enable `Use menu bar icon for Second Bar`.
+3. Move the MenuBarDeclutter status item so there is enough space to the right edge of the screen.
+4. Left-click the status item.
+5. Confirm the strip starts under the status item and extends toward the right screen edge.
+6. Move the status item close to the right edge so the status-item-to-edge region is too narrow.
+7. Left-click again.
+8. Confirm the strip falls back to the notch-left-edge-to-right-edge region.
+9. Confirm the strip is one row only.
+10. Confirm visible content uses icon-only buttons with tooltips/accessibility labels.
+11. Confirm the strip repositions or closes cleanly after display changes, Space changes, and wake.
 
 ## Item Inclusion
 
@@ -113,3 +121,4 @@ This checklist covers the Pro compact Second Bar strip. These behaviors require 
 3. Confirm `Hide Second Bar` can close either the full panel or compact strip.
 4. Confirm Basic Mode remains usable after revoking all Pro permissions.
 5. Confirm no network access is required for compact strip behavior.
+6. Disable Pro and confirm `Use menu bar icon for Second Bar` is cleared.

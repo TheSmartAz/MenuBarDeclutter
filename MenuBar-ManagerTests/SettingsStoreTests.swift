@@ -413,6 +413,7 @@ struct SettingsStoreTests {
         let store = SettingsStore(defaults: defaults)
 
         #expect(store.secondBarEnabled == true)
+        #expect(store.secondBarPrimaryClickEnabled == false)
         #expect(store.secondBarShowHiddenItems == true)
         #expect(store.secondBarShowAlwaysHiddenItems == true)
         #expect(store.secondBarAutoCloseAfterSelection == true)
@@ -435,6 +436,7 @@ struct SettingsStoreTests {
 
         let store = SettingsStore(defaults: defaults)
         store.secondBarEnabled = false
+        store.secondBarPrimaryClickEnabled = true
         store.secondBarPositionModeRaw = SecondBarPositionMode.nearMouse.rawValue
         store.secondBarIconSize = 999
         store.iconMovingEnabled = true
@@ -446,6 +448,7 @@ struct SettingsStoreTests {
         let reloaded = SettingsStore(defaults: defaults)
 
         #expect(reloaded.secondBarEnabled == false)
+        #expect(reloaded.secondBarPrimaryClickEnabled == true)
         #expect(reloaded.effectiveSecondBarPositionMode() == .nearMouse)
         #expect(reloaded.secondBarIconSize == AppConstants.maxSecondBarIconSize)
         #expect(reloaded.iconMovingEnabled == true)
@@ -463,6 +466,7 @@ struct SettingsStoreTests {
 
         let store = SettingsStore(defaults: defaults)
         store.secondBarEnabled = false
+        store.secondBarPrimaryClickEnabled = true
         store.secondBarPositionModeRaw = SecondBarPositionMode.lastPosition.rawValue
         store.secondBarIconSize = 60
         store.iconMovingEnabled = true
@@ -474,6 +478,7 @@ struct SettingsStoreTests {
         store.restoreDefaults()
 
         #expect(store.secondBarEnabled == true)
+        #expect(store.secondBarPrimaryClickEnabled == false)
         #expect(store.effectiveSecondBarPositionMode() == .belowMenuBar)
         #expect(store.secondBarIconSize == AppConstants.defaultSecondBarIconSize)
         #expect(store.iconMovingEnabled == false)

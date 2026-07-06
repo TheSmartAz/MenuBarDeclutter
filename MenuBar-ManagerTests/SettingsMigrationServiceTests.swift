@@ -31,6 +31,7 @@ struct SettingsMigrationServiceTests {
         store.searchEnabled = false
         store.searchHotkeyEnabled = true
         store.secondBarEnabled = false
+        store.secondBarPrimaryClickEnabled = true
         store.iconMovingEnabled = true
         store.iconMovingConfirmationSuppressed = true
         store.iconMovingAllowSystemItems = true
@@ -62,6 +63,7 @@ struct SettingsMigrationServiceTests {
         #expect(store.searchEnabled == true)
         #expect(store.searchHotkeyEnabled == false)
         #expect(store.secondBarEnabled == true)
+        #expect(store.secondBarPrimaryClickEnabled == false)
         #expect(store.iconMovingEnabled == false)
         #expect(store.iconMovingConfirmationSuppressed == false)
         #expect(store.iconMovingAllowSystemItems == false)
@@ -71,6 +73,7 @@ struct SettingsMigrationServiceTests {
         let backupURL = try #require(result.backupURL)
         #expect(FileManager.default.fileExists(atPath: backupURL.path))
         let backupText = try String(contentsOf: backupURL, encoding: .utf8)
+        #expect(backupText.contains("\"secondBarPrimaryClickEnabled\" : \"true\""))
         #expect(backupText.contains("\"iconMovingEnabled\" : \"true\""))
         #expect(backupText.contains("\"migrationTargetVersion\" : \"0.1.1\""))
     }

@@ -7,7 +7,8 @@ Status: implemented first Pro Second Bar slice; hardware permission QA remains m
 MenuBarDeclutter keeps two user paths.
 
 - Basic users keep the existing permission-free separator workflow. The primary status item click continues to hide or show the inline hidden area.
-- Pro users can enable Second Bar. When the Pro Second Bar is ready, the primary status item click opens a compact strip instead of toggling inline visibility. The status menu and automation `Show Second Bar` command use the same readiness gate.
+- Pro users can enable Second Bar. The status menu and automation `Show Second Bar` command use the Pro Second Bar readiness gate.
+- Primary status item click opens the compact strip only after the user explicitly enables `Use menu bar icon for Second Bar`; readiness alone never silently changes the primary click.
 
 Second Bar is a Pro feature. It is not enabled silently, and Basic Mode remains fully usable without Accessibility, Screen Recording, ScreenCaptureKit, Apple Events, Input Monitoring, or network access.
 
@@ -26,8 +27,9 @@ Warm-up capture improves icon quality but is not a permanent gate. A failed or p
 ## Primary Click Routing
 
 - Basic Mode: left click toggles inline hide/show.
-- Pro entitlement active and Second Bar ready: left click toggles the compact strip.
-- Pro entitlement active but Second Bar not ready: left click opens a lightweight requirements strip.
+- Pro entitlement active, primary-click opt-in off: left click still toggles inline hide/show, even when Second Bar is ready.
+- Pro entitlement active, primary-click opt-in on, and Second Bar ready: left click toggles the compact strip.
+- Pro entitlement active, primary-click opt-in on, but Second Bar not ready: left click opens a lightweight requirements strip.
 - Status menu and automation `Show Second Bar`: open Second Bar only when the same readiness gate passes; otherwise show or report the missing requirement.
 - Right-click status menu keeps inline Expand, Collapse, Reveal All, and Reset actions as secondary recovery tools.
 

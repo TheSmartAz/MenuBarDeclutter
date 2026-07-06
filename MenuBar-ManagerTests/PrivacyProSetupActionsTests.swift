@@ -38,6 +38,7 @@ struct PrivacyProSetupActionsTests {
 
         #expect(store.proModeEnabled)
         #expect(!store.accessibilityDiscoveryEnabled)
+        #expect(!store.secondBarPrimaryClickEnabled)
         #expect(trustChecks == 1)
         #expect(promptChecks == 0)
     }
@@ -51,11 +52,13 @@ struct PrivacyProSetupActionsTests {
         let store = SettingsStore(defaults: defaults)
         store.proModeEnabled = true
         store.accessibilityDiscoveryEnabled = true
+        store.secondBarPrimaryClickEnabled = true
 
         PrivacyProSetupActions.disableProMode(settingsStore: store)
 
         #expect(!store.proModeEnabled)
         #expect(!store.accessibilityDiscoveryEnabled)
+        #expect(!store.secondBarPrimaryClickEnabled)
     }
 
     @Test func grantedAccessibilityPermissionDoesNotSilentlyEnablePrivateAccessFeatures() {
@@ -84,5 +87,6 @@ struct PrivacyProSetupActionsTests {
         #expect(!store.accessibilityDiscoveryEnabled)
         #expect(!store.searchEnabled)
         #expect(!store.secondBarEnabled)
+        #expect(!store.secondBarPrimaryClickEnabled)
     }
 }

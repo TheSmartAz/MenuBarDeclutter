@@ -48,6 +48,7 @@ struct RecoveryServiceTests {
         let store = SettingsStore(defaults: defaults)
         store.proModeEnabled = true
         store.accessibilityDiscoveryEnabled = true
+        store.secondBarPrimaryClickEnabled = true
         store.iconMovingEnabled = true
         store.smartTriggersEnabled = true
 
@@ -56,6 +57,7 @@ struct RecoveryServiceTests {
                 disableProMode: {
                     store.proModeEnabled = false
                     store.accessibilityDiscoveryEnabled = false
+                    store.secondBarPrimaryClickEnabled = false
                     store.iconMovingEnabled = false
                     store.smartTriggersEnabled = false
                 }
@@ -66,6 +68,7 @@ struct RecoveryServiceTests {
 
         #expect(store.proModeEnabled == false)
         #expect(store.accessibilityDiscoveryEnabled == false)
+        #expect(store.secondBarPrimaryClickEnabled == false)
         #expect(store.iconMovingEnabled == false)
         #expect(store.smartTriggersEnabled == false)
     }

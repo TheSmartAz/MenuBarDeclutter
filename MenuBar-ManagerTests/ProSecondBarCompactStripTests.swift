@@ -36,21 +36,36 @@ struct ProSecondBarCompactStripTests {
         #expect(ProSecondBarReadiness.evaluate(input).state == .ready)
     }
 
-    @Test func primaryClickRoutesBasicToInlineToggleAndReadyProToCompactStrip() {
+    @Test func primaryClickRequiresExplicitSecondBarOptInBeforeUsingCompactStrip() {
         #expect(StatusBarPrimaryClickRouter.route(
             entitlement: .basic,
-            readiness: .missingEntitlement
+            readiness: .missingEntitlement,
+            primaryClickOptIn: true
         ) == .toggleInlineVisibility)
 
         #expect(StatusBarPrimaryClickRouter.route(
             entitlement: .licensed,
-            readiness: .ready
+            readiness: .ready,
+            primaryClickOptIn: false
+        ) == .toggleInlineVisibility)
+
+        #expect(StatusBarPrimaryClickRouter.route(
+            entitlement: .licensed,
+            readiness: .ready,
+            primaryClickOptIn: true
         ) == .toggleCompactStrip)
 
         #expect(StatusBarPrimaryClickRouter.route(
             entitlement: .trialActive(expiration: Date(timeIntervalSince1970: 100)),
-            readiness: .screenRecordingMissing
+            readiness: .screenRecordingMissing,
+            primaryClickOptIn: true
         ) == .showSecondBarRequirements)
+
+        #expect(StatusBarPrimaryClickRouter.route(
+            entitlement: .trialActive(expiration: Date(timeIntervalSince1970: 100)),
+            readiness: .screenRecordingMissing,
+            primaryClickOptIn: false
+        ) == .toggleInlineVisibility)
     }
 
     @Test func compactStripIncludesOnlyHiddenAccurateIconReadyItemsInOriginalOrder() {

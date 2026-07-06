@@ -11,6 +11,16 @@ struct SecondBarSettingsView: View {
     var onChange: (() -> Void)? = nil
     var onOpenPrivacySettings: (() -> Void)? = nil
 
+    private var secondBarReadiness: ProSecondBarReadinessResult {
+        ProSecondBarReadiness.evaluate(ProSecondBarReadinessInput(
+            entitlement: settingsStore.proModeEnabled ? .licensed : .basic,
+            accessibilityDiscoveryEnabled: settingsStore.accessibilityDiscoveryEnabled,
+            accessibilityPermission: permissionService?.status ?? .notRequested,
+            accurateIconsEnabled: settingsStore.renderedIconCaptureEnabled,
+            screenCapturePermission: screenCapturePermissionService?.status ?? .notGranted
+        ))
+    }
+
     private var pageSectionAnchors: [ClearGlassPageAnchor] {
         var anchors = [
             ClearGlassPageAnchor("Pro Second Bar Setup", systemImage: "checklist"),
@@ -59,6 +69,20 @@ struct SecondBarSettingsView: View {
                 ) {
                     Toggle("Show Second Bar in status menu", isOn: $settingsStore.secondBarEnabled)
                         .labelsHidden()
+                }
+
+                ClearGlassDivider()
+
+                primaryClickRoutingRow
+
+                if settingsStore.secondBarPrimaryClickEnabled && !secondBarReadiness.isReady {
+                    ClearGlassDivider()
+
+                    ClearGlassInlineMessage(
+                        text: "Menu bar icon clicks are assigned to Second Bar, but current clicks show setup requirements. Missing gate: \(secondBarReadiness.state.displayTitle).",
+                        systemImage: "exclamationmark.triangle",
+                        style: .warning
+                    )
                 }
 
                 ClearGlassDivider()
@@ -168,6 +192,64 @@ struct SecondBarSettingsView: View {
             }
         }
         .onSecondBarSettingsChanges(from: settingsStore, perform: onChange)
+    }
+
+    private var primaryClickRoutingRow: some View {
+        ClearGlassControlRow(
+            systemImage: "cursorarrow.click",
+            title: "Use menu bar icon for Second Bar",
+            subtitle: "Route primary clicks to the compact strip only after setup is ready and this control is enabled.",
+            iconTint: primaryClickRoutingStatusStyle.tint
+        ) {
+            VStack(alignment: .trailing, spacing: 8) {
+                ClearGlassStatusValue(
+                    text: primaryClickRoutingStatusText,
+                    style: primaryClickRoutingStatusStyle
+                )
+
+                Toggle("Use menu bar icon for Second Bar", isOn: primaryClickRoutingBinding)
+                    .labelsHidden()
+                    .disabled(!secondBarReadiness.isReady && !settingsStore.secondBarPrimaryClickEnabled)
+                    .help(primaryClickRoutingHelp)
+            }
+        }
+        .opacity(!secondBarReadiness.isReady && !settingsStore.secondBarPrimaryClickEnabled ? 0.72 : 1)
+    }
+
+    private var primaryClickRoutingBinding: Binding<Bool> {
+        Binding(
+            get: { settingsStore.secondBarPrimaryClickEnabled },
+            set: { newValue in
+                if newValue && !secondBarReadiness.isReady {
+                    return
+                }
+                settingsStore.secondBarPrimaryClickEnabled = newValue
+            }
+        )
+    }
+
+    private var primaryClickRoutingStatusText: String {
+        if settingsStore.secondBarPrimaryClickEnabled {
+            return secondBarReadiness.isReady ? "Armed" : "Needs Setup"
+        }
+        return secondBarReadiness.isReady ? "Available" : "Complete Setup"
+    }
+
+    private var primaryClickRoutingStatusStyle: ClearGlassStatusStyle {
+        if settingsStore.secondBarPrimaryClickEnabled {
+            return secondBarReadiness.isReady ? .success : .warning
+        }
+        return secondBarReadiness.isReady ? .info : .secondary
+    }
+
+    private var primaryClickRoutingHelp: String {
+        if settingsStore.secondBarPrimaryClickEnabled && !secondBarReadiness.isReady {
+            return "Primary clicks show Second Bar setup requirements until readiness is restored."
+        }
+        if secondBarReadiness.isReady {
+            return "Enable to open the compact Second Bar from the MenuBarDeclutter icon."
+        }
+        return "Complete the Pro Second Bar setup checklist before enabling primary-click routing."
     }
 
     private func secondBarToggleRow(

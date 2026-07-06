@@ -22,8 +22,9 @@ Environment:
 
 ## 2026-07-06 Follow-Up Evidence
 
-- `scripts/build_release.sh --dry-run --install --verify-installed`: PASS, refreshed and verified `/Applications/MenuBarDeclutter.app` at 2026-07-06 05:38 PDT.
-- `scripts/qa_installed_app_smoke.sh --app-path /Applications/MenuBarDeclutter.app`: PASS, including installed privacy verification, no-network socket probe, URL command reuse with PID `82129`, and one-shot Safe Mode flag consumption with normal relaunch PID `83323`.
+- `scripts/build_release.sh --dry-run --install --verify-installed`: PASS, refreshed and verified `/Applications/MenuBarDeclutter.app` at 2026-07-06 05:53 PDT.
+- `scripts/qa_installed_app_smoke.sh --app-path /Applications/MenuBarDeclutter.app`: PASS, including installed privacy verification, no-network socket probe, URL command reuse with PID `52086`, and one-shot Safe Mode flag consumption with normal relaunch PID `52901`.
 - `showSecondBarAppIntentUsesFullReadinessGate`: PASS in the app-hosted test bundle; Shortcuts/App Intent `Show Second Bar` blocks before execution when Accurate Icons or Screen Recording are missing and returns explicit gate results for both states.
 - `secondBarURLUsesFullReadinessGate`: PASS in the app-hosted test bundle; `menubardeclutter://second-bar` blocks before execution when Accurate Icons or Screen Recording are missing and does not bypass the shared Second Bar readiness chain.
+- `primaryClickRequiresExplicitSecondBarOptInBeforeUsingCompactStrip`: PASS in the app-hosted test bundle; Pro readiness alone does not reroute the primary status item click, safe import skips enabling this routing, and disabling Pro clears the opt-in.
 - Runtime Accessibility and Screen Recording permission prompt behavior for Pro Second Bar setup remains hands-on manual QA; no automatic prompt was exercised by the installed smoke.

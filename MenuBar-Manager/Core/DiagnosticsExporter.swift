@@ -128,6 +128,7 @@ struct DiagnosticsExporter {
         let searchRevealOnSelection: Bool
         let searchHighlightOnSelection: Bool
         let secondBarEnabled: Bool
+        let secondBarPrimaryClickEnabled: Bool
         let secondBarShowHiddenItems: Bool
         let secondBarShowAlwaysHiddenItems: Bool
         let secondBarAutoCloseAfterSelection: Bool
@@ -274,6 +275,7 @@ struct DiagnosticsExporter {
             searchRevealOnSelection: store.searchRevealOnSelection,
             searchHighlightOnSelection: store.searchHighlightOnSelection,
             secondBarEnabled: store.secondBarEnabled,
+            secondBarPrimaryClickEnabled: store.secondBarPrimaryClickEnabled,
             secondBarShowHiddenItems: store.secondBarShowHiddenItems,
             secondBarShowAlwaysHiddenItems: store.secondBarShowAlwaysHiddenItems,
             secondBarAutoCloseAfterSelection: store.secondBarAutoCloseAfterSelection,
@@ -788,6 +790,9 @@ struct DiagnosticsExporter {
         SettingsField(key: "searchRevealOnSelection", label: "Find Icon Reveal on Selection") { .bool($0.searchRevealOnSelection) },
         SettingsField(key: "searchHighlightOnSelection", label: "Find Icon Highlight on Selection") { .bool($0.searchHighlightOnSelection) },
         SettingsField(key: "secondBarEnabled", label: "Second Bar Status Menu Visible") { .bool($0.secondBarEnabled) },
+        SettingsField(key: "secondBarPrimaryClickEnabled", label: "Second Bar Primary Click Enabled") {
+            .bool($0.secondBarPrimaryClickEnabled)
+        },
         SettingsField(key: "secondBarShowHiddenItems", label: "Second Bar Show Hidden Items") { .bool($0.secondBarShowHiddenItems) },
         SettingsField(key: "secondBarShowAlwaysHiddenItems", label: "Second Bar Show Always-Hidden Items") { .bool($0.secondBarShowAlwaysHiddenItems) },
         SettingsField(key: "secondBarAutoCloseAfterSelection", label: "Second Bar Auto-close") { .bool($0.secondBarAutoCloseAfterSelection) },

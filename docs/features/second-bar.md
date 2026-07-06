@@ -1,11 +1,11 @@
 # Second Bar
 
-Second Bar is a Pro find-and-rescue surface for hidden and always-hidden menu bar items. The current implementation has two related surfaces: a one-line compact strip opened from the MenuBarDeclutter status item, and a larger management panel for search, item state, and actions. Both use local Accessibility metadata, and the compact/status-menu entry point requires Accurate Icons plus Screen Recording so it can behave like a real icon strip instead of a generic fallback list.
+Second Bar is a Pro find-and-rescue surface for hidden and always-hidden menu bar items. The current implementation has two related surfaces: a one-line compact strip that can be opened from the MenuBarDeclutter status item after explicit primary-click opt-in, and a larger management panel for search, item state, and actions. Both use local Accessibility metadata, and the compact/status-menu entry point requires Accurate Icons plus Screen Recording so it can behave like a real icon strip instead of a generic fallback list.
 
 ## What It Does
 
 - Opens a floating, non-activating AppKit `NSPanel` for the management surface.
-- Opens a one-line compact strip from the primary status item when the Pro Second Bar readiness gate passes.
+- Opens a one-line compact strip from the primary status item when the Pro Second Bar readiness gate passes and `Use menu bar icon for Second Bar` is enabled.
 - Displays hidden and always-hidden items from the local Accessibility snapshot.
 - Shows rendered thumbnails or app fallback icons, app names, optional item titles, and zone badges in the management panel.
 - Shows Hidden-zone Accurate Icons in the compact strip, with overflow represented by `+N`.
@@ -21,17 +21,20 @@ Second Bar is a Pro find-and-rescue surface for hidden and always-hidden menu ba
 
 1. Open Settings -> Privacy or Settings -> Second Bar.
 2. Complete Pro Second Bar Setup: Optional Pro, Accessibility Discovery, Accessibility permission, Accurate Icons, and Screen Recording.
-3. Hide items with the Basic Mode separator.
-4. Click the MenuBarDeclutter status item to open the compact strip.
-5. Click a prepared third-party icon for optimistic direct activation, or use Manage/Search to open the larger Second Bar panel.
-6. Search or navigate to an item in the management panel.
-7. Use item actions for reveal, highlight, Find Icon, groups, and gated assisted-move dry runs.
+3. Enable `Use menu bar icon for Second Bar` if primary clicks should open the compact strip.
+4. Hide items with the Basic Mode separator.
+5. Click the MenuBarDeclutter status item to open the compact strip.
+6. Click a prepared third-party icon for optimistic direct activation, or use Manage/Search to open the larger Second Bar panel.
+7. Search or navigate to an item in the management panel.
+8. Use item actions for reveal, highlight, Find Icon, groups, and gated assisted-move dry runs.
 
 ## Privacy And Permissions
 
 Second Bar readiness requires Optional Pro, Accessibility Discovery, Accessibility permission, Accurate Icons enabled, and Screen Recording granted. The Accessibility and Screen Recording prompts must come only from explicit user actions in setup/privacy controls.
 
 Second Bar does not use private APIs, Apple Events, Input Monitoring, network access, telemetry, or offscreen/private menu bar capture. Accurate Icons uses public ScreenCaptureKit visible-region capture for local thumbnails after Screen Recording is granted. Basic Mode remains usable when any Pro Second Bar gate is missing.
+
+Primary-click routing is a separate opt-in and defaults off. Disabling Pro clears that routing opt-in so returning to Pro cannot silently change the primary status item click.
 
 ## Implementation
 

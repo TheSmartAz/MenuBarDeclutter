@@ -164,6 +164,7 @@ extension View {
     ) -> some View {
         self
             .forwardSettingsChange(of: settingsStore.secondBarEnabled, to: action)
+            .forwardSettingsChange(of: settingsStore.secondBarPrimaryClickEnabled, to: action)
             .forwardSettingsChange(of: settingsStore.secondBarShowHiddenItems, to: action)
             .forwardSettingsChange(of: settingsStore.secondBarShowAlwaysHiddenItems, to: action)
             .forwardSettingsChange(of: settingsStore.secondBarAutoCloseAfterSelection, to: action)

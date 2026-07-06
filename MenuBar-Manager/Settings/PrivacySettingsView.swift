@@ -492,6 +492,7 @@ enum PrivacyProSetupActions {
     static func disableProMode(settingsStore: SettingsStore) {
         settingsStore.proModeEnabled = false
         settingsStore.accessibilityDiscoveryEnabled = false
+        settingsStore.secondBarPrimaryClickEnabled = false
     }
 }
 

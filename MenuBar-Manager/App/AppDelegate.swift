@@ -68,6 +68,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settingsStore.launchAtLoginEnabled = false
         settingsStore.proModeEnabled = false
         settingsStore.accessibilityDiscoveryEnabled = false
+        settingsStore.secondBarPrimaryClickEnabled = false
 
         let baseURL = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
             .appendingPathComponent("MenuBarDeclutterUITests", isDirectory: true)
@@ -111,6 +112,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if hideStatusShortcuts {
             settingsStore.searchEnabled = false
             settingsStore.secondBarEnabled = false
+            settingsStore.secondBarPrimaryClickEnabled = false
         }
 
         return environment
@@ -158,6 +160,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settingsStore.launchAtLoginEnabled = false
         settingsStore.proModeEnabled = false
         settingsStore.accessibilityDiscoveryEnabled = false
+        settingsStore.secondBarPrimaryClickEnabled = false
 
         let baseURL = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
             .appendingPathComponent("MenuBarDeclutterHostedUnitTests-\(UUID().uuidString)", isDirectory: true)

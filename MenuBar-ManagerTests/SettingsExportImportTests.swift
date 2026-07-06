@@ -486,6 +486,7 @@ struct SettingsExportImportTests {
                 "workspacesPreviewEnabled": "true",
                 "functionBarPreviewEnabled": "true",
                 "functionBarPrimaryClickEnabled": "true",
+                "secondBarPrimaryClickEnabled": "true",
                 "setBuilderPreviewEnabled": "true",
                 "infoStripPreviewEnabled": "true",
                 "infoStripAutoShowEnabled": "true",
@@ -504,6 +505,7 @@ struct SettingsExportImportTests {
         #expect(!store.workspacesPreviewEnabled)
         #expect(!store.functionBarPreviewEnabled)
         #expect(!store.functionBarPrimaryClickEnabled)
+        #expect(!store.secondBarPrimaryClickEnabled)
         #expect(!store.setBuilderPreviewEnabled)
         #expect(!store.infoStripPreviewEnabled)
         #expect(!store.infoStripAutoShowEnabled)
@@ -513,6 +515,7 @@ struct SettingsExportImportTests {
             "Function Bar Primary Click",
             "Info Strip Auto-show",
             "Info Strip Preview",
+            "Second Bar Primary Click",
             "Set Builder Preview",
             "Workspaces Preview"
         ])
@@ -879,6 +882,7 @@ struct SettingsExportImportTests {
         defer { defaults.removePersistentDomain(forName: suiteName) }
 
         let store = SettingsStore(defaults: defaults)
+        store.secondBarPrimaryClickEnabled = true
         store.iconMovingEnabled = true
         store.menuBarSpacingLabsEnabled = true
         store.smartTriggersEnabled = true
@@ -887,6 +891,7 @@ struct SettingsExportImportTests {
         let importService = SettingsImportService(diagnosticsLogger: logger)
         let backupPackage = exportService.createExportPackage()
 
+        store.secondBarPrimaryClickEnabled = false
         store.iconMovingEnabled = false
         store.menuBarSpacingLabsEnabled = false
         store.smartTriggersEnabled = false
@@ -897,6 +902,7 @@ struct SettingsExportImportTests {
             importExperimentalSettings: true
         )
 
+        #expect(store.secondBarPrimaryClickEnabled)
         #expect(store.iconMovingEnabled)
         #expect(store.menuBarSpacingLabsEnabled)
         #expect(store.smartTriggersEnabled)

@@ -1991,7 +1991,8 @@ final class AppEnvironment {
         let readiness = currentProSecondBarReadiness()
         switch StatusBarPrimaryClickRouter.route(
             entitlement: currentProEntitlementState(),
-            readiness: readiness.state
+            readiness: readiness.state,
+            primaryClickOptIn: settingsStore.secondBarPrimaryClickEnabled
         ) {
         case .toggleCompactStrip:
             menuBarItemSurfaceCoordinator.toggleCompactSecondBar(anchorFrame: anchorFrame)

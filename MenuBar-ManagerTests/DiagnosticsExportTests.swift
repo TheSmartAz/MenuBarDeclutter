@@ -570,6 +570,7 @@ struct DiagnosticsExportTests {
         "secondBarEnabled",
         "secondBarIconSize",
         "secondBarPositionMode",
+        "secondBarPrimaryClickEnabled",
         "secondBarShowAlwaysHiddenItems",
         "secondBarShowHiddenItems",
         "secondBarShowLabels",
