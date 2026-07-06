@@ -12,7 +12,7 @@ Allowed results: PASS, FAIL, BLOCKED, NOT TESTED.
 | Second Bar notch placement | NOT TESTED | Compact strip falls back from the status-item region to the notch-left-edge-to-right-edge region when needed. |
 | Second Bar external display placement | NOT TESTED | Compact strip and full panel remain visible and recover after display changes, Space changes, and wake. |
 | Second Bar direct activation matrix | NOT TESTED | At least one real third-party item passes direct activation and retry/failure behavior is recorded. |
-| Second Bar manual gate audit passes | NOT TESTED | Export diagnostics JSON and run `scripts/qa_second_bar_manual_gate_audit.sh`; attach or record the audit output path. |
+| Second Bar manual gate audit passes | NOT TESTED | Export diagnostics JSON and run dogfood preflight with `SECOND_BAR_DIAGNOSTICS_JSON=/path/to/diagnostics.json`; attach or record the audit output path. |
 | Profiles create/duplicate/delete | NOT TESTED | |
 | Profile dry run | NOT TESTED | |
 | Conservative profile apply | NOT TESTED | |

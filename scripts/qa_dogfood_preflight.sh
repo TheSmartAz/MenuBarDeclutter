@@ -10,6 +10,17 @@ RELEASE_APP_PATH="${RELEASE_APP_PATH:-$ROOT_DIR/build/Export/MenuBarDeclutter.ap
 XCODE_DERIVED_DATA_PATH="${XCODE_DERIVED_DATA_PATH:-$ROOT_DIR/build/DerivedData/qa-dogfood}"
 XCODE_ENABLE_DEBUG_DYLIB="${XCODE_ENABLE_DEBUG_DYLIB:-NO}"
 XCTESTRUN_PATH="${XCTESTRUN_PATH:-}"
+SECOND_BAR_DIAGNOSTICS_JSON="${SECOND_BAR_DIAGNOSTICS_JSON:-}"
+SECOND_BAR_AUDIT_OUTPUT="${SECOND_BAR_AUDIT_OUTPUT:-$RESULT_BUNDLE_DIR/qa-second-bar-manual-gate-audit.log}"
+SECOND_BAR_AUDIT_MATRIX_OUTPUT="${SECOND_BAR_AUDIT_MATRIX_OUTPUT:-}"
+SECOND_BAR_AUDIT_MIN_VISIBLE_ITEMS="${SECOND_BAR_AUDIT_MIN_VISIBLE_ITEMS:-1}"
+SECOND_BAR_AUDIT_MAX_FALLBACK_ICONS="${SECOND_BAR_AUDIT_MAX_FALLBACK_ICONS:-}"
+SECOND_BAR_AUDIT_REQUIRE_NOTCH="${SECOND_BAR_AUDIT_REQUIRE_NOTCH:-0}"
+SECOND_BAR_AUDIT_REQUIRE_FAILURE_ROW="${SECOND_BAR_AUDIT_REQUIRE_FAILURE_ROW:-0}"
+SECOND_BAR_AUDIT_DATE="${SECOND_BAR_AUDIT_DATE:-}"
+SECOND_BAR_AUDIT_APP_CATEGORY="${SECOND_BAR_AUDIT_APP_CATEGORY:-unknown}"
+SECOND_BAR_AUDIT_DYNAMIC_ICON="${SECOND_BAR_AUDIT_DYNAMIC_ICON:-unknown}"
+SECOND_BAR_AUDIT_RETRY_RESULT="${SECOND_BAR_AUDIT_RETRY_RESULT:-not-recorded}"
 
 cd "$ROOT_DIR"
 
@@ -313,6 +324,46 @@ run_release_artifact_verification() {
   return 1
 }
 
+run_second_bar_manual_gate_audit() {
+  if [[ -z "$SECOND_BAR_DIAGNOSTICS_JSON" ]]; then
+    echo "INFO: SECOND_BAR_DIAGNOSTICS_JSON not set; Second Bar manual gate audit skipped."
+    return 0
+  fi
+
+  if [[ ! -f "$SECOND_BAR_DIAGNOSTICS_JSON" ]]; then
+    echo "FAIL: SECOND_BAR_DIAGNOSTICS_JSON does not exist: $SECOND_BAR_DIAGNOSTICS_JSON"
+    return 1
+  fi
+
+  mkdir -p "$(dirname "$SECOND_BAR_AUDIT_OUTPUT")"
+  local args=(
+    --min-visible-items "$SECOND_BAR_AUDIT_MIN_VISIBLE_ITEMS"
+  )
+
+  if [[ -n "$SECOND_BAR_AUDIT_MAX_FALLBACK_ICONS" ]]; then
+    args+=(--max-fallback-icons "$SECOND_BAR_AUDIT_MAX_FALLBACK_ICONS")
+  fi
+  if [[ "$SECOND_BAR_AUDIT_REQUIRE_NOTCH" == "1" ]]; then
+    args+=(--require-notch-avoidance)
+  fi
+  if [[ "$SECOND_BAR_AUDIT_REQUIRE_FAILURE_ROW" == "1" ]]; then
+    args+=(--require-failure-row)
+  fi
+  if [[ -n "$SECOND_BAR_AUDIT_MATRIX_OUTPUT" ]]; then
+    args+=(
+      --matrix-output "$SECOND_BAR_AUDIT_MATRIX_OUTPUT"
+      --date "$SECOND_BAR_AUDIT_DATE"
+      --app-category "$SECOND_BAR_AUDIT_APP_CATEGORY"
+      --dynamic-icon "$SECOND_BAR_AUDIT_DYNAMIC_ICON"
+      --retry-result "$SECOND_BAR_AUDIT_RETRY_RESULT"
+    )
+  fi
+  args+=("$SECOND_BAR_DIAGNOSTICS_JSON")
+
+  echo "INFO: Running Second Bar manual gate audit for $SECOND_BAR_DIAGNOSTICS_JSON"
+  "$ROOT_DIR/scripts/qa_second_bar_manual_gate_audit.sh" "${args[@]}" | tee "$SECOND_BAR_AUDIT_OUTPUT"
+}
+
 echo "MenuBarDeclutter dogfood preflight"
 echo "Local validation only. No screenshots, uploads, or screen contents are collected."
 echo
@@ -363,6 +414,12 @@ echo
 
 echo "== Privacy Boundary =="
 if ! "$ROOT_DIR/scripts/verify_privacy_boundary.sh"; then
+  overall_rc=1
+fi
+echo
+
+echo "== Second Bar Manual Gate Audit =="
+if ! run_second_bar_manual_gate_audit; then
   overall_rc=1
 fi
 echo

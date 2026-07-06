@@ -163,6 +163,22 @@ struct QAScriptsTests {
         #expect(text.contains("Release artifact verification was killed by the OS"))
     }
 
+    @Test func dogfoodPreflightCanRunSecondBarManualAuditWhenDiagnosticsAreProvided() throws {
+        let root = Self.repositoryRoot()
+        let text = try String(
+            contentsOf: root.appendingPathComponent("scripts/qa_dogfood_preflight.sh"),
+            encoding: .utf8
+        )
+
+        #expect(text.contains("SECOND_BAR_DIAGNOSTICS_JSON"))
+        #expect(text.contains("run_second_bar_manual_gate_audit"))
+        #expect(text.contains("qa_second_bar_manual_gate_audit.sh"))
+        #expect(text.contains("SECOND_BAR_AUDIT_REQUIRE_NOTCH"))
+        #expect(text.contains("SECOND_BAR_AUDIT_REQUIRE_FAILURE_ROW"))
+        #expect(text.contains("SECOND_BAR_AUDIT_MATRIX_OUTPUT"))
+        #expect(text.contains("Second Bar manual gate audit skipped"))
+    }
+
     @Test func testScriptDefaultsToReliableUnitLaneWithProjectSigning() throws {
         let root = Self.repositoryRoot()
         let text = try String(contentsOf: root.appendingPathComponent("scripts/test.sh"), encoding: .utf8)

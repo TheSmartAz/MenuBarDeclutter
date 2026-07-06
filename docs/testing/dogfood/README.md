@@ -12,6 +12,18 @@ Start here:
 4. Copy `run-template.md` into a dated run file.
 5. Record findings with `bug-report-template.md` or `daily-use-template.md`.
 
+For Pro Second Bar completion runs, export diagnostics as JSON after hands-on
+testing and pass it into preflight:
+
+```sh
+SECOND_BAR_DIAGNOSTICS_JSON=/path/to/diagnostics.json \
+SECOND_BAR_AUDIT_MATRIX_OUTPUT=docs/testing/pro-second-bar-direct-activation-matrix.generated.md \
+scripts/qa_dogfood_preflight.sh
+```
+
+Use `SECOND_BAR_AUDIT_REQUIRE_NOTCH=1` after notch fallback testing and
+`SECOND_BAR_AUDIT_REQUIRE_FAILURE_ROW=1` after stale/failure retry testing.
+
 Privacy boundary:
 
 - No screenshots are collected automatically.
