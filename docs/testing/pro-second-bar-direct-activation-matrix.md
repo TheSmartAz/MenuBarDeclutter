@@ -4,6 +4,16 @@ Last updated: 2026-07-06
 
 Use this matrix to collect third-party compact strip activation behavior. Record stable diagnostic IDs from logs, not private readable item names, unless the tester intentionally adds a public app label for local debugging.
 
+## Helper Script
+
+After exporting diagnostics as JSON, generate draft matrix rows with:
+
+```sh
+scripts/qa_second_bar_activation_matrix.sh --app-category utility --dynamic-icon no path/to/diagnostics.json
+```
+
+Use `--retry-result retried-pass` or `--retry-result retried-fail` after testing the retry control. The script reads only sanitized diagnostics metadata and prints markdown rows that can be reviewed before being added to this file.
+
 ## Result Values
 
 - `PASS`: Clicking the compact strip icon opens or performs the same action as the real menu bar item.
@@ -34,7 +44,7 @@ Use this matrix to collect third-party compact strip activation behavior. Record
 ## Diagnostics To Capture
 
 1. Export diagnostics after each failure.
-2. Copy the `Second Bar activation result` log metadata fields: `targetID`, `targetZone`, `matrixResult`, `visitedElementCount`, `axError`, and `message`.
+2. Run `scripts/qa_second_bar_activation_matrix.sh` against the JSON export, then review the generated row for `targetID`, `targetZone`, `matrixResult`, `visitedElementCount`, `axError`, and `message`.
 3. When a compact-strip activation fails, confirm the strip remains open, click `Retry`, and record the retry result.
 4. Do not attach screenshots, raw screen captures, or rendered icon thumbnail files.
 5. If a failure is reproducible with a public app, add the app category and behavior notes; otherwise keep the entry generic.

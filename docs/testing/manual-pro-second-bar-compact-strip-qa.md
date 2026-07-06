@@ -17,6 +17,7 @@ This checklist covers the Pro compact Second Bar strip. These behaviors require 
 | App Intent readiness gate | PASS | `showSecondBarAppIntentUsesFullReadinessGate` verifies the Shortcuts/App Intent entry point blocks before handler execution when Optional Pro, Accurate Icons, or Screen Recording are missing, and runs only when the full Second Bar readiness chain is satisfied. |
 | URL automation readiness gate | PASS | `secondBarURLUsesFullReadinessGate` verifies `menubardeclutter://second-bar` blocks before handler execution when Accurate Icons or Screen Recording are missing, and runs only when the full Second Bar readiness chain is satisfied. |
 | Direct activation matrix logging | PASS | `directActivationResultsMapToMatrixOutcomes` verifies direct activation results map to the QA matrix `matrixResult` values, and runtime diagnostics now log `matrixResult` with the existing activation metadata. |
+| Direct activation matrix helper | PASS | `qa_second_bar_activation_matrix.sh` converts sanitized diagnostics JSON activation logs into markdown matrix rows so hands-on testers do not need to copy `targetID`, `targetZone`, `matrixResult`, `visitedElementCount`, `axError`, and `message` manually. |
 | Primary-click opt-in gate | PASS | `primaryClickRequiresExplicitSecondBarOptInBeforeUsingCompactStrip` verifies Pro readiness alone does not reroute the status item click; compact strip routing requires `Use menu bar icon for Second Bar`, and revoked readiness shows requirements only after that opt-in. |
 | Activation failure retry state | PASS | `activationFailureFeedbackRetainsRetryTarget` verifies failed compact-strip activation feedback keeps the failed snapshot so the strip can show a `Retry` control instead of closing or losing the target. |
 | Safe Mode primary-click suppression | PASS | `primaryClickRoutesSafeModeToInlineEvenWhenReadyAndOptedIn` verifies Safe Mode suppresses compact-strip primary-click routing even when Pro, readiness, and explicit opt-in are all enabled. |
@@ -119,7 +120,8 @@ This checklist covers the Pro compact Second Bar strip. These behaviors require 
 7. Click `Retry` and confirm it attempts the same target again.
 8. Confirm failure is logged in diagnostics without revealing private item names beyond stable diagnostic IDs.
 9. Confirm the `Second Bar activation result` log includes `matrixResult`, `targetID`, `targetZone`, `visitedElementCount`, `axError`, and `message`.
-10. Record failures in `docs/testing/pro-second-bar-direct-activation-matrix.md`.
+10. Export diagnostics as JSON and run `scripts/qa_second_bar_activation_matrix.sh` to generate rows.
+11. Record reviewed rows in `docs/testing/pro-second-bar-direct-activation-matrix.md`.
 
 ## Regression Checks
 

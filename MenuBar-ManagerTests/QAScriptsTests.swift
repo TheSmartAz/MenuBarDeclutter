@@ -12,6 +12,7 @@ struct QAScriptsTests {
             "scripts/qa_preflight.sh",
             "scripts/qa_dogfood_preflight.sh",
             "scripts/qa_installed_app_smoke.sh",
+            "scripts/qa_second_bar_activation_matrix.sh",
             "scripts/verify_privacy_boundary.sh",
             "scripts/test.sh",
             "scripts/export_visual_smoke_screenshots.sh",
@@ -61,6 +62,7 @@ struct QAScriptsTests {
             "scripts/verify_release_artifact.sh",
             "scripts/verify_installed_app.sh",
             "scripts/qa_installed_app_smoke.sh",
+            "scripts/qa_second_bar_activation_matrix.sh",
             "scripts/verify_privacy_boundary.sh",
             "scripts/test.sh",
             "scripts/export_visual_smoke_screenshots.sh",
@@ -224,6 +226,72 @@ struct QAScriptsTests {
         #expect(text.contains("while (( attempt <= CAPTURE_ATTEMPTS ))"))
         #expect(text.contains("captured $label after retry attempt $attempt"))
         #expect(text.contains("no capturable window found for $label after $CAPTURE_ATTEMPTS attempt(s)"))
+    }
+
+    @Test func secondBarActivationMatrixScriptExtractsDiagnosticsRows() throws {
+        let root = Self.repositoryRoot()
+        let tempDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("SecondBarActivationMatrixScript-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDirectory) }
+
+        let diagnosticsURL = tempDirectory.appendingPathComponent("diagnostics.json")
+        let fixture = """
+        {
+          "application": {
+            "marketingVersion": "0.1.10",
+            "buildNumber": "11"
+          },
+          "system": {
+            "macOSVersion": "26.0"
+          },
+          "logs": [
+            {
+              "timestamp": "2026-07-06T10:00:00Z",
+              "message": "Other log.",
+              "metadata": {}
+            },
+            {
+              "timestamp": "2026-07-06T10:01:00Z",
+              "message": "Second Bar activation result: success.",
+              "metadata": {
+                "targetID": "item-1",
+                "targetZone": "hidden",
+                "matrixResult": "PASS",
+                "visitedElementCount": "3",
+                "axError": "",
+                "message": "Activated menu item"
+              }
+            }
+          ]
+        }
+        """
+        try fixture.write(to: diagnosticsURL, atomically: true, encoding: .utf8)
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/bash")
+        process.arguments = [
+            root.appendingPathComponent("scripts/qa_second_bar_activation_matrix.sh").path,
+            "--date", "2026-07-06",
+            "--app-category", "calendar",
+            "--dynamic-icon", "yes",
+            "--retry-result", "retried-pass",
+            diagnosticsURL.path
+        ]
+        let outputPipe = Pipe()
+        let errorPipe = Pipe()
+        process.standardOutput = outputPipe
+        process.standardError = errorPipe
+
+        try process.run()
+        process.waitUntilExit()
+
+        let output = String(data: outputPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        let error = String(data: errorPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+
+        #expect(process.terminationStatus == 0, "stderr: \(error)")
+        #expect(output.contains("| 2026-07-06 | 26.0 | 0.1.10 build 11 | calendar | hidden | yes | PASS | retried-pass | item-1 | hidden | 3 | none | Activated menu item |"))
+        #expect(!output.contains("Other log"))
     }
 
     @Test func fixtureTargetIsMarkedSkipInstall() throws {
