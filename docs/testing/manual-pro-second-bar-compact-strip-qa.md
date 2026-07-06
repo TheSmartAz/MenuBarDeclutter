@@ -6,6 +6,16 @@ Last updated: 2026-07-06
 
 This checklist covers the Pro compact Second Bar strip. These behaviors require real macOS menu bar state, Accessibility, Screen Recording, and third-party status items, so they cannot be fully validated by unit tests.
 
+## 2026-07-06 Automated Evidence
+
+| Area | Result | Notes |
+| --- | --- | --- |
+| Latest installed app | PASS | `scripts/build_release.sh --dry-run --install --verify-installed` refreshed `/Applications/MenuBarDeclutter.app` at 2026-07-06 00:53 PDT and verified `0.1.10` build `11`. |
+| Installed privacy and network boundary | PASS | `scripts/qa_installed_app_smoke.sh --app-path /Applications/MenuBarDeclutter.app` passed installed privacy checks and observed no network sockets. |
+| Settings setup visibility | PASS | Screenshot QA captured Privacy and Second Bar settings after the setup checklist was added; the latest full settings run is `docs/testing/screenshot-qa/2026-07-06_073635/`. |
+| Real permission prompts | NOT TESTED | Accessibility and Screen Recording prompt behavior requires explicit hands-on interaction with macOS Privacy & Security panes. |
+| Compact strip ready-state behavior | NOT TESTED | Accurate Icons warm-up, real third-party item inclusion, notch-edge placement, and direct activation require live menu bar items and granted permissions. |
+
 ## Preconditions
 
 - Build and launch `MenuBarDeclutter`.

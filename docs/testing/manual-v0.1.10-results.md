@@ -1,8 +1,8 @@
 # Manual QA Results - v0.1.10
 
-Status: recorded. Automated/source/privacy/release gates passed; physical hardware-only checks are partial or blocked where unavailable. A 2026-07-04 continuation added focused Workspaces panel UI coverage and refreshed installed-bundle verification. Installed-app smoke now passes; local Workspaces panel UI execution remains blocked by Xcode UI-runner startup failures before assertions.
+Status: recorded. Automated/source/privacy/release gates passed; physical hardware-only checks are partial or blocked where unavailable. A 2026-07-06 continuation refreshed the dry-run installed app after the Pro Second Bar setup work and reran installed-app smoke successfully. Local Workspaces panel UI execution remains blocked by Xcode UI-runner startup failures before assertions.
 
-Run date: 2026-07-03; continuation 2026-07-04
+Run date: 2026-07-03; continuations 2026-07-04 and 2026-07-06
 
 App build: v0.1.10 build 11
 
@@ -24,7 +24,7 @@ App build: v0.1.10 build 11
 | Set Builder | PASS | Set Builder/Workspace preview unit and source gates passed with no schema or permission expansion. |
 | Find & Rescue | PASS | UI tests passed for Find & Rescue primary actions, Search unavailable state, floating Find Icon, and Escape dismissal. |
 | Recovery/Safe Mode | PARTIAL | Recovery UI workflow passed; Safe Mode source/unit coverage passed. The 2026-07-04 installed smoke verified one-shot Safe Mode flag consumption and normal relaunch. Option-launch hands-on Safe Mode was not performed. |
-| Privacy prompts | PASS | Privacy UI test and installed-bundle privacy verification passed after the final installed app rerun. |
+| Privacy prompts | PASS | Privacy UI test and installed-bundle privacy verification passed after the final installed app rerun. Pro Second Bar runtime permission prompts remain hands-on manual QA. |
 | Diagnostics export | PASS | Diagnostics exporter tests and privacy verifier passed; manual file export was not separately performed. |
 | Display/notch coverage | PARTIAL | UI screenshots used the built-in display and modeled notch avoidance tests passed; hands-on notch edge placement was not performed. External display coverage is blocked. |
 
@@ -49,3 +49,10 @@ App build: v0.1.10 build 11
 - `scripts/qa_installed_app_smoke.sh --app-path /Applications/MenuBarDeclutter.app`: PASS. Installed app launched, URL scheme commands reused the installed PID, installed privacy verification passed, no network sockets were observed, the one-shot Safe Mode flag was consumed, and normal relaunch succeeded.
 - `spctl --assess --type execute -vvv /Applications/MenuBarDeclutter.app`: BLOCKED-INFRA / expected dry-run instability. It still reports `Too many open files`; controlled launch logs showed syspolicyd UNIX error 24 / SecStaticCode failures while the app itself stayed running.
 - `system_profiler SPDisplaysDataType`: PARTIAL display coverage, built-in Liquid Retina XDR display only; no external display attached.
+
+## 2026-07-06 Continuation Evidence
+
+- `scripts/build_release.sh --dry-run --install --verify-installed`: PASS, refreshed `/Applications/MenuBarDeclutter.app` at 2026-07-06 00:53 PDT, verified `0.1.10` build `11`, and recreated `build/Dist/MenuBarDeclutter-v0.1.10-alpha.zip`.
+- `scripts/qa_installed_app_smoke.sh --app-path /Applications/MenuBarDeclutter.app`: PASS. Installed app launched, URL scheme commands reused the installed PID, installed privacy verification passed, no network sockets were observed, the one-shot Safe Mode flag was consumed, and normal relaunch succeeded.
+- Release verification still reports expected dry-run notarization/stapling warnings: `spctl` rejects the non-notarized local app and `stapler` reports no ticket.
+- Pro Second Bar hands-on gates remain pending: real Accessibility prompt, real Screen Recording prompt, Accurate Icons warm-up, compact strip notch placement, and third-party direct activation require local user interaction with the system privacy panes and live menu bar items.

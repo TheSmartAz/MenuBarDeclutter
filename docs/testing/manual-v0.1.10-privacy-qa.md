@@ -1,8 +1,8 @@
 # Manual QA - v0.1.10 Privacy
 
-Status: recorded. Source, project, installed-bundle, entitlement, and linkage checks passed after the final installed-app rerun.
+Status: recorded. Source, project, installed-bundle, entitlement, linkage, and no-network socket checks passed after the 2026-07-06 installed-app rerun.
 
-Run date: 2026-07-03
+Run date: 2026-07-03; continuation 2026-07-06
 
 App build: v0.1.10 build 11
 
@@ -16,6 +16,12 @@ Environment:
 | --- | --- | --- |
 | Basic Mode does not request Accessibility | PASS | UI privacy workflow passed with Pro Mode off by default; Request Permission stayed disabled until explicit Pro controls. Final privacy verifier passed against source and installed app. |
 | Workspaces Preview does not request Screen Recording | PASS | Workspaces Preview stayed independent from Accurate Icons. The installed app declares `NSScreenCaptureUsageDescription` only for the separate Accurate Icons opt-in path, and source/project searches found ScreenCaptureKit scoped to `MenuBarIconCapture`. |
-| No network access required for Preview surfaces | PASS | Privacy verifier found no network entitlements and no direct network client APIs or analytics SDK names in app code. |
+| No network access required for Preview surfaces | PASS | Privacy verifier found no network entitlements and no direct network client APIs or analytics SDK names in app code. The 2026-07-06 installed smoke observed no network sockets for the running installed app. |
 | Diagnostics export excludes protected names/raw item metadata | PASS | Diagnostics exporter/source tests passed, including privacy exclusions and redacted aggregate metadata paths. |
 | No unscoped ScreenCaptureKit, Apple Events, Input Monitoring, telemetry, cloud sync, or private API additions | PASS | Targeted searches found ScreenCaptureKit only in the Accurate Icons module and verifier scripts. Installed app verification confirmed the Screen Recording usage string is scoped to Accurate Icons and no Apple Events or Input Monitoring usage strings are present. |
+
+## 2026-07-06 Follow-Up Evidence
+
+- `scripts/build_release.sh --dry-run --install --verify-installed`: PASS, refreshed and verified `/Applications/MenuBarDeclutter.app`.
+- `scripts/qa_installed_app_smoke.sh --app-path /Applications/MenuBarDeclutter.app`: PASS, including installed privacy verification and no-network socket probe.
+- Runtime Accessibility and Screen Recording permission prompt behavior for Pro Second Bar setup remains hands-on manual QA; no automatic prompt was exercised by the installed smoke.
