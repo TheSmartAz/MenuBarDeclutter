@@ -126,8 +126,13 @@ nonisolated enum StatusBarPrimaryClickRouter {
     static func route(
         entitlement: ProEntitlementState,
         readiness: ProSecondBarReadinessState,
-        primaryClickOptIn: Bool
+        primaryClickOptIn: Bool,
+        safeModeActive: Bool
     ) -> StatusBarPrimaryClickRoute {
+        guard !safeModeActive else {
+            return .toggleInlineVisibility
+        }
+
         guard entitlement.isActive, primaryClickOptIn else {
             return .toggleInlineVisibility
         }

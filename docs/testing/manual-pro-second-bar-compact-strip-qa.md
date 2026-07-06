@@ -19,6 +19,7 @@ This checklist covers the Pro compact Second Bar strip. These behaviors require 
 | Direct activation matrix logging | PASS | `directActivationResultsMapToMatrixOutcomes` verifies direct activation results map to the QA matrix `matrixResult` values, and runtime diagnostics now log `matrixResult` with the existing activation metadata. |
 | Primary-click opt-in gate | PASS | `primaryClickRequiresExplicitSecondBarOptInBeforeUsingCompactStrip` verifies Pro readiness alone does not reroute the status item click; compact strip routing requires `Use menu bar icon for Second Bar`, and revoked readiness shows requirements only after that opt-in. |
 | Activation failure retry state | PASS | `activationFailureFeedbackRetainsRetryTarget` verifies failed compact-strip activation feedback keeps the failed snapshot so the strip can show a `Retry` control instead of closing or losing the target. |
+| Safe Mode primary-click suppression | PASS | `primaryClickRoutesSafeModeToInlineEvenWhenReadyAndOptedIn` verifies Safe Mode suppresses compact-strip primary-click routing even when Pro, readiness, and explicit opt-in are all enabled. |
 | Compact strip UI-test execution | BLOCKED-INFRA | Focused `xcodebuild test-without-building` for `testCompactSecondBarShowsReadyHiddenItems` did not materialize workers and surfaced the macOS `XCTest is trying to Enable UI Automation` authorization prompt before app assertions. |
 | Real permission prompts | NOT TESTED | Accessibility and Screen Recording prompt behavior requires explicit hands-on interaction with macOS Privacy & Security panes. |
 | Compact strip ready-state behavior | NOT TESTED | Accurate Icons warm-up, real third-party item inclusion, notch-edge placement, and direct activation require live menu bar items and granted permissions. |
@@ -124,3 +125,4 @@ This checklist covers the Pro compact Second Bar strip. These behaviors require 
 4. Confirm Basic Mode remains usable after revoking all Pro permissions.
 5. Confirm no network access is required for compact strip behavior.
 6. Disable Pro and confirm `Use menu bar icon for Second Bar` is cleared.
+7. Launch in Safe Mode with `Use menu bar icon for Second Bar` previously enabled and confirm left-click falls back to Basic inline hide/show instead of opening compact strip.

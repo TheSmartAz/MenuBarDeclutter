@@ -1988,18 +1988,22 @@ final class AppEnvironment {
 
     @discardableResult
     private func handleStatusItemPrimaryClick(anchorFrame: CGRect?) -> Bool {
-        let readiness = currentProSecondBarReadiness()
+        let safeModeActive = safeModeLaunchState.isSafeModeActive
+        let readinessState: ProSecondBarReadinessState = safeModeActive
+            ? .missingEntitlement
+            : currentProSecondBarReadiness().state
         switch StatusBarPrimaryClickRouter.route(
-            entitlement: currentProEntitlementState(),
-            readiness: readiness.state,
-            primaryClickOptIn: settingsStore.secondBarPrimaryClickEnabled
+            entitlement: safeModeActive ? .basic : currentProEntitlementState(),
+            readiness: readinessState,
+            primaryClickOptIn: settingsStore.secondBarPrimaryClickEnabled,
+            safeModeActive: safeModeActive
         ) {
         case .toggleCompactStrip:
             menuBarItemSurfaceCoordinator.toggleCompactSecondBar(anchorFrame: anchorFrame)
             return true
         case .showSecondBarRequirements:
             menuBarItemSurfaceCoordinator.showSecondBarRequirements(
-                readiness.state,
+                readinessState,
                 anchorFrame: anchorFrame
             )
             return true

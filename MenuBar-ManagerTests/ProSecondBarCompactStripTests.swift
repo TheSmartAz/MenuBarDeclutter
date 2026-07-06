@@ -40,31 +40,45 @@ struct ProSecondBarCompactStripTests {
         #expect(StatusBarPrimaryClickRouter.route(
             entitlement: .basic,
             readiness: .missingEntitlement,
-            primaryClickOptIn: true
+            primaryClickOptIn: true,
+            safeModeActive: false
         ) == .toggleInlineVisibility)
 
         #expect(StatusBarPrimaryClickRouter.route(
             entitlement: .licensed,
             readiness: .ready,
-            primaryClickOptIn: false
+            primaryClickOptIn: false,
+            safeModeActive: false
         ) == .toggleInlineVisibility)
 
         #expect(StatusBarPrimaryClickRouter.route(
             entitlement: .licensed,
             readiness: .ready,
-            primaryClickOptIn: true
+            primaryClickOptIn: true,
+            safeModeActive: false
         ) == .toggleCompactStrip)
 
         #expect(StatusBarPrimaryClickRouter.route(
             entitlement: .trialActive(expiration: Date(timeIntervalSince1970: 100)),
             readiness: .screenRecordingMissing,
-            primaryClickOptIn: true
+            primaryClickOptIn: true,
+            safeModeActive: false
         ) == .showSecondBarRequirements)
 
         #expect(StatusBarPrimaryClickRouter.route(
             entitlement: .trialActive(expiration: Date(timeIntervalSince1970: 100)),
             readiness: .screenRecordingMissing,
-            primaryClickOptIn: false
+            primaryClickOptIn: false,
+            safeModeActive: false
+        ) == .toggleInlineVisibility)
+    }
+
+    @Test func primaryClickRoutesSafeModeToInlineEvenWhenReadyAndOptedIn() {
+        #expect(StatusBarPrimaryClickRouter.route(
+            entitlement: .licensed,
+            readiness: .ready,
+            primaryClickOptIn: true,
+            safeModeActive: true
         ) == .toggleInlineVisibility)
     }
 

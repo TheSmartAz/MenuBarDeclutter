@@ -30,6 +30,7 @@ Warm-up capture improves icon quality but is not a permanent gate. A failed or p
 - Pro entitlement active, primary-click opt-in off: left click still toggles inline hide/show, even when Second Bar is ready.
 - Pro entitlement active, primary-click opt-in on, and Second Bar ready: left click toggles the compact strip.
 - Pro entitlement active, primary-click opt-in on, but Second Bar not ready: left click opens a lightweight requirements strip.
+- Safe Mode: left click falls back to Basic inline hide/show; it does not open Second Bar or the compact strip.
 - Status menu and automation `Show Second Bar`: open Second Bar only when the same readiness gate passes; otherwise show or report the missing requirement.
 - Right-click status menu keeps inline Expand, Collapse, Reveal All, and Reset actions as secondary recovery tools.
 
