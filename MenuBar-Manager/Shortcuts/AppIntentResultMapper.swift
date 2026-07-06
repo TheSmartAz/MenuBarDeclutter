@@ -17,6 +17,10 @@ nonisolated struct AppIntentResultMapper {
             "This action requires Optional Pro."
         case .requiresAccessibility:
             "This action requires Accessibility permission."
+        case .requiresAccurateIcons:
+            "This action requires Accurate Icons to be enabled in MenuBarDeclutter."
+        case .requiresScreenRecording:
+            "This action requires Screen Recording permission for Accurate Icons."
         case .requiresLabs:
             "This action requires Menu Bar Spacing Labs to be enabled."
         case .automationPaused:

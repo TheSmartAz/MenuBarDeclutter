@@ -13,6 +13,8 @@ final class AppIntentExecutionService {
         case requiresPrivateAccess
         case requiresProMode
         case requiresAccessibility
+        case requiresAccurateIcons
+        case requiresScreenRecording
         case requiresLabs
         case automationPaused
         case safeModeBlocked
@@ -150,6 +152,12 @@ final class AppIntentExecutionService {
         case .requiresPro:
             return .requiresProMode
         case .requiresPermission:
+            if result.diagnosticReason == "accurateIconsDisabled" {
+                return .requiresAccurateIcons
+            }
+            if result.diagnosticReason == "screenRecordingPermissionMissing" {
+                return .requiresScreenRecording
+            }
             return .requiresAccessibility
         case .requiresLabs:
             return .requiresLabs
