@@ -23,6 +23,8 @@ scripts/qa_dogfood_preflight.sh
 
 Use `SECOND_BAR_AUDIT_REQUIRE_NOTCH=1` after notch fallback testing and
 `SECOND_BAR_AUDIT_REQUIRE_FAILURE_ROW=1` after stale/failure retry testing.
+To validate only the Second Bar audit hook without running the full build/test
+preflight, add `DOGFOOD_SECOND_BAR_AUDIT_ONLY=1`.
 
 Privacy boundary:
 

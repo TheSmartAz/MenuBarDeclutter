@@ -176,7 +176,58 @@ struct QAScriptsTests {
         #expect(text.contains("SECOND_BAR_AUDIT_REQUIRE_NOTCH"))
         #expect(text.contains("SECOND_BAR_AUDIT_REQUIRE_FAILURE_ROW"))
         #expect(text.contains("SECOND_BAR_AUDIT_MATRIX_OUTPUT"))
+        #expect(text.contains("DOGFOOD_SECOND_BAR_AUDIT_ONLY"))
         #expect(text.contains("Second Bar manual gate audit skipped"))
+    }
+
+    @Test func dogfoodPreflightSecondBarAuditOnlyRunsManualAuditFixture() throws {
+        let root = Self.repositoryRoot()
+        let tempDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("DogfoodSecondBarAuditOnly-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDirectory) }
+
+        let diagnosticsURL = tempDirectory.appendingPathComponent("diagnostics.json")
+        let auditLogURL = tempDirectory.appendingPathComponent("audit.log")
+        let matrixURL = tempDirectory.appendingPathComponent("matrix.md")
+        try Self.secondBarManualGateAuditFixture.write(to: diagnosticsURL, atomically: true, encoding: .utf8)
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/bash")
+        process.arguments = [
+            root.appendingPathComponent("scripts/qa_dogfood_preflight.sh").path
+        ]
+        process.environment = ProcessInfo.processInfo.environment.merging([
+            "DOGFOOD_SECOND_BAR_AUDIT_ONLY": "1",
+            "SECOND_BAR_DIAGNOSTICS_JSON": diagnosticsURL.path,
+            "SECOND_BAR_AUDIT_OUTPUT": auditLogURL.path,
+            "SECOND_BAR_AUDIT_MATRIX_OUTPUT": matrixURL.path,
+            "SECOND_BAR_AUDIT_REQUIRE_NOTCH": "1",
+            "SECOND_BAR_AUDIT_REQUIRE_FAILURE_ROW": "1",
+            "SECOND_BAR_AUDIT_MAX_FALLBACK_ICONS": "0",
+            "SECOND_BAR_AUDIT_DATE": "2026-07-06",
+            "SECOND_BAR_AUDIT_APP_CATEGORY": "calendar",
+            "SECOND_BAR_AUDIT_DYNAMIC_ICON": "yes",
+            "SECOND_BAR_AUDIT_RETRY_RESULT": "retried-pass"
+        ]) { _, new in new }
+        let outputPipe = Pipe()
+        let errorPipe = Pipe()
+        process.standardOutput = outputPipe
+        process.standardError = errorPipe
+
+        try process.run()
+        process.waitUntilExit()
+
+        let output = String(data: outputPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        let error = String(data: errorPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        let auditLog = try String(contentsOf: auditLogURL, encoding: .utf8)
+        let matrix = try String(contentsOf: matrixURL, encoding: .utf8)
+
+        #expect(process.terminationStatus == 0, "stdout: \(output)\nstderr: \(error)")
+        #expect(output.contains("Second Bar audit-only mode"))
+        #expect(output.contains("Second Bar manual gate audit passed"))
+        #expect(auditLog.contains("PASS: Direct activation PASS coverage - 1 PASS row(s)"))
+        #expect(matrix.contains("FAIL_AX_PRESS"))
     }
 
     @Test func testScriptDefaultsToReliableUnitLaneWithProjectSigning() throws {
@@ -366,77 +417,7 @@ struct QAScriptsTests {
 
         let diagnosticsURL = tempDirectory.appendingPathComponent("diagnostics.json")
         let matrixURL = tempDirectory.appendingPathComponent("matrix.md")
-        let fixture = """
-        {
-          "application": {
-            "marketingVersion": "0.1.10",
-            "buildNumber": "11"
-          },
-          "system": {
-            "macOSVersion": "26.0"
-          },
-          "secondBarReadiness": {
-            "readinessState": "ready",
-            "readinessTitle": "Ready",
-            "readinessMessage": "Second Bar is ready.",
-            "isReady": true,
-            "entitlement": "licensed",
-            "entitlementActive": true,
-            "accessibilityDiscoveryEnabled": true,
-            "accessibilityPermission": "granted",
-            "accurateIconsEnabled": true,
-            "screenCapturePermission": "granted",
-            "primaryClickOptIn": true,
-            "primaryClickRoute": "toggleCompactStrip",
-            "safeModeActive": false
-          },
-          "secondBarRuntime": {
-            "visible": false,
-            "itemCount": 3,
-            "currentScreen": "screen-1",
-            "lastPosition": "x 100, y 24, 166 x 42",
-            "iconWarmUpInProgress": false,
-            "lastIconWarmUpResult": "Refreshed 3 thumbnail(s)",
-            "lastCompactVisibleItemCount": 2,
-            "lastCompactOverflowItemCount": 1,
-            "lastCompactFallbackIconCount": 0,
-            "lastCompactScanState": "Fresh",
-            "lastCompactAvoidedNotch": true,
-            "lastActivationResult": "success",
-            "lastActivationMatrixResult": "PASS",
-            "lastActivationTargetZone": "hidden",
-            "lastActivationVisitedElementCount": 4,
-            "lastActivationAXError": null
-          },
-          "logs": [
-            {
-              "timestamp": "2026-07-06T10:01:00Z",
-              "message": "Second Bar activation result: success.",
-              "metadata": {
-                "targetID": "item-1",
-                "targetZone": "hidden",
-                "matrixResult": "PASS",
-                "visitedElementCount": "4",
-                "axError": "none",
-                "message": "Menu bar item activated."
-              }
-            },
-            {
-              "timestamp": "2026-07-06T10:02:00Z",
-              "message": "Second Bar activation result: actionFailed.",
-              "metadata": {
-                "targetID": "item-2",
-                "targetZone": "hidden",
-                "matrixResult": "FAIL_AX_PRESS",
-                "visitedElementCount": "5",
-                "axError": "cannotComplete",
-                "message": "Menu bar item did not accept AXPress."
-              }
-            }
-          ]
-        }
-        """
-        try fixture.write(to: diagnosticsURL, atomically: true, encoding: .utf8)
+        try Self.secondBarManualGateAuditFixture.write(to: diagnosticsURL, atomically: true, encoding: .utf8)
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/bash")
@@ -473,6 +454,77 @@ struct QAScriptsTests {
         #expect(matrix.contains("| 2026-07-06 | 26.0 | 0.1.10 build 11 | calendar | hidden | yes | PASS | retried-pass | item-1 | hidden | 4 | none | Menu bar item activated. |"))
         #expect(matrix.contains("FAIL_AX_PRESS"))
     }
+
+    private static let secondBarManualGateAuditFixture = """
+    {
+      "application": {
+        "marketingVersion": "0.1.10",
+        "buildNumber": "11"
+      },
+      "system": {
+        "macOSVersion": "26.0"
+      },
+      "secondBarReadiness": {
+        "readinessState": "ready",
+        "readinessTitle": "Ready",
+        "readinessMessage": "Second Bar is ready.",
+        "isReady": true,
+        "entitlement": "licensed",
+        "entitlementActive": true,
+        "accessibilityDiscoveryEnabled": true,
+        "accessibilityPermission": "granted",
+        "accurateIconsEnabled": true,
+        "screenCapturePermission": "granted",
+        "primaryClickOptIn": true,
+        "primaryClickRoute": "toggleCompactStrip",
+        "safeModeActive": false
+      },
+      "secondBarRuntime": {
+        "visible": false,
+        "itemCount": 3,
+        "currentScreen": "screen-1",
+        "lastPosition": "x 100, y 24, 166 x 42",
+        "iconWarmUpInProgress": false,
+        "lastIconWarmUpResult": "Refreshed 3 thumbnail(s)",
+        "lastCompactVisibleItemCount": 2,
+        "lastCompactOverflowItemCount": 1,
+        "lastCompactFallbackIconCount": 0,
+        "lastCompactScanState": "Fresh",
+        "lastCompactAvoidedNotch": true,
+        "lastActivationResult": "success",
+        "lastActivationMatrixResult": "PASS",
+        "lastActivationTargetZone": "hidden",
+        "lastActivationVisitedElementCount": 4,
+        "lastActivationAXError": null
+      },
+      "logs": [
+        {
+          "timestamp": "2026-07-06T10:01:00Z",
+          "message": "Second Bar activation result: success.",
+          "metadata": {
+            "targetID": "item-1",
+            "targetZone": "hidden",
+            "matrixResult": "PASS",
+            "visitedElementCount": "4",
+            "axError": "none",
+            "message": "Menu bar item activated."
+          }
+        },
+        {
+          "timestamp": "2026-07-06T10:02:00Z",
+          "message": "Second Bar activation result: actionFailed.",
+          "metadata": {
+            "targetID": "item-2",
+            "targetZone": "hidden",
+            "matrixResult": "FAIL_AX_PRESS",
+            "visitedElementCount": "5",
+            "axError": "cannotComplete",
+            "message": "Menu bar item did not accept AXPress."
+          }
+        }
+      ]
+    }
+    """
 
     @Test func fixtureTargetIsMarkedSkipInstall() throws {
         let root = Self.repositoryRoot()

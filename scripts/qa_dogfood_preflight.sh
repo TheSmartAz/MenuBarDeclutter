@@ -10,6 +10,7 @@ RELEASE_APP_PATH="${RELEASE_APP_PATH:-$ROOT_DIR/build/Export/MenuBarDeclutter.ap
 XCODE_DERIVED_DATA_PATH="${XCODE_DERIVED_DATA_PATH:-$ROOT_DIR/build/DerivedData/qa-dogfood}"
 XCODE_ENABLE_DEBUG_DYLIB="${XCODE_ENABLE_DEBUG_DYLIB:-NO}"
 XCTESTRUN_PATH="${XCTESTRUN_PATH:-}"
+DOGFOOD_SECOND_BAR_AUDIT_ONLY="${DOGFOOD_SECOND_BAR_AUDIT_ONLY:-0}"
 SECOND_BAR_DIAGNOSTICS_JSON="${SECOND_BAR_DIAGNOSTICS_JSON:-}"
 SECOND_BAR_AUDIT_OUTPUT="${SECOND_BAR_AUDIT_OUTPUT:-$RESULT_BUNDLE_DIR/qa-second-bar-manual-gate-audit.log}"
 SECOND_BAR_AUDIT_MATRIX_OUTPUT="${SECOND_BAR_AUDIT_MATRIX_OUTPUT:-}"
@@ -363,6 +364,15 @@ run_second_bar_manual_gate_audit() {
   echo "INFO: Running Second Bar manual gate audit for $SECOND_BAR_DIAGNOSTICS_JSON"
   "$ROOT_DIR/scripts/qa_second_bar_manual_gate_audit.sh" "${args[@]}" | tee "$SECOND_BAR_AUDIT_OUTPUT"
 }
+
+if [[ "$DOGFOOD_SECOND_BAR_AUDIT_ONLY" == "1" ]]; then
+  echo "MenuBarDeclutter dogfood preflight"
+  echo "Second Bar audit-only mode. No builds, app launches, screenshots, uploads, or screen contents are collected."
+  echo
+  echo "== Second Bar Manual Gate Audit =="
+  run_second_bar_manual_gate_audit
+  exit "$?"
+fi
 
 echo "MenuBarDeclutter dogfood preflight"
 echo "Local validation only. No screenshots, uploads, or screen contents are collected."
