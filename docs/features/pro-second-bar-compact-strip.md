@@ -48,7 +48,7 @@ The compact strip is a one-line, menu-bar-like app-owned floating surface.
 - If the latest Accessibility scan is stale, it keeps any ready icons visible and marks the strip as `Scan stale`.
 - Search/Manage and Settings are fixed compact controls on the right.
 - The strip does not repeat MenuBarDeclutter's own status item.
-- Diagnostics records aggregate counts for the last compact strip: visible items, overflow items, fallback-icon items, and scan state. It does not record item names or image data.
+- Diagnostics live status and diagnostics export record aggregate counts for the last compact strip: visible items, overflow items, fallback-icon items, and scan state. They do not record item names or image data.
 
 The strip should feel related to the macOS menu bar without pretending to be the system menu bar. It uses system material/vibrancy, a small height, and a slight floating boundary.
 

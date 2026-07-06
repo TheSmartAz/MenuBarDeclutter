@@ -23,7 +23,7 @@ This checklist covers the Pro compact Second Bar strip. These behaviors require 
 | Safe Mode primary-click suppression | PASS | `primaryClickRoutesSafeModeToInlineEvenWhenReadyAndOptedIn` verifies Safe Mode suppresses compact-strip primary-click routing even when Pro, readiness, and explicit opt-in are all enabled. |
 | Compact strip item inclusion | PASS | `compactStripIncludesHiddenItemsEvenWhenAccurateIconsAreNotReady` verifies Hidden-zone items stay visible even when a specific rendered thumbnail is missing, and `compactStripAdditionalCountTracksOverflowNotMissingAccurateIcons` verifies `+N` counts only one-line overflow. |
 | Compact strip scan state | PASS | `compactStripPlanReportsNoScanWhenNoScanTimeIsAvailable` and `compactStripPlanReportsStaleScanWhenLastScanIsOld` verify the strip distinguishes no scan, stale scan, and fresh scan instead of treating all empty states as no hidden icons. |
-| Compact strip live diagnostics | PASS | Diagnostics live status now records the last compact strip visible count, overflow count, fallback-icon count, and scan state. `applyingSecondBarCompactStripPlanUpdatesPrivacySafeDiagnostics` covers those aggregate values without item names or image data. |
+| Compact strip diagnostics export | PASS | Diagnostics live status and export now record the last compact strip visible count, overflow count, fallback-icon count, and scan state. `applyingSecondBarCompactStripPlanUpdatesPrivacySafeDiagnostics` and `jsonExportCanIncludeSecondBarRuntimeDiagnostics` cover those aggregate values without item names or image data. |
 | Compact strip screenshot QA | PASS | `scripts/qa_capture_ui_screenshots.sh --build --focused-only --output-dir docs/testing/screenshot-qa/2026-07-06_secondbar-compact-strip` captured 20 surfaces with 0 skipped and 0 failed. Manifest row `32-compact-second-bar` captured a `166x42` `Second Bar Compact Strip` window using full readiness gates, primary-click opt-in, seeded menu bar items, and seeded rendered icons. |
 | Warm-up diagnostics | PASS | Live diagnostics now reports `Icon Warm-up Running` and `Last Icon Warm-up` for Second Bar, so hands-on Accurate Icons warm-up runs can verify completion without inspecting private thumbnails. |
 | Readiness diagnostics export | PASS | Diagnostics exports can include a privacy-safe `secondBarReadiness` block with readiness state, title/message, entitlement, Accessibility Discovery, Accessibility permission, Accurate Icons, Screen Recording, primary-click route, and Safe Mode state. `jsonExportCanIncludeSecondBarReadinessDiagnostics` covers JSON and text output. |
@@ -112,9 +112,10 @@ This checklist covers the Pro compact Second Bar strip. These behaviors require 
 6. Confirm extra Hidden-zone items that do not fit are represented by `+N`.
 7. Confirm a Hidden-zone item without a prepared rendered thumbnail remains in the strip with an app or placeholder fallback icon and does not inflate `+N` unless it is actually overflow.
 8. Open Settings -> Diagnostics and confirm `Last Compact Visible`, `Last Compact Overflow`, `Last Compact Fallback Icons`, and `Last Compact Scan` match the strip.
-9. Clear or block scanning and confirm an empty strip says `No scan yet` instead of `No hidden icons`.
-10. Let the latest scan become stale and confirm ready icons remain visible with a `Scan stale` badge.
-11. Click the Manage/Search control and confirm the full Second Bar panel opens.
+9. Export diagnostics as JSON or text and confirm the `Second Bar Runtime` section records the same aggregate compact-strip counts without item names or image data.
+10. Clear or block scanning and confirm an empty strip says `No scan yet` instead of `No hidden icons`.
+11. Let the latest scan become stale and confirm ready icons remain visible with a `Scan stale` badge.
+12. Click the Manage/Search control and confirm the full Second Bar panel opens.
 
 ## Direct Activation
 

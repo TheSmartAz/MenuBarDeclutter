@@ -302,6 +302,53 @@ struct DiagnosticsExportTests {
         #expect(text.contains("Primary Click Route: showSecondBarRequirements"))
     }
 
+    @Test func jsonExportCanIncludeSecondBarRuntimeDiagnostics() throws {
+        let exporter = makeExporter()
+        let store = makeStore()
+        let logger = DiagnosticsLogger()
+        let runtime = DiagnosticsExporter.SecondBarRuntimeDiagnosticsSnapshot(
+            visible: true,
+            itemCount: 5,
+            currentScreen: "screen-1",
+            lastPosition: "x 100, y 24, 560 x 42",
+            iconWarmUpInProgress: false,
+            lastIconWarmUpResult: "Refreshed 2 thumbnail(s)",
+            lastCompactVisibleItemCount: 3,
+            lastCompactOverflowItemCount: 2,
+            lastCompactFallbackIconCount: 1,
+            lastCompactScanState: "Fresh"
+        )
+
+        let snapshot = exporter.makeSnapshot(
+            settingsStore: store,
+            logger: logger,
+            secondBarRuntime: runtime
+        )
+        let data = try exporter.serialize(snapshot, format: .json)
+        let object = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let secondBarRuntime = try #require(object["secondBarRuntime"] as? [String: Any])
+
+        #expect(try #require(secondBarRuntime["visible"] as? Bool))
+        #expect(try #require(secondBarRuntime["itemCount"] as? Int) == 5)
+        #expect(try #require(secondBarRuntime["currentScreen"] as? String) == "screen-1")
+        #expect(try #require(secondBarRuntime["lastPosition"] as? String) == "x 100, y 24, 560 x 42")
+        #expect(try #require(secondBarRuntime["iconWarmUpInProgress"] as? Bool) == false)
+        #expect(try #require(secondBarRuntime["lastIconWarmUpResult"] as? String) == "Refreshed 2 thumbnail(s)")
+        #expect(try #require(secondBarRuntime["lastCompactVisibleItemCount"] as? Int) == 3)
+        #expect(try #require(secondBarRuntime["lastCompactOverflowItemCount"] as? Int) == 2)
+        #expect(try #require(secondBarRuntime["lastCompactFallbackIconCount"] as? Int) == 1)
+        #expect(try #require(secondBarRuntime["lastCompactScanState"] as? String) == "Fresh")
+
+        let text = String(data: try exporter.serialize(snapshot, format: .txt), encoding: .utf8) ?? ""
+        #expect(text.contains("Second Bar Runtime"))
+        #expect(text.contains("Visible: true"))
+        #expect(text.contains("Item Count: 5"))
+        #expect(text.contains("Last Compact Visible: 3"))
+        #expect(text.contains("Last Compact Overflow: 2"))
+        #expect(text.contains("Last Compact Fallback Icons: 1"))
+        #expect(text.contains("Last Compact Scan: Fresh"))
+    }
+
     @Test func txtExportIsHumanReadableAndExcludesByDesign() throws {
         let exporter = makeExporter()
         let store = makeStore()

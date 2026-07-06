@@ -17,6 +17,7 @@ struct DiagnosticsSettingsView: View {
     var onDisableProMode: (() -> Void)?
     var onEnterSafeModeNextLaunch: (() -> Void)?
     var secondBarReadinessDiagnosticsProvider: (() -> DiagnosticsExporter.SecondBarReadinessDiagnosticsSnapshot?)? = nil
+    var secondBarRuntimeDiagnosticsProvider: (() -> DiagnosticsExporter.SecondBarRuntimeDiagnosticsSnapshot?)? = nil
     var workspacePreviewDiagnosticsProvider: (() -> DiagnosticsExporter.WorkspacePreviewDiagnosticsSnapshot?)? = nil
 
     @State private var exportFormat: DiagnosticsExporter.Format = .txt
@@ -211,6 +212,7 @@ struct DiagnosticsSettingsView: View {
                 settingsStore: settingsStore,
                 logger: diagnosticsLogger,
                 secondBarReadiness: secondBarReadinessDiagnosticsProvider?(),
+                secondBarRuntime: secondBarRuntimeDiagnosticsProvider?(),
                 workspacePreview: workspacePreviewDiagnosticsProvider?(),
                 events: filteredEvents
             )
@@ -301,6 +303,7 @@ struct DiagnosticsSettingsView: View {
                 settingsStore: settingsStore,
                 logger: diagnosticsLogger,
                 secondBarReadiness: secondBarReadinessDiagnosticsProvider?(),
+                secondBarRuntime: secondBarRuntimeDiagnosticsProvider?(),
                 workspacePreview: workspacePreviewDiagnosticsProvider?()
             )
             let diagnosticsData = try exporter.serialize(snapshot, format: .txt)

@@ -883,6 +883,7 @@ struct SettingsRootView: View {
                 onDisableProMode: actions.disableProMode,
                 onEnterSafeModeNextLaunch: actions.enterSafeModeNextLaunch,
                 secondBarReadinessDiagnosticsProvider: makeSecondBarReadinessDiagnosticsSnapshot,
+                secondBarRuntimeDiagnosticsProvider: makeSecondBarRuntimeDiagnosticsSnapshot,
                 workspacePreviewDiagnosticsProvider: makeWorkspacePreviewDiagnosticsSnapshot
             )
         case .advanced:
@@ -1015,6 +1016,22 @@ struct SettingsRootView: View {
             readiness: ProSecondBarReadiness.evaluate(input),
             primaryClickOptIn: settingsStore.secondBarPrimaryClickEnabled,
             safeModeActive: liveStatus?.safeModeActive ?? false
+        )
+    }
+
+    private func makeSecondBarRuntimeDiagnosticsSnapshot() -> DiagnosticsExporter.SecondBarRuntimeDiagnosticsSnapshot? {
+        guard let liveStatus else { return nil }
+        return DiagnosticsExporter.SecondBarRuntimeDiagnosticsSnapshot(
+            visible: liveStatus.secondBarVisible,
+            itemCount: liveStatus.secondBarItemCount,
+            currentScreen: liveStatus.secondBarCurrentScreen,
+            lastPosition: liveStatus.secondBarLastPosition,
+            iconWarmUpInProgress: liveStatus.secondBarIconWarmUpInProgress,
+            lastIconWarmUpResult: liveStatus.secondBarLastIconWarmUpResult,
+            lastCompactVisibleItemCount: liveStatus.secondBarLastCompactVisibleItemCount,
+            lastCompactOverflowItemCount: liveStatus.secondBarLastCompactOverflowItemCount,
+            lastCompactFallbackIconCount: liveStatus.secondBarLastCompactFallbackIconCount,
+            lastCompactScanState: liveStatus.secondBarLastCompactScanState
         )
     }
 

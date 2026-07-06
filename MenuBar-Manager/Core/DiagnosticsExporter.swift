@@ -98,6 +98,7 @@ struct DiagnosticsExporter {
         let screens: [ScreenSnapshot]
         let settings: SettingsSnapshot
         let secondBarReadiness: SecondBarReadinessDiagnosticsSnapshot?
+        let secondBarRuntime: SecondBarRuntimeDiagnosticsSnapshot?
         let workspacePreview: WorkspacePreviewDiagnosticsSnapshot?
         let events: [DiagnosticEvent]
         let dogfood: DogfoodDiagnosticsMetadata?
@@ -171,6 +172,19 @@ struct DiagnosticsExporter {
                 "showSecondBarRequirements"
             }
         }
+    }
+
+    struct SecondBarRuntimeDiagnosticsSnapshot: Codable, Equatable, Sendable {
+        let visible: Bool
+        let itemCount: Int
+        let currentScreen: String?
+        let lastPosition: String?
+        let iconWarmUpInProgress: Bool
+        let lastIconWarmUpResult: String?
+        let lastCompactVisibleItemCount: Int
+        let lastCompactOverflowItemCount: Int
+        let lastCompactFallbackIconCount: Int
+        let lastCompactScanState: String?
     }
 
     struct WorkspacePreviewDiagnosticsSnapshot: Codable, Equatable, Sendable {
@@ -310,6 +324,7 @@ struct DiagnosticsExporter {
         settingsStore: SettingsStore,
         logger: DiagnosticsLogger,
         secondBarReadiness: SecondBarReadinessDiagnosticsSnapshot? = nil,
+        secondBarRuntime: SecondBarRuntimeDiagnosticsSnapshot? = nil,
         workspacePreview: WorkspacePreviewDiagnosticsSnapshot? = nil,
         events: [DiagnosticEvent]? = nil
     ) -> Snapshot {
@@ -324,6 +339,7 @@ struct DiagnosticsExporter {
             screens: screensProvider(),
             settings: makeSettingsSnapshot(settingsStore),
             secondBarReadiness: secondBarReadiness,
+            secondBarRuntime: secondBarRuntime,
             workspacePreview: workspacePreview,
             events: events ?? logger.events,
             dogfood: makeDogfoodMetadata(settingsStore)
@@ -532,6 +548,20 @@ struct DiagnosticsExporter {
             lines.append("Safe Mode Active: \(secondBarReadiness.safeModeActive)")
             lines.append("")
         }
+        if let secondBarRuntime = snapshot.secondBarRuntime {
+            lines.append("== Second Bar Runtime ==")
+            lines.append("Visible: \(secondBarRuntime.visible)")
+            lines.append("Item Count: \(secondBarRuntime.itemCount)")
+            lines.append("Current Screen: \(secondBarRuntime.currentScreen ?? "—")")
+            lines.append("Last Position: \(secondBarRuntime.lastPosition ?? "—")")
+            lines.append("Icon Warm-up Running: \(secondBarRuntime.iconWarmUpInProgress)")
+            lines.append("Last Icon Warm-up: \(secondBarRuntime.lastIconWarmUpResult ?? "—")")
+            lines.append("Last Compact Visible: \(secondBarRuntime.lastCompactVisibleItemCount)")
+            lines.append("Last Compact Overflow: \(secondBarRuntime.lastCompactOverflowItemCount)")
+            lines.append("Last Compact Fallback Icons: \(secondBarRuntime.lastCompactFallbackIconCount)")
+            lines.append("Last Compact Scan: \(secondBarRuntime.lastCompactScanState ?? "—")")
+            lines.append("")
+        }
         if let workspacePreview = snapshot.workspacePreview {
             lines.append("== Workspace Preview Diagnostics ==")
             lines.append("Workspaces: \(workspacePreview.workspaces.workspaceCount)")
@@ -677,6 +707,7 @@ struct DiagnosticsExporter {
         let screens: [ScreenSnapshot]
         let settings: SettingsSnapshot
         let secondBarReadiness: SecondBarReadinessDiagnosticsSnapshot?
+        let secondBarRuntime: SecondBarRuntimeDiagnosticsSnapshot?
         let workspacePreview: WorkspacePreviewDiagnosticsSnapshot?
         let logs: [Log]
         let excludedByDesign: [String]
@@ -690,6 +721,7 @@ struct DiagnosticsExporter {
             self.screens = snapshot.screens
             self.settings = snapshot.settings
             self.secondBarReadiness = snapshot.secondBarReadiness
+            self.secondBarRuntime = snapshot.secondBarRuntime
             self.workspacePreview = snapshot.workspacePreview
             self.logs = snapshot.events.map(Log.init(event:))
             self.excludedByDesign = DiagnosticsExporter.excludedByDesign
@@ -706,6 +738,7 @@ struct DiagnosticsExporter {
             case screens
             case settings
             case secondBarReadiness
+            case secondBarRuntime
             case workspacePreview
             case logs
             case excludedByDesign
@@ -721,6 +754,7 @@ struct DiagnosticsExporter {
             try container.encode(screens, forKey: .screens)
             try container.encode(settings, forKey: .settings)
             try container.encodeIfPresent(secondBarReadiness, forKey: .secondBarReadiness)
+            try container.encodeIfPresent(secondBarRuntime, forKey: .secondBarRuntime)
             try container.encodeIfPresent(workspacePreview, forKey: .workspacePreview)
             try container.encode(logs, forKey: .logs)
             try container.encode(excludedByDesign, forKey: .excludedByDesign)
