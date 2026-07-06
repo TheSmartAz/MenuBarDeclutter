@@ -99,6 +99,7 @@ struct ProSecondBarCompactStripTests {
         #expect(plan.visibleItems.map(\.id) == ["hidden-a", "hidden-c"])
         #expect(plan.hiddenOverflowCount == 0)
         #expect(plan.needsAccurateIconCount == 1)
+        #expect(plan.scanState == .fresh)
     }
 
     @Test func compactStripKeepsOneLineAndReportsOverflow() {
@@ -118,6 +119,35 @@ struct ProSecondBarCompactStripTests {
         #expect(plan.visibleItems.map(\.id) == ["a", "b"])
         #expect(plan.hiddenOverflowCount == 2)
         #expect(plan.totalAdditionalCount == 2)
+        #expect(plan.scanState == .fresh)
+    }
+
+    @Test func compactStripPlanReportsNoScanWhenNoScanTimeIsAvailable() {
+        let plan = SecondBarCompactStripPlanner.plan(
+            snapshots: [],
+            accurateIconReadyIDs: [],
+            maxVisibleItems: 8,
+            lastScanTime: nil,
+            now: Date(timeIntervalSince1970: 1_000)
+        )
+
+        #expect(plan.scanState == .noScan)
+        #expect(plan.visibleItems.isEmpty)
+        #expect(plan.totalAdditionalCount == 0)
+    }
+
+    @Test func compactStripPlanReportsStaleScanWhenLastScanIsOld() {
+        let plan = SecondBarCompactStripPlanner.plan(
+            snapshots: [snapshot("hidden", zone: .hidden)],
+            accurateIconReadyIDs: ["hidden"],
+            maxVisibleItems: 8,
+            lastScanTime: Date(timeIntervalSince1970: 0),
+            now: Date(timeIntervalSince1970: SecondBarCompactStripPlanner.staleScanThreshold + 1)
+        )
+
+        #expect(plan.scanState == .stale)
+        #expect(plan.visibleItems.map(\.id) == ["hidden"])
+        #expect(plan.hiddenOverflowCount == 0)
     }
 
     @Test func activationFailureFeedbackRetainsRetryTarget() {

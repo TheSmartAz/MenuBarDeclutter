@@ -78,13 +78,17 @@ private struct ReadyCompactStripContent: View {
     var body: some View {
         HStack(spacing: DesignTokens.Spacing.small) {
             if plan.visibleItems.isEmpty {
-                EmptyReadyState(needsAccurateIconCount: plan.needsAccurateIconCount)
+                EmptyReadyState(plan: plan)
             } else {
                 ForEach(plan.visibleItems) { snapshot in
                     CompactStripItemButton(snapshot: snapshot) {
                         onActivate(snapshot)
                     }
                 }
+            }
+
+            if plan.scanState.needsAttention, !plan.visibleItems.isEmpty {
+                CompactStripScanStateBadge(scanState: plan.scanState)
             }
 
             if let activationFeedback {
@@ -229,6 +233,56 @@ private struct CompactStripIconButton: View {
     }
 }
 
+private struct CompactStripScanStateBadge: View {
+    let scanState: SecondBarCompactStripScanState
+
+    var body: some View {
+        Label(title, systemImage: systemImage)
+            .labelStyle(.titleAndIcon)
+            .font(DesignTokens.Typography.caption)
+            .lineLimit(1)
+            .foregroundStyle(.yellow)
+            .padding(.horizontal, DesignTokens.Spacing.small)
+            .frame(height: 28)
+            .background(Color.yellow.opacity(0.10), in: .rect(cornerRadius: DesignTokens.Radius.control))
+            .help(help)
+            .accessibilityIdentifier("secondBar.compact.scanState")
+    }
+
+    private var title: String {
+        switch scanState {
+        case .fresh:
+            "Scan ready"
+        case .stale:
+            "Scan stale"
+        case .noScan:
+            "No scan yet"
+        }
+    }
+
+    private var systemImage: String {
+        switch scanState {
+        case .fresh:
+            "checkmark.circle"
+        case .stale:
+            "clock.badge.exclamationmark"
+        case .noScan:
+            "arrow.triangle.2.circlepath"
+        }
+    }
+
+    private var help: String {
+        switch scanState {
+        case .fresh:
+            "Menu bar scan is current."
+        case .stale:
+            "Menu bar scan may be stale. Refresh from the Manage panel."
+        case .noScan:
+            "No menu bar scan is available yet. Refresh from the Manage panel."
+        }
+    }
+}
+
 private struct CompactStripFeedback: View {
     let feedback: SecondBarCompactStripActivationFeedback
     let onRetryActivation: (MenuBarItemSnapshot) -> Void
@@ -286,20 +340,40 @@ private struct CompactStripFeedback: View {
 }
 
 private struct EmptyReadyState: View {
-    let needsAccurateIconCount: Int
+    let plan: SecondBarCompactStripPlan
 
     var body: some View {
-        Label(message, systemImage: "rectangle.dashed")
+        Label(message, systemImage: systemImage)
             .font(DesignTokens.Typography.caption)
             .foregroundStyle(.secondary)
             .lineLimit(1)
     }
 
     private var message: String {
-        if needsAccurateIconCount > 0 {
+        switch plan.scanState {
+        case .noScan:
+            return "No scan yet"
+        case .stale:
+            return "Scan stale"
+        case .fresh:
+            break
+        }
+
+        if plan.needsAccurateIconCount > 0 {
             return "Preparing icons"
         }
         return "No hidden icons"
+    }
+
+    private var systemImage: String {
+        switch plan.scanState {
+        case .noScan:
+            "arrow.triangle.2.circlepath"
+        case .stale:
+            "clock.badge.exclamationmark"
+        case .fresh:
+            plan.needsAccurateIconCount > 0 ? "photo.badge.exclamationmark" : "rectangle.dashed"
+        }
     }
 }
 
@@ -322,7 +396,8 @@ private struct EmptyReadyState: View {
                 )
             ],
             hiddenOverflowCount: 2,
-            needsAccurateIconCount: 1
+            needsAccurateIconCount: 1,
+            scanState: .fresh
         )),
         activationFeedback: nil,
         onActivate: { _ in },

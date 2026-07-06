@@ -44,6 +44,8 @@ The compact strip is a one-line, menu-bar-like app-owned floating surface.
 - It is icon-only by default; names are available through tooltips and accessibility labels.
 - Its order follows the real Hidden zone order until Set support exists.
 - Overflow remains one line and appears as `+N`, which opens the Manage Panel.
+- If no Accessibility scan is available, it shows `No scan yet` instead of claiming there are no hidden icons.
+- If the latest Accessibility scan is stale, it keeps any ready icons visible and marks the strip as `Scan stale`.
 - Search/Manage and Settings are fixed compact controls on the right.
 - The strip does not repeat MenuBarDeclutter's own status item.
 

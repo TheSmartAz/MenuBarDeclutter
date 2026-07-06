@@ -208,14 +208,16 @@ final class SecondBarCompactStripWindowController: NSWindowController, NSWindowD
             return SecondBarCompactStripPlan(
                 visibleItems: [],
                 hiddenOverflowCount: 0,
-                needsAccurateIconCount: 0
+                needsAccurateIconCount: 0,
+                scanState: .noScan
             )
         }
 
         return SecondBarCompactStripPlanner.plan(
             snapshots: snapshots,
             accurateIconReadyIDs: accurateIconReadyIDs,
-            maxVisibleItems: maxVisibleItems(for: availableWidth)
+            maxVisibleItems: maxVisibleItems(for: availableWidth),
+            lastScanTime: liveStatus.lastMenuBarScanTime
         )
     }
 
