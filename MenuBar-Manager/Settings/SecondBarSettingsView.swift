@@ -56,7 +56,7 @@ struct SecondBarSettingsView: View {
             ClearGlassSection("Second Bar", subtitle: "Status menu entry point and panel behavior.") {
                 FeatureGateNotice(
                     .preview,
-                    text: "Second Bar is a Preview surface. Opening it stays blocked until Optional Pro, Accessibility Discovery, Accessibility permission, Accurate Icons, and Screen Recording are ready."
+                    text: "Second Bar is an Optional Pro surface in Preview. Opening it stays blocked until Optional Pro, Accessibility Discovery, Accessibility permission, Accurate Icons, and Screen Recording are ready."
                 )
 
                 ClearGlassDivider()
