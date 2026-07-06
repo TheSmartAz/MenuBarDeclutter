@@ -14,6 +14,8 @@ Permission-dependent Pro features require:
 
 The Accessibility permission prompt must appear only after explicit user action.
 
+Some later Pro surfaces have additional explicit gates. Pro Second Bar compact/status-menu readiness also requires Accurate Icons to be enabled and Screen Recording to be granted through the separate Accurate Icons permission path. Pro Mode alone must still never request Screen Recording.
+
 ## Allowed Pro Behavior
 
 Allowed after gates are satisfied:

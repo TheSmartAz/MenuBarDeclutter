@@ -1,6 +1,6 @@
 # Manual QA: Pro Second Bar Compact Strip
 
-Last updated: 2026-07-05
+Last updated: 2026-07-06
 
 ## Scope
 
@@ -27,7 +27,7 @@ This checklist covers the Pro compact Second Bar strip. These behaviors require 
 7. Enable Accurate Icons and confirm no Screen Recording prompt appears until its `Request Permission` button is clicked.
 8. Click `Request Permission` for Screen Recording and confirm the macOS Screen Recording flow is user-initiated.
 9. Confirm the setup checklist reports ready only when Optional Pro, Accessibility Discovery, Accessibility, Accurate Icons, and Screen Recording are all ready.
-10. Open Settings -> Second Bar and confirm the same setup checklist and readiness state are shown there.
+10. Open Settings -> Second Bar and confirm the same setup checklist and readiness state are shown first on the page.
 11. Click `Warm Up Icons` after the checklist is ready.
 12. Confirm hidden items may briefly reveal, thumbnails refresh, and the previous visibility state is restored.
 

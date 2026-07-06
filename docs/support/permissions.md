@@ -18,6 +18,8 @@ If permission is denied or revoked, Pro surfaces degrade and Basic Mode remains 
 
 Accurate Icons is a separate opt-in capability. When enabled, it can request Screen Recording and use ScreenCaptureKit to crop small rendered menu bar item thumbnails locally. It is off by default and is not part of Basic Mode.
 
+Pro Second Bar compact/status-menu readiness requires both Pro Accessibility Discovery and Accurate Icons. If Accurate Icons is off or Screen Recording is missing, Show Second Bar reports the missing requirement instead of opening the strip or panel. Basic Mode inline hide/show remains available.
+
 MenuBarDeclutter does not use Apple Events permission, Apple Events scripting/control of other apps, Input Monitoring, telemetry, analytics, crash upload, cloud sync, remote config, or private menu bar APIs. The local `menubardeclutter://` URL handler only receives commands addressed to this app.
 
 Rendered icon thumbnails remain local, can be cleared from Privacy settings, and are excluded from diagnostics exports by default.
@@ -34,6 +36,15 @@ Expected setup order for Pro metadata testing:
 2. Grant MenuBarDeclutter in macOS Privacy & Security -> Accessibility.
 3. Return to MenuBarDeclutter and press Rescan or Refresh.
 4. Confirm Find Icon and Second Bar skip their old app-level enable states and move to usable metadata views.
+
+Expected setup order for Pro Second Bar compact strip testing:
+
+1. Enable Optional Pro.
+2. Enable Accessibility Discovery.
+3. Request and grant Accessibility from the explicit button.
+4. Enable Accurate Icons.
+5. Request and grant Screen Recording from the explicit Accurate Icons control.
+6. Warm up icons, then open Second Bar.
 
 Pressing only Enable Pro Mode must not trigger a permission prompt. If macOS Accessibility is already granted, refreshing permission status may turn private discovery defaults on.
 

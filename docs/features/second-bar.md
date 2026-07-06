@@ -1,12 +1,14 @@
 # Second Bar
 
-Second Bar is a private-access floating panel for hidden and always-hidden menu bar items. It opens by default, uses Accessibility metadata when macOS permission is granted, and can use Accurate Icons rendered thumbnails when that separate opt-in capture path is enabled.
+Second Bar is a Pro find-and-rescue surface for hidden and always-hidden menu bar items. The current implementation has two related surfaces: a one-line compact strip opened from the MenuBarDeclutter status item, and a larger management panel for search, item state, and actions. Both use local Accessibility metadata, and the compact/status-menu entry point requires Accurate Icons plus Screen Recording so it can behave like a real icon strip instead of a generic fallback list.
 
 ## What It Does
 
-- Opens a floating, non-activating AppKit `NSPanel`.
+- Opens a floating, non-activating AppKit `NSPanel` for the management surface.
+- Opens a one-line compact strip from the primary status item when the Pro Second Bar readiness gate passes.
 - Displays hidden and always-hidden items from the local Accessibility snapshot.
-- Shows rendered thumbnails or app fallback icons, app names, optional item titles, and zone badges.
+- Shows rendered thumbnails or app fallback icons, app names, optional item titles, and zone badges in the management panel.
+- Shows Hidden-zone Accurate Icons in the compact strip, with overflow represented by `+N`.
 - Provides a search field for hidden items.
 - Supports keyboard navigation and Escape close.
 - Supports placement below the menu bar, near the mouse, or at the last position.
@@ -17,24 +19,29 @@ Second Bar is a private-access floating panel for hidden and always-hidden menu 
 
 ## User Flow
 
-1. Open Settings -> Find & Rescue.
-2. Use Show Second Bar, or open its detailed settings from the Second Bar card.
-3. Grant macOS Accessibility permission if hidden-item metadata is not already available.
-4. Hide items with the Basic Mode separator.
-5. Open Second Bar from the status menu.
-6. Search or navigate to an item.
-7. Select an item to reveal/highlight the original menu bar item, then click manually.
-8. Use the item context menu for Find Icon, favorites, groups, and gated assisted-move dry runs.
+1. Open Settings -> Privacy or Settings -> Second Bar.
+2. Complete Pro Second Bar Setup: Optional Pro, Accessibility Discovery, Accessibility permission, Accurate Icons, and Screen Recording.
+3. Hide items with the Basic Mode separator.
+4. Click the MenuBarDeclutter status item to open the compact strip.
+5. Click a prepared third-party icon for optimistic direct activation, or use Manage/Search to open the larger Second Bar panel.
+6. Search or navigate to an item in the management panel.
+7. Use item actions for reveal, highlight, Find Icon, groups, and gated assisted-move dry runs.
 
 ## Privacy And Permissions
 
-Second Bar requires the Pro Accessibility discovery index. It does not request Screen Recording on its own, automate clicks, use private APIs, or use the network. When Accurate Icons is enabled from Privacy settings, shared local rendered thumbnails can replace app-icon fallbacks.
+Second Bar readiness requires Optional Pro, Accessibility Discovery, Accessibility permission, Accurate Icons enabled, and Screen Recording granted. The Accessibility and Screen Recording prompts must come only from explicit user actions in setup/privacy controls.
+
+Second Bar does not use private APIs, Apple Events, Input Monitoring, network access, telemetry, or offscreen/private menu bar capture. Accurate Icons uses public ScreenCaptureKit visible-region capture for local thumbnails after Screen Recording is granted. Basic Mode remains usable when any Pro Second Bar gate is missing.
 
 ## Implementation
 
 - `MenuBar-Manager/SecondBar/SecondBarRootView.swift`
 - `MenuBar-Manager/SecondBar/SecondBarWindowController.swift`
 - `MenuBar-Manager/SecondBar/SecondBarViewModel.swift`
+- `MenuBar-Manager/SecondBar/ProSecondBarReadiness.swift`
+- `MenuBar-Manager/SecondBar/SecondBarCompactStripPlanner.swift`
+- `MenuBar-Manager/SecondBar/SecondBarCompactStripRootView.swift`
+- `MenuBar-Manager/SecondBar/SecondBarCompactStripWindowController.swift`
 - `MenuBar-Manager/SecondBar/SecondBarItemActionPlanner.swift`
 - `MenuBar-Manager/SecondBar/SecondBarItemView.swift`
 - `MenuBar-Manager/SecondBar/SecondBarPositioningService.swift`
@@ -44,12 +51,13 @@ Second Bar requires the Pro Accessibility discovery index. It does not request S
 
 - `MenuBar-ManagerTests/SecondBarViewModelTests.swift`
 - `MenuBar-ManagerTests/SecondBarPositioningServiceTests.swift`
+- `MenuBar-ManagerTests/ProSecondBarCompactStripTests.swift`
 - UI tests for requirement states
-- Manual QA: `docs/testing/manual-qa.md`
+- Manual QA: `docs/testing/manual-pro-second-bar-compact-strip-qa.md`
 
 ## Known Limitations
 
-- Second Bar is not a pixel-perfect captured duplicate of the real menu bar. Accurate Icons improves individual icon thumbnails when the item is capturable, but offscreen/overflow items can still use stale or fallback images.
+- Second Bar is not a pixel-perfect captured duplicate of the real menu bar. Accurate Icons improves individual icon thumbnails when the item is capturable, but offscreen/overflow items can still use stale images or be excluded from the compact strip until prepared.
 - Some menu bar items may lack useful Accessibility labels or ownership metadata.
 - Display, notch, Spaces, and sleep/wake behavior require hands-on QA.
 - Experimental move attempts remain explicitly gated and are not broad automated clicking.

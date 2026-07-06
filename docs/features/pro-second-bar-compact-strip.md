@@ -1,13 +1,13 @@
 # Pro Second Bar Compact Strip
 
-Status: implementation brief for the first Pro Second Bar slice.
+Status: implemented first Pro Second Bar slice; hardware permission QA remains manual.
 
 ## Product Model
 
 MenuBarDeclutter keeps two user paths.
 
 - Basic users keep the existing permission-free separator workflow. The primary status item click continues to hide or show the inline hidden area.
-- Pro users can enable Second Bar. When the Pro Second Bar is ready, the primary status item click opens a compact strip instead of toggling inline visibility.
+- Pro users can enable Second Bar. When the Pro Second Bar is ready, the primary status item click opens a compact strip instead of toggling inline visibility. The status menu and automation `Show Second Bar` command use the same readiness gate.
 
 Second Bar is a Pro feature. It is not enabled silently, and Basic Mode remains fully usable without Accessibility, Screen Recording, ScreenCaptureKit, Apple Events, Input Monitoring, or network access.
 
@@ -28,6 +28,7 @@ Warm-up capture improves icon quality but is not a permanent gate. A failed or p
 - Basic Mode: left click toggles inline hide/show.
 - Pro entitlement active and Second Bar ready: left click toggles the compact strip.
 - Pro entitlement active but Second Bar not ready: left click opens a lightweight requirements strip.
+- Status menu and automation `Show Second Bar`: open Second Bar only when the same readiness gate passes; otherwise show or report the missing requirement.
 - Right-click status menu keeps inline Expand, Collapse, Reveal All, and Reset actions as secondary recovery tools.
 
 ## Compact Strip

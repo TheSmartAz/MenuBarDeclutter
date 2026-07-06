@@ -26,7 +26,7 @@ If the app opens but the menu bar layout still looks wrong:
 
 Use Command-drag to position the MenuBarDeclutter control and separators. Basic Mode uses public macOS status item behavior and does not use private menu bar APIs.
 
-If a crowded menu bar still pushes items offscreen, use Arrange and Find & Rescue in Settings. Second Bar is a metadata/icon browser when Pro gates are satisfied; it does not capture menu bar pixels.
+If a crowded menu bar still pushes items offscreen, use Arrange and Find & Rescue in Settings. Second Bar is a metadata/icon browser when readiness gates are satisfied; Accurate Icons can add local rendered thumbnails after explicit Screen Recording permission.
 
 ## Arrange feels confusing
 
@@ -42,11 +42,13 @@ Manual Arrange is the intended stable path for `v0.1.10` and does not require Pr
 
 ## Pro features are unavailable
 
-Check three separate gates:
+Check these gates:
 
 - Pro Mode enabled.
 - Accessibility Discovery enabled.
 - macOS Accessibility permission granted from the explicit permission button.
+- For Second Bar compact/status-menu entry: Accurate Icons enabled.
+- For Second Bar compact/status-menu entry: Screen Recording granted from the explicit Accurate Icons permission button.
 
 Basic Mode should continue to work even when all Pro gates are off.
 
