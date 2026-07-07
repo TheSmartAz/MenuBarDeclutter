@@ -59,6 +59,7 @@ final class MenuBarItemSurfaceCoordinator {
     private let diagnosticsLogger: DiagnosticsLogger
     private let liveStatus: LiveDiagnosticsStatus
     private let menuBarItemMemoryStore: MenuBarItemMemoryStore
+    private let moveOutcomeRecorder: (any MoveOutcomeRecording)?
     private let newItemInboxStore: NewMenuBarItemInboxStore?
     private let groupStore: IconGroupStore
     private let safeModeLaunchState: SafeModeLaunchState
@@ -137,7 +138,8 @@ final class MenuBarItemSurfaceCoordinator {
         },
         resumeRuntimeBehaviors: { [weak self] in
             self?.resumeRuntimeAfterIconMove()
-        }
+        },
+        moveOutcomeRecorder: moveOutcomeRecorder
     )
 
     private let accessibilityPermissionService: AccessibilityPermissionService
@@ -172,6 +174,7 @@ final class MenuBarItemSurfaceCoordinator {
         refreshSecondBarSettings: @escaping () -> Void,
         workspaceUsageProvider: @escaping () -> WorkspaceUsageIndexSnapshot? = { nil },
         openPrivacySettings: @escaping () -> Void,
+        moveOutcomeRecorder: (any MoveOutcomeRecording)? = nil,
         routeCommand: @escaping (MenuBarCommand) -> MenuBarCommandResult
     ) {
         self.settingsStore = settingsStore
@@ -197,6 +200,7 @@ final class MenuBarItemSurfaceCoordinator {
         self.refreshSecondBarSettings = refreshSecondBarSettings
         self.workspaceUsageProvider = workspaceUsageProvider
         self.openPrivacySettings = openPrivacySettings
+        self.moveOutcomeRecorder = moveOutcomeRecorder
         self.routeCommand = routeCommand
     }
 

@@ -89,6 +89,10 @@ final class AppEnvironment {
         fileURL: appSupportPaths.menuBarItemMemoryFileURL
     )
 
+    /// Local-only collector of per-attempt assisted-move outcomes; feeds the
+    /// measured success rate that gates the Level-2 Workspaces work.
+    private lazy var moveOutcomeStore = MoveOutcomeStore(appSupportPaths: appSupportPaths)
+
     private lazy var placementItemPreferenceStore = PlacementItemPreferenceStore(
         fileURL: appSupportPaths.placementItemPreferencesFileURL
     )
@@ -575,6 +579,7 @@ final class AppEnvironment {
         openPrivacySettings: { [weak self] in
             self?.settingsWindowController.show(section: SettingsSection.privacy)
         },
+        moveOutcomeRecorder: moveOutcomeStore,
         routeCommand: { [weak self] command in
             self?.commandRouter.route(command)
                 ?? MenuBarCommandResult.stopped(
