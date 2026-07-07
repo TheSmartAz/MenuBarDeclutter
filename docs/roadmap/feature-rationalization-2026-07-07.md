@@ -397,10 +397,35 @@ also hits the pre-existing suites. To confirm the logic despite the blocked
 runner, the 10 scenarios were re-run green through the `swift` interpreter against
 an inlined copy of the planner. Re-run the normal lane once signing recovers.
 
-**Next slices (not started):**
-- (a) **Execution layer** — apply a plan through `IconMoveService` with per-move
-  verification and atomic rollback on failure, recording a switch-level outcome.
+**Next slices:**
+- (a) **Execution layer** — ✅ done (below).
 - (b) **Wire into `WorkspaceSwitchingService`** behind the apply gate.
 - (c) **Target model** on `MenuBarWorkspace` / assignments (what each workspace
   stores as desired visibility).
 - (d) **Preview UI** for the dry-run plan before applying.
+
+### Execution layer — atomic apply/rollback ✅ (2026-07-07)
+
+Built the switch control flow behind a `MoveExecuting` seam so real moves stay
+testable:
+- `Workspaces/WorkspaceSwitchExecutor.swift` — applies a plan move-by-move; on the
+  first failure it reverses the already-applied moves (most-recent first) so a
+  switch is **all-or-nothing**. Returns `WorkspaceSwitchOutcome`
+  (`noChange` / `applied(moveCount:)` / `rolledBack(failedAt:)` /
+  `rollbackIncomplete(failedAt:rollbackFailedAt:)`, with `isClean`).
+- `MoveExecuting` protocol abstracts "move one item; did it work?". The production
+  adapter (next) resolves key → live snapshot and routes through the measured
+  `IconMoveService`; tests use a scripted double.
+
+**Verification:** compiles into app + logic targets (`TEST BUILD SUCCEEDED`); 5
+executor scenarios pass (re-run via the `swift` interpreter — the xctest runner
+is still env-blocked on clean builds here).
+
+**Remaining for a working Level-2 switch:**
+- **Production `MoveExecuting` adapter** — resolve an item key to its live
+  `MenuBarItemSnapshot` and call `IconMoveService`, rescanning between moves.
+  (This is the integration layer; harder to unit-test in isolation.)
+- **Wire into `WorkspaceSwitchingService`** behind the Assisted Move apply gate;
+  record the switch outcome (reuse the diagnostics / `MoveOutcome` surfaces).
+- **Target-visibility model** on `MenuBarWorkspace` / assignments.
+- **Preview UI** for the dry-run plan.
