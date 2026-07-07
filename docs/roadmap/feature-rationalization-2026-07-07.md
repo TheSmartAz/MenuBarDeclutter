@@ -422,10 +422,26 @@ executor scenarios pass (re-run via the `swift` interpreter — the xctest runne
 is still env-blocked on clean builds here).
 
 **Remaining for a working Level-2 switch:**
-- **Production `MoveExecuting` adapter** — resolve an item key to its live
-  `MenuBarItemSnapshot` and call `IconMoveService`, rescanning between moves.
-  (This is the integration layer; harder to unit-test in isolation.)
+- **Production `MoveExecuting` adapter** — ✅ done (below).
 - **Wire into `WorkspaceSwitchingService`** behind the Assisted Move apply gate;
   record the switch outcome (reuse the diagnostics / `MoveOutcome` surfaces).
 - **Target-visibility model** on `MenuBarWorkspace` / assignments.
 - **Preview UI** for the dry-run plan.
+
+### Slice 1 — production move adapter ✅ (2026-07-07)
+
+- `Workspaces/WorkspaceItemKey.swift` — canonical, position-stable item key. Keys
+  on `bundleIdentifier` (stable when the item moves), not the frame-derived `id`
+  or the dynamic `title`. Multi-item apps sharing one key is a known limitation.
+- `Workspaces/WorkspaceMoveExecutor.swift` — the `MoveExecuting` adapter: rescans,
+  resolves the key to the current live `MenuBarItemSnapshot`, routes the move
+  through the measured `IconMoveService`, and maps only `succeeded` → `true`
+  (missing / skip / cancel / fail → `false`, which the switch executor rolls
+  back). An off-main `struct` bridging to the `@MainActor` scan + mover via
+  `@MainActor @Sendable` closures.
+
+Verified in the real Xcode lane (post-reboot, runner unblocked): **84 tests / 15
+suites pass**, including `Workspace Item Key` and `Workspace Move Executor`.
+
+**Remaining:** wire the adapter into `WorkspaceSwitchingService` behind the apply
+gate; the target-visibility model on `MenuBarWorkspace`; preview UI.
