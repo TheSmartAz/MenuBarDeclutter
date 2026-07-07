@@ -1,13 +1,31 @@
 import Foundation
 
 /// The desired end-state zone for one real menu bar item under a workspace.
-nonisolated struct WorkspaceItemTarget: Equatable, Sendable {
+/// Codable so it doubles as the stored per-workspace visibility target.
+nonisolated struct WorkspaceItemTarget: Codable, Equatable, Sendable {
     let itemKey: String
     let desiredZone: MenuBarZone
 
     init(itemKey: String, desiredZone: MenuBarZone) {
         self.itemKey = itemKey
         self.desiredZone = desiredZone
+    }
+
+    /// Captures a workspace's desired visibility from the current live scan:
+    /// each non-system, known-zone item's current zone becomes its target
+    /// ("save this layout to the workspace"). Deduplicates by item key.
+    static func capture(
+        from snapshots: [MenuBarItemSnapshot],
+        keyFor: (MenuBarItemSnapshot) -> String = WorkspaceItemKey.key(for:)
+    ) -> [WorkspaceItemTarget] {
+        var seen = Set<String>()
+        var targets: [WorkspaceItemTarget] = []
+        for snapshot in snapshots where !snapshot.isLikelySystemItem && snapshot.zone != .unknown {
+            let key = keyFor(snapshot)
+            guard seen.insert(key).inserted else { continue }
+            targets.append(WorkspaceItemTarget(itemKey: key, desiredZone: snapshot.zone))
+        }
+        return targets
     }
 }
 

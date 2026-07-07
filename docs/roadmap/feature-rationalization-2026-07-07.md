@@ -443,5 +443,33 @@ is still env-blocked on clean builds here).
 Verified in the real Xcode lane (post-reboot, runner unblocked): **84 tests / 15
 suites pass**, including `Workspace Item Key` and `Workspace Move Executor`.
 
-**Remaining:** wire the adapter into `WorkspaceSwitchingService` behind the apply
-gate; the target-visibility model on `MenuBarWorkspace`; preview UI.
+**Remaining:** integration hook + UI (see below).
+
+### Slices 2a / 2b / 3 — target model + switch orchestration ✅ (2026-07-07)
+
+- **Target model (slice 3):** `WorkspaceItemTarget` is now `Codable` and doubles
+  as the stored per-workspace target; `MenuBarWorkspace.itemTargets` added
+  (additive, migration-safe — old JSON decodes to `[]`).
+  `WorkspaceItemTarget.capture(from:)` snapshots the current bar into targets
+  (skips system + unknown-zone items, dedups by key).
+- **Orchestration (slice 2a):** `WorkspaceLayoutSwitcher` — pure composition:
+  reconciles a live scan against a workspace's targets (planner) and applies them
+  atomically (executor), returning the plan (a dry-run preview) + outcome.
+- **Coordinator (slice 2b):** `WorkspaceLayoutCoordinator` (`@MainActor`) —
+  `captureCurrentLayout(into:)` and `applyLayoutIfEnabled(for:)`, the latter gated
+  **closed** (no targets or gate off → hands-off, config-only). Bridges to the
+  real scan + `IconMoveService` via `WorkspaceMoveExecutor`.
+
+Verified in the real Xcode lane: **96 tests / 18 suites pass** (5 new Level-2
+suites); unit-lane export/import + diagnostics regression check green (39 tests).
+
+**The whole Level-2 logic stack is now built and tested** (planner → executor →
+adapter → target model → switcher → coordinator).
+
+**Remaining last-mile** (needs UX decisions + your hardware; not runtime-verifiable
+in this environment):
+- Compose the coordinator in `AppEnvironment` (real scan + `IconMoveService` mover
+  + apply gate = the Assisted Move opt-in) and call `applyLayoutIfEnabled` on a
+  successful workspace switch.
+- UI: a "Save current layout to workspace" action (drives `captureCurrentLayout`),
+  an "apply layout on switch" opt-in, and the dry-run preview surface.
