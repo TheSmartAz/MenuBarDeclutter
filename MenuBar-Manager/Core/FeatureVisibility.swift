@@ -1,5 +1,18 @@
 import Foundation
 
+// This ledger describes the CURRENT build's feature statuses and gating.
+// It is intentionally current-state truth, not roadmap intent.
+//
+// A feature-rationalization decision record
+// (docs/roadmap/feature-rationalization-2026-07-07.md) defines the target these
+// statuses should be reworked toward — e.g. guidedManualArrange demoted to a
+// fallback, findIcon merged into secondBar, and the permission-free tier
+// deprecated in favor of Accessibility-driven real control. Flip a `status`
+// value here only as the corresponding rework actually lands, never ahead of it.
+//
+// Note: the Workspaces cluster (Workspaces, Function Bar, Info Strip, Set Builder)
+// is gated by separate `*PreviewEnabled` flags and is not represented below.
+
 nonisolated enum ProductArea: String, CaseIterable, Identifiable, Sendable {
     case general
     case hideReveal

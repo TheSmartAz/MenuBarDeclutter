@@ -7,6 +7,7 @@ final class IconMoveService {
     private let permissionService: AccessibilityPermissionService
     private let liveStatus: LiveDiagnosticsStatus
     private let diagnosticsLogger: DiagnosticsLogger
+    private let moveOutcomeRecorder: (any MoveOutcomeRecording)?
     private let dragExecutor: any DragExecuting
     private let verifier: DragVerificationService
     private let planFactory: DragPlanFactory
@@ -44,12 +45,14 @@ final class IconMoveService {
         suspendRuntimeBehaviors: @escaping () -> Void,
         resumeRuntimeBehaviors: @escaping () -> Void,
         confirmationHandler: ((MenuBarItemSnapshot, IconMoveCommand) -> IconMoveConfirmationDecision)? = nil,
+        moveOutcomeRecorder: (any MoveOutcomeRecording)? = nil,
         now: @escaping () -> Date = { Date() }
     ) {
         self.settingsStore = settingsStore
         self.permissionService = permissionService
         self.liveStatus = liveStatus
         self.diagnosticsLogger = diagnosticsLogger
+        self.moveOutcomeRecorder = moveOutcomeRecorder
         self.dragExecutor = dragExecutor
         self.verifier = verifier
         self.planFactory = planFactory
@@ -108,7 +111,9 @@ final class IconMoveService {
                 sourceZone: context.sourceZone,
                 targetZone: context.targetZone,
                 startedAt: context.startedAt,
-                moveAttempted: false
+                moveAttempted: false,
+                appBundleIdentifier: snapshot.bundleIdentifier,
+                appDisplayName: context.itemName
             )
         ) {
             return cancellation
@@ -123,7 +128,9 @@ final class IconMoveService {
                     sourceZone: context.sourceZone,
                     targetZone: context.targetZone,
                     startedAt: context.startedAt,
-                    moveAttempted: false
+                    moveAttempted: false,
+                    appBundleIdentifier: snapshot.bundleIdentifier,
+                    appDisplayName: context.itemName
                 )
             )
         }
@@ -143,7 +150,9 @@ final class IconMoveService {
                 sourceZone: context.sourceZone,
                 targetZone: context.targetZone,
                 startedAt: context.startedAt,
-                moveAttempted: true
+                moveAttempted: true,
+                appBundleIdentifier: snapshot.bundleIdentifier,
+                appDisplayName: context.itemName
             )
         )
     }
@@ -174,6 +183,8 @@ final class IconMoveService {
         let targetZone: MenuBarZone
         let startedAt: Date
         let moveAttempted: Bool
+        let appBundleIdentifier: String?
+        let appDisplayName: String?
     }
 
     private func preflight(
@@ -187,7 +198,9 @@ final class IconMoveService {
             sourceZone: snapshot.zone,
             targetZone: targetZone,
             startedAt: startedAt,
-            moveAttempted: false
+            moveAttempted: false,
+            appBundleIdentifier: snapshot.bundleIdentifier,
+            appDisplayName: itemName
         )
 
         if isMoving {
@@ -382,7 +395,7 @@ final class IconMoveService {
                         verificationSummary: verification.summary,
                         retries: attempt
                     )
-                    return record(result, dogfoodContext: dogfoodContext)
+                    return record(result, dogfoodContext: dogfoodContext, verification: verification.outcome)
                 }
 
                 if let updated = verification.matchedSnapshot {
@@ -477,7 +490,7 @@ final class IconMoveService {
             dragPlanSummary: plan?.summary,
             verificationSummary: verification?.summary,
             retries: retries
-        ), dogfoodContext: dogfoodContext)
+        ), dogfoodContext: dogfoodContext, verification: verification?.outcome)
     }
 
     private func cancelled(
@@ -502,12 +515,13 @@ final class IconMoveService {
             dragPlanSummary: plan?.summary,
             verificationSummary: verification?.summary,
             retries: retries
-        ), dogfoodContext: dogfoodContext)
+        ), dogfoodContext: dogfoodContext, verification: verification?.outcome)
     }
 
     private func record(
         _ result: IconMoveResult,
-        dogfoodContext: IconMoveDogfoodContext? = nil
+        dogfoodContext: IconMoveDogfoodContext? = nil,
+        verification: DragVerificationOutcome? = nil
     ) -> IconMoveResult {
         liveStatus.lastIconMoveResult = result.outcome.rawValue
         liveStatus.lastIconMoveError = result.error?.displayName
@@ -517,13 +531,16 @@ final class IconMoveService {
         diagnosticsLogger.log(result.summary, level: result.outcome == .succeeded ? .info : .warning)
 
         if let dogfoodContext {
+            let recordedAt = now()
+            let elapsed = recordedAt.timeIntervalSince(dogfoodContext.startedAt)
+
             let event = AssistedMoveDogfoodLogEvent(
                 moveAttempted: dogfoodContext.moveAttempted,
                 sourceZone: dogfoodContext.sourceZone,
                 targetZone: dogfoodContext.targetZone,
                 result: result.outcome,
                 failureReason: result.error,
-                durationBucket: .bucket(for: now().timeIntervalSince(dogfoodContext.startedAt))
+                durationBucket: .bucket(for: elapsed)
             )
             diagnosticsLogger.log(
                 "Assisted Move dogfood event recorded.",
@@ -531,6 +548,25 @@ final class IconMoveService {
                 category: .dogfood,
                 metadata: event.metadata
             )
+
+            // Durable, aggregatable per-attempt record used to measure the
+            // single-item move success rate. Latency is only meaningful for
+            // attempts that actually ran the drag mechanism.
+            let moveOutcome = MoveOutcome(
+                timestamp: recordedAt,
+                appBundleIdentifier: dogfoodContext.appBundleIdentifier,
+                appDisplayName: dogfoodContext.appDisplayName,
+                commandKind: result.command.kind,
+                sourceZone: dogfoodContext.sourceZone,
+                targetZone: dogfoodContext.targetZone,
+                moveAttempted: dogfoodContext.moveAttempted,
+                result: result.outcome,
+                verification: MoveVerificationSummary(verification),
+                failureReason: result.error?.diagnosticName,
+                retries: result.retries,
+                latencySeconds: dogfoodContext.moveAttempted ? elapsed : nil
+            )
+            moveOutcomeRecorder?.record(moveOutcome)
         }
 
         return result

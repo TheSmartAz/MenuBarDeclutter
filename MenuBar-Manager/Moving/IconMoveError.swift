@@ -43,3 +43,37 @@ enum IconMoveError: Error, Equatable, Sendable {
         }
     }
 }
+
+extension IconMoveError {
+    /// Stable, privacy-safe identifier for diagnostics and move-outcome
+    /// aggregation. Canonical source; `AssistedMoveDogfoodLogEvent` and
+    /// `MoveOutcome` both reuse this rather than defining their own strings.
+    nonisolated var diagnosticName: String {
+        switch self {
+        case .disabled:
+            "disabled"
+        case .proModeRequired:
+            "proModeRequired"
+        case .accessibilityPermissionRequired:
+            "accessibilityPermissionRequired"
+        case .confirmationCancelled:
+            "confirmationCancelled"
+        case .moveAlreadyInProgress:
+            "moveAlreadyInProgress"
+        case .missingSourceFrame:
+            "missingSourceFrame"
+        case .unsafeOwnItem:
+            "unsafeOwnItem"
+        case .unsafeSystemItem:
+            "unsafeSystemItem"
+        case .planningFailed:
+            "planningFailed"
+        case .dragFailed:
+            "dragFailed"
+        case .moveCancelled:
+            "moveCancelled"
+        case .verificationFailed:
+            "verificationFailed"
+        }
+    }
+}

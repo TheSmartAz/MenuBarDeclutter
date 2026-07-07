@@ -43,34 +43,3 @@ nonisolated struct AssistedMoveDogfoodLogEvent: Equatable, Sendable {
         ]
     }
 }
-
-private extension IconMoveError {
-    nonisolated var diagnosticName: String {
-        switch self {
-        case .disabled:
-            "disabled"
-        case .proModeRequired:
-            "proModeRequired"
-        case .accessibilityPermissionRequired:
-            "accessibilityPermissionRequired"
-        case .confirmationCancelled:
-            "confirmationCancelled"
-        case .moveAlreadyInProgress:
-            "moveAlreadyInProgress"
-        case .missingSourceFrame:
-            "missingSourceFrame"
-        case .unsafeOwnItem:
-            "unsafeOwnItem"
-        case .unsafeSystemItem:
-            "unsafeSystemItem"
-        case .planningFailed:
-            "planningFailed"
-        case .dragFailed:
-            "dragFailed"
-        case .moveCancelled:
-            "moveCancelled"
-        case .verificationFailed:
-            "verificationFailed"
-        }
-    }
-}
