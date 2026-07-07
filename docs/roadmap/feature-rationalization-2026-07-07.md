@@ -354,3 +354,53 @@ call, one in a test helper call) were caught by the build and fixed — a masked
 actual number requires the hardware QA run — this environment cannot drive real
 third-party menu bar icons. Run the matrix, then read
 `~/Library/Application Support/MenuBarDeclutter/move-reliability.txt`.
+
+### Gate result — PASS ✅ (2026-07-07)
+
+Hardware QA run returned:
+
+```
+Gate: success rate ≥ 95.0% over ≥ 20 samples → PASS
+Success rate: 100.0% (20/20)  •  first-attempt 19/20  •  mean 1.03s  •  0 hard failures
+```
+
+Cleared to build Workspaces on the primitive. Caveats on record: **20 is the gate
+floor** (0 failures in 20 is statistically consistent with a true rate as low as
+~85% — a green light, not a guarantee), and the **per-app / per-transition
+diversity** of those 20 is still to be confirmed. The collector stays on so the
+number self-hardens with use and the first real failure surfaces the failure mode.
+
+### Workspaces Level-2 — kickoff ✅ (2026-07-07)
+
+**Design decisions (locked):**
+1. **Target model** — a workspace stores desired zones only for items it has an
+   opinion on; items with no opinion are left as-is (never force-hidden); targets
+   not currently present are reported unresolved, not treated as failures.
+2. **Reconciliation** — move only items whose current zone ≠ desired; order
+   **hide-first** (most-hidden target first) to minimize visible-bar thrash and
+   keep any partial state on the safer (more-hidden) side.
+3. **Rollback** — switch-level **atomic**: if move k of n fails, reverse the k−1
+   already applied so a switch is all-or-nothing (honors "don't scramble the bar").
+4. **Apply gate + preview** — real moves behind the existing Assisted Move opt-in;
+   the plan itself is the dry-run preview shown before anything touches the bar.
+
+**Built (first slice):** `Workspaces/WorkspaceReconciliationPlanner.swift` — a
+pure, deterministic planner (scan + target → ordered move plan) with
+`unresolved` / `already-satisfied` reporting and `rollbackPlan(afterApplying:)`
+for atomic undo. `PlannedMove.command` bridges to the measured `IconMoveService`.
+
+**Verification:** compiles into the app + logic targets (`TEST BUILD SUCCEEDED`),
+and all 10 planner scenarios pass. NOTE: the Xcode test *runner* is currently
+environment-blocked on clean builds here — `xcrun xctest` fails to load the
+freshly-signed `MenuBarDeclutter.debug.dylib` (code-signature load error), which
+also hits the pre-existing suites. To confirm the logic despite the blocked
+runner, the 10 scenarios were re-run green through the `swift` interpreter against
+an inlined copy of the planner. Re-run the normal lane once signing recovers.
+
+**Next slices (not started):**
+- (a) **Execution layer** — apply a plan through `IconMoveService` with per-move
+  verification and atomic rollback on failure, recording a switch-level outcome.
+- (b) **Wire into `WorkspaceSwitchingService`** behind the apply gate.
+- (c) **Target model** on `MenuBarWorkspace` / assignments (what each workspace
+  stores as desired visibility).
+- (d) **Preview UI** for the dry-run plan before applying.
