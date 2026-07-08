@@ -55,36 +55,28 @@ struct SearchSettingsView: View {
 
                 ClearGlassDivider()
 
-                ClearGlassControlRow(
-                    systemImage: "magnifyingglass",
-                    title: "Show in status menu",
-                    subtitle: "Keep the Find Icon shortcut visible in the status menu. Direct links and automation still open the gated panel.",
-                    iconTint: .blue
-                ) {
-                    Toggle("Show Find Icon in status menu", isOn: $settingsStore.searchEnabled)
-                        .labelsHidden()
-                }
+                ClearGlassRowStack {
+                    ClearGlassToggleRow(
+                        systemImage: "magnifyingglass",
+                        title: "Show in status menu",
+                        subtitle: "Keep the Find Icon shortcut visible in the status menu. Direct links and automation still open the gated panel.",
+                        iconTint: .blue,
+                        isOn: $settingsStore.searchEnabled
+                    )
 
-                ClearGlassDivider()
+                    ClearGlassToggleRow(
+                        systemImage: "eye",
+                        title: "Reveal item when selected",
+                        subtitle: "Temporarily reveal the selected menu bar item.",
+                        isOn: $settingsStore.searchRevealOnSelection
+                    )
 
-                ClearGlassControlRow(
-                    systemImage: "eye",
-                    title: "Reveal item when selected",
-                    subtitle: "Temporarily reveal the selected menu bar item."
-                ) {
-                    Toggle("Reveal item when selected", isOn: $settingsStore.searchRevealOnSelection)
-                        .labelsHidden()
-                }
-
-                ClearGlassDivider()
-
-                ClearGlassControlRow(
-                    systemImage: "square.dashed",
-                    title: "Highlight selected item",
-                    subtitle: "Visually highlight the selected result in the list."
-                ) {
-                    Toggle("Highlight selected item", isOn: $settingsStore.searchHighlightOnSelection)
-                        .labelsHidden()
+                    ClearGlassToggleRow(
+                        systemImage: "square.dashed",
+                        title: "Highlight selected item",
+                        subtitle: "Visually highlight the selected result in the list.",
+                        isOn: $settingsStore.searchHighlightOnSelection
+                    )
                 }
 
                 ClearGlassInlineMessage(
