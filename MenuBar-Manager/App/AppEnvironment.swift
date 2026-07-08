@@ -765,6 +765,10 @@ final class AppEnvironment {
         secondBarWindowController: menuBarItemSurfaceCoordinator.secondBarWindowController,
         triggerService: profileAutomationCoordinator.triggerService,
         liveStatusSynchronizer: liveStatusSynchronizer,
+        groupStore: groupStore,
+        hotkeyBindingStore: hotkeyBindingStore,
+        groupStatusItemController: groupStatusItemController,
+        dynamicHotkeyRegistrationService: dynamicHotkeyRegistrationService,
         isHoverRevealSuppressed: { [weak self] in
             self?.isHoverRevealCurrentlySuppressed() == true
         },
@@ -1609,23 +1613,11 @@ final class AppEnvironment {
     }
 
     func refreshGroupSettings() {
-        groupStore.load()
-        if safeModeLaunchState.isSafeModeActive {
-            groupStatusItemController.enterSafeMode()
-        } else {
-            groupStatusItemController.refresh()
-        }
-        updateLiveStatusFromServices()
+        settingsRuntimeCoordinator.refreshGroupSettings()
     }
 
     func refreshDynamicHotkeys() {
-        hotkeyBindingStore.load()
-        if safeModeLaunchState.isSafeModeActive {
-            dynamicHotkeyRegistrationService.unregisterAll()
-        } else {
-            dynamicHotkeyRegistrationService.refreshRegistrations()
-        }
-        updateLiveStatusFromServices()
+        settingsRuntimeCoordinator.refreshDynamicHotkeys()
     }
 
     func refreshAutomationSettings() {

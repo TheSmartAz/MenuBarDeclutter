@@ -14,6 +14,10 @@ final class SettingsRuntimeCoordinator {
     private let secondBarWindowController: SecondBarWindowController
     private let triggerService: TriggerService
     private let liveStatusSynchronizer: AppEnvironmentLiveStatusSynchronizer
+    private let groupStore: IconGroupStore
+    private let hotkeyBindingStore: HotkeyBindingStore
+    private let groupStatusItemController: IconGroupStatusItemController
+    private let dynamicHotkeyRegistrationService: DynamicHotkeyRegistrationService
     private let isHoverRevealSuppressed: () -> Bool
     private let runHealthCheck: (String) -> Void
     private let showSearch: () -> Void
@@ -31,6 +35,10 @@ final class SettingsRuntimeCoordinator {
         secondBarWindowController: SecondBarWindowController,
         triggerService: TriggerService,
         liveStatusSynchronizer: AppEnvironmentLiveStatusSynchronizer,
+        groupStore: IconGroupStore,
+        hotkeyBindingStore: HotkeyBindingStore,
+        groupStatusItemController: IconGroupStatusItemController,
+        dynamicHotkeyRegistrationService: DynamicHotkeyRegistrationService,
         isHoverRevealSuppressed: @escaping () -> Bool,
         runHealthCheck: @escaping (String) -> Void,
         showSearch: @escaping () -> Void
@@ -47,6 +55,10 @@ final class SettingsRuntimeCoordinator {
         self.secondBarWindowController = secondBarWindowController
         self.triggerService = triggerService
         self.liveStatusSynchronizer = liveStatusSynchronizer
+        self.groupStore = groupStore
+        self.hotkeyBindingStore = hotkeyBindingStore
+        self.groupStatusItemController = groupStatusItemController
+        self.dynamicHotkeyRegistrationService = dynamicHotkeyRegistrationService
         self.isHoverRevealSuppressed = isHoverRevealSuppressed
         self.runHealthCheck = runHealthCheck
         self.showSearch = showSearch
@@ -87,6 +99,26 @@ final class SettingsRuntimeCoordinator {
         }
         menuBarScanCoordinator.refreshAfterSettingsChanged()
         runHealthCheck("privacy settings changed")
+    }
+
+    func refreshGroupSettings() {
+        groupStore.load()
+        if safeModeLaunchState.isSafeModeActive {
+            groupStatusItemController.enterSafeMode()
+        } else {
+            groupStatusItemController.refresh()
+        }
+        liveStatusSynchronizer.synchronize()
+    }
+
+    func refreshDynamicHotkeys() {
+        hotkeyBindingStore.load()
+        if safeModeLaunchState.isSafeModeActive {
+            dynamicHotkeyRegistrationService.unregisterAll()
+        } else {
+            dynamicHotkeyRegistrationService.refreshRegistrations()
+        }
+        liveStatusSynchronizer.synchronize()
     }
 
     func refreshTriggerSettings() {
