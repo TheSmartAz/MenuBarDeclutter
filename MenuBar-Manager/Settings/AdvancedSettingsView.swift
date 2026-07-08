@@ -961,15 +961,13 @@ private struct IconMovingControlsPanel: View {
             iconTint: settingsStore.iconMovingEnabled ? .purple : .secondary
         ) {
             VStack(spacing: 0) {
-                ClearGlassControlRow(
+                ClearGlassToggleRow(
                     systemImage: "arrow.up.left.and.arrow.down.right",
                     title: "Enable icon moving",
                     subtitle: "Allow explicit simulated Command-drag moves between menu bar locations.",
-                    iconTint: .purple
-                ) {
-                    Toggle("Enable icon moving", isOn: $iconMovingEnabled)
-                        .labelsHidden()
-                }
+                    iconTint: .purple,
+                    isOn: $iconMovingEnabled
+                )
 
                 ClearGlassDivider()
 
