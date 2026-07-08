@@ -18,6 +18,7 @@ final class AppEnvironment {
     let safeModeService: SafeModeService
     let safeModeLaunchState: SafeModeLaunchState
     let settingsMigrationResult: SettingsMigrationResult
+    let screenCapturePermissionService: ScreenCapturePermissionService
 
     let screenGeometry: ScreenGeometryService
     let hidingService: HidingService
@@ -38,8 +39,6 @@ final class AppEnvironment {
         promptTrustProvider: accessibilityPromptTrustProvider,
         systemSettingsOpener: accessibilitySystemSettingsOpener
     )
-
-    lazy var screenCapturePermissionService = ScreenCapturePermissionService()
 
     private lazy var menuBarRenderedIconCache: MenuBarRenderedIconCache = {
         let cache = MenuBarRenderedIconCache.shared
@@ -64,10 +63,21 @@ final class AppEnvironment {
                 reason: "rendered icon reveal sweep"
             )
             return result?.snapshots ?? self.liveStatus.scannedMenuBarItems
+        },
+        secondBarWarmUpStatusHandler: { [weak self] inProgress, refreshedCount in
+            let result = refreshedCount.map { "Refreshed \($0) thumbnail(s)" }
+            self?.liveStatus.updateSecondBarIconWarmUp(
+                inProgress: inProgress,
+                result: result
+            )
         }
     )
 
     private lazy var axMenuBarScanner = AXMenuBarScanner(
+        diagnosticsLogger: diagnosticsLogger
+    )
+
+    private lazy var menuBarItemDirectActivationService = MenuBarItemDirectActivationService(
         diagnosticsLogger: diagnosticsLogger
     )
 
@@ -78,6 +88,10 @@ final class AppEnvironment {
     private lazy var menuBarItemMemoryStore = MenuBarItemMemoryStore(
         fileURL: appSupportPaths.menuBarItemMemoryFileURL
     )
+
+    /// Local-only collector of per-attempt assisted-move outcomes; feeds the
+    /// measured success rate that gates the Level-2 Workspaces work.
+    private lazy var moveOutcomeStore = MoveOutcomeStore(appSupportPaths: appSupportPaths)
 
     private lazy var placementItemPreferenceStore = PlacementItemPreferenceStore(
         fileURL: appSupportPaths.placementItemPreferencesFileURL
@@ -124,7 +138,13 @@ final class AppEnvironment {
                     message: "Command router is unavailable.",
                     diagnosticReason: "routerUnavailable"
                 )
-        }
+        },
+        exportDiagnostics: ProcessInfo.processInfo.arguments.contains("--qa-diagnostics-url-export-enabled") ? { [weak self] url in
+            self?.exportDiagnosticsJSON(to: url) == true
+        } : nil,
+        showCompactSecondBar: ProcessInfo.processInfo.arguments.contains("--qa-diagnostics-url-export-enabled") ? { [weak self] in
+            self?.showCompactSecondBarFromQAURL() == true
+        } : nil
     )
 
     private var statusItemMenuOpen = false
@@ -211,6 +231,15 @@ final class AppEnvironment {
                     )
                 }
                 return await self.executeAssistedMoveFromSettings(snapshot, command: command)
+            },
+            applyWorkspaceLayout: { [weak self] in
+                await self?.applyActiveWorkspaceLayout() ?? nil
+            },
+            isWorkspaceLayoutApplyEnabled: { [weak self] in
+                guard let self else { return false }
+                return self.settingsStore.iconMovingEnabled
+                    && self.settingsStore.proModeEnabled
+                    && self.accessibilityPermissionService.status == .granted
             },
             profile: SettingsProfileActions(
                 dryRun: { [weak self] profile in
@@ -507,9 +536,9 @@ final class AppEnvironment {
         hoverRevealSuppressionProvider: { [weak self] in
             self?.isHoverRevealCurrentlySuppressed() == true
         },
-        primaryClickPreviewAction: { [weak self] in
+        primaryClickAction: { [weak self] button in
             guard let self else { return false }
-            return self.showFunctionBarFromPrimaryClick()
+            return self.handleStatusItemPrimaryClick(anchorFrame: button.menuBarDeclutterScreenFrame)
         }
     )
 
@@ -540,6 +569,7 @@ final class AppEnvironment {
         accessibilityPermissionService: accessibilityPermissionService,
         menuBarScanCoordinator: menuBarScanCoordinator,
         iconCaptureCoordinator: menuBarIconCaptureCoordinator,
+        renderedIconCache: menuBarRenderedIconCache,
         liveStatusSynchronizer: liveStatusSynchronizer,
         separatorFramesProvider: { [weak self] in
             self?.currentSeparatorFrames() ?? AppEnvironment.emptySeparatorFrames
@@ -564,6 +594,7 @@ final class AppEnvironment {
         openPrivacySettings: { [weak self] in
             self?.settingsWindowController.show(section: SettingsSection.privacy)
         },
+        moveOutcomeRecorder: moveOutcomeStore,
         routeCommand: { [weak self] command in
             self?.commandRouter.route(command)
                 ?? MenuBarCommandResult.stopped(
@@ -574,6 +605,31 @@ final class AppEnvironment {
                 )
         }
     )
+
+    /// Level-2 layout coordinator (inert until UI drives it). The apply gate
+    /// reuses the Assisted Move opt-in conditions.
+    private lazy var workspaceLayoutCoordinator = menuBarItemSurfaceCoordinator.makeWorkspaceLayoutCoordinator(
+        isApplyEnabled: { [weak self] in
+            guard let self else { return false }
+            return self.settingsStore.iconMovingEnabled
+                && self.settingsStore.proModeEnabled
+                && self.accessibilityPermissionService.status == .granted
+        }
+    )
+
+    /// Entry point for a future "apply layout on switch" control: applies the
+    /// active workspace's target layout to the real bar iff the apply gate is on.
+    func applyActiveWorkspaceLayout() async -> WorkspaceLayoutApplyResult? {
+        let workspace = workspaceSwitchingService.activeWorkspace()
+        return await workspaceLayoutCoordinator.applyLayoutIfEnabled(for: workspace)
+    }
+
+    /// Entry point for a future "Save current layout to workspace" control.
+    func captureLayoutIntoActiveWorkspace() async {
+        let workspace = workspaceSwitchingService.activeWorkspace()
+        let updated = await workspaceLayoutCoordinator.captureCurrentLayout(into: workspace)
+        _ = workspaceSwitchingService.updateWorkspace(updated)
+    }
 
     private lazy var healthCoordinator = AppHealthCoordinator(
         dependencies: AppHealthCoordinatorDependencies(
@@ -948,6 +1004,9 @@ final class AppEnvironment {
         accessibilityStatus: { [weak self] in
             self?.accessibilityPermissionService.status ?? .notRequested
         },
+        screenCaptureStatus: { [weak self] in
+            self?.screenCapturePermissionService.refreshStatus() ?? .unknown
+        },
         privateAccess: protectedActionGate,
         handlers: makeCommandHandlers()
     )
@@ -999,6 +1058,7 @@ final class AppEnvironment {
         diagnosticsLogger: DiagnosticsLogger = DiagnosticsLogger(),
         appSupportPaths: AppSupportPaths = AppSupportPaths(),
         screenGeometry: ScreenGeometryService = ScreenGeometryService(),
+        screenCapturePermissionService: ScreenCapturePermissionService? = nil,
         launchAtLoginService: LaunchAtLoginService? = nil,
         reflectLaunchAtLoginOnStart: Bool = true,
         presentMigrationNoticeOnStart: Bool = true,
@@ -1023,6 +1083,9 @@ final class AppEnvironment {
         self.diagnosticsLogger = diagnosticsLogger
         self.appSupportPaths = appSupportPaths
         self.screenGeometry = screenGeometry
+        self.screenCapturePermissionService = screenCapturePermissionService ?? ScreenCapturePermissionService(
+            settingsStore: settingsStore
+        )
         self.reflectLaunchAtLoginOnStart = reflectLaunchAtLoginOnStart
         self.presentMigrationNoticeOnStart = presentMigrationNoticeOnStart
         self.accessibilityTrustProvider = accessibilityTrustProvider
@@ -1399,7 +1462,7 @@ final class AppEnvironment {
             "Unlock to reveal always-hidden menu bar items."
         case .showFindIcon:
             "Unlock to open Find Icon."
-        case .showSecondBar, .showIconPanel, .showItemInSecondBar:
+        case .showSecondBar, .showIconPanel, .showItemInSecondBar, .activateItem:
             "Unlock to open Second Bar."
         case .showGroupPanel:
             "Unlock to open this protected group."
@@ -1852,12 +1915,128 @@ final class AppEnvironment {
         showSettings(section: .diagnostics)
     }
 
+    @discardableResult
+    func exportDiagnosticsJSON(to url: URL) -> Bool {
+        do {
+            _ = try appSupportPaths.ensureDirectoriesExist()
+            try FileManager.default.createDirectory(
+                at: url.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
+
+            let snapshot = diagnosticsExporter.makeSnapshot(
+                settingsStore: settingsStore,
+                logger: diagnosticsLogger,
+                secondBarReadiness: makeSecondBarReadinessDiagnosticsSnapshot(),
+                secondBarRuntime: makeSecondBarRuntimeDiagnosticsSnapshot(),
+                workspacePreview: nil,
+                events: diagnosticsLogger.events
+            )
+            let data = try diagnosticsExporter.serialize(
+                snapshot,
+                format: .json,
+                includeAppSupportPath: false,
+                appSupportPath: nil
+            )
+            try data.write(to: url, options: .atomic)
+            diagnosticsLogger.log(
+                "Diagnostics JSON exported to \(url.lastPathComponent).",
+                level: .info,
+                category: .urlAutomation
+            )
+            return true
+        } catch {
+            diagnosticsLogger.log(
+                "Diagnostics JSON export failed: \(error.localizedDescription)",
+                level: .error,
+                category: .urlAutomation
+            )
+            return false
+        }
+    }
+
     func showSearch() {
         menuBarItemSurfaceCoordinator.showSearch()
     }
 
     func showSecondBar() {
+        guard openSecondBarIfReady(anchorFrame: nil) else {
+            return
+        }
         menuBarItemSurfaceCoordinator.showSecondBar()
+    }
+
+    func showCompactSecondBarForUITesting() {
+        guard ProcessInfo.processInfo.arguments.contains("--ui-testing") else {
+            return
+        }
+
+        _ = handleStatusItemPrimaryClick(anchorFrame: compactSecondBarUITestingAnchorFrame())
+    }
+
+    @discardableResult
+    private func showCompactSecondBarFromQAURL() -> Bool {
+        handleStatusItemPrimaryClick(anchorFrame: nil)
+    }
+
+    private func compactSecondBarUITestingAnchorFrame() -> CGRect {
+        let screen = SecondBarPositioningService.currentScreens().first { $0.isMain }
+            ?? SecondBarPositioningService.fallbackScreen
+        return CGRect(
+            x: screen.frame.maxX - 56,
+            y: screen.frame.minY + 4,
+            width: 24,
+            height: 24
+        )
+    }
+
+    func seedRenderedIconsForUITesting(itemIDs: Set<MenuBarItemSnapshot.ID>) {
+        guard ProcessInfo.processInfo.arguments.contains("--ui-testing") else {
+            return
+        }
+
+        let resolver = MenuBarIconAppearanceResolver()
+        for snapshot in liveStatus.scannedMenuBarItems where itemIDs.contains(snapshot.id) {
+            guard let frame = snapshot.frame,
+                  let cacheKey = resolver.cacheKey(for: snapshot),
+                  let image = Self.makeUITestingRenderedIconImage(seed: snapshot.id) else {
+                continue
+            }
+
+            menuBarRenderedIconCache.cache(MenuBarIconSnapshot(
+                identity: MenuBarIconIdentity(snapshot: snapshot),
+                image: image,
+                frameInScreenPoints: frame,
+                scale: NSScreen.main?.backingScaleFactor ?? 2,
+                cacheKey: cacheKey,
+                source: .renderedCapture,
+                capturedAt: Date()
+            ))
+        }
+    }
+
+    private static func makeUITestingRenderedIconImage(seed: String) -> CGImage? {
+        let size = 24
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        guard let context = CGContext(
+            data: nil,
+            width: size,
+            height: size,
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else {
+            return nil
+        }
+
+        let hash = UInt(bitPattern: seed.hashValue)
+        let red = CGFloat((hash & 0xFF0000) >> 16) / 255
+        let green = CGFloat((hash & 0x00FF00) >> 8) / 255
+        let blue = CGFloat(hash & 0x0000FF) / 255
+        context.setFillColor(NSColor(red: red, green: green, blue: blue, alpha: 1).cgColor)
+        context.fillEllipse(in: CGRect(x: 4, y: 4, width: 16, height: 16))
+        return context.makeImage()
     }
 
     func showWorkspacePreview() {
@@ -1915,6 +2094,101 @@ final class AppEnvironment {
             source: .statusMenu
         ))
         return result.didRun
+    }
+
+    @discardableResult
+    private func handleStatusItemPrimaryClick(anchorFrame: CGRect?) -> Bool {
+        let safeModeActive = safeModeLaunchState.isSafeModeActive
+        let readinessState: ProSecondBarReadinessState = safeModeActive
+            ? .missingEntitlement
+            : currentProSecondBarReadiness().state
+        switch StatusBarPrimaryClickRouter.route(
+            entitlement: safeModeActive ? .basic : currentProEntitlementState(),
+            readiness: readinessState,
+            primaryClickOptIn: settingsStore.secondBarPrimaryClickEnabled,
+            safeModeActive: safeModeActive
+        ) {
+        case .toggleCompactStrip:
+            menuBarItemSurfaceCoordinator.toggleCompactSecondBar(anchorFrame: anchorFrame)
+            return true
+        case .showSecondBarRequirements:
+            menuBarItemSurfaceCoordinator.showSecondBarRequirements(
+                readinessState,
+                anchorFrame: anchorFrame
+            )
+            return true
+        case .toggleInlineVisibility:
+            guard settingsStore.functionBarPrimaryClickEnabled else {
+                return false
+            }
+            return showFunctionBarFromPrimaryClick()
+        }
+    }
+
+    private func currentProEntitlementState() -> ProEntitlementState {
+        guard settingsStore.proModeEnabled else {
+            return .basic
+        }
+        return .licensed
+    }
+
+    private func currentProSecondBarReadiness() -> ProSecondBarReadinessResult {
+        ProSecondBarReadiness.evaluate(ProSecondBarReadinessInput(
+            entitlement: currentProEntitlementState(),
+            accessibilityDiscoveryEnabled: settingsStore.accessibilityDiscoveryEnabled,
+            accessibilityPermission: accessibilityPermissionService.currentStatus,
+            accurateIconsEnabled: settingsStore.renderedIconCaptureEnabled,
+            screenCapturePermission: screenCapturePermissionService.refreshStatus()
+        ))
+    }
+
+    private func makeSecondBarReadinessDiagnosticsSnapshot() -> DiagnosticsExporter.SecondBarReadinessDiagnosticsSnapshot {
+        let input = ProSecondBarReadinessInput(
+            entitlement: currentProEntitlementState(),
+            accessibilityDiscoveryEnabled: settingsStore.accessibilityDiscoveryEnabled,
+            accessibilityPermission: accessibilityPermissionService.currentStatus,
+            accurateIconsEnabled: settingsStore.renderedIconCaptureEnabled,
+            screenCapturePermission: screenCapturePermissionService.refreshStatus()
+        )
+        return DiagnosticsExporter.SecondBarReadinessDiagnosticsSnapshot(
+            input: input,
+            readiness: ProSecondBarReadiness.evaluate(input),
+            primaryClickOptIn: settingsStore.secondBarPrimaryClickEnabled,
+            safeModeActive: safeModeLaunchState.isSafeModeActive
+        )
+    }
+
+    private func makeSecondBarRuntimeDiagnosticsSnapshot() -> DiagnosticsExporter.SecondBarRuntimeDiagnosticsSnapshot {
+        DiagnosticsExporter.SecondBarRuntimeDiagnosticsSnapshot(
+            visible: liveStatus.secondBarVisible,
+            itemCount: liveStatus.secondBarItemCount,
+            currentScreen: liveStatus.secondBarCurrentScreen,
+            lastPosition: liveStatus.secondBarLastPosition,
+            iconWarmUpInProgress: liveStatus.secondBarIconWarmUpInProgress,
+            lastIconWarmUpResult: liveStatus.secondBarLastIconWarmUpResult,
+            lastCompactVisibleItemCount: liveStatus.secondBarLastCompactVisibleItemCount,
+            lastCompactOverflowItemCount: liveStatus.secondBarLastCompactOverflowItemCount,
+            lastCompactFallbackIconCount: liveStatus.secondBarLastCompactFallbackIconCount,
+            lastCompactScanState: liveStatus.secondBarLastCompactScanState,
+            lastCompactAvoidedNotch: liveStatus.secondBarLastCompactAvoidedNotch,
+            lastActivationResult: liveStatus.secondBarLastActivationResult,
+            lastActivationMatrixResult: liveStatus.secondBarLastActivationMatrixResult,
+            lastActivationTargetZone: liveStatus.secondBarLastActivationTargetZone,
+            lastActivationVisitedElementCount: liveStatus.secondBarLastActivationVisitedElementCount,
+            lastActivationAXError: liveStatus.secondBarLastActivationAXError
+        )
+    }
+
+    private func openSecondBarIfReady(anchorFrame: CGRect?) -> Bool {
+        let readiness = currentProSecondBarReadiness()
+        guard readiness.isReady else {
+            menuBarItemSurfaceCoordinator.showSecondBarRequirements(
+                readiness.state,
+                anchorFrame: anchorFrame
+            )
+            return false
+        }
+        return true
     }
 
     func showInfoStripPreview() {
@@ -2142,7 +2416,11 @@ final class AppEnvironment {
     }
 
     func toggleSecondBar() {
-        menuBarItemSurfaceCoordinator.toggleSecondBar()
+        if liveStatus.secondBarVisible {
+            menuBarItemSurfaceCoordinator.hideSecondBar()
+        } else {
+            showSecondBar()
+        }
     }
 
     func refreshMenuBarItems() {
@@ -2219,6 +2497,9 @@ final class AppEnvironment {
         }
         handlers.showItemInSecondBar = { [weak self] itemID in
             self?.showMenuBarItemInSecondBar(id: itemID) == true
+        }
+        handlers.activateItem = { [weak self] itemID in
+            self?.activateMenuBarItem(id: itemID) == true
         }
         handlers.showGroupPanel = { [weak self] groupID in
             self?.showGroupPanel(id: groupID) == true
@@ -2365,6 +2646,33 @@ final class AppEnvironment {
         return true
     }
 
+    private func activateMenuBarItem(id: String) -> Bool {
+        guard let snapshot = liveStatus.scannedMenuBarItems.first(where: { $0.id == id }) else {
+            diagnosticsLogger.log("Second Bar activation target unavailable.", level: .warning, category: .layout)
+            return false
+        }
+
+        let result = menuBarItemDirectActivationService.activate(snapshot: snapshot)
+        liveStatus.updateSecondBarDirectActivation(
+            result: result,
+            targetZone: snapshot.zone
+        )
+        diagnosticsLogger.log(
+            "Second Bar activation result: \(result.status.rawValue).",
+            level: result.didActivate ? .debug : .warning,
+            category: .layout,
+            metadata: [
+                "targetID": snapshot.id,
+                "targetZone": snapshot.zone.rawValue,
+                "matrixResult": result.matrixOutcome.rawValue,
+                "visitedElementCount": "\(result.visitedElementCount)",
+                "axError": result.axErrorDescription ?? "none",
+                "message": result.message
+            ]
+        )
+        return result.didActivate
+    }
+
     private func showGroupPanel(id: UUID) -> Bool {
         groupStore.load()
         guard let group = groupStore.groups.first(where: { $0.id == id }) else {
@@ -2499,5 +2807,12 @@ final class AppEnvironment {
 
     func quit() {
         NSApp.terminate(nil)
+    }
+}
+
+private extension NSView {
+    var menuBarDeclutterScreenFrame: CGRect? {
+        guard let window else { return nil }
+        return window.convertToScreen(convert(bounds, to: nil))
     }
 }

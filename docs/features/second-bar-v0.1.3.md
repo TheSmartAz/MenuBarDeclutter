@@ -1,6 +1,6 @@
 # Second Bar v0.1.3
 
-Status: Preview, Pro Discovery gated.
+Status: Preview, Pro Discovery gated. The newer Pro compact/status-menu entry point adds Accurate Icons and Screen Recording to the readiness gate.
 
 Second Bar is a floating metadata/icon browser for hidden and always-hidden menu bar items. It uses Accessibility metadata and prefers Accurate Icons rendered thumbnails when that separate opt-in permission path is enabled; otherwise it falls back to bundle/app icons.
 
@@ -15,7 +15,7 @@ Second Bar is a floating metadata/icon browser for hidden and always-hidden menu
 
 ## Gates
 
-Second Bar requires:
+The v0.1.3 management panel requires:
 
 - Pro Mode enabled.
 - Accessibility Discovery enabled.
@@ -23,9 +23,17 @@ Second Bar requires:
 - Safe Mode inactive.
 - A usable scan or a clear stale/no-scan state.
 
+The Pro compact strip and `Show Second Bar` command require the stricter current readiness gate:
+
+- Pro Mode enabled.
+- Accessibility Discovery enabled.
+- macOS Accessibility permission granted.
+- Accurate Icons enabled.
+- Screen Recording permission granted.
+
 ## Boundaries
 
-Second Bar does not request Screen Recording on its own, automate broad clicking, use private APIs, or use the network. Accurate Icons may provide local rendered thumbnails only when enabled from Privacy settings.
+Second Bar does not request Screen Recording automatically, automate broad clicking, use private APIs, or use the network. Accurate Icons may provide local rendered thumbnails only when enabled from Privacy settings and after the explicit Screen Recording permission path succeeds.
 
 It is not a live system menu bar clone. Some menu extras may not expose useful metadata, and uncapturable items fall back to their last rendered thumbnail or app icon.
 

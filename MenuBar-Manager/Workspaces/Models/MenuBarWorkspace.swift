@@ -9,6 +9,9 @@ nonisolated struct MenuBarWorkspace: Identifiable, Codable, Equatable, Sendable 
     var iconName: String
     var functionItems: [WorkspaceItem]
     var infoItems: [InfoTileConfiguration]
+    /// Level-2: desired real-item visibility for this workspace (see
+    /// `WorkspaceItemTarget`). Empty means "config only; do not move real icons".
+    var itemTargets: [WorkspaceItemTarget]
     var functionBarConfig: WorkspaceFunctionBarConfig
     var infoStripConfig: WorkspaceInfoStripConfig
     var displayMode: WorkspaceDisplayMode
@@ -27,6 +30,7 @@ nonisolated struct MenuBarWorkspace: Identifiable, Codable, Equatable, Sendable 
         iconName: String = "rectangle.3.group",
         functionItems: [WorkspaceItem] = [],
         infoItems: [InfoTileConfiguration] = [],
+        itemTargets: [WorkspaceItemTarget] = [],
         functionBarConfig: WorkspaceFunctionBarConfig = .default,
         infoStripConfig: WorkspaceInfoStripConfig = .default,
         displayMode: WorkspaceDisplayMode = .functionBar,
@@ -44,6 +48,7 @@ nonisolated struct MenuBarWorkspace: Identifiable, Codable, Equatable, Sendable 
         self.iconName = iconName
         self.functionItems = functionItems
         self.infoItems = infoItems
+        self.itemTargets = itemTargets
         self.functionBarConfig = functionBarConfig
         self.infoStripConfig = infoStripConfig
         self.displayMode = displayMode
@@ -63,6 +68,7 @@ nonisolated struct MenuBarWorkspace: Identifiable, Codable, Equatable, Sendable 
         case iconName
         case functionItems
         case infoItems
+        case itemTargets
         case functionBarConfig
         case infoStripConfig
         case displayMode
@@ -84,6 +90,7 @@ nonisolated struct MenuBarWorkspace: Identifiable, Codable, Equatable, Sendable 
             iconName: try container.decodeIfPresent(String.self, forKey: .iconName) ?? "rectangle.3.group",
             functionItems: try container.decodeIfPresent([WorkspaceItem].self, forKey: .functionItems) ?? [],
             infoItems: try container.decodeIfPresent([InfoTileConfiguration].self, forKey: .infoItems) ?? [],
+            itemTargets: try container.decodeIfPresent([WorkspaceItemTarget].self, forKey: .itemTargets) ?? [],
             functionBarConfig: try container.decodeIfPresent(WorkspaceFunctionBarConfig.self, forKey: .functionBarConfig) ?? .default,
             infoStripConfig: try container.decodeIfPresent(WorkspaceInfoStripConfig.self, forKey: .infoStripConfig) ?? .default,
             displayMode: try container.decodeIfPresent(WorkspaceDisplayMode.self, forKey: .displayMode) ?? .functionBar,

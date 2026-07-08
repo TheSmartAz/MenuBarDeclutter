@@ -388,6 +388,7 @@ final class SettingsImportService {
              .showPrimarySeparator,
              .launchAtLoginEnabled,
              .lastAccessibilityPermissionStatus,
+             .lastScreenCapturePermissionStatus,
              .iconMovingConfirmationSuppressed,
              .dogfoodModeEnabled,
              .dogfoodRunID,
@@ -450,6 +451,11 @@ final class SettingsImportService {
             return applyBool(rawValue) { settingsStore.searchHighlightOnSelection = $0 }
         case .secondBarEnabled:
             return applyBool(rawValue) { settingsStore.secondBarEnabled = $0 }
+        case .secondBarPrimaryClickEnabled:
+            guard shouldApplyPreviewGate(rawValue, importExperimentalSettings: importExperimentalSettings) else {
+                return .skippedExperimental("Second Bar Primary Click")
+            }
+            return applyBool(rawValue) { settingsStore.secondBarPrimaryClickEnabled = $0 }
         case .secondBarShowHiddenItems:
             return applyBool(rawValue) { settingsStore.secondBarShowHiddenItems = $0 }
         case .secondBarShowAlwaysHiddenItems:
@@ -764,6 +770,7 @@ final class SettingsImportService {
         (.workspacesPreviewEnabled, "Workspaces Preview"),
         (.functionBarPreviewEnabled, "Function Bar Preview"),
         (.functionBarPrimaryClickEnabled, "Function Bar Primary Click"),
+        (.secondBarPrimaryClickEnabled, "Second Bar Primary Click"),
         (.setBuilderPreviewEnabled, "Set Builder Preview"),
         (.infoStripPreviewEnabled, "Info Strip Preview"),
         (.infoStripAutoShowEnabled, "Info Strip Auto-show")

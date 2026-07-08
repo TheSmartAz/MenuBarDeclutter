@@ -3,6 +3,8 @@ import SwiftUI
 
 struct AutomationSettingsView: View {
     @Bindable var settingsStore: SettingsStore
+    var accessibilityPermissionService: AccessibilityPermissionService?
+    var screenCapturePermissionService: ScreenCapturePermissionService?
     var onChange: (() -> Void)?
 
     private var readyShortcutCount: Int {
@@ -60,6 +62,9 @@ struct AutomationSettingsView: View {
                     appIntentsEnabled: settingsStore.appIntentsEnabled,
                     proModeEnabled: settingsStore.proModeEnabled,
                     accessibilityDiscoveryEnabled: settingsStore.accessibilityDiscoveryEnabled,
+                    accessibilityGranted: accessibilityPermissionService?.status == .granted,
+                    accurateIconsEnabled: settingsStore.renderedIconCaptureEnabled,
+                    screenRecordingGranted: screenCapturePermissionService?.status == .granted,
                     canApplyProfiles: settingsStore.appIntentsCanApplyProfiles,
                     canAccessLabs: settingsStore.appIntentsCanAccessLabs,
                     spacingLabsEnabled: settingsStore.menuBarSpacingLabsEnabled
@@ -77,6 +82,9 @@ struct AutomationSettingsView: View {
             appIntentsEnabled: settingsStore.appIntentsEnabled,
             proModeEnabled: settingsStore.proModeEnabled,
             accessibilityDiscoveryEnabled: settingsStore.accessibilityDiscoveryEnabled,
+            accessibilityGranted: accessibilityPermissionService?.status == .granted,
+            accurateIconsEnabled: settingsStore.renderedIconCaptureEnabled,
+            screenRecordingGranted: screenCapturePermissionService?.status == .granted,
             canApplyProfiles: settingsStore.appIntentsCanApplyProfiles,
             canAccessLabs: settingsStore.appIntentsCanAccessLabs,
             spacingLabsEnabled: settingsStore.menuBarSpacingLabsEnabled
@@ -230,6 +238,9 @@ private struct AutomationShortcutActionList: View {
     let appIntentsEnabled: Bool
     let proModeEnabled: Bool
     let accessibilityDiscoveryEnabled: Bool
+    let accessibilityGranted: Bool
+    let accurateIconsEnabled: Bool
+    let screenRecordingGranted: Bool
     let canApplyProfiles: Bool
     let canAccessLabs: Bool
     let spacingLabsEnabled: Bool
@@ -254,6 +265,9 @@ private struct AutomationShortcutActionList: View {
                             appIntentsEnabled: appIntentsEnabled,
                             proModeEnabled: proModeEnabled,
                             accessibilityDiscoveryEnabled: accessibilityDiscoveryEnabled,
+                            accessibilityGranted: accessibilityGranted,
+                            accurateIconsEnabled: accurateIconsEnabled,
+                            screenRecordingGranted: screenRecordingGranted,
                             canApplyProfiles: canApplyProfiles,
                             canAccessLabs: canAccessLabs,
                             spacingLabsEnabled: spacingLabsEnabled
@@ -281,6 +295,9 @@ private struct AutomationShortcutActionList: View {
                 appIntentsEnabled: appIntentsEnabled,
                 proModeEnabled: proModeEnabled,
                 accessibilityDiscoveryEnabled: accessibilityDiscoveryEnabled,
+                accessibilityGranted: accessibilityGranted,
+                accurateIconsEnabled: accurateIconsEnabled,
+                screenRecordingGranted: screenRecordingGranted,
                 canApplyProfiles: canApplyProfiles,
                 canAccessLabs: canAccessLabs,
                 spacingLabsEnabled: spacingLabsEnabled
@@ -359,6 +376,7 @@ struct AutomationShortcutAction: Identifiable, Equatable, Sendable {
         case none
         case findIcon
         case proDiscovery
+        case secondBarReadiness
         case profileApply
         case spacingLabs
     }
@@ -372,7 +390,7 @@ struct AutomationShortcutAction: Identifiable, Equatable, Sendable {
     static let collapseMenuBarItems = AutomationShortcutAction(title: "Collapse Menu Bar Items", gate: .none)
     static let revealAllMenuBarItems = AutomationShortcutAction(title: "Reveal All Menu Bar Items", gate: .none)
     static let showFindIcon = AutomationShortcutAction(title: "Show Find Icon", gate: .findIcon)
-    static let showSecondBar = AutomationShortcutAction(title: "Show Second Bar", gate: .proDiscovery)
+    static let showSecondBar = AutomationShortcutAction(title: "Show Second Bar", gate: .secondBarReadiness)
     static let hideSecondBar = AutomationShortcutAction(title: "Hide Second Bar", gate: .none)
     static let enterFullMenuBarMode = AutomationShortcutAction(title: "Enter Full Menu Bar Mode", gate: .none)
     static let exitFullMenuBarMode = AutomationShortcutAction(title: "Exit Full Menu Bar Mode", gate: .none)
@@ -400,6 +418,9 @@ struct AutomationShortcutAction: Identifiable, Equatable, Sendable {
         appIntentsEnabled: Bool,
         proModeEnabled: Bool = true,
         accessibilityDiscoveryEnabled: Bool = true,
+        accessibilityGranted: Bool = true,
+        accurateIconsEnabled: Bool = true,
+        screenRecordingGranted: Bool = true,
         canApplyProfiles: Bool,
         canAccessLabs: Bool,
         spacingLabsEnabled: Bool
@@ -424,6 +445,20 @@ struct AutomationShortcutAction: Identifiable, Equatable, Sendable {
                 return .proGated
             }
             return accessibilityDiscoveryEnabled ? .ready : .discoveryGated
+        case .secondBarReadiness:
+            guard proModeEnabled else {
+                return .proGated
+            }
+            guard accessibilityDiscoveryEnabled else {
+                return .discoveryGated
+            }
+            guard accessibilityGranted else {
+                return .accessibilityPermissionGated
+            }
+            guard accurateIconsEnabled else {
+                return .accurateIconsGated
+            }
+            return screenRecordingGranted ? .ready : .screenRecordingGated
         case .profileApply:
             return canApplyProfiles ? .ready : .profileGated
         case .spacingLabs:
@@ -475,6 +510,8 @@ private extension AutomationShortcutAction {
             "Requires Optional Pro Discovery; status-menu visibility does not block the shortcut."
         case .proDiscovery:
             "Requires Optional Pro Discovery; Accessibility permission is checked when the shortcut runs."
+        case .secondBarReadiness:
+            "Requires Optional Pro, Accessibility Discovery, Accessibility permission, Accurate Icons, and Screen Recording when the shortcut runs."
         case .profileApply:
             "Requires profile apply access and still respects automation pause and Private Access."
         case .spacingLabs:
@@ -488,6 +525,9 @@ enum AutomationShortcutStatus: Equatable, Sendable {
     case disabled
     case proGated
     case discoveryGated
+    case accessibilityPermissionGated
+    case accurateIconsGated
+    case screenRecordingGated
     case profileGated
     case labsGated
     case requiresLabs
@@ -502,6 +542,12 @@ enum AutomationShortcutStatus: Equatable, Sendable {
             "Pro Gate"
         case .discoveryGated:
             "Discovery Gate"
+        case .accessibilityPermissionGated:
+            "Accessibility Gate"
+        case .accurateIconsGated:
+            "Accurate Icons Gate"
+        case .screenRecordingGated:
+            "Screen Recording Gate"
         case .profileGated:
             "Profile Gate"
         case .labsGated:
@@ -517,7 +563,9 @@ enum AutomationShortcutStatus: Equatable, Sendable {
             .success
         case .disabled:
             .secondary
-        case .proGated, .discoveryGated, .profileGated, .labsGated, .requiresLabs:
+        case .proGated, .discoveryGated, .accessibilityPermissionGated,
+             .accurateIconsGated, .screenRecordingGated,
+             .profileGated, .labsGated, .requiresLabs:
             .warning
         }
     }

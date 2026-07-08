@@ -10,6 +10,7 @@ final class MenuBarIconCaptureCoordinator {
     private let currentVisibilityProvider: () -> HidingVisibilityState
     private let setVisibility: (HidingVisibilityState) -> Void
     private let refreshSnapshots: () async -> [MenuBarItemSnapshot]
+    private let secondBarWarmUpStatusHandler: ((Bool, Int?) -> Void)?
     private var visibleCaptureTask: Task<Void, Never>?
     private var revealSweepTask: Task<Void, Never>?
 
@@ -21,7 +22,8 @@ final class MenuBarIconCaptureCoordinator {
         visibleCapturer: MenuBarVisibleIconCapturer = MenuBarVisibleIconCapturer(),
         currentVisibilityProvider: @escaping () -> HidingVisibilityState,
         setVisibility: @escaping (HidingVisibilityState) -> Void,
-        refreshSnapshots: @escaping () async -> [MenuBarItemSnapshot]
+        refreshSnapshots: @escaping () async -> [MenuBarItemSnapshot],
+        secondBarWarmUpStatusHandler: ((Bool, Int?) -> Void)? = nil
     ) {
         self.settingsStore = settingsStore
         self.permissionService = permissionService
@@ -31,6 +33,7 @@ final class MenuBarIconCaptureCoordinator {
         self.currentVisibilityProvider = currentVisibilityProvider
         self.setVisibility = setVisibility
         self.refreshSnapshots = refreshSnapshots
+        self.secondBarWarmUpStatusHandler = secondBarWarmUpStatusHandler
     }
 
     var canCaptureRenderedIcons: Bool {
@@ -70,20 +73,60 @@ final class MenuBarIconCaptureCoordinator {
             return
         }
 
+        _ = startRevealSweepCapture(
+            startMessage: "Rendered icon reveal-sweep capture started for \(reason).",
+            finishedMessage: { "Rendered icon reveal-sweep capture refreshed \($0) thumbnail(s)." }
+        )
+    }
+
+    @discardableResult
+    func warmUpSecondBarIconsIfAllowed(reason: String) -> Bool {
+        guard settingsStore.renderedIconCaptureEnabled,
+              permissionService.refreshStatus() == .granted else {
+            return false
+        }
+
+        return startRevealSweepCapture(
+            startMessage: "Rendered icon Second Bar warm-up started for \(reason).",
+            finishedMessage: { "Rendered icon Second Bar warm-up refreshed \($0) thumbnail(s)." },
+            statusHandler: secondBarWarmUpStatusHandler
+        )
+    }
+
+    @discardableResult
+    func warmUpSecondBarIconsIfAllowedAndWait(reason: String) async -> Bool {
+        guard warmUpSecondBarIconsIfAllowed(reason: reason) else {
+            return false
+        }
+
+        let task = revealSweepTask
+        await task?.value
+        return true
+    }
+
+    @discardableResult
+    private func startRevealSweepCapture(
+        startMessage: String,
+        finishedMessage: @escaping (Int) -> String,
+        statusHandler: ((Bool, Int?) -> Void)? = nil
+    ) -> Bool {
         revealSweepTask?.cancel()
         revealSweepTask = Task { @MainActor [weak self] in
             guard let self else { return }
             let previousVisibility = self.currentVisibilityProvider()
+            var completedCount: Int?
             defer {
                 self.setVisibility(previousVisibility)
+                statusHandler?(false, completedCount)
                 self.revealSweepTask = nil
             }
 
             self.diagnosticsLogger.log(
-                "Rendered icon reveal-sweep capture started for \(reason).",
+                startMessage,
                 level: .debug,
                 category: .scan
             )
+            statusHandler?(true, nil)
 
             self.setVisibility(.revealAll)
             try? await Task.sleep(nanoseconds: 220_000_000)
@@ -99,11 +142,13 @@ final class MenuBarIconCaptureCoordinator {
             }
 
             self.diagnosticsLogger.log(
-                "Rendered icon reveal-sweep capture refreshed \(captured.count) thumbnail(s).",
+                finishedMessage(captured.count),
                 level: .debug,
                 category: .scan
             )
+            completedCount = captured.count
         }
+        return true
     }
 
     @discardableResult

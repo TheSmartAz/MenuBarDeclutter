@@ -109,6 +109,20 @@ struct AppSupportPaths {
         applicationSupportDirectory.appendingPathComponent("placement-item-preferences.json")
     }
 
+    /// Local-only per-attempt assisted-move outcome log used to measure the
+    /// single-item move success rate. Deliberately NOT part of the diagnostics
+    /// export (it stores third-party item identity for local aggregation only).
+    var moveOutcomesFileURL: URL {
+        applicationSupportDirectory.appendingPathComponent("move-outcomes.json")
+    }
+
+    /// Local-only human-readable assisted-move reliability summary, written
+    /// alongside `moveOutcomesFileURL` for the QA run. Includes per-app identity,
+    /// so it is local only and never part of the diagnostics export.
+    var moveReliabilitySummaryFileURL: URL {
+        applicationSupportDirectory.appendingPathComponent("move-reliability.txt")
+    }
+
     // MARK: Directory creation
 
     /// Creates `applicationSupportDirectory` and all known subdirectories if

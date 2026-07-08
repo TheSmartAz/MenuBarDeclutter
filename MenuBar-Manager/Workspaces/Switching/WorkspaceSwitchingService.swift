@@ -158,6 +158,7 @@ final class WorkspaceSwitchingService {
             ?? MenuBarWorkspace(name: "Default", createdAt: now(), updatedAt: now())
         workspace.functionItems = defaultWorkspace.functionItems
         workspace.infoItems = defaultWorkspace.infoItems
+        workspace.itemTargets = []
         workspace.functionBarConfig = .default
         workspace.infoStripConfig = .default
         workspace.displayMode = .functionBar

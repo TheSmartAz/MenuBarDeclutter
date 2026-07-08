@@ -54,14 +54,19 @@ final class RehideController {
     var onStatusChange: (() -> Void)?
 
     private let diagnosticsLogger: DiagnosticsLogger
+    private let pollInterval: Duration
     private var pollTask: Task<Void, Never>?
     private var fireDeadline: Date?
     private var isFiringAutoRehide = false
     private(set) var isScheduled = false
     private(set) var lastReason: RehideReason?
 
-    init(diagnosticsLogger: DiagnosticsLogger) {
+    init(
+        diagnosticsLogger: DiagnosticsLogger,
+        pollInterval: Duration = .milliseconds(250)
+    ) {
         self.diagnosticsLogger = diagnosticsLogger
+        self.pollInterval = pollInterval
     }
 
     // MARK: Public API
@@ -172,9 +177,10 @@ final class RehideController {
     private func startTimer() {
         pollTask = Task { @MainActor [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(for: .milliseconds(250))
+                guard let self else { return }
+                try? await Task.sleep(for: self.pollInterval)
                 guard !Task.isCancelled else { return }
-                self?.tick()
+                self.tick()
             }
         }
     }

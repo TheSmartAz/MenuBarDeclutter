@@ -2,6 +2,24 @@ import AppKit
 
 @MainActor
 final class MenuBarItemSurfaceCoordinator {
+    private(set) lazy var secondBarCompactStripWindowController = SecondBarCompactStripWindowController(
+        settingsStore: settingsStore,
+        liveStatus: liveStatus,
+        positioningService: secondBarPositioningService,
+        diagnosticsLogger: diagnosticsLogger,
+        onActivate: { [weak self] snapshot in
+            self?.activateCompactStripItem(snapshot) == true
+        },
+        onOpenManage: { [weak self] in
+            _ = self?.routeCommand(MenuBarCommand(
+                action: .showSecondBar,
+                target: .secondBar,
+                source: .secondBar
+            ))
+        },
+        onOpenSettings: openPrivacySettings
+    )
+
     private(set) lazy var secondBarWindowController = SecondBarWindowController(
         settingsStore: settingsStore,
         permissionService: accessibilityPermissionService,
@@ -41,6 +59,7 @@ final class MenuBarItemSurfaceCoordinator {
     private let diagnosticsLogger: DiagnosticsLogger
     private let liveStatus: LiveDiagnosticsStatus
     private let menuBarItemMemoryStore: MenuBarItemMemoryStore
+    private let moveOutcomeRecorder: (any MoveOutcomeRecording)?
     private let newItemInboxStore: NewMenuBarItemInboxStore?
     private let groupStore: IconGroupStore
     private let safeModeLaunchState: SafeModeLaunchState
@@ -50,6 +69,7 @@ final class MenuBarItemSurfaceCoordinator {
     private let screenGeometry: ScreenGeometryService
     private let menuBarScanCoordinator: MenuBarScanCoordinator
     private let iconCaptureCoordinator: MenuBarIconCaptureCoordinator?
+    private let renderedIconCache: MenuBarRenderedIconCache
     private let liveStatusSynchronizer: AppEnvironmentLiveStatusSynchronizer
     private let secondBarPositioningService: SecondBarPositioningService
     private let isHoverRevealSuppressed: () -> Bool
@@ -118,7 +138,8 @@ final class MenuBarItemSurfaceCoordinator {
         },
         resumeRuntimeBehaviors: { [weak self] in
             self?.resumeRuntimeAfterIconMove()
-        }
+        },
+        moveOutcomeRecorder: moveOutcomeRecorder
     )
 
     private let accessibilityPermissionService: AccessibilityPermissionService
@@ -128,6 +149,8 @@ final class MenuBarItemSurfaceCoordinator {
     private let workspaceUsageProvider: () -> WorkspaceUsageIndexSnapshot?
     private let openPrivacySettings: () -> Void
     private let routeCommand: (MenuBarCommand) -> MenuBarCommandResult
+    private var pendingCompactStripPresentationTask: Task<Void, Never>?
+    private var pendingCompactStripPresentationID: UUID?
 
     init(
         settingsStore: SettingsStore,
@@ -144,6 +167,7 @@ final class MenuBarItemSurfaceCoordinator {
         accessibilityPermissionService: AccessibilityPermissionService,
         menuBarScanCoordinator: MenuBarScanCoordinator,
         iconCaptureCoordinator: MenuBarIconCaptureCoordinator? = nil,
+        renderedIconCache: MenuBarRenderedIconCache = .shared,
         liveStatusSynchronizer: AppEnvironmentLiveStatusSynchronizer,
         secondBarPositioningService: SecondBarPositioningService = SecondBarPositioningService(),
         separatorFramesProvider: @escaping () -> MenuBarSeparatorFrames,
@@ -152,6 +176,7 @@ final class MenuBarItemSurfaceCoordinator {
         refreshSecondBarSettings: @escaping () -> Void,
         workspaceUsageProvider: @escaping () -> WorkspaceUsageIndexSnapshot? = { nil },
         openPrivacySettings: @escaping () -> Void,
+        moveOutcomeRecorder: (any MoveOutcomeRecording)? = nil,
         routeCommand: @escaping (MenuBarCommand) -> MenuBarCommandResult
     ) {
         self.settingsStore = settingsStore
@@ -168,6 +193,7 @@ final class MenuBarItemSurfaceCoordinator {
         self.accessibilityPermissionService = accessibilityPermissionService
         self.menuBarScanCoordinator = menuBarScanCoordinator
         self.iconCaptureCoordinator = iconCaptureCoordinator
+        self.renderedIconCache = renderedIconCache
         self.liveStatusSynchronizer = liveStatusSynchronizer
         self.secondBarPositioningService = secondBarPositioningService
         self.separatorFramesProvider = separatorFramesProvider
@@ -176,6 +202,7 @@ final class MenuBarItemSurfaceCoordinator {
         self.refreshSecondBarSettings = refreshSecondBarSettings
         self.workspaceUsageProvider = workspaceUsageProvider
         self.openPrivacySettings = openPrivacySettings
+        self.moveOutcomeRecorder = moveOutcomeRecorder
         self.routeCommand = routeCommand
     }
 
@@ -185,17 +212,62 @@ final class MenuBarItemSurfaceCoordinator {
     }
 
     func showSecondBar() {
+        cancelPendingCompactStripPresentation()
+        secondBarCompactStripWindowController.hide()
         refreshMenuBarItems()
         secondBarWindowController.show()
     }
 
     func hideSecondBar() {
+        cancelPendingCompactStripPresentation()
+        secondBarCompactStripWindowController.hide()
         secondBarWindowController.hide()
     }
 
     func toggleSecondBar() {
+        cancelPendingCompactStripPresentation()
+        secondBarCompactStripWindowController.hide()
         refreshMenuBarItems()
         secondBarWindowController.toggle()
+    }
+
+    func toggleCompactSecondBar(anchorFrame: CGRect?) {
+        if secondBarCompactStripWindowController.isShowingCompactStrip {
+            cancelPendingCompactStripPresentation()
+            secondBarCompactStripWindowController.hide()
+            return
+        }
+
+        cancelPendingCompactStripPresentation()
+        secondBarWindowController.hide()
+
+        let initialSnapshots = compactStripSnapshots()
+        secondBarCompactStripWindowController.showCompactStrip(
+            snapshots: initialSnapshots,
+            accurateIconReadyIDs: accurateIconReadyIDs(for: initialSnapshots),
+            anchorFrame: anchorFrame
+        )
+
+        let presentationID = UUID()
+        pendingCompactStripPresentationID = presentationID
+        pendingCompactStripPresentationTask = Task { @MainActor [weak self] in
+            await self?.refreshCompactSecondBarAfterPresentation(
+                anchorFrame: anchorFrame,
+                presentationID: presentationID
+            )
+        }
+    }
+
+    func showSecondBarRequirements(
+        _ readiness: ProSecondBarReadinessState,
+        anchorFrame: CGRect?
+    ) {
+        cancelPendingCompactStripPresentation()
+        secondBarWindowController.hide()
+        secondBarCompactStripWindowController.showRequirements(
+            readiness,
+            anchorFrame: anchorFrame
+        )
     }
 
     func refreshSecondBarAfterSettingsChanged() {
@@ -233,6 +305,65 @@ final class MenuBarItemSurfaceCoordinator {
         return result?.snapshots ?? liveStatus.scannedMenuBarItems
     }
 
+    private func refreshCompactSecondBarAfterPresentation(
+        anchorFrame: CGRect?,
+        presentationID: UUID
+    ) async {
+        defer {
+            if pendingCompactStripPresentationID == presentationID {
+                pendingCompactStripPresentationTask = nil
+                pendingCompactStripPresentationID = nil
+            }
+        }
+
+        let snapshots = await refreshMenuBarItemsForCompactStrip()
+        guard !Task.isCancelled,
+              pendingCompactStripPresentationID == presentationID else {
+            return
+        }
+
+        secondBarCompactStripWindowController.refreshCompactStrip(
+            snapshots: snapshots,
+            accurateIconReadyIDs: accurateIconReadyIDs(for: snapshots),
+            anchorFrame: anchorFrame
+        )
+    }
+
+    private func refreshMenuBarItemsForCompactStrip() async -> [MenuBarItemSnapshot] {
+        let usesSeededMenuBarItems = FloatingPanelSearchUITestingArguments.usesSeededMenuBarItems
+        if safeModeLaunchState.isSafeModeActive {
+            diagnosticsLogger.log("Safe Mode skipped compact Second Bar scan.", level: .warning)
+            liveStatusSynchronizer.refreshSearchAndSecondBarItemCounts()
+            return compactStripSnapshots()
+        }
+
+        if usesSeededMenuBarItems {
+            diagnosticsLogger.log(
+                "UI testing seeded menu bar items retained; skipped compact Second Bar scan.",
+                level: .debug
+            )
+            liveStatusSynchronizer.refreshSearchAndSecondBarItemCounts()
+            return compactStripSnapshots()
+        }
+
+        let result = await menuBarScanCoordinator.requestManualRefreshAndWait(
+            reason: "compact Second Bar"
+        )
+        liveStatusSynchronizer.refreshSearchAndSecondBarItemCounts()
+        _ = await iconCaptureCoordinator?.warmUpSecondBarIconsIfAllowedAndWait(reason: "compact Second Bar")
+
+        let snapshots = liveStatus.scannedMenuBarItems.isEmpty
+            ? result?.snapshots ?? []
+            : liveStatus.scannedMenuBarItems
+        return compactStripSnapshots(from: snapshots)
+    }
+
+    private func cancelPendingCompactStripPresentation() {
+        pendingCompactStripPresentationTask?.cancel()
+        pendingCompactStripPresentationTask = nil
+        pendingCompactStripPresentationID = nil
+    }
+
     func resetMovingWarnings() {
         iconMoveService.resetWarnings()
     }
@@ -255,6 +386,66 @@ final class MenuBarItemSurfaceCoordinator {
         IconGroupSort.sort(groupStore.groups).filter(\.isEnabled)
     }
 
+    private func compactStripSnapshots() -> [MenuBarItemSnapshot] {
+        compactStripSnapshots(from: liveStatus.scannedMenuBarItems)
+    }
+
+    private func compactStripSnapshots(from snapshots: [MenuBarItemSnapshot]) -> [MenuBarItemSnapshot] {
+        snapshots.filter { snapshot in
+            !isMenuBarDeclutterStatusItem(snapshot)
+        }
+    }
+
+    private func accurateIconReadyIDs(for snapshots: [MenuBarItemSnapshot]) -> Set<String> {
+        Set(snapshots.compactMap { snapshot in
+            renderedIconCache.resolvedImage(for: snapshot) == nil ? nil : snapshot.id
+        })
+    }
+
+    private func isMenuBarDeclutterStatusItem(_ snapshot: MenuBarItemSnapshot) -> Bool {
+        if let bundleIdentifier = snapshot.bundleIdentifier,
+           bundleIdentifier == Bundle.main.bundleIdentifier {
+            return true
+        }
+        return snapshot.owningApplicationName == "MenuBarDeclutter"
+    }
+
+    @discardableResult
+    private func activateCompactStripItem(_ snapshot: MenuBarItemSnapshot) -> Bool {
+        let result = routeCommand(MenuBarCommand(
+            action: .activateItem,
+            target: .menuBarItem(id: snapshot.id),
+            source: .secondBar
+        ))
+        return result.didRun
+    }
+
+    /// Builds the Level-2 layout coordinator wired to the real scan + mover this
+    /// surface coordinator already owns. Inert until the UI drives capture/apply.
+    func makeWorkspaceLayoutCoordinator(isApplyEnabled: @escaping () -> Bool) -> WorkspaceLayoutCoordinator {
+        let mover = WorkspaceMoveExecutor(
+            scan: { [weak self] in
+                await self?.refreshMenuBarItemsForMoveVerification() ?? []
+            },
+            performMove: { [weak self] snapshot, command in
+                guard let self else {
+                    return IconMoveResult.skipped(command: command, itemName: "", error: .disabled)
+                }
+                return await self.performWorkspaceLayoutMove(snapshot, command: command)
+            }
+        )
+        return WorkspaceLayoutCoordinator(
+            scan: { [weak self] in
+                await self?.refreshMenuBarItemsForMoveVerification() ?? []
+            },
+            mover: mover,
+            isApplyEnabled: isApplyEnabled,
+            log: { [weak self] result in
+                self?.diagnosticsLogger.log("Workspace layout apply: \(result.outcome)", level: .info)
+            }
+        )
+    }
+
     private func moveIcon(_ snapshot: MenuBarItemSnapshot, command: IconMoveCommand) async -> IconMoveResult {
         guard !safeModeLaunchState.isSafeModeActive else {
             return IconMoveResult.skipped(
@@ -264,6 +455,20 @@ final class MenuBarItemSurfaceCoordinator {
             )
         }
         return await iconMoveService.move(snapshot, command: command)
+    }
+
+    /// Move used by a workspace layout apply: the batch is already an explicit
+    /// user action, so it skips the per-move confirmation (otherwise an N-move
+    /// layout would pop N dialogs). Still honors Safe Mode.
+    private func performWorkspaceLayoutMove(_ snapshot: MenuBarItemSnapshot, command: IconMoveCommand) async -> IconMoveResult {
+        guard !safeModeLaunchState.isSafeModeActive else {
+            return IconMoveResult.skipped(
+                command: command,
+                itemName: snapshot.owningApplicationName ?? snapshot.title ?? "Menu Bar Item",
+                error: .disabled
+            )
+        }
+        return await iconMoveService.moveAfterExternalConfirmation(snapshot, command: command)
     }
 
     private func suspendRuntimeForIconMove() {

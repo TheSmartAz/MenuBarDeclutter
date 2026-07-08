@@ -1,6 +1,6 @@
 # Privacy Boundary
 
-Last reviewed: 2026-07-05
+Last reviewed: 2026-07-06
 
 MenuBarDeclutter is local-first. Basic Mode is permission-free. Optional Pro and Preview features are separately gated and must degrade without breaking Basic Mode.
 
@@ -47,7 +47,7 @@ Accurate Icons is a separate Preview capability for local rendered thumbnails.
 - It crops small thumbnails for currently visible menu bar items and stores them locally.
 - It does not capture offscreen/private menu bar items, use private APIs, use Apple Events, use Input Monitoring, or use network access.
 
-If Screen Recording is missing or revoked, UI surfaces fall back to stale thumbnails or app icons. Basic Mode and Pro metadata discovery continue according to their own gates.
+If Screen Recording is missing or revoked, most UI surfaces fall back to stale thumbnails or app icons. Pro Second Bar compact/status-menu entry is stricter and stays unavailable until Accurate Icons and Screen Recording are ready. Basic Mode and Pro metadata discovery continue according to their own gates.
 
 ## Automation
 

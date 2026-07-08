@@ -18,6 +18,7 @@ struct AppSupportPathsTests {
         #expect(paths.supportDirectory.path.hasSuffix("/\(AppConstants.displayName)/support"))
         #expect(paths.workspacesDirectory.path.hasSuffix("/\(AppConstants.displayName)/workspaces"))
         #expect(paths.workspaceBackupsDirectory.path.hasSuffix("/\(AppConstants.displayName)/workspaces/backups"))
+        #expect(paths.renderedIconCacheDirectory.path.hasSuffix("/\(AppConstants.displayName)/rendered-icons"))
         #expect(paths.workspaceStoreFileURL.path.hasSuffix("/\(AppConstants.displayName)/workspaces/workspaces.json"))
         #expect(paths.localLostIconsGuideURL.path.hasSuffix("/\(AppConstants.displayName)/support/i-cant-find-my-icons.md"))
         #expect(paths.menuBarItemMemoryFileURL.path.hasSuffix("/\(AppConstants.displayName)/menu-bar-item-memory.json"))
@@ -35,7 +36,7 @@ struct AppSupportPathsTests {
 
         let created = try paths.ensureDirectoriesExist()
 
-        #expect(created.count == 10)
+        #expect(created.count == 11)
         for url in created {
             #expect(FileManager.default.fileExists(atPath: url.path))
         }
@@ -49,6 +50,7 @@ struct AppSupportPathsTests {
         #expect(FileManager.default.fileExists(atPath: paths.supportDirectory.path))
         #expect(FileManager.default.fileExists(atPath: paths.workspacesDirectory.path))
         #expect(FileManager.default.fileExists(atPath: paths.workspaceBackupsDirectory.path))
+        #expect(FileManager.default.fileExists(atPath: paths.renderedIconCacheDirectory.path))
         #expect(FileManager.default.fileExists(atPath: paths.applicationSupportDirectory.path))
     }
 
@@ -63,7 +65,7 @@ struct AppSupportPathsTests {
         let first = try paths.ensureDirectoriesExist()
         let second = try paths.ensureDirectoriesExist()
 
-        #expect(first.count == 10)
+        #expect(first.count == 11)
         #expect(second.isEmpty)
     }
 

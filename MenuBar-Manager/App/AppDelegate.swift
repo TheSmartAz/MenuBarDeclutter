@@ -4,6 +4,7 @@ import AppKit
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private(set) var environment: AppEnvironment?
     private var launchKeepAliveStatusItem: NSStatusItem?
+    private var uiTestingAccessibilityTrustOverride: UITestingAccessibilityTrustOverride?
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         applyUITestingAppearanceOverride()
@@ -27,6 +28,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         seedRequestedUITestingPersistentStores(environment)
         environment.start()
         releaseLaunchKeepAliveStatusItemAfterStartup()
+        applyPostStartupUITestingPermissionOverrides(environment)
         openRequestedUITestingSurface(environment)
     }
 
@@ -44,6 +46,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         false
     }
 
+    func showSettingsFromAppMenu() {
+        guard let environment else {
+            DispatchQueue.main.async { [weak self] in
+                self?.environment?.showSettings()
+            }
+            return
+        }
+
+        environment.showSettings()
+    }
+
     private func makeEnvironment() -> AppEnvironment {
         if isHostedUnitTestingLaunch {
             return makeHostedUnitTestingEnvironment()
@@ -59,6 +72,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let settingsStore = SettingsStore(defaults: defaults)
         let proDiscoveryEnabled = launchArguments.contains("--ui-testing-pro-discovery-enabled")
         let accessibilityGranted = launchArguments.contains("--ui-testing-accessibility-granted")
+        let accurateIconsEnabled = launchArguments.contains("--ui-testing-accurate-icons-enabled")
+        let screenCaptureGranted = launchArguments.contains("--ui-testing-screen-capture-granted")
+        let secondBarPrimaryClickEnabled = launchArguments.contains("--ui-testing-second-bar-primary-click-enabled")
         let hideStatusShortcuts = launchArguments.contains("--ui-testing-hide-status-shortcuts")
         let useSystemAccessibility = launchArguments.contains("--ui-testing-use-system-accessibility")
         settingsStore.hasCompletedOnboarding = true
@@ -66,16 +82,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settingsStore.launchAtLoginEnabled = false
         settingsStore.proModeEnabled = false
         settingsStore.accessibilityDiscoveryEnabled = false
+        settingsStore.secondBarPrimaryClickEnabled = false
 
         let baseURL = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
             .appendingPathComponent("MenuBarDeclutterUITests", isDirectory: true)
         try? FileManager.default.removeItem(at: baseURL)
+
+        let screenCapturePermissionService = ScreenCapturePermissionService(
+            preflightAccess: { screenCaptureGranted },
+            requestAccess: { screenCaptureGranted },
+            systemSettingsOpener: { false }
+        )
+        let accessibilityTrustOverride = UITestingAccessibilityTrustOverride(isGranted: accessibilityGranted)
+        uiTestingAccessibilityTrustOverride = accessibilityTrustOverride
 
         let environment: AppEnvironment
         if useSystemAccessibility {
             environment = AppEnvironment(
                 settingsStore: settingsStore,
                 appSupportPaths: AppSupportPaths(baseURL: baseURL),
+                screenCapturePermissionService: screenCapturePermissionService,
                 reflectLaunchAtLoginOnStart: false,
                 presentMigrationNoticeOnStart: false
             )
@@ -83,10 +109,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             environment = AppEnvironment(
                 settingsStore: settingsStore,
                 appSupportPaths: AppSupportPaths(baseURL: baseURL),
+                screenCapturePermissionService: screenCapturePermissionService,
                 reflectLaunchAtLoginOnStart: false,
                 presentMigrationNoticeOnStart: false,
-                accessibilityTrustProvider: { accessibilityGranted },
-                accessibilityPromptTrustProvider: { accessibilityGranted },
+                accessibilityTrustProvider: { accessibilityTrustOverride.isGranted },
+                accessibilityPromptTrustProvider: { accessibilityTrustOverride.isGranted },
                 accessibilitySystemSettingsOpener: { false }
             )
         }
@@ -95,12 +122,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             settingsStore.proModeEnabled = true
             settingsStore.accessibilityDiscoveryEnabled = true
         }
+        if accurateIconsEnabled {
+            settingsStore.renderedIconCaptureEnabled = true
+        }
+        if secondBarPrimaryClickEnabled {
+            settingsStore.secondBarPrimaryClickEnabled = true
+        }
         if hideStatusShortcuts {
             settingsStore.searchEnabled = false
             settingsStore.secondBarEnabled = false
+            settingsStore.secondBarPrimaryClickEnabled = false
         }
 
         return environment
+    }
+
+    private func applyPostStartupUITestingPermissionOverrides(_ environment: AppEnvironment) {
+        guard launchArguments.contains("--ui-testing-accessibility-revoked-after-launch"),
+              let uiTestingAccessibilityTrustOverride else {
+            return
+        }
+
+        uiTestingAccessibilityTrustOverride.isGranted = false
+        environment.accessibilityPermissionService.markStale()
+        environment.liveStatus.accessibilityPermissionStatus = environment.accessibilityPermissionService.refreshStatus()
     }
 
     private func applyUITestingAppearanceOverride() {
@@ -145,6 +190,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settingsStore.launchAtLoginEnabled = false
         settingsStore.proModeEnabled = false
         settingsStore.accessibilityDiscoveryEnabled = false
+        settingsStore.secondBarPrimaryClickEnabled = false
 
         let baseURL = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
             .appendingPathComponent("MenuBarDeclutterHostedUnitTests-\(UUID().uuidString)", isDirectory: true)
@@ -166,6 +212,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let shouldSeedMenuBarItems = launchArguments.contains("--ui-testing-seed-menu-bar-items")
+        let shouldSeedRenderedIcons = launchArguments.contains("--ui-testing-seed-rendered-icons")
+        let shouldSeedPartialRenderedIcons = launchArguments.contains("--ui-testing-seed-partial-rendered-icons")
+        let renderedIconSeedIDs: Set<MenuBarItemSnapshot.ID>
+        if shouldSeedRenderedIcons {
+            renderedIconSeedIDs = [
+                "ui-test-calendar",
+                "ui-test-sync"
+            ]
+        } else if shouldSeedPartialRenderedIcons {
+            renderedIconSeedIDs = [
+                "ui-test-calendar"
+            ]
+        } else {
+            renderedIconSeedIDs = []
+        }
 
         if launchArguments.contains("--ui-testing-show-onboarding-privacy") {
             environment.showOnboarding(stepID: "privacy")
@@ -224,6 +285,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             environment.settingsStore.secondBarCloseOnOutsideClick = false
             environment.showSecondBar()
+        } else if launchArguments.contains("--ui-testing-show-compact-second-bar") {
+            if shouldSeedMenuBarItems {
+                seedMenuBarItemsUITestingSnapshot(environment)
+            }
+            if !renderedIconSeedIDs.isEmpty {
+                environment.seedRenderedIconsForUITesting(itemIDs: renderedIconSeedIDs)
+            }
+            environment.showCompactSecondBarForUITesting()
         } else if launchArguments.contains("--ui-testing-show-group-panel") {
             seedMenuBarItemsUITestingSnapshot(environment)
             environment.showGroupPanel(makeUITestingIconGroup())
@@ -235,6 +304,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Task { @MainActor in
                 try? await Task.sleep(nanoseconds: 700_000_000)
                 seedMenuBarItemsUITestingSnapshot(environment)
+                if !renderedIconSeedIDs.isEmpty {
+                    environment.seedRenderedIconsForUITesting(itemIDs: renderedIconSeedIDs)
+                }
             }
         }
     }
@@ -259,13 +331,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func seedMenuBarItemsUITestingSnapshot(_ environment: AppEnvironment) {
         let scanTimestamp = Date()
+        let screen = SecondBarPositioningService.currentScreens().first { $0.isMain }
+            ?? SecondBarPositioningService.fallbackScreen
+        let screenFrame = screen.frame
+        let menuBarItemY = screenFrame.minY + 4
+        func rightAlignedFrame(offsetFromRight: CGFloat, width: CGFloat) -> CGRect {
+            CGRect(
+                x: max(screenFrame.minX + 12, screenFrame.maxX - offsetFromRight),
+                y: menuBarItemY,
+                width: width,
+                height: 24
+            )
+        }
+
         let snapshots = [
             MenuBarItemSnapshot(
                 id: "ui-test-control-center",
                 title: "Control Center",
                 role: "AXMenuBarItem",
                 subrole: nil,
-                frame: CGRect(x: 1466, y: 0, width: 26, height: 24),
+                frame: rightAlignedFrame(offsetFromRight: 46, width: 26),
                 owningProcessIdentifier: 101,
                 owningApplicationName: "Control Center",
                 bundleIdentifier: "com.apple.controlcenter",
@@ -278,7 +363,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 title: "Wi-Fi",
                 role: "AXMenuBarItem",
                 subrole: nil,
-                frame: CGRect(x: 1432, y: 0, width: 28, height: 24),
+                frame: rightAlignedFrame(offsetFromRight: 82, width: 28),
                 owningProcessIdentifier: 101,
                 owningApplicationName: "Control Center",
                 bundleIdentifier: "com.apple.controlcenter",
@@ -291,7 +376,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 title: "Calendar",
                 role: "AXMenuBarItem",
                 subrole: nil,
-                frame: CGRect(x: 1344, y: 0, width: 31, height: 24),
+                frame: rightAlignedFrame(offsetFromRight: 178, width: 31),
                 owningProcessIdentifier: 502,
                 owningApplicationName: "Fantastical",
                 bundleIdentifier: "com.flexibits.fantastical2.mac",
@@ -304,7 +389,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 title: "Sync",
                 role: "AXMenuBarItem",
                 subrole: "AXUnknown",
-                frame: CGRect(x: 1296, y: 0, width: 29, height: 24),
+                frame: rightAlignedFrame(offsetFromRight: 130, width: 29),
                 owningProcessIdentifier: 744,
                 owningApplicationName: "Dropbox",
                 bundleIdentifier: "com.getdropbox.dropbox",
@@ -317,7 +402,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 title: "VPN",
                 role: "AXMenuBarItem",
                 subrole: nil,
-                frame: CGRect(x: 1238, y: 0, width: 26, height: 24),
+                frame: rightAlignedFrame(offsetFromRight: 220, width: 26),
                 owningProcessIdentifier: 881,
                 owningApplicationName: "Tailscale",
                 bundleIdentifier: "io.tailscale.ipn.macos",
@@ -609,5 +694,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return environment["XCTestConfigurationFilePath"] != nil
             || environment["XCInjectBundleInto"] != nil
             || environment["XCTestSessionIdentifier"] != nil
+    }
+}
+
+private final class UITestingAccessibilityTrustOverride {
+    var isGranted: Bool
+
+    init(isGranted: Bool) {
+        self.isGranted = isGranted
     }
 }

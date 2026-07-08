@@ -110,6 +110,10 @@ struct SettingsMigrationService {
             settingsStore.lastAccessibilityPermissionStatus = nil
             repairedKeys.append(.lastAccessibilityPermissionStatus)
         }
+        if settingsStore.lastScreenCapturePermissionStatus != nil {
+            settingsStore.lastScreenCapturePermissionStatus = nil
+            repairedKeys.append(.lastScreenCapturePermissionStatus)
+        }
         repair(&repairedKeys, .searchEnabled) {
             settingsStore.searchEnabled = true
         }
@@ -118,6 +122,9 @@ struct SettingsMigrationService {
         }
         repair(&repairedKeys, .secondBarEnabled) {
             settingsStore.secondBarEnabled = true
+        }
+        repair(&repairedKeys, .secondBarPrimaryClickEnabled) {
+            settingsStore.secondBarPrimaryClickEnabled = false
         }
         repair(&repairedKeys, .iconMovingEnabled) {
             settingsStore.iconMovingEnabled = false
@@ -226,10 +233,12 @@ struct SettingsMigrationService {
             settingsStore.proModeEnabled == false &&
             settingsStore.accessibilityDiscoveryEnabled == false &&
             settingsStore.lastAccessibilityPermissionStatus == nil &&
+            settingsStore.lastScreenCapturePermissionStatus == nil &&
             settingsStore.renderedIconCaptureEnabled == false &&
             settingsStore.renderedIconRevealSweepEnabled == false &&
             settingsStore.searchEnabled == true &&
             settingsStore.secondBarEnabled == true &&
+            settingsStore.secondBarPrimaryClickEnabled == false &&
             settingsStore.iconMovingEnabled == false &&
             settingsStore.smartTriggersEnabled == false &&
             settingsStore.automationPaused == true &&
@@ -285,6 +294,8 @@ struct SettingsMigrationService {
             return settingsStore.accessibilityDiscoveryEnabled.description
         case .lastAccessibilityPermissionStatus:
             return settingsStore.lastAccessibilityPermissionStatus ?? "nil"
+        case .lastScreenCapturePermissionStatus:
+            return settingsStore.lastScreenCapturePermissionStatus ?? "nil"
         case .menuBarScanIntervalSeconds:
             return settingsStore.menuBarScanIntervalSeconds.description
         case .renderedIconCaptureEnabled:
@@ -305,6 +316,8 @@ struct SettingsMigrationService {
             return settingsStore.searchHighlightOnSelection.description
         case .secondBarEnabled:
             return settingsStore.secondBarEnabled.description
+        case .secondBarPrimaryClickEnabled:
+            return settingsStore.secondBarPrimaryClickEnabled.description
         case .secondBarShowHiddenItems:
             return settingsStore.secondBarShowHiddenItems.description
         case .secondBarShowAlwaysHiddenItems:

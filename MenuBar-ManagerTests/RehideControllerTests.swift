@@ -39,7 +39,10 @@ struct RehideControllerTests {
 
     @Test func runtimeTaskFiresWithoutManualTick() async throws {
         let logger = DiagnosticsLogger()
-        let controller = RehideController(diagnosticsLogger: logger)
+        let controller = RehideController(
+            diagnosticsLogger: logger,
+            pollInterval: .milliseconds(10)
+        )
 
         var fired = 0
         controller.onRehide = {
@@ -47,8 +50,8 @@ struct RehideControllerTests {
             controller.markRehideFired()
         }
 
-        controller.startCountdown(delay: 0.05)
-        let timeout = Date().addingTimeInterval(3)
+        controller.startCountdown(delay: 0.02)
+        let timeout = Date().addingTimeInterval(5)
         while fired == 0 && Date() < timeout {
             try await Task.sleep(for: .milliseconds(50))
             await Task.yield()

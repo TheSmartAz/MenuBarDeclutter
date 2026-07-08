@@ -13,11 +13,15 @@ struct WorkspacePreviewSettingsView: View {
     var routeCommand: ((MenuBarCommand) -> MenuBarCommandResult)? = nil
     var onOpenFindRescue: (() -> Void)? = nil
     var onOpenRecovery: (() -> Void)? = nil
+    var applyLayout: (@MainActor () async -> WorkspaceLayoutApplyResult?)? = nil
+    var isLayoutApplyEnabled: () -> Bool = { false }
     @State private var functionBarDetailsExpanded = false
     @State private var infoStripDetailsExpanded = false
     @State private var setBuilderOptionsExpanded = false
 
     @State private var workspacePreparedRevision = 0
+    @State private var isApplyingLayout = false
+    @State private var lastLayoutOutcome: String?
 
     private var workspaceState: WorkspacePreviewPreparedState {
         _ = workspacePreparedRevision
@@ -73,6 +77,7 @@ struct WorkspacePreviewSettingsView: View {
         previewGatesSection
         activeWorkspaceSection(state)
         quickActionsSection
+        menuBarLayoutSection
         workspaceListSection(state)
         previewControlsSection
         infoStripPreviewSection
@@ -248,6 +253,87 @@ struct WorkspacePreviewSettingsView: View {
                 }
             }
         }
+    }
+
+    private var layoutPlanSummary: WorkspaceLayoutPlanSummary {
+        _ = workspacePreparedRevision
+        let plan = WorkspaceLayoutSwitcher().plan(
+            for: switchingService.activeWorkspace(),
+            currentScan: liveStatus?.scannedMenuBarItems ?? []
+        )
+        return WorkspaceLayoutPlanSummary(plan)
+    }
+
+    private var menuBarLayoutSection: some View {
+        ClearGlassSection(
+            "Menu Bar Layout",
+            subtitle: "Capture this Workspace's real menu bar layout, then apply it on demand. Requires Assisted Move (Optional Pro + Accessibility)."
+        ) {
+            ClearGlassActionStrip(
+                "Real Layout",
+                subtitle: layoutPlanSummary.sentence,
+                systemImage: "rectangle.righthalf.inset.filled.arrow.right",
+                statusText: isLayoutApplyEnabled() ? "Assisted Move On" : "Assisted Move Off",
+                statusStyle: isLayoutApplyEnabled() ? .success : .secondary
+            ) {
+                Button("Save Current Layout", systemImage: "square.and.arrow.down") {
+                    captureCurrentLayout()
+                }
+                .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("workspaces.layout.save")
+
+                Button("Apply Layout Now", systemImage: "wand.and.stars") {
+                    applyLayoutNow()
+                }
+                .accessibilityIdentifier("workspaces.layout.apply")
+                .disabled(applyLayout == nil || !isLayoutApplyEnabled() || layoutPlanSummary.isEmpty || isApplyingLayout)
+            }
+
+            if let lastLayoutOutcome {
+                Text(lastLayoutOutcome)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func captureCurrentLayout() {
+        var workspace = switchingService.activeWorkspace()
+        workspace.itemTargets = WorkspaceItemTarget.capture(from: liveStatus?.scannedMenuBarItems ?? [])
+        _ = switchingService.updateWorkspace(workspace)
+        lastLayoutOutcome = "Saved \(workspace.itemTargets.count) item target(s) for this Workspace."
+        refreshAfterWorkspaceMutation()
+    }
+
+    private func applyLayoutNow() {
+        guard let applyLayout else { return }
+        isApplyingLayout = true
+        Task { @MainActor in
+            let result = await applyLayout()
+            lastLayoutOutcome = result.map { Self.layoutOutcomeText($0) }
+                ?? "Not applied — enable Assisted Move and save a layout first."
+            isApplyingLayout = false
+            refreshAfterWorkspaceMutation()
+        }
+    }
+
+    private static func layoutOutcomeText(_ result: WorkspaceLayoutApplyResult) -> String {
+        let outcome = result.outcome
+        let skipped = result.skippedUnmovableKeys.count
+        var text: String
+        if outcome.isNoOp && skipped == 0 {
+            text = "Bar already matches — nothing to move."
+        } else if outcome.failedCount == 0 {
+            text = "Applied \(outcome.appliedCount) move\(outcome.appliedCount == 1 ? "" : "s")."
+        } else if outcome.appliedCount == 0 {
+            text = "Couldn't move \(outcome.failedCount) item\(outcome.failedCount == 1 ? "" : "s") — they may not support moving."
+        } else {
+            text = "Applied \(outcome.appliedCount), couldn't move \(outcome.failedCount)."
+        }
+        if skipped > 0 {
+            text += " (\(skipped) skipped as unmovable)"
+        }
+        return text
     }
 
     private var quickActionsSection: some View {

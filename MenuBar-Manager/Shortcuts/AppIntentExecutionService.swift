@@ -13,6 +13,8 @@ final class AppIntentExecutionService {
         case requiresPrivateAccess
         case requiresProMode
         case requiresAccessibility
+        case requiresAccurateIcons
+        case requiresScreenRecording
         case requiresLabs
         case automationPaused
         case safeModeBlocked
@@ -29,6 +31,7 @@ final class AppIntentExecutionService {
         diagnosticsLogger: DiagnosticsLogger,
         safeModeActive: @escaping () -> Bool,
         accessibilityStatus: @escaping () -> AccessibilityPermissionStatus = { .granted },
+        screenCaptureStatus: @escaping () -> ScreenCapturePermissionStatus = { .unknown },
         privateAccess: (any MenuBarCommandPrivateAccessChecking)? = nil,
         expand: @escaping () -> Void,
         collapse: @escaping () -> Void,
@@ -64,6 +67,7 @@ final class AppIntentExecutionService {
             diagnosticsLogger: diagnosticsLogger,
             safeModeActive: safeModeActive,
             accessibilityStatus: accessibilityStatus,
+            screenCaptureStatus: screenCaptureStatus,
             privateAccess: privateAccess,
             handlers: handlers
         )
@@ -148,6 +152,12 @@ final class AppIntentExecutionService {
         case .requiresPro:
             return .requiresProMode
         case .requiresPermission:
+            if result.diagnosticReason == "accurateIconsDisabled" {
+                return .requiresAccurateIcons
+            }
+            if result.diagnosticReason == "screenRecordingPermissionMissing" {
+                return .requiresScreenRecording
+            }
             return .requiresAccessibility
         case .requiresLabs:
             return .requiresLabs

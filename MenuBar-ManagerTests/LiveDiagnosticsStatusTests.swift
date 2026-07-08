@@ -1,3 +1,5 @@
+import ApplicationServices
+import Foundation
 import Testing
 @testable import MenuBarDeclutter
 
@@ -79,6 +81,66 @@ struct LiveDiagnosticsStatusTests {
         #expect(liveStatus.searchIndexRebuildDurationMilliseconds == 1.5)
         #expect(liveStatus.searchRankingDurationMilliseconds == 0.25)
         #expect(liveStatus.searchLatestScanAgeSeconds == 42)
+    }
+
+    @Test func applyingSecondBarIconWarmUpUpdatesPrivacySafeDiagnostics() {
+        let liveStatus = LiveDiagnosticsStatus()
+
+        liveStatus.updateSecondBarIconWarmUp(
+            inProgress: true,
+            result: nil
+        )
+
+        #expect(liveStatus.secondBarIconWarmUpInProgress)
+        #expect(liveStatus.secondBarLastIconWarmUpResult == nil)
+
+        liveStatus.updateSecondBarIconWarmUp(
+            inProgress: false,
+            result: "Refreshed 2 thumbnail(s)"
+        )
+
+        #expect(!liveStatus.secondBarIconWarmUpInProgress)
+        #expect(liveStatus.secondBarLastIconWarmUpResult == "Refreshed 2 thumbnail(s)")
+    }
+
+    @Test func applyingSecondBarCompactStripPlanUpdatesPrivacySafeDiagnostics() {
+        let liveStatus = LiveDiagnosticsStatus()
+        let plan = SecondBarCompactStripPlanner.plan(
+            snapshots: [
+                TestSnapshots.makeSnapshot(id: "a", zone: .hidden),
+                TestSnapshots.makeSnapshot(id: "b", zone: .hidden),
+                TestSnapshots.makeSnapshot(id: "c", zone: .hidden),
+                TestSnapshots.makeSnapshot(id: "visible", zone: .visible)
+            ],
+            accurateIconReadyIDs: ["a"],
+            maxVisibleItems: 2,
+            lastScanTime: Date(timeIntervalSince1970: 0),
+            now: Date(timeIntervalSince1970: SecondBarCompactStripPlanner.staleScanThreshold + 1)
+        )
+
+        liveStatus.updateSecondBarCompactStrip(plan: plan)
+        liveStatus.updateSecondBarCompactPlacement(avoidedNotch: true)
+
+        #expect(liveStatus.secondBarLastCompactVisibleItemCount == 2)
+        #expect(liveStatus.secondBarLastCompactOverflowItemCount == 1)
+        #expect(liveStatus.secondBarLastCompactFallbackIconCount == 2)
+        #expect(liveStatus.secondBarLastCompactScanState == "Stale")
+        #expect(liveStatus.secondBarLastCompactAvoidedNotch == true)
+    }
+
+    @Test func applyingSecondBarDirectActivationUpdatesPrivacySafeDiagnostics() {
+        let liveStatus = LiveDiagnosticsStatus()
+
+        liveStatus.updateSecondBarDirectActivation(
+            result: .actionFailed(error: .cannotComplete, visitedElementCount: 5),
+            targetZone: .hidden
+        )
+
+        #expect(liveStatus.secondBarLastActivationResult == "actionFailed")
+        #expect(liveStatus.secondBarLastActivationMatrixResult == "FAIL_AX_PRESS")
+        #expect(liveStatus.secondBarLastActivationTargetZone == "hidden")
+        #expect(liveStatus.secondBarLastActivationVisitedElementCount == 5)
+        #expect(liveStatus.secondBarLastActivationAXError != nil)
     }
 
     @Test func applyingStatusBarVisibilityUpdatesRelatedDiagnostics() {

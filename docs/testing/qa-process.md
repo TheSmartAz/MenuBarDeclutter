@@ -37,6 +37,12 @@ Steps:
    `scripts/test.sh` is acceptable when the scheme fallback behavior is useful.
    If the local Xcode runner fails before tests attach, record the infra failure
    and include passing `scripts/run_logic_tests.sh` evidence for pure logic changes.
+
+   Known local runner symptom on macOS 26/Xcode 17: `xcodebuild test` or
+   `xcodebuild test-without-building` can hang before materializing test workers
+   and then require an external timeout. In that case, treat the Xcode runner as
+   blocked only after `xcodebuild build-for-testing` succeeds and direct
+   `xcrun xctest` through `scripts/run_logic_tests.sh` passes.
 3. For documentation-only changes, run a lightweight validation such as:
 
    ```sh

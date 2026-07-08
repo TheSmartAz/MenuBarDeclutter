@@ -10,10 +10,14 @@ struct AppIntentExecutionServiceTests {
         automationPaused: Bool = false,
         proModeEnabled: Bool = false,
         accessibilityDiscoveryEnabled: Bool = false,
+        accessibilityGranted: Bool = true,
+        accurateIconsEnabled: Bool = false,
+        screenRecordingGranted: Bool = false,
         searchEnabled: Bool = true,
         appIntentsCanApplyProfiles: Bool = false,
         appIntentsCanAccessLabs: Bool = false,
-        menuBarSpacingLabsEnabled: Bool = false
+        menuBarSpacingLabsEnabled: Bool = false,
+        showSecondBar: @escaping () -> Void = {}
     ) -> (AppIntentExecutionService, SettingsStore) {
         let suiteName = "intent-tests-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
@@ -23,6 +27,7 @@ struct AppIntentExecutionServiceTests {
         store.automationPaused = automationPaused
         store.proModeEnabled = proModeEnabled
         store.accessibilityDiscoveryEnabled = accessibilityDiscoveryEnabled
+        store.renderedIconCaptureEnabled = accurateIconsEnabled
         store.searchEnabled = searchEnabled
         store.appIntentsCanApplyProfiles = appIntentsCanApplyProfiles
         store.appIntentsCanAccessLabs = appIntentsCanAccessLabs
@@ -33,11 +38,13 @@ struct AppIntentExecutionServiceTests {
             settingsStore: store,
             diagnosticsLogger: logger,
             safeModeActive: { safeMode },
+            accessibilityStatus: { accessibilityGranted ? .granted : .denied },
+            screenCaptureStatus: { screenRecordingGranted ? .granted : .notGranted },
             expand: {},
             collapse: {},
             revealAll: {},
             showFindIcon: {},
-            showSecondBar: {},
+            showSecondBar: showSecondBar,
             hideSecondBar: {},
             enterFullMenuBarMode: {},
             exitFullMenuBarMode: {},
@@ -118,6 +125,50 @@ struct AppIntentExecutionServiceTests {
             accessibilityDiscoveryEnabled: true
         )
         #expect(readyService.showFindIcon() == .success)
+    }
+
+    @Test func showSecondBarAppIntentUsesFullReadinessGate() {
+        var showCount = 0
+        let onShow = { showCount += 1 }
+
+        let (basicService, _) = makeService(
+            accessibilityDiscoveryEnabled: true,
+            accurateIconsEnabled: true,
+            screenRecordingGranted: true,
+            showSecondBar: onShow
+        )
+        #expect(basicService.showSecondBar() == .requiresProMode)
+        #expect(showCount == 0)
+
+        let (missingIconsService, _) = makeService(
+            proModeEnabled: true,
+            accessibilityDiscoveryEnabled: true,
+            accurateIconsEnabled: false,
+            screenRecordingGranted: true,
+            showSecondBar: onShow
+        )
+        #expect(missingIconsService.showSecondBar() == .requiresAccurateIcons)
+        #expect(showCount == 0)
+
+        let (missingScreenRecordingService, _) = makeService(
+            proModeEnabled: true,
+            accessibilityDiscoveryEnabled: true,
+            accurateIconsEnabled: true,
+            screenRecordingGranted: false,
+            showSecondBar: onShow
+        )
+        #expect(missingScreenRecordingService.showSecondBar() == .requiresScreenRecording)
+        #expect(showCount == 0)
+
+        let (readyService, _) = makeService(
+            proModeEnabled: true,
+            accessibilityDiscoveryEnabled: true,
+            accurateIconsEnabled: true,
+            screenRecordingGranted: true,
+            showSecondBar: onShow
+        )
+        #expect(readyService.showSecondBar() == .success)
+        #expect(showCount == 1)
     }
 
     @Test func spacingPresetRequiresLabs() {
@@ -209,6 +260,37 @@ struct AppIntentExecutionServiceTests {
             canAccessLabs: false,
             spacingLabsEnabled: false
         ) == .discoveryGated)
+        #expect(secondBarAction.status(
+            appIntentsEnabled: true,
+            proModeEnabled: true,
+            accessibilityDiscoveryEnabled: true,
+            accessibilityGranted: false,
+            accurateIconsEnabled: true,
+            screenRecordingGranted: true,
+            canApplyProfiles: false,
+            canAccessLabs: false,
+            spacingLabsEnabled: false
+        ) == .accessibilityPermissionGated)
+        #expect(secondBarAction.status(
+            appIntentsEnabled: true,
+            proModeEnabled: true,
+            accessibilityDiscoveryEnabled: true,
+            accurateIconsEnabled: false,
+            screenRecordingGranted: true,
+            canApplyProfiles: false,
+            canAccessLabs: false,
+            spacingLabsEnabled: false
+        ) == .accurateIconsGated)
+        #expect(secondBarAction.status(
+            appIntentsEnabled: true,
+            proModeEnabled: true,
+            accessibilityDiscoveryEnabled: true,
+            accurateIconsEnabled: true,
+            screenRecordingGranted: false,
+            canApplyProfiles: false,
+            canAccessLabs: false,
+            spacingLabsEnabled: false
+        ) == .screenRecordingGated)
         #expect(secondBarAction.status(
             appIntentsEnabled: true,
             proModeEnabled: true,

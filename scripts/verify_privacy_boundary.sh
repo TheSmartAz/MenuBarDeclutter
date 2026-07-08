@@ -61,6 +61,41 @@ check_screen_capturekit_scope() {
   fi
 }
 
+check_second_bar_entrypoints_do_not_prompt() {
+  local entrypoint_files=(
+    MenuBar-Manager/App/AppEnvironment.swift
+    MenuBar-Manager/CommandCenter/MenuBarCommandRouter.swift
+    MenuBar-Manager/SecondBar/ProSecondBarReadiness.swift
+    MenuBar-Manager/SecondBar/SecondBarCompactStripWindowController.swift
+    MenuBar-Manager/StatusBar/StatusBarMenuBuilder.swift
+  )
+  local prompt_pattern="requestPromptFromUserAction|requestPermissionFromUserAction|AXTrustedCheckOptionPrompt[^\\n]*true|CGRequestScreenCaptureAccess"
+
+  if search_to_file "$prompt_pattern" /tmp/menubardeclutter-secondbar-entrypoint-prompts.txt "${entrypoint_files[@]}"; then
+    fail "Second Bar status and compact entry points do not request privacy prompts"
+    sed -n '1,12p' /tmp/menubardeclutter-secondbar-entrypoint-prompts.txt
+  else
+    pass "Second Bar status and compact entry points do not request privacy prompts"
+  fi
+
+  if search_to_file "requestPromptFromUserAction" /tmp/menubardeclutter-accessibility-request-buttons.txt \
+    MenuBar-Manager/Settings/PrivacySettingsView.swift \
+    MenuBar-Manager/Settings/ProSecondBarSetupChecklistView.swift \
+    MenuBar-Manager/SecondBar/SecondBarRootView.swift; then
+    pass "Explicit Accessibility request buttons remain available"
+  else
+    fail "Explicit Accessibility request buttons were not found"
+  fi
+
+  if search_to_file "requestPermissionFromUserAction" /tmp/menubardeclutter-screen-recording-request-buttons.txt \
+    MenuBar-Manager/Settings/PrivacySettingsView.swift \
+    MenuBar-Manager/Settings/ProSecondBarSetupChecklistView.swift; then
+    pass "Explicit Screen Recording request buttons remain available for Accurate Icons"
+  else
+    fail "Explicit Screen Recording request buttons were not found"
+  fi
+}
+
 cd "$ROOT_DIR"
 
 echo "MenuBarDeclutter privacy boundary verification"
@@ -85,6 +120,8 @@ if search_to_file "AXIsProcessTrusted|AXUIElement|AccessibilityPermissionService
 else
   fail "Expected Accessibility references were not found"
 fi
+
+check_second_bar_entrypoints_do_not_prompt
 
 if plutil -extract CFBundleURLTypes xml1 -o - Config/MenuBarDeclutter-Info.plist | contains_pattern "menubardeclutter"; then
   pass "Local menubardeclutter:// URL scheme is registered"

@@ -11,6 +11,8 @@ struct SettingsActions {
     var commandAvailability: ((MenuBarCommand) -> MenuBarCommandAvailability)?
     var routeCommand: ((MenuBarCommand) -> MenuBarCommandResult)?
     var executeAssistedMove: (@MainActor (MenuBarItemSnapshot, IconMoveCommand) async -> IconMoveResult)?
+    var applyWorkspaceLayout: (@MainActor () async -> WorkspaceLayoutApplyResult?)?
+    var isWorkspaceLayoutApplyEnabled: (() -> Bool)?
     var profile: SettingsProfileActions
     var triggersChanged: (() -> Void)?
     var resetLayout: (() -> Void)?
@@ -47,6 +49,8 @@ struct SettingsActions {
         commandAvailability: ((MenuBarCommand) -> MenuBarCommandAvailability)? = nil,
         routeCommand: ((MenuBarCommand) -> MenuBarCommandResult)? = nil,
         executeAssistedMove: (@MainActor (MenuBarItemSnapshot, IconMoveCommand) async -> IconMoveResult)? = nil,
+        applyWorkspaceLayout: (@MainActor () async -> WorkspaceLayoutApplyResult?)? = nil,
+        isWorkspaceLayoutApplyEnabled: (() -> Bool)? = nil,
         profile: SettingsProfileActions = .empty,
         triggersChanged: (() -> Void)? = nil,
         resetLayout: (() -> Void)? = nil,
@@ -82,6 +86,8 @@ struct SettingsActions {
         self.commandAvailability = commandAvailability
         self.routeCommand = routeCommand
         self.executeAssistedMove = executeAssistedMove
+        self.applyWorkspaceLayout = applyWorkspaceLayout
+        self.isWorkspaceLayoutApplyEnabled = isWorkspaceLayoutApplyEnabled
         self.profile = profile
         self.triggersChanged = triggersChanged
         self.resetLayout = resetLayout
@@ -164,6 +170,7 @@ extension View {
     ) -> some View {
         self
             .forwardSettingsChange(of: settingsStore.secondBarEnabled, to: action)
+            .forwardSettingsChange(of: settingsStore.secondBarPrimaryClickEnabled, to: action)
             .forwardSettingsChange(of: settingsStore.secondBarShowHiddenItems, to: action)
             .forwardSettingsChange(of: settingsStore.secondBarShowAlwaysHiddenItems, to: action)
             .forwardSettingsChange(of: settingsStore.secondBarAutoCloseAfterSelection, to: action)

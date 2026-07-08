@@ -252,6 +252,7 @@ final class AppHealthCoordinator {
     func disableProMode() {
         dependencies.settingsStore.proModeEnabled = false
         dependencies.settingsStore.accessibilityDiscoveryEnabled = false
+        dependencies.settingsStore.secondBarPrimaryClickEnabled = false
         dependencies.settingsStore.iconMovingEnabled = false
         dependencies.settingsStore.smartTriggersEnabled = false
         externalActions.refreshTriggerSettings()

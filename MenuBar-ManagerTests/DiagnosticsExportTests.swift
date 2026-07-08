@@ -130,6 +130,7 @@ struct DiagnosticsExportTests {
         let settings = try #require(object["settings"] as? [String: Any])
         #expect(settings.keys.sorted() == Self.expectedSettingsKeys)
         #expect(settings["lastAccessibilityPermissionStatus"] is NSNull)
+        #expect(settings["lastScreenCapturePermissionStatus"] is NSNull)
         #expect(settings["collapsedSeparatorLengthOverride"] is NSNull)
 
         let logs = try #require(object["logs"] as? [[String: Any]])
@@ -250,6 +251,121 @@ struct DiagnosticsExportTests {
         #expect(text.contains("Set Builder Missing Groups: 1"))
         #expect(text.contains("Unresolved Menu Bar Proxy References: 2"))
         #expect(text.contains("Set Builder Unresolved Proxies: 1"))
+    }
+
+    @Test func jsonExportCanIncludeSecondBarReadinessDiagnostics() throws {
+        let exporter = makeExporter()
+        let store = makeStore()
+        let logger = DiagnosticsLogger()
+        let input = ProSecondBarReadinessInput(
+            entitlement: .licensed,
+            accessibilityDiscoveryEnabled: true,
+            accessibilityPermission: .granted,
+            accurateIconsEnabled: true,
+            screenCapturePermission: .notGranted
+        )
+        let readiness = DiagnosticsExporter.SecondBarReadinessDiagnosticsSnapshot(
+            input: input,
+            readiness: ProSecondBarReadiness.evaluate(input),
+            primaryClickOptIn: true,
+            safeModeActive: false
+        )
+
+        let snapshot = exporter.makeSnapshot(
+            settingsStore: store,
+            logger: logger,
+            secondBarReadiness: readiness
+        )
+        let data = try exporter.serialize(snapshot, format: .json)
+        let object = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let secondBarReadiness = try #require(object["secondBarReadiness"] as? [String: Any])
+
+        #expect(try #require(secondBarReadiness["readinessState"] as? String) == "screenRecordingMissing")
+        #expect(try #require(secondBarReadiness["readinessTitle"] as? String) == "Screen Recording Required")
+        let readinessMessage = try #require(secondBarReadiness["readinessMessage"] as? String)
+        #expect(readinessMessage.contains("Screen Recording"))
+        #expect(try #require(secondBarReadiness["isReady"] as? Bool) == false)
+        #expect(try #require(secondBarReadiness["entitlement"] as? String) == "licensed")
+        #expect(try #require(secondBarReadiness["entitlementActive"] as? Bool) == true)
+        #expect(try #require(secondBarReadiness["accessibilityDiscoveryEnabled"] as? Bool) == true)
+        #expect(try #require(secondBarReadiness["accessibilityPermission"] as? String) == "granted")
+        #expect(try #require(secondBarReadiness["accurateIconsEnabled"] as? Bool) == true)
+        #expect(try #require(secondBarReadiness["screenCapturePermission"] as? String) == "notGranted")
+        #expect(try #require(secondBarReadiness["primaryClickOptIn"] as? Bool) == true)
+        #expect(try #require(secondBarReadiness["primaryClickRoute"] as? String) == "showSecondBarRequirements")
+        #expect(try #require(secondBarReadiness["safeModeActive"] as? Bool) == false)
+
+        let text = String(data: try exporter.serialize(snapshot, format: .txt), encoding: .utf8) ?? ""
+        #expect(text.contains("Second Bar Readiness"))
+        #expect(text.contains("State: screenRecordingMissing"))
+        #expect(text.contains("Title: Screen Recording Required"))
+        #expect(text.contains("Screen Recording Permission: notGranted"))
+        #expect(text.contains("Primary Click Route: showSecondBarRequirements"))
+    }
+
+    @Test func jsonExportCanIncludeSecondBarRuntimeDiagnostics() throws {
+        let exporter = makeExporter()
+        let store = makeStore()
+        let logger = DiagnosticsLogger()
+        let runtime = DiagnosticsExporter.SecondBarRuntimeDiagnosticsSnapshot(
+            visible: true,
+            itemCount: 5,
+            currentScreen: "screen-1",
+            lastPosition: "x 100, y 24, 560 x 42",
+            iconWarmUpInProgress: false,
+            lastIconWarmUpResult: "Refreshed 2 thumbnail(s)",
+            lastCompactVisibleItemCount: 3,
+            lastCompactOverflowItemCount: 2,
+            lastCompactFallbackIconCount: 1,
+            lastCompactScanState: "Fresh",
+            lastCompactAvoidedNotch: true,
+            lastActivationResult: "actionFailed",
+            lastActivationMatrixResult: "FAIL_AX_PRESS",
+            lastActivationTargetZone: "hidden",
+            lastActivationVisitedElementCount: 5,
+            lastActivationAXError: "cannotComplete"
+        )
+
+        let snapshot = exporter.makeSnapshot(
+            settingsStore: store,
+            logger: logger,
+            secondBarRuntime: runtime
+        )
+        let data = try exporter.serialize(snapshot, format: .json)
+        let object = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let secondBarRuntime = try #require(object["secondBarRuntime"] as? [String: Any])
+
+        #expect(try #require(secondBarRuntime["visible"] as? Bool))
+        #expect(try #require(secondBarRuntime["itemCount"] as? Int) == 5)
+        #expect(try #require(secondBarRuntime["currentScreen"] as? String) == "screen-1")
+        #expect(try #require(secondBarRuntime["lastPosition"] as? String) == "x 100, y 24, 560 x 42")
+        #expect(try #require(secondBarRuntime["iconWarmUpInProgress"] as? Bool) == false)
+        #expect(try #require(secondBarRuntime["lastIconWarmUpResult"] as? String) == "Refreshed 2 thumbnail(s)")
+        #expect(try #require(secondBarRuntime["lastCompactVisibleItemCount"] as? Int) == 3)
+        #expect(try #require(secondBarRuntime["lastCompactOverflowItemCount"] as? Int) == 2)
+        #expect(try #require(secondBarRuntime["lastCompactFallbackIconCount"] as? Int) == 1)
+        #expect(try #require(secondBarRuntime["lastCompactScanState"] as? String) == "Fresh")
+        #expect(try #require(secondBarRuntime["lastCompactAvoidedNotch"] as? Bool))
+        #expect(try #require(secondBarRuntime["lastActivationResult"] as? String) == "actionFailed")
+        #expect(try #require(secondBarRuntime["lastActivationMatrixResult"] as? String) == "FAIL_AX_PRESS")
+        #expect(try #require(secondBarRuntime["lastActivationTargetZone"] as? String) == "hidden")
+        #expect(try #require(secondBarRuntime["lastActivationVisitedElementCount"] as? Int) == 5)
+        #expect(try #require(secondBarRuntime["lastActivationAXError"] as? String) == "cannotComplete")
+
+        let text = String(data: try exporter.serialize(snapshot, format: .txt), encoding: .utf8) ?? ""
+        #expect(text.contains("Second Bar Runtime"))
+        #expect(text.contains("Visible: true"))
+        #expect(text.contains("Item Count: 5"))
+        #expect(text.contains("Last Compact Visible: 3"))
+        #expect(text.contains("Last Compact Overflow: 2"))
+        #expect(text.contains("Last Compact Fallback Icons: 1"))
+        #expect(text.contains("Last Compact Scan: Fresh"))
+        #expect(text.contains("Last Compact Avoided Notch: true"))
+        #expect(text.contains("Last Activation Result: actionFailed"))
+        #expect(text.contains("Last Activation Matrix Result: FAIL_AX_PRESS"))
+        #expect(text.contains("Last Activation Target Zone: hidden"))
+        #expect(text.contains("Last Activation Visited Elements: 5"))
+        #expect(text.contains("Last Activation AX Error: cannotComplete"))
     }
 
     @Test func txtExportIsHumanReadableAndExcludesByDesign() throws {
@@ -531,6 +647,7 @@ struct DiagnosticsExportTests {
         "infoStripShowPreviewBadge",
         "isCollapsed",
         "lastAccessibilityPermissionStatus",
+        "lastScreenCapturePermissionStatus",
         "launchAtLoginEnabled",
         "layoutFeaturesEnabled",
         "layoutSuggestionsEnabled",
@@ -570,6 +687,7 @@ struct DiagnosticsExportTests {
         "secondBarEnabled",
         "secondBarIconSize",
         "secondBarPositionMode",
+        "secondBarPrimaryClickEnabled",
         "secondBarShowAlwaysHiddenItems",
         "secondBarShowHiddenItems",
         "secondBarShowLabels",

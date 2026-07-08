@@ -303,6 +303,137 @@ struct IconMovePlanningTests {
         #expect(!event.metadata.values.contains("com.example.private"))
     }
 
+    @Test func moveServiceRecordsSuccessfulMoveOutcome() async throws {
+        let suiteName = "IconMovePlanningTests.outcomeSuccess.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let store = SettingsStore(defaults: defaults)
+        store.proModeEnabled = true
+        store.iconMovingEnabled = true
+        store.iconMovingRequireConfirmation = false
+        store.iconMovingMaxRetries = 0
+
+        let logger = DiagnosticsLogger()
+        let permission = AccessibilityPermissionService(
+            settingsStore: store,
+            diagnosticsLogger: logger,
+            trustProvider: { true },
+            promptTrustProvider: { true },
+            systemSettingsOpener: { true }
+        )
+        let liveStatus = LiveDiagnosticsStatus()
+        let sink = RecordingMoveOutcomeSink()
+        let dragProbe = AsyncDragProbe()
+        let original = makeSnapshot(
+            bundleID: "com.example.move",
+            zone: .hidden,
+            frame: CGRect(x: 260, y: 850, width: 24, height: 22)
+        )
+        let moved = makeSnapshot(
+            bundleID: "com.example.move",
+            zone: .visible,
+            frame: CGRect(x: 560, y: 850, width: 24, height: 22)
+        )
+
+        var visibility: HidingVisibilityState = .collapsed
+        let service = IconMoveService(
+            settingsStore: store,
+            permissionService: permission,
+            liveStatus: liveStatus,
+            diagnosticsLogger: logger,
+            dragExecutor: ProbeDragExecutor(probe: dragProbe),
+            separatorFramesProvider: {
+                MenuBarSeparatorFrames(
+                    primary: CGRect(x: 500, y: 848, width: 20, height: 24),
+                    alwaysHidden: CGRect(x: 200, y: 848, width: 20, height: 24)
+                )
+            },
+            currentVisibilityProvider: { visibility },
+            setVisibility: { visibility = $0 },
+            refreshSnapshots: { [moved] },
+            suspendRuntimeBehaviors: {},
+            resumeRuntimeBehaviors: {},
+            moveOutcomeRecorder: sink
+        )
+
+        let result = await service.move(original, command: .moveToZone(.visible))
+
+        #expect(result.outcome == .succeeded)
+        #expect(sink.outcomes.count == 1)
+        let outcome = try #require(sink.outcomes.first)
+        #expect(outcome.result == .succeeded)
+        #expect(outcome.moveAttempted)
+        #expect(outcome.isReliabilitySample)
+        #expect(outcome.isSuccess)
+        #expect(outcome.sourceZone == .hidden)
+        #expect(outcome.targetZone == .visible)
+        #expect(outcome.commandKind == .toZone)
+        #expect(outcome.verification == .succeeded)
+        #expect(outcome.appBundleIdentifier == "com.example.move")
+        #expect(outcome.retries == 0)
+        #expect(outcome.latencySeconds != nil)
+    }
+
+    @Test func moveServiceRecordsFailedMoveOutcome() async throws {
+        let suiteName = "IconMovePlanningTests.outcomeFailure.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let store = SettingsStore(defaults: defaults)
+        store.proModeEnabled = true
+        store.iconMovingEnabled = true
+        store.iconMovingRequireConfirmation = false
+        store.iconMovingMaxRetries = 0
+
+        let logger = DiagnosticsLogger()
+        let permission = AccessibilityPermissionService(
+            settingsStore: store,
+            diagnosticsLogger: logger,
+            trustProvider: { true },
+            promptTrustProvider: { true },
+            systemSettingsOpener: { true }
+        )
+        let liveStatus = LiveDiagnosticsStatus()
+        let sink = RecordingMoveOutcomeSink()
+        let original = makeSnapshot(
+            bundleID: "com.example.move",
+            zone: .hidden,
+            frame: CGRect(x: 260, y: 850, width: 24, height: 22)
+        )
+
+        var visibility: HidingVisibilityState = .collapsed
+        let service = IconMoveService(
+            settingsStore: store,
+            permissionService: permission,
+            liveStatus: liveStatus,
+            diagnosticsLogger: logger,
+            dragExecutor: FailingDragExecutor(),
+            separatorFramesProvider: {
+                MenuBarSeparatorFrames(
+                    primary: CGRect(x: 500, y: 848, width: 20, height: 24),
+                    alwaysHidden: CGRect(x: 200, y: 848, width: 20, height: 24)
+                )
+            },
+            currentVisibilityProvider: { visibility },
+            setVisibility: { visibility = $0 },
+            refreshSnapshots: { [] },
+            suspendRuntimeBehaviors: {},
+            resumeRuntimeBehaviors: {},
+            moveOutcomeRecorder: sink
+        )
+
+        let result = await service.move(original, command: .moveToZone(.visible))
+
+        #expect(result.outcome == .failed)
+        let outcome = try #require(sink.outcomes.first)
+        #expect(outcome.result == .failed)
+        #expect(outcome.isHardFailure)
+        #expect(outcome.failureReason == "dragFailed")
+        #expect(outcome.verification == .notApplicable)
+        #expect(outcome.moveAttempted)
+    }
+
     @Test func moveServiceRevealsAllForUnknownZoneMoves() async {
         let suiteName = "IconMovePlanningTests.unknownZoneReveal.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
@@ -910,6 +1041,15 @@ nonisolated private struct ProbeDragExecutor: DragExecuting {
 nonisolated private struct FailingDragExecutor: DragExecuting {
     func execute(_ plan: DragPlan) async -> Bool {
         false
+    }
+}
+
+@MainActor
+private final class RecordingMoveOutcomeSink: MoveOutcomeRecording {
+    private(set) var outcomes: [MoveOutcome] = []
+
+    func record(_ outcome: MoveOutcome) {
+        outcomes.append(outcome)
     }
 }
 

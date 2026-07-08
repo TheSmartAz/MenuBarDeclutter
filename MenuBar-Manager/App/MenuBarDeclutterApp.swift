@@ -8,5 +8,13 @@ struct MenuBarDeclutterApp: App {
         Settings {
             EmptyView()
         }
+        .commands {
+            CommandGroup(replacing: .appSettings) {
+                Button("Settings...") {
+                    appDelegate.showSettingsFromAppMenu()
+                }
+                .keyboardShortcut(",", modifiers: .command)
+            }
+        }
     }
 }

@@ -83,6 +83,74 @@ struct SecondBarPositioningService {
         )
     }
 
+    func compactStripPlacement(
+        contentSize: CGSize,
+        anchorFrame: CGRect?
+    ) -> SecondBarPlacement {
+        compactStripPlacement(
+            contentSize: contentSize,
+            anchorFrame: anchorFrame,
+            mouseLocation: mouseLocationProvider(),
+            screens: screensProvider()
+        )
+    }
+
+    func compactStripPlacement(
+        contentSize: CGSize,
+        anchorFrame: CGRect?,
+        mouseLocation: CGPoint,
+        screens: [SecondBarScreenSnapshot]
+    ) -> SecondBarPlacement {
+        let screen = chosenCompactStripScreen(
+            anchorFrame: anchorFrame,
+            mouseLocation: mouseLocation,
+            screens: screens
+        )
+        let horizontalInset: CGFloat = 8
+        let topInset: CGFloat = 6
+        let rightEdge = screen.visibleFrame.maxX - horizontalInset
+        let minimumUsableWidth = min(contentSize.width, max(0, screen.visibleFrame.width - (horizontalInset * 2)))
+
+        let anchorLeft = anchorFrame
+            .flatMap { screen.frame.intersects($0) || screen.visibleFrame.intersects($0) ? $0.minX : nil }
+        let anchorRegionWidth = anchorLeft.map { rightEdge - $0 } ?? 0
+        let canUseAnchorRegion = anchorLeft != nil && anchorRegionWidth >= minimumUsableWidth
+
+        let usedNotchRegion: Bool
+        let proposedLeft: CGFloat
+        if canUseAnchorRegion, let anchorLeft {
+            proposedLeft = anchorLeft
+            usedNotchRegion = false
+        } else if let notch = screen.notchAvoidanceRect {
+            proposedLeft = notch.minX
+            usedNotchRegion = true
+        } else {
+            proposedLeft = rightEdge - minimumUsableWidth
+            usedNotchRegion = false
+        }
+
+        let clampedLeft = min(
+            max(proposedLeft, screen.visibleFrame.minX + horizontalInset),
+            max(screen.visibleFrame.minX + horizontalInset, rightEdge - minimumUsableWidth)
+        )
+        let width = max(0, rightEdge - clampedLeft)
+        let size = CGSize(width: width, height: contentSize.height)
+        let origin = clampedOrigin(
+            CGPoint(
+                x: clampedLeft,
+                y: screen.visibleFrame.maxY - contentSize.height - topInset
+            ),
+            panelSize: size,
+            visibleFrame: screen.visibleFrame
+        )
+
+        return SecondBarPlacement(
+            frame: CGRect(origin: origin, size: size),
+            screenID: screen.id,
+            avoidedNotch: usedNotchRegion
+        )
+    }
+
     func placement(
         panelSize: CGSize,
         mode: SecondBarPositionMode,
@@ -151,6 +219,21 @@ struct SecondBarPositioningService {
                 ?? screens.first(where: \.isMain)
                 ?? fallback
         }
+    }
+
+    private func chosenCompactStripScreen(
+        anchorFrame: CGRect?,
+        mouseLocation: CGPoint,
+        screens: [SecondBarScreenSnapshot]
+    ) -> SecondBarScreenSnapshot {
+        let fallback = screens.first(where: \.isMain) ?? screens.first ?? Self.fallbackScreen
+        if let anchorFrame,
+           let screen = screens.first(where: { $0.frame.intersects(anchorFrame) || $0.visibleFrame.intersects(anchorFrame) }) {
+            return screen
+        }
+        return screens.first { $0.frame.contains(mouseLocation) }
+            ?? screens.first(where: \.isMain)
+            ?? fallback
     }
 
     private func belowMenuBarOrigin(panelSize: CGSize, screen: SecondBarScreenSnapshot) -> CGPoint {

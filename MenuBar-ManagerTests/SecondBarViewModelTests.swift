@@ -1,3 +1,4 @@
+import ApplicationServices
 import Foundation
 import Testing
 @testable import MenuBarDeclutter
@@ -108,6 +109,16 @@ struct SecondBarViewModelTests {
         #expect(attempt.action == .tryAssistedMoveItem)
         #expect(attempt.target == .menuBarItem(id: snapshot.id))
         #expect(attempt.source == .secondBar)
+    }
+
+    @Test func directActivationResultsMapToMatrixOutcomes() {
+        #expect(MenuBarItemDirectActivationResult.success(visitedElementCount: 3).matrixOutcome == .pass)
+        #expect(MenuBarItemDirectActivationResult.targetNotFound(visitedElementCount: 7).matrixOutcome == .failTargetNotFound)
+        #expect(MenuBarItemDirectActivationResult.actionFailed(
+            error: .cannotComplete,
+            visitedElementCount: 5
+        ).matrixOutcome == .failAXPress)
+        #expect(MenuBarItemDirectActivationResult.missingTargetMetadata().matrixOutcome == .failMissingMetadata)
     }
 
     private func makeSnapshot(

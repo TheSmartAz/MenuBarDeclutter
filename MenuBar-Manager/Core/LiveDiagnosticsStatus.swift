@@ -48,6 +48,18 @@ final class LiveDiagnosticsStatus {
     var secondBarItemCount: Int = 0
     var secondBarCurrentScreen: String? = nil
     var secondBarLastPosition: String? = nil
+    var secondBarIconWarmUpInProgress: Bool = false
+    var secondBarLastIconWarmUpResult: String? = nil
+    var secondBarLastCompactVisibleItemCount: Int = 0
+    var secondBarLastCompactOverflowItemCount: Int = 0
+    var secondBarLastCompactFallbackIconCount: Int = 0
+    var secondBarLastCompactScanState: String? = nil
+    var secondBarLastCompactAvoidedNotch: Bool? = nil
+    var secondBarLastActivationResult: String? = nil
+    var secondBarLastActivationMatrixResult: String? = nil
+    var secondBarLastActivationTargetZone: String? = nil
+    var secondBarLastActivationVisitedElementCount: Int? = nil
+    var secondBarLastActivationAXError: String? = nil
     var iconMoveInProgress: Bool = false
     var lastIconMoveResult: String? = nil
     var lastIconMoveError: String? = nil
@@ -102,6 +114,38 @@ final class LiveDiagnosticsStatus {
 
     func updateSecondBarItemCount(_ count: Int) {
         setIfChanged(\.secondBarItemCount, to: count)
+    }
+
+    func updateSecondBarIconWarmUp(
+        inProgress: Bool,
+        result: String?
+    ) {
+        setIfChanged(\.secondBarIconWarmUpInProgress, to: inProgress)
+        if let result {
+            setIfChanged(\.secondBarLastIconWarmUpResult, to: result)
+        }
+    }
+
+    func updateSecondBarCompactStrip(plan: SecondBarCompactStripPlan) {
+        setIfChanged(\.secondBarLastCompactVisibleItemCount, to: plan.visibleItems.count)
+        setIfChanged(\.secondBarLastCompactOverflowItemCount, to: plan.hiddenOverflowCount)
+        setIfChanged(\.secondBarLastCompactFallbackIconCount, to: plan.needsAccurateIconCount)
+        setIfChanged(\.secondBarLastCompactScanState, to: plan.scanState.diagnosticsLabel)
+    }
+
+    func updateSecondBarCompactPlacement(avoidedNotch: Bool) {
+        setIfChanged(\.secondBarLastCompactAvoidedNotch, to: avoidedNotch)
+    }
+
+    func updateSecondBarDirectActivation(
+        result: MenuBarItemDirectActivationResult,
+        targetZone: MenuBarZone
+    ) {
+        setIfChanged(\.secondBarLastActivationResult, to: result.status.rawValue)
+        setIfChanged(\.secondBarLastActivationMatrixResult, to: result.matrixOutcome.rawValue)
+        setIfChanged(\.secondBarLastActivationTargetZone, to: targetZone.rawValue)
+        setIfChanged(\.secondBarLastActivationVisitedElementCount, to: result.visitedElementCount)
+        setIfChanged(\.secondBarLastActivationAXError, to: result.axErrorDescription)
     }
 
     func updateSearchAndSecondBarItemCounts(_ counts: LiveDiagnosticsMenuBarItemCounts) {

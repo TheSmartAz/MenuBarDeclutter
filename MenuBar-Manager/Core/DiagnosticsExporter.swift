@@ -97,9 +97,100 @@ struct DiagnosticsExporter {
         let architecture: String
         let screens: [ScreenSnapshot]
         let settings: SettingsSnapshot
+        let secondBarReadiness: SecondBarReadinessDiagnosticsSnapshot?
+        let secondBarRuntime: SecondBarRuntimeDiagnosticsSnapshot?
         let workspacePreview: WorkspacePreviewDiagnosticsSnapshot?
         let events: [DiagnosticEvent]
         let dogfood: DogfoodDiagnosticsMetadata?
+    }
+
+    struct SecondBarReadinessDiagnosticsSnapshot: Codable, Equatable, Sendable {
+        let readinessState: String
+        let readinessTitle: String
+        let readinessMessage: String
+        let isReady: Bool
+        let entitlement: String
+        let entitlementActive: Bool
+        let accessibilityDiscoveryEnabled: Bool
+        let accessibilityPermission: String
+        let accurateIconsEnabled: Bool
+        let screenCapturePermission: String
+        let primaryClickOptIn: Bool
+        let primaryClickRoute: String
+        let safeModeActive: Bool
+
+        init(
+            input: ProSecondBarReadinessInput,
+            readiness: ProSecondBarReadinessResult,
+            primaryClickOptIn: Bool,
+            safeModeActive: Bool
+        ) {
+            self.readinessState = readiness.state.rawValue
+            self.readinessTitle = readiness.state.displayTitle
+            self.readinessMessage = readiness.state.message
+            self.isReady = readiness.isReady
+            self.entitlement = Self.entitlementValue(readiness.entitlement)
+            self.entitlementActive = readiness.entitlement.isActive
+            self.accessibilityDiscoveryEnabled = input.accessibilityDiscoveryEnabled
+            self.accessibilityPermission = input.accessibilityPermission.rawValue
+            self.accurateIconsEnabled = input.accurateIconsEnabled
+            self.screenCapturePermission = input.screenCapturePermission.rawValue
+            self.primaryClickOptIn = primaryClickOptIn
+            self.primaryClickRoute = Self.primaryClickRouteValue(StatusBarPrimaryClickRouter.route(
+                entitlement: readiness.entitlement,
+                readiness: readiness.state,
+                primaryClickOptIn: primaryClickOptIn,
+                safeModeActive: safeModeActive
+            ))
+            self.safeModeActive = safeModeActive
+        }
+
+        private static func entitlementValue(_ entitlement: ProEntitlementState) -> String {
+            switch entitlement {
+            case .basic:
+                "basic"
+            case .trialAvailable:
+                "trialAvailable"
+            case .trialActive:
+                "trialActive"
+            case .licensed:
+                "licensed"
+            case .expired:
+                "expired"
+            case .unavailable:
+                "unavailable"
+            }
+        }
+
+        private static func primaryClickRouteValue(_ route: StatusBarPrimaryClickRoute) -> String {
+            switch route {
+            case .toggleInlineVisibility:
+                "toggleInlineVisibility"
+            case .toggleCompactStrip:
+                "toggleCompactStrip"
+            case .showSecondBarRequirements:
+                "showSecondBarRequirements"
+            }
+        }
+    }
+
+    struct SecondBarRuntimeDiagnosticsSnapshot: Codable, Equatable, Sendable {
+        let visible: Bool
+        let itemCount: Int
+        let currentScreen: String?
+        let lastPosition: String?
+        let iconWarmUpInProgress: Bool
+        let lastIconWarmUpResult: String?
+        let lastCompactVisibleItemCount: Int
+        let lastCompactOverflowItemCount: Int
+        let lastCompactFallbackIconCount: Int
+        let lastCompactScanState: String?
+        let lastCompactAvoidedNotch: Bool?
+        let lastActivationResult: String?
+        let lastActivationMatrixResult: String?
+        let lastActivationTargetZone: String?
+        let lastActivationVisitedElementCount: Int?
+        let lastActivationAXError: String?
     }
 
     struct WorkspacePreviewDiagnosticsSnapshot: Codable, Equatable, Sendable {
@@ -119,6 +210,7 @@ struct DiagnosticsExporter {
         let proModeEnabled: Bool
         let accessibilityDiscoveryEnabled: Bool
         let lastAccessibilityPermissionStatus: String?
+        let lastScreenCapturePermissionStatus: String?
         let menuBarScanIntervalSeconds: Double
         let renderedIconCaptureEnabled: Bool
         let renderedIconRevealSweepEnabled: Bool
@@ -128,6 +220,7 @@ struct DiagnosticsExporter {
         let searchRevealOnSelection: Bool
         let searchHighlightOnSelection: Bool
         let secondBarEnabled: Bool
+        let secondBarPrimaryClickEnabled: Bool
         let secondBarShowHiddenItems: Bool
         let secondBarShowAlwaysHiddenItems: Bool
         let secondBarAutoCloseAfterSelection: Bool
@@ -237,6 +330,8 @@ struct DiagnosticsExporter {
     func makeSnapshot(
         settingsStore: SettingsStore,
         logger: DiagnosticsLogger,
+        secondBarReadiness: SecondBarReadinessDiagnosticsSnapshot? = nil,
+        secondBarRuntime: SecondBarRuntimeDiagnosticsSnapshot? = nil,
         workspacePreview: WorkspacePreviewDiagnosticsSnapshot? = nil,
         events: [DiagnosticEvent]? = nil
     ) -> Snapshot {
@@ -250,6 +345,8 @@ struct DiagnosticsExporter {
             architecture: architectureProvider(),
             screens: screensProvider(),
             settings: makeSettingsSnapshot(settingsStore),
+            secondBarReadiness: secondBarReadiness,
+            secondBarRuntime: secondBarRuntime,
             workspacePreview: workspacePreview,
             events: events ?? logger.events,
             dogfood: makeDogfoodMetadata(settingsStore)
@@ -265,6 +362,7 @@ struct DiagnosticsExporter {
             proModeEnabled: store.proModeEnabled,
             accessibilityDiscoveryEnabled: store.accessibilityDiscoveryEnabled,
             lastAccessibilityPermissionStatus: store.lastAccessibilityPermissionStatus,
+            lastScreenCapturePermissionStatus: store.lastScreenCapturePermissionStatus,
             menuBarScanIntervalSeconds: store.menuBarScanIntervalSeconds,
             renderedIconCaptureEnabled: store.renderedIconCaptureEnabled,
             renderedIconRevealSweepEnabled: store.renderedIconRevealSweepEnabled,
@@ -274,6 +372,7 @@ struct DiagnosticsExporter {
             searchRevealOnSelection: store.searchRevealOnSelection,
             searchHighlightOnSelection: store.searchHighlightOnSelection,
             secondBarEnabled: store.secondBarEnabled,
+            secondBarPrimaryClickEnabled: store.secondBarPrimaryClickEnabled,
             secondBarShowHiddenItems: store.secondBarShowHiddenItems,
             secondBarShowAlwaysHiddenItems: store.secondBarShowAlwaysHiddenItems,
             secondBarAutoCloseAfterSelection: store.secondBarAutoCloseAfterSelection,
@@ -440,6 +539,43 @@ struct DiagnosticsExporter {
         lines.append("== Settings ==")
         lines.append(contentsOf: Self.settingsPlainTextLines(for: snapshot.settings))
         lines.append("")
+        if let secondBarReadiness = snapshot.secondBarReadiness {
+            lines.append("== Second Bar Readiness ==")
+            lines.append("State: \(secondBarReadiness.readinessState)")
+            lines.append("Title: \(secondBarReadiness.readinessTitle)")
+            lines.append("Message: \(secondBarReadiness.readinessMessage)")
+            lines.append("Ready: \(secondBarReadiness.isReady)")
+            lines.append("Entitlement: \(secondBarReadiness.entitlement)")
+            lines.append("Entitlement Active: \(secondBarReadiness.entitlementActive)")
+            lines.append("Accessibility Discovery Enabled: \(secondBarReadiness.accessibilityDiscoveryEnabled)")
+            lines.append("Accessibility Permission: \(secondBarReadiness.accessibilityPermission)")
+            lines.append("Accurate Icons Enabled: \(secondBarReadiness.accurateIconsEnabled)")
+            lines.append("Screen Recording Permission: \(secondBarReadiness.screenCapturePermission)")
+            lines.append("Primary Click Opt-in: \(secondBarReadiness.primaryClickOptIn)")
+            lines.append("Primary Click Route: \(secondBarReadiness.primaryClickRoute)")
+            lines.append("Safe Mode Active: \(secondBarReadiness.safeModeActive)")
+            lines.append("")
+        }
+        if let secondBarRuntime = snapshot.secondBarRuntime {
+            lines.append("== Second Bar Runtime ==")
+            lines.append("Visible: \(secondBarRuntime.visible)")
+            lines.append("Item Count: \(secondBarRuntime.itemCount)")
+            lines.append("Current Screen: \(secondBarRuntime.currentScreen ?? "—")")
+            lines.append("Last Position: \(secondBarRuntime.lastPosition ?? "—")")
+            lines.append("Icon Warm-up Running: \(secondBarRuntime.iconWarmUpInProgress)")
+            lines.append("Last Icon Warm-up: \(secondBarRuntime.lastIconWarmUpResult ?? "—")")
+            lines.append("Last Compact Visible: \(secondBarRuntime.lastCompactVisibleItemCount)")
+            lines.append("Last Compact Overflow: \(secondBarRuntime.lastCompactOverflowItemCount)")
+            lines.append("Last Compact Fallback Icons: \(secondBarRuntime.lastCompactFallbackIconCount)")
+            lines.append("Last Compact Scan: \(secondBarRuntime.lastCompactScanState ?? "—")")
+            lines.append("Last Compact Avoided Notch: \(secondBarRuntime.lastCompactAvoidedNotch.map { String($0) } ?? "—")")
+            lines.append("Last Activation Result: \(secondBarRuntime.lastActivationResult ?? "—")")
+            lines.append("Last Activation Matrix Result: \(secondBarRuntime.lastActivationMatrixResult ?? "—")")
+            lines.append("Last Activation Target Zone: \(secondBarRuntime.lastActivationTargetZone ?? "—")")
+            lines.append("Last Activation Visited Elements: \(secondBarRuntime.lastActivationVisitedElementCount.map { String($0) } ?? "—")")
+            lines.append("Last Activation AX Error: \(secondBarRuntime.lastActivationAXError ?? "—")")
+            lines.append("")
+        }
         if let workspacePreview = snapshot.workspacePreview {
             lines.append("== Workspace Preview Diagnostics ==")
             lines.append("Workspaces: \(workspacePreview.workspaces.workspaceCount)")
@@ -584,6 +720,8 @@ struct DiagnosticsExporter {
         let system: System
         let screens: [ScreenSnapshot]
         let settings: SettingsSnapshot
+        let secondBarReadiness: SecondBarReadinessDiagnosticsSnapshot?
+        let secondBarRuntime: SecondBarRuntimeDiagnosticsSnapshot?
         let workspacePreview: WorkspacePreviewDiagnosticsSnapshot?
         let logs: [Log]
         let excludedByDesign: [String]
@@ -596,6 +734,8 @@ struct DiagnosticsExporter {
             self.system = System(snapshot: snapshot)
             self.screens = snapshot.screens
             self.settings = snapshot.settings
+            self.secondBarReadiness = snapshot.secondBarReadiness
+            self.secondBarRuntime = snapshot.secondBarRuntime
             self.workspacePreview = snapshot.workspacePreview
             self.logs = snapshot.events.map(Log.init(event:))
             self.excludedByDesign = DiagnosticsExporter.excludedByDesign
@@ -611,6 +751,8 @@ struct DiagnosticsExporter {
             case system
             case screens
             case settings
+            case secondBarReadiness
+            case secondBarRuntime
             case workspacePreview
             case logs
             case excludedByDesign
@@ -625,6 +767,8 @@ struct DiagnosticsExporter {
             try container.encode(system, forKey: .system)
             try container.encode(screens, forKey: .screens)
             try container.encode(settings, forKey: .settings)
+            try container.encodeIfPresent(secondBarReadiness, forKey: .secondBarReadiness)
+            try container.encodeIfPresent(secondBarRuntime, forKey: .secondBarRuntime)
             try container.encodeIfPresent(workspacePreview, forKey: .workspacePreview)
             try container.encode(logs, forKey: .logs)
             try container.encode(excludedByDesign, forKey: .excludedByDesign)
@@ -777,6 +921,9 @@ struct DiagnosticsExporter {
         SettingsField(key: "lastAccessibilityPermissionStatus", label: "Last Accessibility Permission Status") {
             .optionalString($0.lastAccessibilityPermissionStatus, emptyText: "(none)")
         },
+        SettingsField(key: "lastScreenCapturePermissionStatus", label: "Last Screen Recording Permission Status") {
+            .optionalString($0.lastScreenCapturePermissionStatus, emptyText: "(none)")
+        },
         SettingsField(key: "menuBarScanIntervalSeconds", label: "Menu Bar Scan Interval (s)") { .double($0.menuBarScanIntervalSeconds) },
         SettingsField(key: "renderedIconCaptureEnabled", label: "Accurate Icons Enabled") { .bool($0.renderedIconCaptureEnabled) },
         SettingsField(key: "renderedIconRevealSweepEnabled", label: "Accurate Icons Reveal Sweep Enabled") {
@@ -788,6 +935,9 @@ struct DiagnosticsExporter {
         SettingsField(key: "searchRevealOnSelection", label: "Find Icon Reveal on Selection") { .bool($0.searchRevealOnSelection) },
         SettingsField(key: "searchHighlightOnSelection", label: "Find Icon Highlight on Selection") { .bool($0.searchHighlightOnSelection) },
         SettingsField(key: "secondBarEnabled", label: "Second Bar Status Menu Visible") { .bool($0.secondBarEnabled) },
+        SettingsField(key: "secondBarPrimaryClickEnabled", label: "Second Bar Primary Click Enabled") {
+            .bool($0.secondBarPrimaryClickEnabled)
+        },
         SettingsField(key: "secondBarShowHiddenItems", label: "Second Bar Show Hidden Items") { .bool($0.secondBarShowHiddenItems) },
         SettingsField(key: "secondBarShowAlwaysHiddenItems", label: "Second Bar Show Always-Hidden Items") { .bool($0.secondBarShowAlwaysHiddenItems) },
         SettingsField(key: "secondBarAutoCloseAfterSelection", label: "Second Bar Auto-close") { .bool($0.secondBarAutoCloseAfterSelection) },

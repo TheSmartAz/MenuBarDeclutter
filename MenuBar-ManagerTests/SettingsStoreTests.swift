@@ -10,9 +10,11 @@ struct SettingsStoreTests {
         #expect(SettingsStore.privacySafeExportOmittedKeys.contains(.launchAtLoginEnabled))
         #expect(SettingsStore.privacySafeExportOmittedKeys.contains(.privateAccessLastAuthStatus))
         #expect(SettingsStore.privacySafeExportOmittedKeys.contains(.menuBarSpacingLastApplyStatus))
+        #expect(SettingsStore.privacySafeExportOmittedKeys.contains(.lastScreenCapturePermissionStatus))
         #expect(!SettingsStore.privacySafeExportKeys.contains(.dogfoodRunID))
         #expect(!SettingsStore.privacySafeExportKeys.contains(.launchAtLoginEnabled))
         #expect(!SettingsStore.privacySafeExportKeys.contains(.showPrimarySeparator))
+        #expect(!SettingsStore.privacySafeExportKeys.contains(.lastScreenCapturePermissionStatus))
         #expect(SettingsStore.privacySafeExportKeys.contains(.proModeEnabled))
 
         #expect(SettingsStore.importSkippedKeys.isSuperset(of: SettingsStore.privacySafeExportOmittedKeys))
@@ -268,6 +270,7 @@ struct SettingsStoreTests {
         #expect(store.proModeEnabled == false)
         #expect(store.accessibilityDiscoveryEnabled == false)
         #expect(store.lastAccessibilityPermissionStatus == nil)
+        #expect(store.lastScreenCapturePermissionStatus == nil)
         #expect(store.menuBarScanIntervalSeconds == AppConstants.defaultMenuBarScanIntervalSeconds)
         #expect(store.renderedIconCaptureEnabled == false)
         #expect(store.renderedIconRevealSweepEnabled == false)
@@ -283,6 +286,7 @@ struct SettingsStoreTests {
         store.proModeEnabled = true
         store.accessibilityDiscoveryEnabled = true
         store.lastAccessibilityPermissionStatus = AccessibilityPermissionStatus.granted.rawValue
+        store.lastScreenCapturePermissionStatus = ScreenCapturePermissionStatus.granted.rawValue
         store.menuBarScanIntervalSeconds = 4.5
         store.renderedIconCaptureEnabled = true
         store.renderedIconRevealSweepEnabled = true
@@ -291,6 +295,7 @@ struct SettingsStoreTests {
         #expect(reloaded.proModeEnabled == true)
         #expect(reloaded.accessibilityDiscoveryEnabled == true)
         #expect(reloaded.lastAccessibilityPermissionStatus == AccessibilityPermissionStatus.granted.rawValue)
+        #expect(reloaded.lastScreenCapturePermissionStatus == ScreenCapturePermissionStatus.granted.rawValue)
         #expect(reloaded.menuBarScanIntervalSeconds == 4.5)
         #expect(reloaded.renderedIconCaptureEnabled == true)
         #expect(reloaded.renderedIconRevealSweepEnabled == true)
@@ -329,6 +334,7 @@ struct SettingsStoreTests {
         store.proModeEnabled = true
         store.accessibilityDiscoveryEnabled = true
         store.lastAccessibilityPermissionStatus = AccessibilityPermissionStatus.granted.rawValue
+        store.lastScreenCapturePermissionStatus = ScreenCapturePermissionStatus.granted.rawValue
         store.menuBarScanIntervalSeconds = 12
         store.renderedIconCaptureEnabled = true
         store.renderedIconRevealSweepEnabled = true
@@ -338,6 +344,7 @@ struct SettingsStoreTests {
         #expect(store.proModeEnabled == false)
         #expect(store.accessibilityDiscoveryEnabled == false)
         #expect(store.lastAccessibilityPermissionStatus == nil)
+        #expect(store.lastScreenCapturePermissionStatus == nil)
         #expect(store.menuBarScanIntervalSeconds == AppConstants.defaultMenuBarScanIntervalSeconds)
         #expect(store.renderedIconCaptureEnabled == false)
         #expect(store.renderedIconRevealSweepEnabled == false)
@@ -413,6 +420,7 @@ struct SettingsStoreTests {
         let store = SettingsStore(defaults: defaults)
 
         #expect(store.secondBarEnabled == true)
+        #expect(store.secondBarPrimaryClickEnabled == false)
         #expect(store.secondBarShowHiddenItems == true)
         #expect(store.secondBarShowAlwaysHiddenItems == true)
         #expect(store.secondBarAutoCloseAfterSelection == true)
@@ -435,6 +443,7 @@ struct SettingsStoreTests {
 
         let store = SettingsStore(defaults: defaults)
         store.secondBarEnabled = false
+        store.secondBarPrimaryClickEnabled = true
         store.secondBarPositionModeRaw = SecondBarPositionMode.nearMouse.rawValue
         store.secondBarIconSize = 999
         store.iconMovingEnabled = true
@@ -446,6 +455,7 @@ struct SettingsStoreTests {
         let reloaded = SettingsStore(defaults: defaults)
 
         #expect(reloaded.secondBarEnabled == false)
+        #expect(reloaded.secondBarPrimaryClickEnabled == true)
         #expect(reloaded.effectiveSecondBarPositionMode() == .nearMouse)
         #expect(reloaded.secondBarIconSize == AppConstants.maxSecondBarIconSize)
         #expect(reloaded.iconMovingEnabled == true)
@@ -463,6 +473,7 @@ struct SettingsStoreTests {
 
         let store = SettingsStore(defaults: defaults)
         store.secondBarEnabled = false
+        store.secondBarPrimaryClickEnabled = true
         store.secondBarPositionModeRaw = SecondBarPositionMode.lastPosition.rawValue
         store.secondBarIconSize = 60
         store.iconMovingEnabled = true
@@ -474,6 +485,7 @@ struct SettingsStoreTests {
         store.restoreDefaults()
 
         #expect(store.secondBarEnabled == true)
+        #expect(store.secondBarPrimaryClickEnabled == false)
         #expect(store.effectiveSecondBarPositionMode() == .belowMenuBar)
         #expect(store.secondBarIconSize == AppConstants.defaultSecondBarIconSize)
         #expect(store.iconMovingEnabled == false)
@@ -492,6 +504,7 @@ struct SettingsStoreTests {
         let optionalKeys: [SettingsStore.Key] = [
             .collapsedSeparatorLengthOverride,
             .lastAccessibilityPermissionStatus,
+            .lastScreenCapturePermissionStatus,
             .searchHotkeyKeyCode,
             .searchHotkeyModifiersRaw,
             .globalHotkeyKeyCode,
@@ -502,6 +515,7 @@ struct SettingsStoreTests {
         let store = SettingsStore(defaults: defaults)
         store.collapsedSeparatorLengthOverride = 120
         store.lastAccessibilityPermissionStatus = AccessibilityPermissionStatus.granted.rawValue
+        store.lastScreenCapturePermissionStatus = ScreenCapturePermissionStatus.granted.rawValue
         store.searchHotkeyKeyCode = 3
         store.searchHotkeyModifiersRaw = 0x0100
         store.globalHotkeyKeyCode = 11
@@ -515,6 +529,7 @@ struct SettingsStoreTests {
 
         #expect(store.collapsedSeparatorLengthOverride == nil)
         #expect(store.lastAccessibilityPermissionStatus == nil)
+        #expect(store.lastScreenCapturePermissionStatus == nil)
         #expect(store.searchHotkeyKeyCode == nil)
         #expect(store.searchHotkeyModifiersRaw == nil)
         #expect(store.globalHotkeyKeyCode == nil)
@@ -527,6 +542,7 @@ struct SettingsStoreTests {
         let reloaded = SettingsStore(defaults: defaults)
         #expect(reloaded.collapsedSeparatorLengthOverride == nil)
         #expect(reloaded.lastAccessibilityPermissionStatus == nil)
+        #expect(reloaded.lastScreenCapturePermissionStatus == nil)
         #expect(reloaded.searchHotkeyKeyCode == nil)
         #expect(reloaded.searchHotkeyModifiersRaw == nil)
         #expect(reloaded.globalHotkeyKeyCode == nil)

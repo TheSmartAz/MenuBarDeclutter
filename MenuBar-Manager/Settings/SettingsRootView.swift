@@ -619,7 +619,7 @@ struct SettingsRootView: View {
                     navigationModel.selectedSection = .menuBarItems
                 },
                 onOpenGroups: {
-                    navigationModel.selectedSection = .advanced
+                    navigationModel.selectedSection = .groups
                 },
                 onOpenArrange: {
                     navigationModel.selectedSection = .arrange
@@ -669,6 +669,9 @@ struct SettingsRootView: View {
             SecondBarSettingsView(
                 settingsStore: settingsStore,
                 permissionService: accessibilityPermissionService,
+                screenCapturePermissionService: screenCapturePermissionService,
+                iconCaptureCoordinator: iconCaptureCoordinator,
+                scanCoordinator: menuBarScanCoordinator,
                 commandAvailability: commandSummary(for: MenuBarCommand(
                     action: .showSecondBar,
                     target: .secondBar,
@@ -848,6 +851,8 @@ struct SettingsRootView: View {
         case .automation:
             AutomationSettingsView(
                 settingsStore: settingsStore,
+                accessibilityPermissionService: accessibilityPermissionService,
+                screenCapturePermissionService: screenCapturePermissionService,
                 onChange: actions.automationSettingsChanged
             )
         case .importExport:
@@ -877,6 +882,8 @@ struct SettingsRootView: View {
                 onResetBasicMode: actions.resetBasicMode,
                 onDisableProMode: actions.disableProMode,
                 onEnterSafeModeNextLaunch: actions.enterSafeModeNextLaunch,
+                secondBarReadinessDiagnosticsProvider: makeSecondBarReadinessDiagnosticsSnapshot,
+                secondBarRuntimeDiagnosticsProvider: makeSecondBarRuntimeDiagnosticsSnapshot,
                 workspacePreviewDiagnosticsProvider: makeWorkspacePreviewDiagnosticsSnapshot
             )
         case .advanced:
@@ -911,7 +918,9 @@ struct SettingsRootView: View {
                     },
                     onOpenRecovery: {
                         navigationModel.selectedSection = .recovery
-                    }
+                    },
+                    applyLayout: actions.applyWorkspaceLayout,
+                    isLayoutApplyEnabled: { actions.isWorkspaceLayoutApplyEnabled?() ?? false }
                 )
             } else {
                 ClearGlassSettingsPage(
@@ -989,6 +998,48 @@ struct SettingsRootView: View {
             functionBar: functionDiagnostics,
             setBuilder: setBuilderViewModel.diagnosticsSnapshot,
             infoStrip: infoDiagnostics
+        )
+    }
+
+    private func makeSecondBarReadinessDiagnosticsSnapshot() -> DiagnosticsExporter.SecondBarReadinessDiagnosticsSnapshot? {
+        let accessibilityPermission = accessibilityPermissionService?.currentStatus
+            ?? settingsStore.lastAccessibilityPermissionStatus.flatMap(AccessibilityPermissionStatus.init(rawValue:))
+            ?? .notRequested
+        let screenCapturePermission = screenCapturePermissionService?.refreshStatus() ?? .unknown
+        let input = ProSecondBarReadinessInput(
+            entitlement: settingsStore.proModeEnabled ? .licensed : .basic,
+            accessibilityDiscoveryEnabled: settingsStore.accessibilityDiscoveryEnabled,
+            accessibilityPermission: accessibilityPermission,
+            accurateIconsEnabled: settingsStore.renderedIconCaptureEnabled,
+            screenCapturePermission: screenCapturePermission
+        )
+        return DiagnosticsExporter.SecondBarReadinessDiagnosticsSnapshot(
+            input: input,
+            readiness: ProSecondBarReadiness.evaluate(input),
+            primaryClickOptIn: settingsStore.secondBarPrimaryClickEnabled,
+            safeModeActive: liveStatus?.safeModeActive ?? false
+        )
+    }
+
+    private func makeSecondBarRuntimeDiagnosticsSnapshot() -> DiagnosticsExporter.SecondBarRuntimeDiagnosticsSnapshot? {
+        guard let liveStatus else { return nil }
+        return DiagnosticsExporter.SecondBarRuntimeDiagnosticsSnapshot(
+            visible: liveStatus.secondBarVisible,
+            itemCount: liveStatus.secondBarItemCount,
+            currentScreen: liveStatus.secondBarCurrentScreen,
+            lastPosition: liveStatus.secondBarLastPosition,
+            iconWarmUpInProgress: liveStatus.secondBarIconWarmUpInProgress,
+            lastIconWarmUpResult: liveStatus.secondBarLastIconWarmUpResult,
+            lastCompactVisibleItemCount: liveStatus.secondBarLastCompactVisibleItemCount,
+            lastCompactOverflowItemCount: liveStatus.secondBarLastCompactOverflowItemCount,
+            lastCompactFallbackIconCount: liveStatus.secondBarLastCompactFallbackIconCount,
+            lastCompactScanState: liveStatus.secondBarLastCompactScanState,
+            lastCompactAvoidedNotch: liveStatus.secondBarLastCompactAvoidedNotch,
+            lastActivationResult: liveStatus.secondBarLastActivationResult,
+            lastActivationMatrixResult: liveStatus.secondBarLastActivationMatrixResult,
+            lastActivationTargetZone: liveStatus.secondBarLastActivationTargetZone,
+            lastActivationVisitedElementCount: liveStatus.secondBarLastActivationVisitedElementCount,
+            lastActivationAXError: liveStatus.secondBarLastActivationAXError
         )
     }
 

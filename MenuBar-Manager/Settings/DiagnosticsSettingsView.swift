@@ -16,6 +16,8 @@ struct DiagnosticsSettingsView: View {
     var onResetBasicMode: (() -> Void)?
     var onDisableProMode: (() -> Void)?
     var onEnterSafeModeNextLaunch: (() -> Void)?
+    var secondBarReadinessDiagnosticsProvider: (() -> DiagnosticsExporter.SecondBarReadinessDiagnosticsSnapshot?)? = nil
+    var secondBarRuntimeDiagnosticsProvider: (() -> DiagnosticsExporter.SecondBarRuntimeDiagnosticsSnapshot?)? = nil
     var workspacePreviewDiagnosticsProvider: (() -> DiagnosticsExporter.WorkspacePreviewDiagnosticsSnapshot?)? = nil
 
     @State private var exportFormat: DiagnosticsExporter.Format = .txt
@@ -209,6 +211,8 @@ struct DiagnosticsSettingsView: View {
             let snapshot = exporter.makeSnapshot(
                 settingsStore: settingsStore,
                 logger: diagnosticsLogger,
+                secondBarReadiness: secondBarReadinessDiagnosticsProvider?(),
+                secondBarRuntime: secondBarRuntimeDiagnosticsProvider?(),
                 workspacePreview: workspacePreviewDiagnosticsProvider?(),
                 events: filteredEvents
             )
@@ -298,6 +302,8 @@ struct DiagnosticsSettingsView: View {
             let snapshot = exporter.makeSnapshot(
                 settingsStore: settingsStore,
                 logger: diagnosticsLogger,
+                secondBarReadiness: secondBarReadinessDiagnosticsProvider?(),
+                secondBarRuntime: secondBarRuntimeDiagnosticsProvider?(),
                 workspacePreview: workspacePreviewDiagnosticsProvider?()
             )
             let diagnosticsData = try exporter.serialize(snapshot, format: .txt)
@@ -573,62 +579,19 @@ private struct DiagnosticsToolbar: View {
     }
 
     private var toolbarControls: some View {
-        ViewThatFits(in: .horizontal) {
-            wideToolbar
-            wrappedToolbar
-        }
-    }
-
-    private var wideToolbar: some View {
-        HStack(spacing: 10) {
-            eventCounter
-            Spacer()
-            severityPicker
-            categoryPicker
-            exportFormatPicker
-
-            Button("Copy Selected", systemImage: "doc.on.doc", action: onCopySelected)
-                .disabled(!canCopySelected)
-                .help(canCopySelected ? "Copy selected diagnostic events." : "Select one or more events before copying.")
-
-            Button("Export Filtered…", systemImage: "square.and.arrow.up", action: onExport)
-                .disabled(filteredEventCount == 0)
-                .help(filteredEventCount == 0 ? "No diagnostic events match the current filters." : "Export the currently filtered diagnostic events.")
-
-            Button("Clear", systemImage: "trash", action: clear)
-                .disabled(eventCount == 0)
-                .help(eventCount == 0 ? "There are no diagnostic events to clear." : "Clear diagnostic events from the current log view.")
-        }
-        .controlSize(.small)
-    }
-
-    private var wrappedToolbar: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
                 eventCounter
                 Spacer()
-            }
-
-            HStack(spacing: 10) {
                 severityPicker
                 categoryPicker
-                Spacer()
             }
 
-            ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) {
+                exportFormatPicker
+                Spacer()
                 HStack(spacing: 8) {
-                    exportFormatPicker
-                    Spacer()
-                    ClearGlassAccessoryCluster {
-                        actionButtons
-                    }
-                }
-
-                VStack(alignment: .leading, spacing: 8) {
-                    exportFormatPicker
-                    ClearGlassAccessoryCluster(alignment: .leading, width: .flexible) {
-                        actionButtons
-                    }
+                    actionButtons
                 }
             }
         }
@@ -672,7 +635,7 @@ private struct DiagnosticsToolbar: View {
             }
         }
         .labelsHidden()
-        .pickerStyle(.segmented)
+        .pickerStyle(.menu)
         .frame(minWidth: 120, idealWidth: 180, maxWidth: 200)
         .help("Filter diagnostic events by severity.")
     }
@@ -699,7 +662,7 @@ private struct DiagnosticsToolbar: View {
             }
         }
         .labelsHidden()
-        .pickerStyle(.segmented)
+        .pickerStyle(.menu)
         .frame(minWidth: 70, idealWidth: 90, maxWidth: 100)
         .help("Choose the export format for diagnostic events.")
     }
@@ -1292,7 +1255,19 @@ private struct LiveStatusSecondBarGrid: View {
             LiveStatusRowData(label: "Second Bar Visible", value: liveStatus.secondBarVisible.yesNoText),
             LiveStatusRowData(label: "Second Bar Items", value: liveStatus.secondBarItemCount.formatted(.number)),
             LiveStatusRowData(label: "Second Bar Screen", value: liveStatus.secondBarCurrentScreen ?? "—"),
-            LiveStatusRowData(label: "Second Bar Position", value: liveStatus.secondBarLastPosition ?? "—")
+            LiveStatusRowData(label: "Second Bar Position", value: liveStatus.secondBarLastPosition ?? "—"),
+            LiveStatusRowData(label: "Last Compact Visible", value: liveStatus.secondBarLastCompactVisibleItemCount.formatted(.number)),
+            LiveStatusRowData(label: "Last Compact Overflow", value: liveStatus.secondBarLastCompactOverflowItemCount.formatted(.number)),
+            LiveStatusRowData(label: "Last Compact Fallback Icons", value: liveStatus.secondBarLastCompactFallbackIconCount.formatted(.number)),
+            LiveStatusRowData(label: "Last Compact Scan", value: liveStatus.secondBarLastCompactScanState ?? "—"),
+            LiveStatusRowData(label: "Last Compact Avoided Notch", value: liveStatus.secondBarLastCompactAvoidedNotch?.yesNoText ?? "—"),
+            LiveStatusRowData(label: "Last Activation Result", value: liveStatus.secondBarLastActivationResult ?? "—"),
+            LiveStatusRowData(label: "Last Activation Matrix", value: liveStatus.secondBarLastActivationMatrixResult ?? "—"),
+            LiveStatusRowData(label: "Last Activation Zone", value: liveStatus.secondBarLastActivationTargetZone ?? "—"),
+            LiveStatusRowData(label: "Last Activation Visited", value: liveStatus.secondBarLastActivationVisitedElementCount?.formatted(.number) ?? "—"),
+            LiveStatusRowData(label: "Last Activation AX Error", value: liveStatus.secondBarLastActivationAXError ?? "—"),
+            LiveStatusRowData(label: "Icon Warm-up Running", value: liveStatus.secondBarIconWarmUpInProgress.yesNoText),
+            LiveStatusRowData(label: "Last Icon Warm-up", value: liveStatus.secondBarLastIconWarmUpResult ?? "—")
         ]
     }
 

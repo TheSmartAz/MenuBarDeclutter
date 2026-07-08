@@ -144,6 +144,8 @@ final class SettingsExportService {
             return settingsStore.accessibilityDiscoveryEnabled.description
         case .lastAccessibilityPermissionStatus:
             return nil
+        case .lastScreenCapturePermissionStatus:
+            return nil
         case .menuBarScanIntervalSeconds:
             return settingsStore.menuBarScanIntervalSeconds.description
         case .renderedIconCaptureEnabled:
@@ -164,6 +166,8 @@ final class SettingsExportService {
             return settingsStore.searchHighlightOnSelection.description
         case .secondBarEnabled:
             return settingsStore.secondBarEnabled.description
+        case .secondBarPrimaryClickEnabled:
+            return settingsStore.secondBarPrimaryClickEnabled.description
         case .secondBarShowHiddenItems:
             return settingsStore.secondBarShowHiddenItems.description
         case .secondBarShowAlwaysHiddenItems:

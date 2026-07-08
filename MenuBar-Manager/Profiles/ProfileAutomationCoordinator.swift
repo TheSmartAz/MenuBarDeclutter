@@ -11,10 +11,14 @@ final class ProfileAutomationCoordinator {
     private let profileApplicationService: ProfileApplicationService
     private let refreshAfterProfileApply: () -> Void
     private let routeCommand: (MenuBarCommand) -> MenuBarCommandResult
+    private let exportDiagnostics: ((URL) -> Bool)?
+    private let showCompactSecondBar: (() -> Bool)?
 
     private lazy var automationURLHandler = AutomationURLHandler(
         diagnosticsLogger: diagnosticsLogger,
-        routeCommand: routeCommand
+        routeCommand: routeCommand,
+        exportDiagnostics: exportDiagnostics,
+        showCompactSecondBar: showCompactSecondBar
     )
 
     init(
@@ -28,13 +32,17 @@ final class ProfileAutomationCoordinator {
         enterFullMenuBarMode: @escaping () -> Void = {},
         exitFullMenuBarMode: @escaping () -> Void = {},
         refreshGroups: @escaping () -> Void = {},
-        routeCommand: @escaping (MenuBarCommand) -> MenuBarCommandResult
+        routeCommand: @escaping (MenuBarCommand) -> MenuBarCommandResult,
+        exportDiagnostics: ((URL) -> Bool)? = nil,
+        showCompactSecondBar: (() -> Bool)? = nil
     ) {
         self.diagnosticsLogger = diagnosticsLogger
         self.liveStatus = liveStatus
         self.accessibilityPermissionService = accessibilityPermissionService
         self.refreshAfterProfileApply = refreshAfterProfileApply
         self.routeCommand = routeCommand
+        self.exportDiagnostics = exportDiagnostics
+        self.showCompactSecondBar = showCompactSecondBar
 
         let profileStore = ProfileStore(appSupportPaths: appSupportPaths)
         let profileApplicationService = ProfileApplicationService(

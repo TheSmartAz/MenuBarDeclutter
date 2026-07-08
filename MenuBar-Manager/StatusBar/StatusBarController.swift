@@ -21,7 +21,7 @@ final class StatusBarController {
     private let liveStatus: LiveDiagnosticsStatus
     private let autoRehideSuppressionProvider: () -> Bool
     private let hoverRevealSuppressionProvider: () -> Bool
-    private let primaryClickPreviewAction: () -> Bool
+    private let primaryClickAction: (NSStatusBarButton) -> Bool
 
     private var controlItem: NSStatusItem?
     private var dragHintPopover: NSPopover?
@@ -45,7 +45,7 @@ final class StatusBarController {
         statusItemMenuOpenDidChange: @escaping (Bool) -> Void = { _ in },
         autoRehideSuppressionProvider: @escaping () -> Bool = { false },
         hoverRevealSuppressionProvider: @escaping () -> Bool = { false },
-        primaryClickPreviewAction: @escaping () -> Bool = { false }
+        primaryClickAction: @escaping (NSStatusBarButton) -> Bool = { _ in false }
     ) {
         self.menuPresenter = StatusBarMenuPresenter(
             menuBuilder: menuBuilder,
@@ -63,7 +63,7 @@ final class StatusBarController {
         self.liveStatus = liveStatus
         self.autoRehideSuppressionProvider = autoRehideSuppressionProvider
         self.hoverRevealSuppressionProvider = hoverRevealSuppressionProvider
-        self.primaryClickPreviewAction = primaryClickPreviewAction
+        self.primaryClickAction = primaryClickAction
         self.commandTarget = StatusBarCommandTarget(
             hidingService: hidingService,
             settingsStore: settingsStore
@@ -104,8 +104,8 @@ final class StatusBarController {
         commandTarget.showMenu = { [weak self] button in
             self?.menuPresenter.showMenu(from: button)
         }
-        commandTarget.performPrimaryClickPreviewAction = { [weak self] in
-            self?.primaryClickPreviewAction() ?? false
+        commandTarget.performPrimaryClickAction = { [weak self] button in
+            self?.primaryClickAction(button) ?? false
         }
 
         primarySeparatorController.install(enableItem: true)
@@ -329,7 +329,7 @@ private final class StatusBarCommandTarget: NSObject {
     private let hidingService: HidingService
     private let settingsStore: SettingsStore
     var showMenu: ((NSStatusBarButton) -> Void)?
-    var performPrimaryClickPreviewAction: (() -> Bool)?
+    var performPrimaryClickAction: ((NSStatusBarButton) -> Bool)?
 
     init(hidingService: HidingService, settingsStore: SettingsStore) {
         self.hidingService = hidingService
@@ -349,8 +349,7 @@ private final class StatusBarCommandTarget: NSObject {
             return
         }
 
-        if settingsStore.functionBarPrimaryClickEnabled,
-           performPrimaryClickPreviewAction?() == true {
+        if performPrimaryClickAction?(sender) == true {
             return
         }
 

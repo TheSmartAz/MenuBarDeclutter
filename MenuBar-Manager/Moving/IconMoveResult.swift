@@ -26,7 +26,7 @@ nonisolated enum IconMoveCommand: Equatable, Sendable {
     }
 }
 
-nonisolated enum IconMoveOutcome: String, Sendable {
+nonisolated enum IconMoveOutcome: String, Codable, Sendable {
     case succeeded
     case failed
     case skipped

@@ -122,7 +122,13 @@ struct DogfoodChecklistItem: Codable, Equatable, Identifiable, Sendable {
         (
             .proAssisted,
             [
-                "Second Bar",
+                "Second Bar setup gates ready",
+                "Second Bar compact strip opens and closes",
+                "Second Bar Accurate Icons warm-up",
+                "Second Bar notch placement",
+                "Second Bar external display placement",
+                "Second Bar direct activation matrix",
+                "Second Bar manual gate audit passes",
                 "Profiles",
                 "Triggers paused/resumed",
                 "URL automation",

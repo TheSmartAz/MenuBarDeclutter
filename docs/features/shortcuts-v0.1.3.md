@@ -21,7 +21,7 @@ Basic visibility actions do not require Accessibility, Screen Recording, Apple E
 Advanced actions fail closed or report gated status when required features are unavailable:
 
 - Show Find Icon requires the Find Icon feature and Pro Discovery gates when metadata is needed.
-- Show Second Bar requires Pro Discovery gates.
+- Show Second Bar requires full Pro Second Bar readiness: Optional Pro, Accessibility Discovery, Accessibility permission, Accurate Icons, and Screen Recording.
 - Apply Profile requires profile automation gates.
 - Labs actions require Labs access gates.
 - Assisted Move remains Experimental and confirmation-gated.
