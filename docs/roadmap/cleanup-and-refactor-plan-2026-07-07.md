@@ -255,5 +255,22 @@ Workspaces consolidations · Tier-C ledger decision.
   production caller (`AppDelegate.swift:252`) + 3 test assertions, and the plan
   scopes this as de-dup, not removal.
 
-**Next: Wave 3** — `CodableFileStore<T>` + 16 stores · `FeatureGate` + 13 gate
-sites · DesignSystem component dedup.
+**Wave 3 — IN PROGRESS.**
+- `CodableFileStore<T>` primitive — `d8628165` (added standalone, then adopted).
+- Adopted across **7 single-file stores** (`MoveOutcomeStore`, `SpacerItemStore`,
+  `IconGroupStore`, `MenuBarItemMemoryStore`, `NewMenuBarItemInboxStore`,
+  `PlacementItemPreferenceStore`, `WorkspaceStore`) — `e4b9f722`. Each preserves
+  its EXACT prior encoder/decoder so on-disk JSON is byte-identical (the
+  numeric-`Date` stores keep a plain encoder, NOT the ISO8601 default).
+  **`ProfileStore` and `DogfoodStore` intentionally NOT converted** — both are
+  multi-file / multi-payload stores that don't fit the single-file primitive.
+- `FeatureGate` predicate + `SettingsStore.isProDiscoveryAvailable`; routed the
+  12 real pro-discovery gate sites (11 settings-backed + 1 snapshot-backed);
+  left `HealthService`'s `!proMode && discovery` misconfiguration check
+  untouched — `16c0c506`.
+- **Remaining in Wave 3:** DesignSystem component dedup (overview strips /
+  inspector panels / toggle-row idiom).
+- All steps: `BUILD SUCCEEDED`; logic lane 107 tests / 20 suites pass.
+
+**Next: Wave 3 (DS dedup)**, then Wave 4 (AppEnvironment slimming) and Wave 5
+(performance: H1 encode-off-main, H2 hosting-controller reuse, M1–M3).
