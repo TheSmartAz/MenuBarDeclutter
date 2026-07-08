@@ -595,7 +595,7 @@ private struct SeparatorControlsPanel: View {
     var onChange: (() -> Void)?
 
     var body: some View {
-        AdvancedInspectorPanel(
+        ClearGlassInspectorPanel(
             title: "Geometry Controls",
             subtitle: "Point values used by app-owned separator items.",
             systemImage: "ruler"
@@ -664,7 +664,7 @@ private struct SeparatorPreviewPanel: View {
     let collapsedLength: Double?
 
     var body: some View {
-        AdvancedInspectorPanel(
+        ClearGlassInspectorPanel(
             title: "Preview",
             subtitle: "Measured in menu bar points.",
             systemImage: "menubar.rectangle"
@@ -778,7 +778,7 @@ private struct ApplicationSupportPanel: View {
     let onRevealDiagnosticsFolder: () -> Void
 
     var body: some View {
-        AdvancedInspectorPanel(
+        ClearGlassInspectorPanel(
             title: "Application Support",
             subtitle: "File system locations used by the app.",
             systemImage: "folder"
@@ -815,7 +815,7 @@ private struct ApplicationSupportPanel: View {
 
 private struct DiagnosticsMetadataPanel: View {
     var body: some View {
-        AdvancedInspectorPanel(
+        ClearGlassInspectorPanel(
             title: "Diagnostics",
             subtitle: "Build and logging metadata.",
             systemImage: "waveform.path.ecg"
@@ -910,7 +910,7 @@ private struct AutomationRecoveryPanel: View {
     var onResetMovingWarnings: (() -> Void)?
 
     var body: some View {
-        AdvancedInspectorPanel(
+        ClearGlassInspectorPanel(
             title: "Recovery",
             subtitle: "Pause automation or clear moving warnings.",
             systemImage: "wrench.and.screwdriver"
@@ -954,7 +954,7 @@ private struct IconMovingControlsPanel: View {
     @Binding var iconMovingEnabled: Bool
 
     var body: some View {
-        AdvancedInspectorPanel(
+        ClearGlassInspectorPanel(
             title: "Icon Moving",
             subtitle: settingsStore.iconMovingEnabled ? "Labs moving controls are enabled." : "Disabled until confirmed.",
             systemImage: "arrow.up.left.and.arrow.down.right",
@@ -1056,62 +1056,6 @@ private struct DeveloperNotesSection: View {
 }
 
 // MARK: - Shared Advanced Helpers
-
-private struct AdvancedInspectorPanel<Content: View>: View {
-    let title: String
-    var subtitle: String?
-    let systemImage: String
-    var iconTint: Color = .secondary
-    @ViewBuilder let content: Content
-
-    init(
-        title: String,
-        subtitle: String? = nil,
-        systemImage: String,
-        iconTint: Color = .secondary,
-        @ViewBuilder content: () -> Content
-    ) {
-        self.title = title
-        self.subtitle = subtitle
-        self.systemImage = systemImage
-        self.iconTint = iconTint
-        self.content = content()
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top, spacing: 10) {
-                Image(systemName: systemImage)
-                    .font(.system(size: 16, weight: .regular))
-                    .foregroundStyle(iconTint)
-                    .frame(width: 22, height: 22)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.subheadline)
-                        .foregroundStyle(.primary)
-
-                    if let subtitle {
-                        Text(subtitle)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            content
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 8))
-        .overlay {
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color(nsColor: .separatorColor).opacity(0.46), lineWidth: 0.5)
-        }
-    }
-}
 
 private struct AdvancedInspectorRow<Value: View>: View {
     let title: String

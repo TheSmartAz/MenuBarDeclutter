@@ -171,7 +171,7 @@ private struct CapacityInspectorPanel: View {
     var estimate: LayoutCapacityEstimate?
 
     var body: some View {
-        LayoutInspectorPanel(
+        ClearGlassInspectorPanel(
             title: "Capacity Inspector",
             subtitle: estimate?.source.displayName ?? "Basic geometry fallback",
             systemImage: "menubar.rectangle"
@@ -287,7 +287,7 @@ private struct SuggestionInspectorPanel: View {
     let suggestions: [LayoutSuggestion]
 
     var body: some View {
-        LayoutInspectorPanel(
+        ClearGlassInspectorPanel(
             title: "Suggestions",
             subtitle: isEnabled ? "\(suggestions.count) current" : "Turned off",
             systemImage: "lightbulb",
@@ -399,7 +399,7 @@ private struct FullMenuBarModePanel: View {
     @Bindable var settingsStore: SettingsStore
 
     var body: some View {
-        LayoutInspectorPanel(
+        ClearGlassInspectorPanel(
             title: "Full Menu Bar Mode",
             subtitle: "Reveal every app-owned status item temporarily.",
             systemImage: "rectangle.expand.vertical",
@@ -480,7 +480,7 @@ private struct CrowdedRevealPanel: View {
     @Bindable var settingsStore: SettingsStore
 
     var body: some View {
-        LayoutInspectorPanel(
+        ClearGlassInspectorPanel(
             title: "Crowded Reveal Rescue",
             subtitle: "Fail closed into Second Bar when inline reveal is risky.",
             systemImage: "shield.lefthalf.filled",
@@ -583,7 +583,7 @@ private struct SpacerItemsSection: View {
                 )
                 .padding(.vertical, 10)
 
-                LayoutInspectorPanel(
+                ClearGlassInspectorPanel(
                     title: "Spacer Inspector",
                     subtitle: settingsStore.spacerItemsEnabled ? "Add, edit, hide, or reset spacers." : "Spacer controls are disabled.",
                     systemImage: "sidebar.right",
@@ -664,7 +664,7 @@ private struct MenuBarSpacingPresetPanel: View {
     @Bindable var settingsStore: SettingsStore
 
     var body: some View {
-        LayoutInspectorPanel(
+        ClearGlassInspectorPanel(
             title: "Spacing Inspector",
             subtitle: selectedPreset.displayName,
             systemImage: "slider.horizontal.3",
@@ -735,62 +735,6 @@ private struct MenuBarSpacingPresetPanel: View {
 }
 
 // MARK: - Shared Layout Helpers
-
-private struct LayoutInspectorPanel<Content: View>: View {
-    let title: String
-    var subtitle: String?
-    let systemImage: String
-    var iconTint: Color = .secondary
-    @ViewBuilder let content: Content
-
-    init(
-        title: String,
-        subtitle: String? = nil,
-        systemImage: String,
-        iconTint: Color = .secondary,
-        @ViewBuilder content: () -> Content
-    ) {
-        self.title = title
-        self.subtitle = subtitle
-        self.systemImage = systemImage
-        self.iconTint = iconTint
-        self.content = content()
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top, spacing: 10) {
-                Image(systemName: systemImage)
-                    .font(.system(size: 16, weight: .regular))
-                    .foregroundStyle(iconTint)
-                    .frame(width: 22, height: 22)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.subheadline)
-                        .foregroundStyle(.primary)
-
-                    if let subtitle {
-                        Text(subtitle)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            content
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 8))
-        .overlay {
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color(nsColor: .separatorColor).opacity(0.46), lineWidth: 0.5)
-        }
-    }
-}
 
 private struct LayoutInspectorRow: View {
     let title: String
