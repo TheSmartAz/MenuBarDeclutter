@@ -66,7 +66,12 @@ final class MenuBarVisibleIconCapturer {
         return frame
     }
 
-    private func captureImage(in rect: CGRect) async throws -> CGImage {
+    /// `nonisolated` so the ScreenCaptureKit call runs off the main actor.
+    /// `SCScreenshotManager.captureImage` warns ("should not be called on the
+    /// main thread as it may lead to UI unresponsiveness") and can hitch the UI
+    /// when invoked on main; this method only reads its `rect` argument and the
+    /// global manager, so it is safe off-main. The returned `CGImage` is Sendable.
+    nonisolated private func captureImage(in rect: CGRect) async throws -> CGImage {
         try await withCheckedThrowingContinuation { continuation in
             SCScreenshotManager.captureImage(in: rect) { image, error in
                 if let image {
