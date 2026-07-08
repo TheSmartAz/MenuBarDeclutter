@@ -279,10 +279,23 @@ Workspaces consolidations · Tier-C ledger decision.
   metrics array — inlining relocates code without net reduction and hurts
   readability), the `*InspectorRow` structs (genuinely different value models),
   and `MenuBarInspectorGroup` (a distinct iconless grouping).
-- **Remaining in Wave 3:** toggle-row idiom + auto-divider (67 control-row / 138
-  divider sites → `ClearGlassToggleRow` + `ClearGlassRowStack`) and setup/step
-  rows — large, design-sensitive sweeps that define new core DS APIs. Recommend
-  aligning on the component API before the ~200-site rewrite.
+- Toggle-row sweep — **DONE.** Added `ClearGlassToggleRow` (collapses
+  `ClearGlassControlRow { Toggle().labelsHidden() }`) and `ClearGlassRowStack`
+  (auto-inserts dividers between a run of rows, via an isolated `_VariadicView`).
+  API piloted on `SearchSettingsView` and approved, then rolled out via parallel
+  per-file subagents (strict "correctness over coverage" spec): **23 toggle rows
+  collapsed across 6 files; `ClearGlassRowStack` adopted in 7 files.** Converted:
+  Search, Layout (13 rows/5 runs), General, SecondBar, Advanced, DynamicHotkeys,
+  WorkspacePreview, ProfileList, IconGroups, FindAndRescue. Deliberately NOT
+  converted (toggles carrying `.onChange`/`.disabled`/`.help`, Steppers/Pickers,
+  or non-literal helper-row runs) — those keep `ClearGlassControlRow`.
+  `PrivateAccessSettingsView` had no eligible rows; `AssistedMoveConfirmationView`
+  skipped at user request. Each file committed separately; every build green.
+- **Remaining in Wave 3:** setup/permission "step row" variants → one
+  `ClearGlassStepRow` (smaller, separate item). Optional follow-up: an `onChange:`
+  overload on `ClearGlassToggleRow` would let the ~40 settings-callback toggles
+  (currently `.onChange`-bearing, so skipped) collapse too — deferred pending an
+  API decision.
 - All steps: `BUILD SUCCEEDED`; logic lane 107 tests / 20 suites pass; hosted
   `HotkeyBindingStore` suite passes.
 
