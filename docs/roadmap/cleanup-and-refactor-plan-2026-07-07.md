@@ -255,7 +255,7 @@ Workspaces consolidations · Tier-C ledger decision.
   production caller (`AppDelegate.swift:252`) + 3 test assertions, and the plan
   scopes this as de-dup, not removal.
 
-**Wave 3 — IN PROGRESS.**
+**Wave 3 — DONE.**
 - `CodableFileStore<T>` primitive — `d8628165` (added standalone, then adopted).
 - Adopted across **7 single-file stores** (`MoveOutcomeStore`, `SpacerItemStore`,
   `IconGroupStore`, `MenuBarItemMemoryStore`, `NewMenuBarItemInboxStore`,
@@ -291,13 +291,22 @@ Workspaces consolidations · Tier-C ledger decision.
   or non-literal helper-row runs) — those keep `ClearGlassControlRow`.
   `PrivateAccessSettingsView` had no eligible rows; `AssistedMoveConfirmationView`
   skipped at user request. Each file committed separately; every build green.
-- **Remaining in Wave 3:** setup/permission "step row" variants → one
-  `ClearGlassStepRow` (smaller, separate item). Optional follow-up: an `onChange:`
-  overload on `ClearGlassToggleRow` would let the ~40 settings-callback toggles
-  (currently `.onChange`-bearing, so skipped) collapse too — deferred pending an
-  API decision.
-- All steps: `BUILD SUCCEEDED`; logic lane 107 tests / 20 suites pass; hosted
-  `HotkeyBindingStore` suite passes.
+- `onChange:` overload added to `ClearGlassToggleRow` → extended sweep collapsed
+  **7 more** settings-callback toggles (IconGroups 3, ProfileList 2, Advanced 1,
+  DynamicHotkeys 1). **30 toggle rows total.** Left where the closure uses its
+  value param (Launch-at-Login, separator-length) or the toggle has
+  `.disabled`/HStack (PrivateAccess).
+- `ClearGlassStepRow` — consolidated the shared status+action accessory of
+  `SearchRequirementRow`, `ProSecondBarSetupStepRow`, `FindRescueSetupStepRow`
+  (each keeps its model adapter + own button via a `@ViewBuilder` action slot).
+  `ArrangeStepRow`/`RequirementRow`/`DogfoodChecklistRow` left as distinct.
+- Skipped, with reason: the `*OverviewStrip` wrappers (distinct per-screen metric
+  arrays — inlining is a net loss), `*InspectorRow` structs (different value
+  models), `MenuBarInspectorGroup` (distinct chrome).
+- **Wave 3 — DONE.** All steps `BUILD SUCCEEDED`; logic lane 107 tests / 20
+  suites pass; hosted `HotkeyBindingStore` suite passes.
 
-**Next: Wave 3 (DS dedup)**, then Wave 4 (AppEnvironment slimming) and Wave 5
-(performance: H1 encode-off-main, H2 hosting-controller reuse, M1–M3).
+**Next: Wave 4** (AppEnvironment slimming: R1 dual-command-table collapse, R2
+health callbacks → coordinator, R3 settings-refresh delegation, `IntentExecuting`
+seam), then Wave 5 (performance: H1 encode-off-main, H2 hosting-controller reuse,
+M1–M3).
