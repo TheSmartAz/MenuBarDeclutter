@@ -191,15 +191,13 @@ struct DynamicHotkeysSettingsView: View {
                 ClearGlassDivider()
 
                 ClearGlassRowStack {
-                    ClearGlassControlRow(
+                    ClearGlassToggleRow(
                         systemImage: "keyboard",
                         title: "Enable Dynamic Hotkeys",
-                        subtitle: "Register user-created hotkeys for groups, profiles, and layout actions."
-                    ) {
-                        Toggle("Enable Dynamic Hotkeys", isOn: $settingsStore.dynamicHotkeysEnabled)
-                            .labelsHidden()
-                            .onChange(of: settingsStore.dynamicHotkeysEnabled) { _, _ in notifyChanged() }
-                    }
+                        subtitle: "Register user-created hotkeys for groups, profiles, and layout actions.",
+                        isOn: $settingsStore.dynamicHotkeysEnabled,
+                        onChange: { notifyChanged() }
+                    )
 
                     ClearGlassControlRow(
                         systemImage: "number",

@@ -43,35 +43,29 @@ struct IconGroupsSettingsView: View {
                 ClearGlassDivider()
 
                 ClearGlassRowStack {
-                    ClearGlassControlRow(
+                    ClearGlassToggleRow(
                         systemImage: "person.2",
                         title: "Enable Groups",
-                        subtitle: "Show group organization features throughout the app."
-                    ) {
-                        Toggle("Enable Groups", isOn: $settingsStore.groupsEnabled)
-                            .labelsHidden()
-                            .onChange(of: settingsStore.groupsEnabled) { _, _ in notifyChanged() }
-                    }
+                        subtitle: "Show group organization features throughout the app.",
+                        isOn: $settingsStore.groupsEnabled,
+                        onChange: { notifyChanged() }
+                    )
 
-                    ClearGlassControlRow(
+                    ClearGlassToggleRow(
                         systemImage: "menubar.rectangle",
                         title: "Group Status Items",
-                        subtitle: "Show optional app-owned menu bar items for groups that opt in."
-                    ) {
-                        Toggle("Group Status Items", isOn: $settingsStore.groupStatusItemsEnabled)
-                            .labelsHidden()
-                            .onChange(of: settingsStore.groupStatusItemsEnabled) { _, _ in notifyChanged() }
-                    }
+                        subtitle: "Show optional app-owned menu bar items for groups that opt in.",
+                        isOn: $settingsStore.groupStatusItemsEnabled,
+                        onChange: { notifyChanged() }
+                    )
 
-                    ClearGlassControlRow(
+                    ClearGlassToggleRow(
                         systemImage: "lock",
                         title: "Protected Groups Require Auth",
-                        subtitle: "Private Access can require Touch ID or device password before opening protected groups."
-                    ) {
-                        Toggle("Protected Groups Require Auth", isOn: $settingsStore.protectedGroupsRequireAuth)
-                            .labelsHidden()
-                            .onChange(of: settingsStore.protectedGroupsRequireAuth) { _, _ in notifyChanged() }
-                    }
+                        subtitle: "Private Access can require Touch ID or device password before opening protected groups.",
+                        isOn: $settingsStore.protectedGroupsRequireAuth,
+                        onChange: { notifyChanged() }
+                    )
                 }
             }
 

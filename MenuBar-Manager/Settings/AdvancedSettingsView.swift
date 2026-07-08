@@ -915,15 +915,13 @@ private struct AutomationRecoveryPanel: View {
             subtitle: "Pause automation or clear moving warnings.",
             systemImage: "wrench.and.screwdriver"
         ) {
-            ClearGlassControlRow(
+            ClearGlassToggleRow(
                 systemImage: "pause.circle",
                 title: "Pause all automation",
-                subtitle: "Temporarily stop all automation actions."
-            ) {
-                Toggle("Pause all automation", isOn: $automationPaused)
-                    .labelsHidden()
-                    .onChange(of: automationPaused) { _, _ in onAutomationChanged?() }
-            }
+                subtitle: "Temporarily stop all automation actions.",
+                isOn: $automationPaused,
+                onChange: { onAutomationChanged?() }
+            )
 
             AdvancedPanelDivider()
 
