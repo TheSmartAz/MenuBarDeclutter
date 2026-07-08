@@ -17,6 +17,7 @@ struct FindAndRescueSettingsView: View {
     var onOpenSecondBarSettings: (() -> Void)? = nil
     var onOpenMenuBarItems: (() -> Void)? = nil
     var onOpenGroups: (() -> Void)? = nil
+    var onOpenAdvanced: (() -> Void)? = nil
     var onOpenArrange: (() -> Void)? = nil
     var onOpenPrivacy: (() -> Void)? = nil
 
@@ -225,7 +226,7 @@ struct FindAndRescueSettingsView: View {
                 summary: "Use saved collections for search and Second Bar. Advanced group panels and group status items stay in Advanced."
             ) {
                 Button("Open Advanced", systemImage: "chevron.left.forwardslash.chevron.right") {
-                    onOpenGroups?()
+                    onOpenAdvanced?()
                 }
             }
         }

@@ -621,6 +621,9 @@ struct SettingsRootView: View {
                 onOpenGroups: {
                     navigationModel.selectedSection = .groups
                 },
+                onOpenAdvanced: {
+                    navigationModel.selectedSection = .advanced
+                },
                 onOpenArrange: {
                     navigationModel.selectedSection = .arrange
                 },
