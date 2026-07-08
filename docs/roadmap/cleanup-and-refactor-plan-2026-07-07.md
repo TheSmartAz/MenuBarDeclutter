@@ -225,3 +225,35 @@ Workspaces consolidations · Tier-C ledger decision.
 - One commit per item, message `cleanup(waveN): <item>`, so any step is
   independently revertible.
 - No item spans two waves; no two concurrent items edit the same file.
+
+---
+
+## Execution status (updated 2026-07-08)
+
+**Wave 1 — DONE.**
+- Tier-A deletions (~415 LOC): `SettingsPrimitives.swift`, `LabeledSlider.swift`,
+  `WorkspaceIntegrationCoordinator.swift`, `WorkspaceAssignmentCommandAdapter.swift`,
+  `FeatureVisibility.features(in:)` — commit `af8722d6`.
+- `onOpenGroups` / `onOpenAdvanced` callback split (regression fix) — `b682f604`.
+- App-shipped test doubles → test target (`MockAuthenticationService`,
+  `MockMenuBarSpacingCommandRunner`, `ProfilePack.swift` whole file) moved to
+  `MenuBar-ManagerTests/Support/`; verified app build + `build-for-testing` green —
+  `da97e0e5`.
+- `.experimental` label fix — **skipped** (the "correct" label for `.experimental`
+  vs `.labs` is a product decision, not a mechanical fix).
+
+**Wave 2 — DONE.**
+- `ClearGlass*` design-system library (~2,000 LOC, 35 types) extracted from
+  `SettingsRootView.swift` → `DesignSystem/ClearGlass/ClearGlassComponents.swift` —
+  `bbadfe04`.
+- `detailView(for:)` 20-case router (~415 LOC) extracted →
+  `SettingsRootView+DetailRouter.swift` (same-type extension; 8 private helpers
+  promoted to internal) — `0b16d38b`.
+- Net: `SettingsRootView.swift` **3,158 → 757 LOC (−76%)**.
+- `.behavior` de-dup — satisfied by the existing combined `case .hideReveal,
+  .behavior` render (single source of truth). The alias is **kept**: it has a
+  production caller (`AppDelegate.swift:252`) + 3 test assertions, and the plan
+  scopes this as de-dup, not removal.
+
+**Next: Wave 3** — `CodableFileStore<T>` + 16 stores · `FeatureGate` + 13 gate
+sites · DesignSystem component dedup.
