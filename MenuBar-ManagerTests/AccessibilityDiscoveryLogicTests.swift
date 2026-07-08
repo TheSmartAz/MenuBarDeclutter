@@ -237,6 +237,89 @@ struct AccessibilityDiscoveryLogicTests {
         #expect(attributes == ["AXExtrasMenuBar", kAXMenuBarAttribute as String])
     }
 
+    @Test func directActivationMatcherAcceptsDynamicTitleInSameMenuBarSlot() {
+        let target = makeDirectActivationSnapshot(
+            title: "Sync 9",
+            frame: CGRect(x: 1_000, y: 0, width: 42, height: 24)
+        )
+        let current = MenuBarItemDirectActivationMatcher.Identity(
+            title: "Sync 10",
+            role: "AXMenuBarItem",
+            subrole: nil,
+            frame: CGRect(x: 995, y: 0, width: 47, height: 24),
+            processIdentifier: 42,
+            bundleIdentifier: "com.example.sync"
+        )
+
+        #expect(MenuBarItemDirectActivationMatcher.matches(current, target: target))
+    }
+
+    @Test func directActivationMatcherRejectsDynamicTitleInAdjacentMenuBarSlot() {
+        let target = makeDirectActivationSnapshot(
+            title: "Sync 9",
+            frame: CGRect(x: 1_000, y: 0, width: 42, height: 24)
+        )
+        let adjacent = MenuBarItemDirectActivationMatcher.Identity(
+            title: "Sync 10",
+            role: "AXMenuBarItem",
+            subrole: nil,
+            frame: CGRect(x: 950, y: 0, width: 42, height: 24),
+            processIdentifier: 42,
+            bundleIdentifier: "com.example.sync"
+        )
+
+        #expect(!MenuBarItemDirectActivationMatcher.matches(adjacent, target: target))
+    }
+
+    @Test func directActivationMatcherRejectsDifferentOwnerInSameMenuBarSlot() {
+        let target = makeDirectActivationSnapshot(
+            title: "Sync 9",
+            frame: CGRect(x: 1_000, y: 0, width: 42, height: 24)
+        )
+        let differentOwner = MenuBarItemDirectActivationMatcher.Identity(
+            title: "Sync 10",
+            role: "AXMenuBarItem",
+            subrole: nil,
+            frame: CGRect(x: 1_000, y: 0, width: 42, height: 24),
+            processIdentifier: 43,
+            bundleIdentifier: "com.example.other"
+        )
+
+        #expect(!MenuBarItemDirectActivationMatcher.matches(differentOwner, target: target))
+    }
+
+    @Test func directActivationClickFallbackAllowsMenuBarTopBandFrames() {
+        let screen = CGRect(x: 0, y: 0, width: 1_728, height: 1_117)
+        let bottomOriginMenuBarFrame = CGRect(x: 1_000, y: 1_093, width: 42, height: 24)
+        let topOriginMenuBarFrame = CGRect(x: 1_000, y: 5, width: 42, height: 24)
+
+        #expect(MenuBarItemDirectActivationClickFallback.canClick(
+            frame: bottomOriginMenuBarFrame,
+            screenFrames: [screen]
+        ))
+        #expect(MenuBarItemDirectActivationClickFallback.canClick(
+            frame: topOriginMenuBarFrame,
+            screenFrames: [screen]
+        ))
+    }
+
+    @Test func directActivationClickFallbackRejectsNonMenuBarFrames() {
+        let screen = CGRect(x: 0, y: 0, width: 1_728, height: 1_117)
+
+        #expect(!MenuBarItemDirectActivationClickFallback.canClick(
+            frame: CGRect(x: 1_000, y: 800, width: 42, height: 24),
+            screenFrames: [screen]
+        ))
+        #expect(!MenuBarItemDirectActivationClickFallback.canClick(
+            frame: CGRect(x: 700, y: 1_080, width: 600, height: 30),
+            screenFrames: [screen]
+        ))
+        #expect(!MenuBarItemDirectActivationClickFallback.canClick(
+            frame: CGRect(x: 1_000, y: 1_093, width: 42, height: 80),
+            screenFrames: [screen]
+        ))
+    }
+
     @Test func permissionStatusMappingDoesNotRequireAccessibilityPermission() {
         #expect(
             AccessibilityPermissionService.mapPermissionStatus(
@@ -379,6 +462,24 @@ struct AccessibilityDiscoveryLogicTests {
             zone: .visible,
             isLikelySystemItem: false,
             scanTimestamp: timestamp
+        )
+    }
+
+    private func makeDirectActivationSnapshot(
+        title: String,
+        frame: CGRect
+    ) -> MenuBarItemSnapshot {
+        MenuBarItemSnapshot(
+            title: title,
+            role: "AXMenuBarItem",
+            subrole: nil,
+            frame: frame,
+            owningProcessIdentifier: 42,
+            owningApplicationName: "Sync",
+            bundleIdentifier: "com.example.sync",
+            zone: .hidden,
+            isLikelySystemItem: false,
+            scanTimestamp: Date(timeIntervalSince1970: 100)
         )
     }
 

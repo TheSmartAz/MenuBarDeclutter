@@ -20,6 +20,15 @@ enum ScreenCapturePermissionStatus: String, CaseIterable, Identifiable, Sendable
             "Unknown"
         }
     }
+
+    var recoveryInstruction: String? {
+        switch self {
+        case .granted:
+            nil
+        case .notGranted, .unknown:
+            "If MenuBarDeclutter is not listed, use Add in Screen & System Audio Recording and select /Applications/MenuBarDeclutter.app."
+        }
+    }
 }
 
 @MainActor
@@ -31,10 +40,12 @@ final class ScreenCapturePermissionService {
     @ObservationIgnored private let preflightAccess: AccessProvider
     @ObservationIgnored private let requestAccess: AccessProvider
     @ObservationIgnored private let systemSettingsOpener: SystemSettingsOpener
+    @ObservationIgnored private let settingsStore: SettingsStore?
 
     private(set) var status: ScreenCapturePermissionStatus
 
     init(
+        settingsStore: SettingsStore? = nil,
         preflightAccess: @escaping AccessProvider = { CGPreflightScreenCaptureAccess() },
         requestAccess: @escaping AccessProvider = { CGRequestScreenCaptureAccess() },
         systemSettingsOpener: @escaping SystemSettingsOpener = {
@@ -47,27 +58,34 @@ final class ScreenCapturePermissionService {
         self.preflightAccess = preflightAccess
         self.requestAccess = requestAccess
         self.systemSettingsOpener = systemSettingsOpener
+        self.settingsStore = settingsStore
         self.status = preflightAccess() ? .granted : .notGranted
+        self.settingsStore?.lastScreenCapturePermissionStatus = self.status.rawValue
     }
 
     @discardableResult
     func refreshStatus() -> ScreenCapturePermissionStatus {
         let newStatus: ScreenCapturePermissionStatus = preflightAccess() ? .granted : .notGranted
-        if status != newStatus {
-            status = newStatus
-        }
+        applyStatus(newStatus)
         return status
     }
 
     @discardableResult
     func requestPermissionFromUserAction() -> ScreenCapturePermissionStatus {
         let granted = requestAccess()
-        status = granted ? .granted : .notGranted
+        applyStatus(granted ? .granted : .notGranted)
         return status
     }
 
     @discardableResult
     func openSystemSettingsPrivacyPane() -> Bool {
         systemSettingsOpener()
+    }
+
+    private func applyStatus(_ newStatus: ScreenCapturePermissionStatus) {
+        if status != newStatus {
+            status = newStatus
+        }
+        settingsStore?.lastScreenCapturePermissionStatus = newStatus.rawValue
     }
 }

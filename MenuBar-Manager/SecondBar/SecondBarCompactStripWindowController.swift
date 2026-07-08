@@ -27,6 +27,10 @@ final class SecondBarCompactStripWindowController: NSWindowController, NSWindowD
     private var lastAnchorFrame: CGRect?
     private var activationFeedback: SecondBarCompactStripActivationFeedback?
 
+    var isShowingCompactStrip: Bool {
+        window?.isVisible == true && visibleContent?.isCompact == true
+    }
+
     @ObservationIgnored nonisolated(unsafe) private var displayParametersObserver: NSObjectProtocol?
     @ObservationIgnored nonisolated(unsafe) private var activeSpaceObserver: NSObjectProtocol?
     @ObservationIgnored nonisolated(unsafe) private var screensWakeObserver: NSObjectProtocol?
@@ -55,6 +59,7 @@ final class SecondBarCompactStripWindowController: NSWindowController, NSWindowD
             defer: false
         )
         panel.applyMenuBarDeclutterFloatingPanelStyle(title: "Second Bar Compact Strip")
+        panel.hasShadow = false
         panel.collectionBehavior = [.canJoinAllSpaces, .transient, .ignoresCycle]
         panel.minSize = NSSize(width: 220, height: Self.defaultContentSize.height)
 
@@ -94,6 +99,27 @@ final class SecondBarCompactStripWindowController: NSWindowController, NSWindowD
         activationFeedback = nil
         showCurrentContent(anchorFrame: anchorFrame)
         diagnosticsLogger.log("Second Bar compact strip shown.", level: .debug)
+    }
+
+    func refreshCompactStrip(
+        snapshots: [MenuBarItemSnapshot],
+        accurateIconReadyIDs: Set<String>,
+        anchorFrame: CGRect?
+    ) {
+        guard window?.isVisible == true,
+              visibleContent?.isCompact == true else {
+            return
+        }
+
+        visibleContent = .compact(
+            snapshots: snapshots,
+            accurateIconReadyIDs: accurateIconReadyIDs
+        )
+        if let anchorFrame {
+            lastAnchorFrame = anchorFrame
+        }
+        renderAndPosition()
+        diagnosticsLogger.log("Second Bar compact strip refreshed.", level: .debug)
     }
 
     func toggleCompactStrip(
@@ -163,11 +189,20 @@ final class SecondBarCompactStripWindowController: NSWindowController, NSWindowD
             return
         }
 
+        let screens = positioningService.currentScreenSnapshots()
         let placement = positioningService.compactStripPlacement(
             contentSize: Self.defaultContentSize,
-            anchorFrame: lastAnchorFrame
+            anchorFrame: lastAnchorFrame,
+            mouseLocation: positioningService.mouseLocationProvider(),
+            screens: screens
         )
-        let plan = plan(for: visibleContent, availableWidth: placement.frame.width)
+        let targetScreen = screens.first { $0.id == placement.screenID }
+            ?? SecondBarPositioningService.fallbackScreen
+        let plan = plan(
+            for: visibleContent,
+            availableWidth: placement.frame.width,
+            screen: targetScreen
+        )
         let rootContent: SecondBarCompactStripRootView.Content
         switch visibleContent {
         case .compact:
@@ -177,8 +212,7 @@ final class SecondBarCompactStripWindowController: NSWindowController, NSWindowD
             rootContent = .requirements(readiness)
         }
 
-        window.setFrame(placement.frame, display: true)
-        window.contentViewController = NSHostingController(rootView: SecondBarCompactStripRootView(
+        let rootView = SecondBarCompactStripRootView(
             content: rootContent,
             activationFeedback: activationFeedback,
             onActivate: { [weak self] snapshot in
@@ -196,7 +230,11 @@ final class SecondBarCompactStripWindowController: NSWindowController, NSWindowD
             onDismiss: { [weak self] in
                 self?.hide()
             }
-        ))
+        )
+        .frame(width: placement.frame.width, height: placement.frame.height)
+
+        window.contentViewController = NSHostingController(rootView: rootView)
+        window.setFrame(placement.frame, display: true)
         liveStatus.secondBarCurrentScreen = placement.screenID
         liveStatus.secondBarLastPosition = frameSummary(placement.frame)
         liveStatus.updateSecondBarCompactPlacement(avoidedNotch: placement.avoidedNotch)
@@ -204,7 +242,8 @@ final class SecondBarCompactStripWindowController: NSWindowController, NSWindowD
 
     private func plan(
         for content: VisibleContent,
-        availableWidth: CGFloat
+        availableWidth: CGFloat,
+        screen: SecondBarScreenSnapshot
     ) -> SecondBarCompactStripPlan {
         guard case .compact(let snapshots, let accurateIconReadyIDs) = content else {
             return SecondBarCompactStripPlan(
@@ -218,16 +257,16 @@ final class SecondBarCompactStripWindowController: NSWindowController, NSWindowD
         return SecondBarCompactStripPlanner.plan(
             snapshots: snapshots,
             accurateIconReadyIDs: accurateIconReadyIDs,
-            maxVisibleItems: maxVisibleItems(for: availableWidth),
+            availableItemWidth: availableItemWidth(for: availableWidth),
+            screen: screen,
             lastScanTime: liveStatus.lastMenuBarScanTime
         )
     }
 
-    private func maxVisibleItems(for availableWidth: CGFloat) -> Int {
-        let reservedControlWidth: CGFloat = 142
-        let itemSlotWidth: CGFloat = 36
-        let availableItemWidth = max(0, availableWidth - reservedControlWidth)
-        return min(18, max(0, Int(availableItemWidth / itemSlotWidth)))
+    private func availableItemWidth(for availableWidth: CGFloat) -> CGFloat {
+        let horizontalContentInset: CGFloat = 12
+        let overflowReserve: CGFloat = 40
+        return max(0, availableWidth - horizontalContentInset - overflowReserve)
     }
 
     private func activate(_ snapshot: MenuBarItemSnapshot) {
@@ -301,7 +340,7 @@ final class SecondBarCompactStripWindowController: NSWindowController, NSWindowD
         "x \(Int(frame.minX)), y \(Int(frame.minY)), \(Int(frame.width)) x \(Int(frame.height))"
     }
 
-    private static let defaultContentSize = CGSize(width: 560, height: 42)
+    private static let defaultContentSize = CGSize(width: 560, height: 34)
 }
 
 private final class SecondBarCompactStripPanel: NSPanel {

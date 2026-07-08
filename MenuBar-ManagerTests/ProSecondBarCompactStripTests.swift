@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import Testing
 @testable import MenuBarDeclutter
@@ -103,6 +104,81 @@ struct ProSecondBarCompactStripTests {
         #expect(plan.scanState == .fresh)
     }
 
+    @Test func compactStripFiltersToRightSideHiddenItemsOnNotchedScreen() {
+        let screen = screen(
+            notchAvoidanceRect: CGRect(x: 600, y: 875, width: 240, height: 25)
+        )
+        let snapshots = [
+            snapshot("app-menu-left", zone: .hidden, frame: CGRect(x: 120, y: 876, width: 64, height: 22)),
+            snapshot("notch-left", zone: .hidden, frame: CGRect(x: 700, y: 876, width: 24, height: 22)),
+            snapshot("visible-right", zone: .visible, frame: CGRect(x: 900, y: 876, width: 24, height: 22)),
+            snapshot("system-right", zone: .hidden, frame: CGRect(x: 940, y: 876, width: 24, height: 22), isLikelySystemItem: true),
+            snapshot("hidden-right-a", zone: .hidden, frame: CGRect(x: 880, y: 876, width: 24, height: 22)),
+            snapshot("hidden-right-b", zone: .hidden, frame: CGRect(x: 980, y: 876, width: 30, height: 22)),
+            snapshot("always-right", zone: .alwaysHidden, frame: CGRect(x: 1020, y: 876, width: 24, height: 22))
+        ]
+
+        let candidates = SecondBarCompactStripPlanner.compactItemCandidates(
+            snapshots: snapshots,
+            screen: screen
+        )
+
+        #expect(candidates.map(\.id) == ["hidden-right-a", "hidden-right-b"])
+    }
+
+    @Test func compactStripUsesRightHalfFallbackWhenScreenHasNoNotch() {
+        let screen = screen()
+        let snapshots = [
+            snapshot("left-hidden", zone: .hidden, frame: CGRect(x: 300, y: 876, width: 24, height: 22)),
+            snapshot("right-hidden", zone: .hidden, frame: CGRect(x: 1000, y: 876, width: 24, height: 22))
+        ]
+
+        let candidates = SecondBarCompactStripPlanner.compactItemCandidates(
+            snapshots: snapshots,
+            screen: screen
+        )
+
+        #expect(candidates.map(\.id) == ["right-hidden"])
+    }
+
+    @Test func compactStripAcceptsTopOriginRightSideMenuBarFrames() {
+        let screen = screen(
+            notchAvoidanceRect: CGRect(x: 740, y: 875, width: 248, height: 25)
+        )
+        let snapshots = [
+            snapshot("top-origin-left", zone: .hidden, frame: CGRect(x: 650, y: 4, width: 24, height: 22)),
+            snapshot("top-origin-right", zone: .hidden, frame: CGRect(x: 1122, y: 4, width: 24, height: 22)),
+            snapshot("not-menu-bar", zone: .hidden, frame: CGRect(x: 1160, y: 300, width: 24, height: 22))
+        ]
+
+        let candidates = SecondBarCompactStripPlanner.compactItemCandidates(
+            snapshots: snapshots,
+            screen: screen
+        )
+
+        #expect(candidates.map(\.id) == ["top-origin-right"])
+    }
+
+    @Test func compactStripCapacityUsesOriginalMenuBarItemWidths() {
+        let screen = screen()
+        let snapshots = [
+            snapshot("narrow", zone: .hidden, frame: CGRect(x: 900, y: 876, width: 20, height: 22)),
+            snapshot("wide", zone: .hidden, frame: CGRect(x: 940, y: 876, width: 72, height: 22)),
+            snapshot("overflow", zone: .hidden, frame: CGRect(x: 1040, y: 876, width: 24, height: 22))
+        ]
+
+        let plan = SecondBarCompactStripPlanner.plan(
+            snapshots: snapshots,
+            accurateIconReadyIDs: ["narrow", "wide", "overflow"],
+            availableItemWidth: 112,
+            screen: screen
+        )
+
+        #expect(plan.visibleItems.map(\.id) == ["narrow", "wide"])
+        #expect(plan.hiddenOverflowCount == 1)
+        #expect(SecondBarCompactStripPlanner.itemMetrics(for: snapshots[1]).imageSize.width == 72)
+    }
+
     @Test func compactStripAdditionalCountTracksOverflowNotMissingAccurateIcons() {
         let snapshots = [
             snapshot("a", zone: .hidden),
@@ -182,14 +258,32 @@ struct ProSecondBarCompactStripTests {
         #expect(feedback.retrySnapshot == failedSnapshot)
     }
 
-    private func snapshot(_ id: String, zone: MenuBarZone) -> MenuBarItemSnapshot {
+    private func snapshot(
+        _ id: String,
+        zone: MenuBarZone,
+        frame: CGRect? = nil,
+        isLikelySystemItem: Bool = false
+    ) -> MenuBarItemSnapshot {
         TestSnapshots.makeSnapshot(
             id: id,
             title: id,
-            frame: nil,
+            frame: frame,
             owningApplicationName: id,
             bundleIdentifier: "com.example.\(id)",
-            zone: zone
+            zone: zone,
+            isLikelySystemItem: isLikelySystemItem
+        )
+    }
+
+    private func screen(
+        notchAvoidanceRect: CGRect? = nil
+    ) -> SecondBarScreenSnapshot {
+        SecondBarScreenSnapshot(
+            id: "built-in",
+            frame: CGRect(x: 0, y: 0, width: 1440, height: 900),
+            visibleFrame: CGRect(x: 0, y: 0, width: 1440, height: 875),
+            isMain: true,
+            notchAvoidanceRect: notchAvoidanceRect
         )
     }
 }

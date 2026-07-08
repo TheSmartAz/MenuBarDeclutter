@@ -138,7 +138,13 @@ final class AppEnvironment {
                     message: "Command router is unavailable.",
                     diagnosticReason: "routerUnavailable"
                 )
-        }
+        },
+        exportDiagnostics: ProcessInfo.processInfo.arguments.contains("--qa-diagnostics-url-export-enabled") ? { [weak self] url in
+            self?.exportDiagnosticsJSON(to: url) == true
+        } : nil,
+        showCompactSecondBar: ProcessInfo.processInfo.arguments.contains("--qa-diagnostics-url-export-enabled") ? { [weak self] in
+            self?.showCompactSecondBarFromQAURL() == true
+        } : nil
     )
 
     private var statusItemMenuOpen = false
@@ -1077,7 +1083,9 @@ final class AppEnvironment {
         self.diagnosticsLogger = diagnosticsLogger
         self.appSupportPaths = appSupportPaths
         self.screenGeometry = screenGeometry
-        self.screenCapturePermissionService = screenCapturePermissionService ?? ScreenCapturePermissionService()
+        self.screenCapturePermissionService = screenCapturePermissionService ?? ScreenCapturePermissionService(
+            settingsStore: settingsStore
+        )
         self.reflectLaunchAtLoginOnStart = reflectLaunchAtLoginOnStart
         self.presentMigrationNoticeOnStart = presentMigrationNoticeOnStart
         self.accessibilityTrustProvider = accessibilityTrustProvider
@@ -1907,6 +1915,46 @@ final class AppEnvironment {
         showSettings(section: .diagnostics)
     }
 
+    @discardableResult
+    func exportDiagnosticsJSON(to url: URL) -> Bool {
+        do {
+            _ = try appSupportPaths.ensureDirectoriesExist()
+            try FileManager.default.createDirectory(
+                at: url.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
+
+            let snapshot = diagnosticsExporter.makeSnapshot(
+                settingsStore: settingsStore,
+                logger: diagnosticsLogger,
+                secondBarReadiness: makeSecondBarReadinessDiagnosticsSnapshot(),
+                secondBarRuntime: makeSecondBarRuntimeDiagnosticsSnapshot(),
+                workspacePreview: nil,
+                events: diagnosticsLogger.events
+            )
+            let data = try diagnosticsExporter.serialize(
+                snapshot,
+                format: .json,
+                includeAppSupportPath: false,
+                appSupportPath: nil
+            )
+            try data.write(to: url, options: .atomic)
+            diagnosticsLogger.log(
+                "Diagnostics JSON exported to \(url.lastPathComponent).",
+                level: .info,
+                category: .urlAutomation
+            )
+            return true
+        } catch {
+            diagnosticsLogger.log(
+                "Diagnostics JSON export failed: \(error.localizedDescription)",
+                level: .error,
+                category: .urlAutomation
+            )
+            return false
+        }
+    }
+
     func showSearch() {
         menuBarItemSurfaceCoordinator.showSearch()
     }
@@ -1923,7 +1971,23 @@ final class AppEnvironment {
             return
         }
 
-        _ = handleStatusItemPrimaryClick(anchorFrame: nil)
+        _ = handleStatusItemPrimaryClick(anchorFrame: compactSecondBarUITestingAnchorFrame())
+    }
+
+    @discardableResult
+    private func showCompactSecondBarFromQAURL() -> Bool {
+        handleStatusItemPrimaryClick(anchorFrame: nil)
+    }
+
+    private func compactSecondBarUITestingAnchorFrame() -> CGRect {
+        let screen = SecondBarPositioningService.currentScreens().first { $0.isMain }
+            ?? SecondBarPositioningService.fallbackScreen
+        return CGRect(
+            x: screen.frame.maxX - 56,
+            y: screen.frame.minY + 4,
+            width: 24,
+            height: 24
+        )
     }
 
     func seedRenderedIconsForUITesting(itemIDs: Set<MenuBarItemSnapshot.ID>) {
@@ -2076,6 +2140,43 @@ final class AppEnvironment {
             accurateIconsEnabled: settingsStore.renderedIconCaptureEnabled,
             screenCapturePermission: screenCapturePermissionService.refreshStatus()
         ))
+    }
+
+    private func makeSecondBarReadinessDiagnosticsSnapshot() -> DiagnosticsExporter.SecondBarReadinessDiagnosticsSnapshot {
+        let input = ProSecondBarReadinessInput(
+            entitlement: currentProEntitlementState(),
+            accessibilityDiscoveryEnabled: settingsStore.accessibilityDiscoveryEnabled,
+            accessibilityPermission: accessibilityPermissionService.currentStatus,
+            accurateIconsEnabled: settingsStore.renderedIconCaptureEnabled,
+            screenCapturePermission: screenCapturePermissionService.refreshStatus()
+        )
+        return DiagnosticsExporter.SecondBarReadinessDiagnosticsSnapshot(
+            input: input,
+            readiness: ProSecondBarReadiness.evaluate(input),
+            primaryClickOptIn: settingsStore.secondBarPrimaryClickEnabled,
+            safeModeActive: safeModeLaunchState.isSafeModeActive
+        )
+    }
+
+    private func makeSecondBarRuntimeDiagnosticsSnapshot() -> DiagnosticsExporter.SecondBarRuntimeDiagnosticsSnapshot {
+        DiagnosticsExporter.SecondBarRuntimeDiagnosticsSnapshot(
+            visible: liveStatus.secondBarVisible,
+            itemCount: liveStatus.secondBarItemCount,
+            currentScreen: liveStatus.secondBarCurrentScreen,
+            lastPosition: liveStatus.secondBarLastPosition,
+            iconWarmUpInProgress: liveStatus.secondBarIconWarmUpInProgress,
+            lastIconWarmUpResult: liveStatus.secondBarLastIconWarmUpResult,
+            lastCompactVisibleItemCount: liveStatus.secondBarLastCompactVisibleItemCount,
+            lastCompactOverflowItemCount: liveStatus.secondBarLastCompactOverflowItemCount,
+            lastCompactFallbackIconCount: liveStatus.secondBarLastCompactFallbackIconCount,
+            lastCompactScanState: liveStatus.secondBarLastCompactScanState,
+            lastCompactAvoidedNotch: liveStatus.secondBarLastCompactAvoidedNotch,
+            lastActivationResult: liveStatus.secondBarLastActivationResult,
+            lastActivationMatrixResult: liveStatus.secondBarLastActivationMatrixResult,
+            lastActivationTargetZone: liveStatus.secondBarLastActivationTargetZone,
+            lastActivationVisitedElementCount: liveStatus.secondBarLastActivationVisitedElementCount,
+            lastActivationAXError: liveStatus.secondBarLastActivationAXError
+        )
     }
 
     private func openSecondBarIfReady(anchorFrame: CGRect?) -> Bool {

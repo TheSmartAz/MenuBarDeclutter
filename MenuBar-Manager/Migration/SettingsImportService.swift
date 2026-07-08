@@ -388,6 +388,7 @@ final class SettingsImportService {
              .showPrimarySeparator,
              .launchAtLoginEnabled,
              .lastAccessibilityPermissionStatus,
+             .lastScreenCapturePermissionStatus,
              .iconMovingConfirmationSuppressed,
              .dogfoodModeEnabled,
              .dogfoodRunID,

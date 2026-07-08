@@ -15,6 +15,7 @@ struct QAScriptsTests {
             "scripts/qa_second_bar_activation_matrix.sh",
             "scripts/qa_second_bar_manual_gate_audit.sh",
             "scripts/qa_second_bar_matrix_coverage.sh",
+            "scripts/qa_second_bar_permission_preflight.sh",
             "scripts/qa_second_bar_signoff_audit.sh",
             "scripts/verify_privacy_boundary.sh",
             "scripts/test.sh",
@@ -68,6 +69,7 @@ struct QAScriptsTests {
             "scripts/qa_second_bar_activation_matrix.sh",
             "scripts/qa_second_bar_manual_gate_audit.sh",
             "scripts/qa_second_bar_matrix_coverage.sh",
+            "scripts/qa_second_bar_permission_preflight.sh",
             "scripts/qa_second_bar_signoff_audit.sh",
             "scripts/verify_privacy_boundary.sh",
             "scripts/test.sh",
@@ -134,6 +136,28 @@ struct QAScriptsTests {
         #expect(setupChecklist.contains("requestPermissionFromUserAction"))
         #expect(privacySettings.contains("requestPromptFromUserAction"))
         #expect(privacySettings.contains("requestPermissionFromUserAction"))
+    }
+
+    @Test func secondBarPermissionPreflightDocumentsManualTCCBoundary() throws {
+        let root = Self.repositoryRoot()
+        let text = try String(
+            contentsOf: root.appendingPathComponent("scripts/qa_second_bar_permission_preflight.sh"),
+            encoding: .utf8
+        )
+
+        #expect(text.contains("Screen & System Audio Recording"))
+        #expect(text.contains("/Applications/MenuBarDeclutter.app"))
+        #expect(text.contains("last public ScreenCapture preflight result"))
+        #expect(text.contains("lastAccessibilityPermissionStatus"))
+        #expect(text.contains("lastScreenCapturePermissionStatus"))
+        #expect(text.contains("secondBarPrimaryClickEnabled"))
+        #expect(text.contains("--restart-app"))
+        #expect(text.contains("--prepare-local-gates"))
+        #expect(text.contains("Next hands-on sign-off steps"))
+        #expect(text.contains("SECOND_BAR_DIAGNOSTICS_JSON"))
+        #expect(text.contains("DOGFOOD_SECOND_BAR_AUDIT_ONLY=1"))
+        #expect(text.contains("qa_second_bar_signoff_audit.sh"))
+        #expect(text.contains("does not request or grant macOS privacy permissions"))
     }
 
     @Test func preflightUsesStableBuildForTestingLane() throws {
@@ -258,8 +282,14 @@ struct QAScriptsTests {
         let package = try String(contentsOf: root.appendingPathComponent("scripts/release_package_zip.sh"), encoding: .utf8)
 
         #expect(buildRelease.contains("DRY_RUN=1"))
+        #expect(buildRelease.contains("LOCAL_DEVELOPMENT_SIGNING=0"))
+        #expect(buildRelease.contains("--local-development-signing"))
+        #expect(buildRelease.contains("stable signed app identity reduces repeated macOS privacy re-authorization"))
+        #expect(buildRelease.contains("Local development signing: $LOCAL_DEVELOPMENT_SIGNING"))
+        #expect(buildRelease.contains("[[ \"$DRY_RUN\" -eq 1 && \"$LOCAL_DEVELOPMENT_SIGNING\" -eq 0 ]]"))
         #expect(buildRelease.contains("--developer-id"))
         #expect(buildRelease.contains("DEVELOPER_ID=1"))
+        #expect(buildRelease.contains("cannot be combined with --developer-id"))
         #expect(exportApp.contains("DRY_RUN=\"${DRY_RUN:-1}\""))
         #expect(exportApp.contains("DEVELOPER_ID_EXPORT=\"${DEVELOPER_ID_EXPORT:-0}\""))
         #expect(exportApp.contains("Developer ID export is out of the current project scope"))
@@ -509,6 +539,8 @@ struct QAScriptsTests {
         | Compact strip screenshot QA | PASS | |
         | Warm-up diagnostics | PASS | |
         | Readiness diagnostics export | PASS | |
+        | Screen Recording recovery guidance | PASS | |
+        | Permission preflight helper | PASS | |
         """
         let dogfoodPass = """
         | Scenario | Result | Notes |
@@ -594,6 +626,25 @@ struct QAScriptsTests {
         let failOutput = String(data: failOutputPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
         #expect(failProcess.terminationStatus == 1)
         #expect(failOutput.contains("FAIL: Gate C dogfood - Second Bar setup gates ready expected PASS, got NOT TESTED"))
+
+        let dogfoodBlocked = dogfoodPass.replacing(
+            "| Second Bar setup gates ready | PASS | |",
+            with: "| Second Bar setup gates ready | BLOCKED | Permission preflight is not ready. |"
+        )
+        try dogfoodBlocked.write(to: dogfoodURL, atomically: true, encoding: .utf8)
+
+        let blockedProcess = Process()
+        blockedProcess.executableURL = URL(fileURLWithPath: "/bin/bash")
+        blockedProcess.arguments = passProcess.arguments
+        let blockedOutputPipe = Pipe()
+        blockedProcess.standardOutput = blockedOutputPipe
+
+        try blockedProcess.run()
+        blockedProcess.waitUntilExit()
+
+        let blockedOutput = String(data: blockedOutputPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        #expect(blockedProcess.terminationStatus == 1)
+        #expect(blockedOutput.contains("FAIL: Gate C dogfood - Second Bar setup gates ready expected PASS, got BLOCKED"))
     }
 
     @Test func secondBarManualGateAuditChecksReadinessRuntimeAndActivationEvidence() throws {

@@ -28,6 +28,7 @@ struct SettingsMigrationServiceTests {
         store.proModeEnabled = true
         store.accessibilityDiscoveryEnabled = true
         store.lastAccessibilityPermissionStatus = AccessibilityPermissionStatus.granted.rawValue
+        store.lastScreenCapturePermissionStatus = ScreenCapturePermissionStatus.granted.rawValue
         store.searchEnabled = false
         store.searchHotkeyEnabled = true
         store.secondBarEnabled = false
@@ -60,6 +61,7 @@ struct SettingsMigrationServiceTests {
         #expect(store.proModeEnabled == false)
         #expect(store.accessibilityDiscoveryEnabled == false)
         #expect(store.lastAccessibilityPermissionStatus == nil)
+        #expect(store.lastScreenCapturePermissionStatus == nil)
         #expect(store.searchEnabled == true)
         #expect(store.searchHotkeyEnabled == false)
         #expect(store.secondBarEnabled == true)

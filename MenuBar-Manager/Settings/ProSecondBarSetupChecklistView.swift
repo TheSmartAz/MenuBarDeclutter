@@ -123,8 +123,11 @@ struct ProSecondBarSetupChecklistView: View {
             )
         case .requestAccessibilityPermission:
             let status = permissionService?.requestPromptFromUserAction() ?? .unknown
+            if status != .granted {
+                permissionService?.openSystemSettingsPrivacyPane()
+            }
             feedback = ProSecondBarSetupFeedback(
-                text: status == .granted ? "Accessibility permission is granted." : "Accessibility permission is still required in System Settings.",
+                text: status == .granted ? "Accessibility permission is granted." : "Accessibility permission is still required in System Settings. The Accessibility privacy pane has been opened.",
                 systemImage: status == .granted ? "checkmark.circle" : "hand.raised",
                 style: status == .granted ? .success : .warning
             )
@@ -138,8 +141,12 @@ struct ProSecondBarSetupChecklistView: View {
             )
         case .requestScreenRecordingPermission:
             let status = screenCapturePermissionService?.requestPermissionFromUserAction() ?? .unknown
+            if status != .granted {
+                screenCapturePermissionService?.openSystemSettingsPrivacyPane()
+            }
+            let recoveryInstruction = status.recoveryInstruction.map { " \($0)" } ?? ""
             feedback = ProSecondBarSetupFeedback(
-                text: status == .granted ? "Screen Recording permission is granted." : "Screen Recording permission is still required in System Settings.",
+                text: status == .granted ? "Screen Recording permission is granted." : "Screen Recording permission is still required in System Settings. The Screen Recording privacy pane has been opened.\(recoveryInstruction)",
                 systemImage: status == .granted ? "checkmark.circle" : "rectangle.on.rectangle",
                 style: status == .granted ? .success : .warning
             )

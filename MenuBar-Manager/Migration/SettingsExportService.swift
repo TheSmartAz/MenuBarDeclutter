@@ -144,6 +144,8 @@ final class SettingsExportService {
             return settingsStore.accessibilityDiscoveryEnabled.description
         case .lastAccessibilityPermissionStatus:
             return nil
+        case .lastScreenCapturePermissionStatus:
+            return nil
         case .menuBarScanIntervalSeconds:
             return settingsStore.menuBarScanIntervalSeconds.description
         case .renderedIconCaptureEnabled:

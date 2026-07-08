@@ -210,6 +210,7 @@ struct DiagnosticsExporter {
         let proModeEnabled: Bool
         let accessibilityDiscoveryEnabled: Bool
         let lastAccessibilityPermissionStatus: String?
+        let lastScreenCapturePermissionStatus: String?
         let menuBarScanIntervalSeconds: Double
         let renderedIconCaptureEnabled: Bool
         let renderedIconRevealSweepEnabled: Bool
@@ -361,6 +362,7 @@ struct DiagnosticsExporter {
             proModeEnabled: store.proModeEnabled,
             accessibilityDiscoveryEnabled: store.accessibilityDiscoveryEnabled,
             lastAccessibilityPermissionStatus: store.lastAccessibilityPermissionStatus,
+            lastScreenCapturePermissionStatus: store.lastScreenCapturePermissionStatus,
             menuBarScanIntervalSeconds: store.menuBarScanIntervalSeconds,
             renderedIconCaptureEnabled: store.renderedIconCaptureEnabled,
             renderedIconRevealSweepEnabled: store.renderedIconRevealSweepEnabled,
@@ -918,6 +920,9 @@ struct DiagnosticsExporter {
         SettingsField(key: "accessibilityDiscoveryEnabled", label: "Accessibility Discovery Enabled") { .bool($0.accessibilityDiscoveryEnabled) },
         SettingsField(key: "lastAccessibilityPermissionStatus", label: "Last Accessibility Permission Status") {
             .optionalString($0.lastAccessibilityPermissionStatus, emptyText: "(none)")
+        },
+        SettingsField(key: "lastScreenCapturePermissionStatus", label: "Last Screen Recording Permission Status") {
+            .optionalString($0.lastScreenCapturePermissionStatus, emptyText: "(none)")
         },
         SettingsField(key: "menuBarScanIntervalSeconds", label: "Menu Bar Scan Interval (s)") { .double($0.menuBarScanIntervalSeconds) },
         SettingsField(key: "renderedIconCaptureEnabled", label: "Accurate Icons Enabled") { .bool($0.renderedIconCaptureEnabled) },

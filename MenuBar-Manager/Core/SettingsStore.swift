@@ -35,6 +35,7 @@ final class SettingsStore {
         case proModeEnabled
         case accessibilityDiscoveryEnabled
         case lastAccessibilityPermissionStatus
+        case lastScreenCapturePermissionStatus
         case menuBarScanIntervalSeconds
         case renderedIconCaptureEnabled
         case renderedIconRevealSweepEnabled
@@ -170,6 +171,7 @@ final class SettingsStore {
         .v01SafeDefaultsNoticePending,
         .showPrimarySeparator,
         .lastAccessibilityPermissionStatus,
+        .lastScreenCapturePermissionStatus,
         .iconMovingConfirmationSuppressed,
         .dogfoodModeEnabled,
         .dogfoodRunID,
@@ -392,6 +394,10 @@ final class SettingsStore {
 
     var lastAccessibilityPermissionStatus: String? {
         didSet { persistOptional(lastAccessibilityPermissionStatus, for: .lastAccessibilityPermissionStatus) }
+    }
+
+    var lastScreenCapturePermissionStatus: String? {
+        didSet { persistOptional(lastScreenCapturePermissionStatus, for: .lastScreenCapturePermissionStatus) }
     }
 
     private var menuBarScanIntervalSecondsStorage: Double
@@ -1052,6 +1058,10 @@ final class SettingsStore {
             for: .lastAccessibilityPermissionStatus,
             in: defaults
         )
+        self.lastScreenCapturePermissionStatus = Self.optionalString(
+            for: .lastScreenCapturePermissionStatus,
+            in: defaults
+        )
 
         self.menuBarScanIntervalSecondsStorage = Self.clampedDouble(
             for: .menuBarScanIntervalSeconds,
@@ -1420,6 +1430,7 @@ final class SettingsStore {
         proModeEnabled = Self.registeredDefault(.proModeEnabled)
         accessibilityDiscoveryEnabled = Self.registeredDefault(.accessibilityDiscoveryEnabled)
         lastAccessibilityPermissionStatus = nil
+        lastScreenCapturePermissionStatus = nil
         menuBarScanIntervalSeconds = Self.registeredDefault(.menuBarScanIntervalSeconds)
         renderedIconCaptureEnabled = Self.registeredDefault(.renderedIconCaptureEnabled)
         renderedIconRevealSweepEnabled = Self.registeredDefault(.renderedIconRevealSweepEnabled)

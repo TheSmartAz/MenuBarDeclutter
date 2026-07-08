@@ -94,6 +94,17 @@ final class MenuBarIconCaptureCoordinator {
     }
 
     @discardableResult
+    func warmUpSecondBarIconsIfAllowedAndWait(reason: String) async -> Bool {
+        guard warmUpSecondBarIconsIfAllowed(reason: reason) else {
+            return false
+        }
+
+        let task = revealSweepTask
+        await task?.value
+        return true
+    }
+
+    @discardableResult
     private func startRevealSweepCapture(
         startMessage: String,
         finishedMessage: @escaping (Int) -> String,

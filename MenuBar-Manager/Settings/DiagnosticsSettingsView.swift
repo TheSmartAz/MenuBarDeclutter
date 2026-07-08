@@ -579,62 +579,19 @@ private struct DiagnosticsToolbar: View {
     }
 
     private var toolbarControls: some View {
-        ViewThatFits(in: .horizontal) {
-            wideToolbar
-            wrappedToolbar
-        }
-    }
-
-    private var wideToolbar: some View {
-        HStack(spacing: 10) {
-            eventCounter
-            Spacer()
-            severityPicker
-            categoryPicker
-            exportFormatPicker
-
-            Button("Copy Selected", systemImage: "doc.on.doc", action: onCopySelected)
-                .disabled(!canCopySelected)
-                .help(canCopySelected ? "Copy selected diagnostic events." : "Select one or more events before copying.")
-
-            Button("Export Filtered…", systemImage: "square.and.arrow.up", action: onExport)
-                .disabled(filteredEventCount == 0)
-                .help(filteredEventCount == 0 ? "No diagnostic events match the current filters." : "Export the currently filtered diagnostic events.")
-
-            Button("Clear", systemImage: "trash", action: clear)
-                .disabled(eventCount == 0)
-                .help(eventCount == 0 ? "There are no diagnostic events to clear." : "Clear diagnostic events from the current log view.")
-        }
-        .controlSize(.small)
-    }
-
-    private var wrappedToolbar: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
                 eventCounter
                 Spacer()
-            }
-
-            HStack(spacing: 10) {
                 severityPicker
                 categoryPicker
-                Spacer()
             }
 
-            ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) {
+                exportFormatPicker
+                Spacer()
                 HStack(spacing: 8) {
-                    exportFormatPicker
-                    Spacer()
-                    ClearGlassAccessoryCluster {
-                        actionButtons
-                    }
-                }
-
-                VStack(alignment: .leading, spacing: 8) {
-                    exportFormatPicker
-                    ClearGlassAccessoryCluster(alignment: .leading, width: .flexible) {
-                        actionButtons
-                    }
+                    actionButtons
                 }
             }
         }
@@ -678,7 +635,7 @@ private struct DiagnosticsToolbar: View {
             }
         }
         .labelsHidden()
-        .pickerStyle(.segmented)
+        .pickerStyle(.menu)
         .frame(minWidth: 120, idealWidth: 180, maxWidth: 200)
         .help("Filter diagnostic events by severity.")
     }
@@ -705,7 +662,7 @@ private struct DiagnosticsToolbar: View {
             }
         }
         .labelsHidden()
-        .pickerStyle(.segmented)
+        .pickerStyle(.menu)
         .frame(minWidth: 70, idealWidth: 90, maxWidth: 100)
         .help("Choose the export format for diagnostic events.")
     }

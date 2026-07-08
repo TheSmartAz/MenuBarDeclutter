@@ -36,7 +36,7 @@ struct SecondBarCompactStripRootView: View {
     let onDismiss: () -> Void
 
     var body: some View {
-        HStack(spacing: DesignTokens.Spacing.medium) {
+        HStack(spacing: 6) {
             switch content {
             case .ready(let plan):
                 ReadyCompactStripContent(
@@ -55,14 +55,15 @@ struct SecondBarCompactStripRootView: View {
                 )
             }
         }
-        .padding(.horizontal, DesignTokens.Spacing.medium)
-        .padding(.vertical, 5)
-        .frame(maxWidth: .infinity, minHeight: 42, maxHeight: 42)
-        .background(.ultraThinMaterial, in: .rect(cornerRadius: 13))
+        .padding(.horizontal, 6)
+        .padding(.vertical, 3)
+        .frame(maxWidth: .infinity, minHeight: 34, maxHeight: 34)
+        .background(.bar, in: .rect(cornerRadius: 8))
         .overlay {
-            RoundedRectangle(cornerRadius: 13)
-                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.48), lineWidth: DesignTokens.Stroke.hairline)
+            RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.22), lineWidth: DesignTokens.Stroke.hairline)
         }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("secondBar.compactStrip")
     }
 }
@@ -76,7 +77,7 @@ private struct ReadyCompactStripContent: View {
     let onOpenSettings: () -> Void
 
     var body: some View {
-        HStack(spacing: DesignTokens.Spacing.small) {
+        HStack(spacing: SecondBarCompactStripPlanner.interItemSpacing) {
             if plan.visibleItems.isEmpty {
                 EmptyReadyState(plan: plan)
             } else {
@@ -87,10 +88,6 @@ private struct ReadyCompactStripContent: View {
                 }
             }
 
-            if plan.scanState.needsAttention, !plan.visibleItems.isEmpty {
-                CompactStripScanStateBadge(scanState: plan.scanState)
-            }
-
             if let activationFeedback {
                 CompactStripFeedback(
                     feedback: activationFeedback,
@@ -98,26 +95,14 @@ private struct ReadyCompactStripContent: View {
                 )
             }
 
-            Spacer(minLength: DesignTokens.Spacing.small)
-
             if plan.hasAdditionalItems {
                 CompactStripOverflowButton(
                     count: plan.totalAdditionalCount,
                     onOpenManage: onOpenManage
                 )
             }
-
-            CompactStripIconButton(
-                title: "Manage Second Bar",
-                systemImage: "magnifyingglass",
-                action: onOpenManage
-            )
-            CompactStripIconButton(
-                title: "Second Bar Settings",
-                systemImage: "gearshape",
-                action: onOpenSettings
-            )
         }
+        .frame(maxWidth: .infinity, alignment: .trailing)
     }
 }
 
@@ -141,15 +126,9 @@ private struct RequirementsCompactStripContent: View {
         HStack(spacing: DesignTokens.Spacing.medium) {
             statusIcon
 
-            VStack(alignment: .leading, spacing: 1) {
-                Text(readiness.displayTitle)
-                    .font(DesignTokens.Typography.callout)
-                    .lineLimit(1)
-                Text(readiness.message)
-                    .font(DesignTokens.Typography.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
+            Text(readiness.displayTitle)
+                .font(DesignTokens.Typography.callout)
+                .lineLimit(1)
 
             Spacer(minLength: DesignTokens.Spacing.small)
 
@@ -212,19 +191,24 @@ private struct CompactStripItemButton: View {
     let action: () -> Void
 
     var body: some View {
+        let metrics = SecondBarCompactStripPlanner.itemMetrics(for: snapshot)
+
         Button(action: action) {
             MenuBarItemIconView(
                 snapshot: snapshot,
-                size: 24,
-                cornerRadius: 6
+                imageSize: metrics.imageSize,
+                cornerRadius: metrics.cornerRadius
             )
         }
         .buttonStyle(.plain)
-        .frame(width: 32, height: 32)
-        .contentShape(.rect(cornerRadius: DesignTokens.Radius.control))
+        .frame(width: metrics.slotSize.width, height: metrics.slotSize.height)
+        .contentShape(.rect(cornerRadius: 5))
         .help("Activate \(displayTitle)")
-        .accessibilityLabel("Activate \(displayTitle)")
-        .accessibilityIdentifier("secondBar.compact.item.\(snapshot.id)")
+        .accessibilityRepresentation {
+            Button("Activate \(displayTitle)", action: action)
+                .accessibilityValue(snapshot.id)
+                .accessibilityIdentifier("secondBar.compact.item.\(snapshot.id)")
+        }
     }
 
     private var displayTitle: String {
@@ -246,11 +230,11 @@ private struct CompactStripOverflowButton: View {
             .font(DesignTokens.Typography.caption)
             .bold()
             .foregroundStyle(.primary)
-            .frame(width: 34, height: 28)
-            .background(.regularMaterial, in: .rect(cornerRadius: DesignTokens.Radius.control))
+            .frame(width: 34, height: 26)
+            .background(Color(nsColor: .controlBackgroundColor).opacity(0.45), in: .rect(cornerRadius: 5))
             .overlay {
-                RoundedRectangle(cornerRadius: DesignTokens.Radius.control)
-                    .strokeBorder(Color(nsColor: .separatorColor).opacity(0.36), lineWidth: DesignTokens.Stroke.hairline)
+                RoundedRectangle(cornerRadius: 5)
+                    .strokeBorder(Color(nsColor: .separatorColor).opacity(0.18), lineWidth: DesignTokens.Stroke.hairline)
             }
             .help("Open Second Bar Manage Panel")
             .accessibilityLabel("\(count) more Second Bar items")
@@ -268,13 +252,13 @@ private struct CompactStripIconButton: View {
             Label(title, systemImage: systemImage)
                 .labelStyle(.iconOnly)
                 .font(.system(size: 14, weight: .medium))
-                .frame(width: 28, height: 28)
+                .frame(width: 26, height: 26)
         }
         .buttonStyle(.plain)
-        .background(.regularMaterial, in: .rect(cornerRadius: DesignTokens.Radius.control))
+        .background(Color(nsColor: .controlBackgroundColor).opacity(0.45), in: .rect(cornerRadius: 5))
         .overlay {
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.control)
-                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.36), lineWidth: DesignTokens.Stroke.hairline)
+            RoundedRectangle(cornerRadius: 5)
+                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.18), lineWidth: DesignTokens.Stroke.hairline)
         }
         .help(title)
         .accessibilityLabel(title)
@@ -364,8 +348,8 @@ private struct CompactStripFeedback: View {
         .font(DesignTokens.Typography.caption)
         .foregroundStyle(foregroundStyle)
         .padding(.horizontal, DesignTokens.Spacing.small)
-        .frame(height: 28)
-        .background(foregroundStyle.opacity(0.10), in: .rect(cornerRadius: DesignTokens.Radius.control))
+        .frame(height: 26)
+        .background(foregroundStyle.opacity(0.10), in: .rect(cornerRadius: 5))
     }
 
     private var systemImage: String {

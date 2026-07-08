@@ -14,6 +14,8 @@ final class AutomationURLHandler {
         case fullMenuBar
         case exitFullMenuBar
         case layoutSuggestions
+        case exportDiagnostics
+        case compactSecondBar
 
         var logName: String {
             switch self {
@@ -37,6 +39,10 @@ final class AutomationURLHandler {
                 "exit-full-menu-bar"
             case .layoutSuggestions:
                 "layout-suggestions"
+            case .exportDiagnostics:
+                "export-diagnostics"
+            case .compactSecondBar:
+                "compact-second-bar"
             }
         }
 
@@ -62,6 +68,10 @@ final class AutomationURLHandler {
                 self = .exitFullMenuBar
             case "layout-suggestions":
                 self = .layoutSuggestions
+            case "export-diagnostics", "diagnostics-export":
+                self = .exportDiagnostics
+            case "compact-second-bar", "show-compact-second-bar":
+                self = .compactSecondBar
             default:
                 return nil
             }
@@ -73,6 +83,8 @@ final class AutomationURLHandler {
 
     private let diagnosticsLogger: DiagnosticsLogger
     private let routeCommand: (MenuBarCommand) -> MenuBarCommandResult
+    private let exportDiagnostics: ((URL) -> Bool)?
+    private let showCompactSecondBar: (() -> Bool)?
     private let now: () -> Date
     private let minimumCommandInterval: TimeInterval
 
@@ -82,11 +94,15 @@ final class AutomationURLHandler {
     init(
         diagnosticsLogger: DiagnosticsLogger,
         routeCommand: @escaping (MenuBarCommand) -> MenuBarCommandResult,
+        exportDiagnostics: ((URL) -> Bool)? = nil,
+        showCompactSecondBar: (() -> Bool)? = nil,
         now: @escaping () -> Date = { Date() },
         minimumCommandInterval: TimeInterval = AutomationURLHandler.defaultMinimumCommandInterval
     ) {
         self.diagnosticsLogger = diagnosticsLogger
         self.routeCommand = routeCommand
+        self.exportDiagnostics = exportDiagnostics
+        self.showCompactSecondBar = showCompactSecondBar
         self.now = now
         self.minimumCommandInterval = max(0, minimumCommandInterval)
     }
@@ -158,6 +174,13 @@ final class AutomationURLHandler {
             return false
         }
 
+        if command == .exportDiagnostics {
+            return handleDiagnosticsExport(url: url, eventMetadata: eventMetadata)
+        }
+        if command == .compactSecondBar {
+            return handleCompactSecondBar(eventMetadata: eventMetadata)
+        }
+
         guard let routedCommand = routedCommand(for: command, url: url, eventMetadata: eventMetadata) else {
             return false
         }
@@ -194,6 +217,73 @@ final class AutomationURLHandler {
             return nil
         }
         return UUID(uuidString: rawValue)
+    }
+
+    private func diagnosticsExportURL(from url: URL, eventMetadata: [String: String]) -> URL? {
+        let queryItems = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        guard let rawPath = queryItems.first(where: { $0.name == "path" })?.value,
+              !rawPath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            logRejection(
+                "diagnostics export missing path",
+                metadata: metadata(eventMetadata, adding: [
+                    "command": Command.exportDiagnostics.logName
+                ])
+            )
+            return nil
+        }
+
+        return URL(fileURLWithPath: NSString(string: rawPath).expandingTildeInPath)
+    }
+
+    private func handleDiagnosticsExport(url: URL, eventMetadata: [String: String]) -> Bool {
+        guard let exportDiagnostics else {
+            logRejection(
+                "diagnostics export unavailable",
+                metadata: metadata(eventMetadata, adding: [
+                    "command": Command.exportDiagnostics.logName
+                ])
+            )
+            return false
+        }
+
+        guard let fileURL = diagnosticsExportURL(from: url, eventMetadata: eventMetadata) else {
+            return false
+        }
+
+        let exported = exportDiagnostics(fileURL)
+        diagnosticsLogger.log(
+            exported ? "Diagnostics export URL completed." : "Diagnostics export URL failed.",
+            level: exported ? .info : .error,
+            category: .urlAutomation,
+            metadata: metadata(eventMetadata, adding: [
+                "command": Command.exportDiagnostics.logName,
+                "filename": fileURL.lastPathComponent
+            ])
+        )
+        return exported
+    }
+
+    private func handleCompactSecondBar(eventMetadata: [String: String]) -> Bool {
+        guard let showCompactSecondBar else {
+            logRejection(
+                "compact second bar unavailable",
+                metadata: metadata(eventMetadata, adding: [
+                    "command": Command.compactSecondBar.logName
+                ])
+            )
+            return false
+        }
+
+        let shown = showCompactSecondBar()
+        diagnosticsLogger.log(
+            shown ? "Compact Second Bar URL completed." : "Compact Second Bar URL failed.",
+            level: shown ? .info : .warning,
+            category: .urlAutomation,
+            metadata: metadata(eventMetadata, adding: [
+                "command": Command.compactSecondBar.logName
+            ])
+        )
+        return shown
     }
 
     private func routedCommand(
@@ -249,6 +339,10 @@ final class AutomationURLHandler {
             return MenuBarCommand(action: .exitFullMenuBarMode, target: .fullMenuBarMode, source: .urlAutomation)
         case .layoutSuggestions:
             return MenuBarCommand(action: .showLayoutSuggestions, target: .layoutSuggestions, source: .urlAutomation)
+        case .exportDiagnostics:
+            return nil
+        case .compactSecondBar:
+            return nil
         }
     }
 

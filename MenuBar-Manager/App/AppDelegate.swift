@@ -46,6 +46,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         false
     }
 
+    func showSettingsFromAppMenu() {
+        guard let environment else {
+            DispatchQueue.main.async { [weak self] in
+                self?.environment?.showSettings()
+            }
+            return
+        }
+
+        environment.showSettings()
+    }
+
     private func makeEnvironment() -> AppEnvironment {
         if isHostedUnitTestingLaunch {
             return makeHostedUnitTestingEnvironment()
@@ -320,13 +331,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func seedMenuBarItemsUITestingSnapshot(_ environment: AppEnvironment) {
         let scanTimestamp = Date()
+        let screen = SecondBarPositioningService.currentScreens().first { $0.isMain }
+            ?? SecondBarPositioningService.fallbackScreen
+        let screenFrame = screen.frame
+        let menuBarItemY = screenFrame.minY + 4
+        func rightAlignedFrame(offsetFromRight: CGFloat, width: CGFloat) -> CGRect {
+            CGRect(
+                x: max(screenFrame.minX + 12, screenFrame.maxX - offsetFromRight),
+                y: menuBarItemY,
+                width: width,
+                height: 24
+            )
+        }
+
         let snapshots = [
             MenuBarItemSnapshot(
                 id: "ui-test-control-center",
                 title: "Control Center",
                 role: "AXMenuBarItem",
                 subrole: nil,
-                frame: CGRect(x: 1466, y: 0, width: 26, height: 24),
+                frame: rightAlignedFrame(offsetFromRight: 46, width: 26),
                 owningProcessIdentifier: 101,
                 owningApplicationName: "Control Center",
                 bundleIdentifier: "com.apple.controlcenter",
@@ -339,7 +363,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 title: "Wi-Fi",
                 role: "AXMenuBarItem",
                 subrole: nil,
-                frame: CGRect(x: 1432, y: 0, width: 28, height: 24),
+                frame: rightAlignedFrame(offsetFromRight: 82, width: 28),
                 owningProcessIdentifier: 101,
                 owningApplicationName: "Control Center",
                 bundleIdentifier: "com.apple.controlcenter",
@@ -352,7 +376,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 title: "Calendar",
                 role: "AXMenuBarItem",
                 subrole: nil,
-                frame: CGRect(x: 1344, y: 0, width: 31, height: 24),
+                frame: rightAlignedFrame(offsetFromRight: 178, width: 31),
                 owningProcessIdentifier: 502,
                 owningApplicationName: "Fantastical",
                 bundleIdentifier: "com.flexibits.fantastical2.mac",
@@ -365,7 +389,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 title: "Sync",
                 role: "AXMenuBarItem",
                 subrole: "AXUnknown",
-                frame: CGRect(x: 1296, y: 0, width: 29, height: 24),
+                frame: rightAlignedFrame(offsetFromRight: 130, width: 29),
                 owningProcessIdentifier: 744,
                 owningApplicationName: "Dropbox",
                 bundleIdentifier: "com.getdropbox.dropbox",
@@ -378,7 +402,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 title: "VPN",
                 role: "AXMenuBarItem",
                 subrole: nil,
-                frame: CGRect(x: 1238, y: 0, width: 26, height: 24),
+                frame: rightAlignedFrame(offsetFromRight: 220, width: 26),
                 owningProcessIdentifier: 881,
                 owningApplicationName: "Tailscale",
                 bundleIdentifier: "io.tailscale.ipn.macos",

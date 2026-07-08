@@ -244,6 +244,16 @@ struct PrivacySettingsView: View {
             }
             .opacity(settingsStore.renderedIconCaptureEnabled ? 1 : 0.72)
 
+            if showsScreenCaptureRecoveryInstruction,
+               let instruction = screenCapturePermissionService?.status.recoveryInstruction {
+                ClearGlassDivider()
+                ClearGlassInlineMessage(
+                    text: instruction,
+                    systemImage: "plus.app",
+                    style: .info
+                )
+            }
+
             ClearGlassDivider()
 
             PrivacyPermissionRow(
@@ -294,7 +304,7 @@ struct PrivacySettingsView: View {
     private var accessibilityButtons: some View {
         Group {
             Button("Request Permission", systemImage: "hand.raised") {
-                permissionService?.requestPromptFromUserAction()
+                requestAccessibilityPermission()
                 notifyPrivacyChanged()
             }
             .disabled(!canUseAccessibilityPermissionControls || permissionService?.status == .granted)
@@ -312,7 +322,7 @@ struct PrivacySettingsView: View {
     private var screenCaptureButtons: some View {
         Group {
             Button("Request Permission", systemImage: "rectangle.on.rectangle") {
-                screenCapturePermissionService?.requestPermissionFromUserAction()
+                requestScreenCapturePermission()
                 notifyPrivacyChanged()
             }
             .disabled(!canUseScreenCapturePermissionControls || screenCapturePermissionService?.status == .granted)
@@ -380,6 +390,11 @@ struct PrivacySettingsView: View {
     private var canUseScreenCapturePermissionControls: Bool {
         settingsStore.renderedIconCaptureEnabled
             && screenCapturePermissionService != nil
+    }
+
+    private var showsScreenCaptureRecoveryInstruction: Bool {
+        settingsStore.renderedIconCaptureEnabled
+            && screenCapturePermissionService?.status != .granted
     }
 
     private var localDataSection: some View {
@@ -467,6 +482,22 @@ struct PrivacySettingsView: View {
             permissionService: permissionService
         )
         notifyPrivacyChanged()
+    }
+
+    private func requestAccessibilityPermission() {
+        guard let permissionService else { return }
+        let status = permissionService.requestPromptFromUserAction()
+        if status != .granted {
+            permissionService.openSystemSettingsPrivacyPane()
+        }
+    }
+
+    private func requestScreenCapturePermission() {
+        guard let screenCapturePermissionService else { return }
+        let status = screenCapturePermissionService.requestPermissionFromUserAction()
+        if status != .granted {
+            screenCapturePermissionService.openSystemSettingsPrivacyPane()
+        }
     }
 
     private func notifyPrivacyChanged() {

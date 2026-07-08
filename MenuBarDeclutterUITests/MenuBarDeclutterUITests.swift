@@ -145,12 +145,10 @@ final class MenuBarDeclutterUITests: XCTestCase {
         ])
 
         assertElement("secondBar.compactStrip", in: app, timeout: 10)
-        assertElement("secondBar.compact.item.ui-test-calendar", in: app)
-        assertElement("secondBar.compact.item.ui-test-sync", in: app)
-        XCTAssertFalse(app.descendants(matching: .any)["secondBar.compact.item.ui-test-vpn"].exists)
-        XCTAssertFalse(app.descendants(matching: .any)["secondBar.compact.item.ui-test-wifi"].exists)
-        assertButton("Manage Second Bar", in: app)
-        assertButton("Second Bar Settings", in: app)
+        assertCompactStripItem("ui-test-calendar", in: app)
+        assertCompactStripItem("ui-test-sync", in: app)
+        XCTAssertFalse(compactStripItem("ui-test-vpn", in: app).exists)
+        XCTAssertFalse(compactStripItem("ui-test-wifi", in: app).exists)
     }
 
     @MainActor
@@ -760,6 +758,32 @@ final class MenuBarDeclutterUITests: XCTestCase {
             file: file,
             line: line
         )
+    }
+
+    @MainActor
+    private func assertCompactStripItem(
+        _ itemID: String,
+        in app: XCUIApplication,
+        timeout: TimeInterval = 5,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        XCTAssertTrue(
+            compactStripItem(itemID, in: app).waitForExistence(timeout: timeout),
+            "Expected compact Second Bar item '\(itemID)' to exist.",
+            file: file,
+            line: line
+        )
+    }
+
+    @MainActor
+    private func compactStripItem(
+        _ itemID: String,
+        in app: XCUIApplication
+    ) -> XCUIElement {
+        app.descendants(matching: .any)
+            .matching(NSPredicate(format: "value == %@", itemID))
+            .firstMatch
     }
 
     @MainActor

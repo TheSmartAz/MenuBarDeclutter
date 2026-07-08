@@ -50,6 +50,7 @@ struct SettingsExportImportTests {
         store.searchHotkeyKeyCode = 3
         store.searchHotkeyModifiersRaw = 0x0900
         store.lastAccessibilityPermissionStatus = AccessibilityPermissionStatus.granted.rawValue
+        store.lastScreenCapturePermissionStatus = ScreenCapturePermissionStatus.granted.rawValue
         store.launchAtLoginEnabled = true
         store.privateAccessLastAuthStatus = "unlocked"
         store.dogfoodRunID = "private-run-id"
@@ -67,6 +68,7 @@ struct SettingsExportImportTests {
         #expect(package.settings[SettingsStore.Key.launchAtLoginEnabled.rawValue] == nil)
         #expect(package.settings[SettingsStore.Key.showPrimarySeparator.rawValue] == nil)
         #expect(package.settings[SettingsStore.Key.lastAccessibilityPermissionStatus.rawValue] == nil)
+        #expect(package.settings[SettingsStore.Key.lastScreenCapturePermissionStatus.rawValue] == nil)
         #expect(package.settings[SettingsStore.Key.privateAccessLastAuthStatus.rawValue] == nil)
         #expect(package.settings[SettingsStore.Key.dogfoodRunID.rawValue] == nil)
     }

@@ -195,7 +195,9 @@ manual_required = [
   "Compact strip diagnostics export",
   "Compact strip screenshot QA",
   "Warm-up diagnostics",
-  "Readiness diagnostics export"
+  "Readiness diagnostics export",
+  "Screen Recording recovery guidance",
+  "Permission preflight helper"
 ]
 manual_required.each do |label|
   require_status(failures, "Manual QA automated evidence", manual_rows, label, "PASS")

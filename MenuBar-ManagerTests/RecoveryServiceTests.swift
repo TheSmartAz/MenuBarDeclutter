@@ -73,6 +73,60 @@ struct RecoveryServiceTests {
         #expect(store.smartTriggersEnabled == false)
     }
 
+    @Test func missingProPermissionRecoveryRefreshesStatusWithoutDisablingProMode() {
+        let suiteName = "RecoveryServiceTests.proPermission.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let store = SettingsStore(defaults: defaults)
+        store.proModeEnabled = true
+        store.accessibilityDiscoveryEnabled = true
+        store.secondBarPrimaryClickEnabled = true
+        var expanded = 0
+        var refreshedPermission = 0
+        var disabledProMode = 0
+
+        let service = RecoveryService(
+            actions: RecoveryActions(
+                expandAll: {
+                    expanded += 1
+                },
+                refreshAccessibilityPermissionStatus: {
+                    refreshedPermission += 1
+                },
+                disableProMode: {
+                    disabledProMode += 1
+                    store.proModeEnabled = false
+                    store.accessibilityDiscoveryEnabled = false
+                    store.secondBarPrimaryClickEnabled = false
+                }
+            )
+        )
+
+        let report = HealthReport(
+            generatedAt: Date(),
+            issues: [
+                HealthIssue(
+                    code: "pro.permission-unavailable",
+                    severity: .warning,
+                    title: "Optional Pro permission is unavailable",
+                    detail: "Optional Pro discovery is enabled, but Accessibility permission is Denied.",
+                    recoveryAction: .refreshAccessibilityPermissionStatus
+                )
+            ]
+        )
+
+        service.recover(report: report)
+
+        #expect(expanded == 1)
+        #expect(refreshedPermission == 1)
+        #expect(disabledProMode == 0)
+        #expect(store.proModeEnabled)
+        #expect(store.accessibilityDiscoveryEnabled)
+        #expect(store.secondBarPrimaryClickEnabled)
+    }
+
     @Test func previewPanelRecoveryHidesPanels() {
         var hidFunctionBar = 0
         var hidInfoStrip = 0

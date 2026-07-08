@@ -110,6 +110,10 @@ struct SettingsMigrationService {
             settingsStore.lastAccessibilityPermissionStatus = nil
             repairedKeys.append(.lastAccessibilityPermissionStatus)
         }
+        if settingsStore.lastScreenCapturePermissionStatus != nil {
+            settingsStore.lastScreenCapturePermissionStatus = nil
+            repairedKeys.append(.lastScreenCapturePermissionStatus)
+        }
         repair(&repairedKeys, .searchEnabled) {
             settingsStore.searchEnabled = true
         }
@@ -229,6 +233,7 @@ struct SettingsMigrationService {
             settingsStore.proModeEnabled == false &&
             settingsStore.accessibilityDiscoveryEnabled == false &&
             settingsStore.lastAccessibilityPermissionStatus == nil &&
+            settingsStore.lastScreenCapturePermissionStatus == nil &&
             settingsStore.renderedIconCaptureEnabled == false &&
             settingsStore.renderedIconRevealSweepEnabled == false &&
             settingsStore.searchEnabled == true &&
@@ -289,6 +294,8 @@ struct SettingsMigrationService {
             return settingsStore.accessibilityDiscoveryEnabled.description
         case .lastAccessibilityPermissionStatus:
             return settingsStore.lastAccessibilityPermissionStatus ?? "nil"
+        case .lastScreenCapturePermissionStatus:
+            return settingsStore.lastScreenCapturePermissionStatus ?? "nil"
         case .menuBarScanIntervalSeconds:
             return settingsStore.menuBarScanIntervalSeconds.description
         case .renderedIconCaptureEnabled:

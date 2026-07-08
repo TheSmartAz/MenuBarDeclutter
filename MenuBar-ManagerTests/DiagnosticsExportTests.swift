@@ -130,6 +130,7 @@ struct DiagnosticsExportTests {
         let settings = try #require(object["settings"] as? [String: Any])
         #expect(settings.keys.sorted() == Self.expectedSettingsKeys)
         #expect(settings["lastAccessibilityPermissionStatus"] is NSNull)
+        #expect(settings["lastScreenCapturePermissionStatus"] is NSNull)
         #expect(settings["collapsedSeparatorLengthOverride"] is NSNull)
 
         let logs = try #require(object["logs"] as? [[String: Any]])
@@ -646,6 +647,7 @@ struct DiagnosticsExportTests {
         "infoStripShowPreviewBadge",
         "isCollapsed",
         "lastAccessibilityPermissionStatus",
+        "lastScreenCapturePermissionStatus",
         "launchAtLoginEnabled",
         "layoutFeaturesEnabled",
         "layoutSuggestionsEnabled",

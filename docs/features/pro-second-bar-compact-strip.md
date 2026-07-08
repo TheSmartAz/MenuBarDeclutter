@@ -40,17 +40,19 @@ The compact strip is a one-line, menu-bar-like app-owned floating surface.
 
 - It shows Hidden zone items only.
 - It excludes Always Hidden by default.
+- It only admits Hidden-zone items from the right-side menu bar status area: on notched displays, items must be to the right of the modeled notch; on non-notched displays, items must be in the right half of the active menu bar band.
+- It excludes likely system items and MenuBarDeclutter's own status items.
 - It admits Hidden-zone items even when a specific rendered thumbnail is not ready; Accurate Icons is the setup gate, while individual items can fall back to app or placeholder icons.
 - It is icon-only by default; names are available through tooltips and accessibility labels.
-- Its order follows the real Hidden zone order until Set support exists.
+- Its order follows the real Hidden zone x-position until Set support exists.
+- Its item buttons use the original menu bar item frame size when available, with a small fallback slot only when AX frame data is missing or invalid.
 - Overflow remains one line and appears as `+N`, which opens the Manage Panel. `+N` counts items that do not fit, not items whose rendered thumbnail is still missing.
 - If no Accessibility scan is available, it shows `No scan yet` instead of claiming there are no hidden icons.
 - If the latest Accessibility scan is stale, it keeps any ready icons visible and marks the strip as `Scan stale`.
-- Search/Manage and Settings are fixed compact controls on the right.
 - The strip does not repeat MenuBarDeclutter's own status item.
 - Diagnostics live status and diagnostics export record aggregate counts for the last compact strip: visible items, overflow items, fallback-icon items, and scan state. They do not record item names or image data.
 
-The strip should feel related to the macOS menu bar without pretending to be the system menu bar. It uses system material/vibrancy, a small height, and a slight floating boundary.
+The strip should feel related to the macOS menu bar without pretending to be the system menu bar. It uses system bar material/vibrancy, compact menu-bar-like height, and only a slight boundary.
 
 ## Placement
 
@@ -69,7 +71,7 @@ Compact strip clicks are optimistic one-click activation.
 2. Keep reveal plus simulated click plus restore as a Pro/Labs fallback until dogfood proves it stable.
 3. If activation fails, keep the item visible in the strip and show a lightweight retry state.
 
-Opening the strip must not trigger a scan or screen capture. It reads the latest Accessibility snapshot and rendered-icon cache. Accurate Icons refreshes happen during onboarding warm-up, visible-item refreshes, or explicit user refresh actions.
+Opening the strip must not wait for a scan or screen capture. It immediately reads the latest Accessibility snapshot and rendered-icon cache, then refreshes scans and Accurate Icons in the background while the strip is already visible.
 
 ## Manage Panel
 

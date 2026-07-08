@@ -337,7 +337,7 @@ struct HealthService {
                     severity: .warning,
                     title: "Optional Pro permission is unavailable",
                     detail: "Optional Pro discovery is enabled, but Accessibility permission is \(snapshot.accessibilityPermissionStatus.displayName).",
-                    recoveryAction: .disableProMode
+                    recoveryAction: .refreshAccessibilityPermissionStatus
                 )
             )
         }

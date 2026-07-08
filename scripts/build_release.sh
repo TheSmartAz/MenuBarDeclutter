@@ -7,6 +7,7 @@ fallback_scheme="MenuBar-Manager"
 scheme="$requested_scheme"
 DRY_RUN=1
 DEVELOPER_ID=0
+LOCAL_DEVELOPMENT_SIGNING=0
 NOTARIZE=0
 STAPLE=0
 INSTALL=0
@@ -20,10 +21,13 @@ ZIP_PATH="${ZIP_PATH:-}"
 
 usage() {
   cat <<EOF
-Usage: scripts/build_release.sh [--dry-run] [--developer-id] [--notarize] [--staple] [--install] [--verify-installed] [--version VERSION]
+Usage: scripts/build_release.sh [--dry-run] [--local-development-signing] [--developer-id] [--notarize] [--staple] [--install] [--verify-installed] [--version VERSION]
 
 Modes:
   --dry-run          Build/archive/export/package locally without Developer ID export or notarization credentials. This is the default.
+  --local-development-signing
+                     In dry-run mode, archive with the project's Apple Development signing identity instead of ad-hoc/no-account overrides.
+                     This is only for local dogfood where a stable signed app identity reduces repeated macOS privacy re-authorization.
   --developer-id     Opt into the future Developer ID export path. Out of current scope unless explicitly requested.
   --notarize        Submit the release zip with notarytool only in --developer-id mode. In dry-run mode, records a notarization dry run.
   --staple          Staple and validate the exported app after real notarization.
@@ -49,6 +53,12 @@ while [[ $# -gt 0 ]]; do
     --dry-run)
       DRY_RUN=1
       DEVELOPER_ID=0
+      shift
+      ;;
+    --local-development-signing)
+      DRY_RUN=1
+      DEVELOPER_ID=0
+      LOCAL_DEVELOPMENT_SIGNING=1
       shift
       ;;
     --developer-id)
@@ -107,6 +117,11 @@ if [[ "$VERSION" == "0.2" || "$VERSION" == "0.2.0" || "$VERSION" == v0.2* ]]; th
   exit 1
 fi
 
+if [[ "$DEVELOPER_ID" -eq 1 && "$LOCAL_DEVELOPMENT_SIGNING" -eq 1 ]]; then
+  echo "FAIL: --local-development-signing is a dry-run dogfood option and cannot be combined with --developer-id." >&2
+  exit 2
+fi
+
 EXPECTED_BUILD_VERSION="${EXPECTED_BUILD_VERSION:-$(build_from_config)}"
 if [[ -z "$EXPECTED_BUILD_VERSION" ]]; then
   echo "FAIL: could not derive CURRENT_PROJECT_VERSION from Config/Shared.xcconfig" >&2
@@ -125,13 +140,14 @@ echo "MenuBarDeclutter release build"
 echo "Scheme: $scheme"
 echo "Version: $VERSION"
 echo "Dry run: $DRY_RUN"
+echo "Local development signing: $LOCAL_DEVELOPMENT_SIGNING"
 echo "Developer ID opt-in: $DEVELOPER_ID"
 echo "Archive: $ARCHIVE_PATH"
 echo "Exported app: $APP_PATH"
 echo "Zip: $ZIP_PATH"
 echo
 
-if [[ "$DRY_RUN" -eq 1 ]]; then
+if [[ "$DRY_RUN" -eq 1 && "$LOCAL_DEVELOPMENT_SIGNING" -eq 0 ]]; then
   archive_signing_overrides=1
 else
   archive_signing_overrides=0

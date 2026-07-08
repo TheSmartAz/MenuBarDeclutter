@@ -603,7 +603,7 @@ struct AppIconView: View {
 
 struct MenuBarItemIconView: View {
     let snapshot: MenuBarItemSnapshot
-    let size: CGFloat
+    let imageSize: CGSize
     let cornerRadius: CGFloat
 
     private let renderedIconCache: MenuBarRenderedIconCache
@@ -621,9 +621,29 @@ struct MenuBarItemIconView: View {
         renderedIconCache: MenuBarRenderedIconCache = .shared,
         appIconCache: AppIconCache = .shared
     ) {
+        self.init(
+            snapshot: snapshot,
+            imageSize: CGSize(width: size, height: size),
+            cornerRadius: cornerRadius,
+            renderedIconCache: renderedIconCache,
+            appIconCache: appIconCache
+        )
+    }
+
+    @MainActor
+    init(
+        snapshot: MenuBarItemSnapshot,
+        imageSize: CGSize,
+        cornerRadius: CGFloat? = nil,
+        renderedIconCache: MenuBarRenderedIconCache = .shared,
+        appIconCache: AppIconCache = .shared
+    ) {
         self.snapshot = snapshot
-        self.size = size
-        self.cornerRadius = cornerRadius ?? min(DesignTokens.Radius.icon, size / 4)
+        self.imageSize = imageSize
+        self.cornerRadius = cornerRadius ?? min(
+            DesignTokens.Radius.icon,
+            min(imageSize.width, imageSize.height) / 4
+        )
         self.renderedIconCache = renderedIconCache
         self.appIconCache = appIconCache
         self.appIconLookup = AppIconCache.Lookup(snapshot: snapshot)
@@ -640,7 +660,8 @@ struct MenuBarItemIconView: View {
     var body: some View {
         Image(nsImage: iconImage)
             .resizable()
-            .frame(width: size, height: size)
+            .aspectRatio(contentMode: .fit)
+            .frame(width: imageSize.width, height: imageSize.height)
             .clipShape(.rect(cornerRadius: cornerRadius))
             .overlay {
                 RoundedRectangle(cornerRadius: cornerRadius)

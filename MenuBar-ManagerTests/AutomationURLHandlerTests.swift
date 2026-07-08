@@ -148,6 +148,62 @@ struct AutomationURLHandlerTests {
         #expect(recorder.commands == ["expand", "collapse", "expand"])
         #expect(recorder.logged("Automation URL rejected: command rate limited."))
     }
+
+    @Test func exportsDiagnosticsToRequestedPathWhenEnabled() throws {
+        let recorder = AutomationRecorder()
+        let handler = recorder.makeHandler(diagnosticsExportEnabled: true)
+        let fileURL = URL(fileURLWithPath: "/tmp/MenuBarDeclutter diagnostics.json")
+        var components = try #require(URLComponents(string: "menubardeclutter://export-diagnostics"))
+        components.queryItems = [URLQueryItem(name: "path", value: fileURL.path)]
+
+        #expect(handler.handle(url: try #require(components.url)))
+
+        #expect(recorder.diagnosticsExportURLs == [fileURL])
+        #expect(recorder.logged("Diagnostics export URL completed."))
+    }
+
+    @Test func rejectsDiagnosticsExportWhenPathIsMissing() throws {
+        let recorder = AutomationRecorder()
+        let handler = recorder.makeHandler(diagnosticsExportEnabled: true)
+
+        #expect(!handler.handle(url: try #require(URL(string: "menubardeclutter://export-diagnostics"))))
+
+        #expect(recorder.diagnosticsExportURLs.isEmpty)
+        #expect(recorder.logged("Automation URL rejected: diagnostics export missing path."))
+    }
+
+    @Test func rejectsDiagnosticsExportWhenUnavailable() throws {
+        let recorder = AutomationRecorder()
+        let handler = recorder.makeHandler()
+        let fileURL = URL(fileURLWithPath: "/tmp/MenuBarDeclutter-diagnostics.json")
+        var components = try #require(URLComponents(string: "menubardeclutter://export-diagnostics"))
+        components.queryItems = [URLQueryItem(name: "path", value: fileURL.path)]
+
+        #expect(!handler.handle(url: try #require(components.url)))
+
+        #expect(recorder.diagnosticsExportURLs.isEmpty)
+        #expect(recorder.logged("Automation URL rejected: diagnostics export unavailable."))
+    }
+
+    @Test func showsCompactSecondBarWhenEnabled() throws {
+        let recorder = AutomationRecorder()
+        let handler = recorder.makeHandler(compactSecondBarEnabled: true)
+
+        #expect(handler.handle(url: try #require(URL(string: "menubardeclutter://compact-second-bar"))))
+
+        #expect(recorder.compactSecondBarRequests == 1)
+        #expect(recorder.logged("Compact Second Bar URL completed."))
+    }
+
+    @Test func rejectsCompactSecondBarWhenUnavailable() throws {
+        let recorder = AutomationRecorder()
+        let handler = recorder.makeHandler()
+
+        #expect(!handler.handle(url: try #require(URL(string: "menubardeclutter://compact-second-bar"))))
+
+        #expect(recorder.compactSecondBarRequests == 0)
+        #expect(recorder.logged("Automation URL rejected: compact second bar unavailable."))
+    }
 }
 
 @MainActor
@@ -167,6 +223,10 @@ private final class AutomationRecorder {
     var profileNames: [String] = []
     var groupPanelIDs: [UUID] = []
     var revealGroupIDs: [UUID] = []
+    var diagnosticsExportURLs: [URL] = []
+    var diagnosticsExportSucceeds = true
+    var compactSecondBarRequests = 0
+    var compactSecondBarSucceeds = true
     private var currentDate = Date(timeIntervalSinceReferenceDate: 0)
 
     init(
@@ -183,7 +243,11 @@ private final class AutomationRecorder {
         store = SettingsStore(defaults: defaults)
     }
 
-    func makeHandler(minimumCommandInterval: TimeInterval = 0.5) -> AutomationURLHandler {
+    func makeHandler(
+        minimumCommandInterval: TimeInterval = 0.5,
+        diagnosticsExportEnabled: Bool = false,
+        compactSecondBarEnabled: Bool = false
+    ) -> AutomationURLHandler {
         store.automationPaused = !automationEnabled
         store.proModeEnabled = proModeEnabled
         store.accessibilityDiscoveryEnabled = accessibilityDiscoveryEnabled
@@ -217,6 +281,14 @@ private final class AutomationRecorder {
         return AutomationURLHandler(
             diagnosticsLogger: logger,
             routeCommand: { command in router.route(command) },
+            exportDiagnostics: diagnosticsExportEnabled ? { [self] url in
+                diagnosticsExportURLs.append(url)
+                return diagnosticsExportSucceeds
+            } : nil,
+            showCompactSecondBar: compactSecondBarEnabled ? { [self] in
+                compactSecondBarRequests += 1
+                return compactSecondBarSucceeds
+            } : nil,
             now: { [self] in currentDate },
             minimumCommandInterval: minimumCommandInterval
         )

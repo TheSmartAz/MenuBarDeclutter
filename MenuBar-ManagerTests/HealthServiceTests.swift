@@ -126,6 +126,36 @@ struct HealthServiceTests {
         #expect(report.issues.contains { $0.code == "pro.ax-scan-stale" })
     }
 
+    @Test func missingProPermissionRefreshesStatusWithoutDisablingProMode() {
+        let service = HealthService(now: { Date(timeIntervalSince1970: 10) })
+        var snapshot = Self.healthySnapshot()
+        snapshot.proModeEnabled = true
+        snapshot.accessibilityDiscoveryEnabled = true
+        snapshot.accessibilityPermissionStatus = .denied
+
+        let report = service.makeReport(snapshot: snapshot)
+
+        let issue = report.issues.first { $0.code == "pro.permission-unavailable" }
+        #expect(report.status == .warning)
+        #expect(issue?.recoveryAction == .refreshAccessibilityPermissionStatus)
+        #expect(report.issues.allSatisfy { $0.recoveryAction != .disableProMode })
+    }
+
+    @Test func repeatedAXFailuresCanStillDisableProMode() {
+        let service = HealthService(now: { Date(timeIntervalSince1970: 10) })
+        var snapshot = Self.healthySnapshot()
+        snapshot.proModeEnabled = true
+        snapshot.accessibilityDiscoveryEnabled = true
+        snapshot.accessibilityPermissionStatus = .granted
+        snapshot.menuBarScanFailuresCount = 3
+
+        let report = service.makeReport(snapshot: snapshot)
+
+        let issue = report.issues.first { $0.code == "pro.repeated-ax-failures" }
+        #expect(report.status == .critical)
+        #expect(issue?.recoveryAction == .disableProMode)
+    }
+
     @Test func workspacePreviewRuntimeIssuesAreRecoverable() {
         let service = HealthService(now: { Date(timeIntervalSince1970: 10) })
         var snapshot = Self.healthySnapshot()
