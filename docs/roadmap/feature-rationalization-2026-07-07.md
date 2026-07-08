@@ -503,3 +503,33 @@ until a user opts in *and* saves a layout.
 - Optional polish: a visual review of the new section, and an *auto-apply-on-switch*
   toggle if you want switching to apply automatically instead of via the button
   (needs a `SettingsStore` flag + hooking the switch trigger sites).
+
+### Hardware pass ✅ + best-effort rework (2026-07-07)
+
+**Hardware validation PASSED: 95.2% (20/21) on a real bar.** Saving and applying a
+workspace layout physically reconfigured real third-party icons — the real-control
+bet is validated end-to-end.
+
+**The data drove a design change.** The one failure was a *deterministically
+unmovable* app (`com.openai.sky.CUAService`, an OpenAI background agent), not
+flakiness. That exposed a flaw in the atomic design: a single unmovable item would
+have rolled back the **entire** apply — and real bars almost always contain one.
+So:
+
+- **`WorkspaceSwitchExecutor` → best-effort.** Move every item that can; record the
+  ones that can't; never roll the whole switch back over one stubborn item.
+  `WorkspaceSwitchOutcome` is now `{appliedItemKeys, failedItemKeys}`. A failed move
+  leaves its item where it was, so the bar stays coherent.
+- **Known-unmovable registry.** `WorkspaceLayoutCoordinator` remembers items that
+  failed this session and skips them on later applies (no re-attempting lost
+  causes); the UI appends "(N skipped as unmovable)". Session-scoped for now.
+- **Batch-apply confirmation fix** (found in code review): a layout apply routes
+  through `moveAfterExternalConfirmation`, so an N-move apply no longer pops N
+  dialogs.
+
+Verified: app builds; logic lane **101 tests / 19 suites**.
+
+**Level-2 is functionally complete and hardware-validated.** Open follow-ups:
+persist the unmovable registry across launches; per-item restore for the rare
+`wrongZone` displacement (needs the verification sub-reason threaded through);
+optional auto-apply-on-switch (needs consolidating the scattered switch triggers).
