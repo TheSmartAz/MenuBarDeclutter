@@ -551,21 +551,19 @@ private struct FindRescueSetupStepRow: View {
     var action: (() -> Void)? = nil
 
     var body: some View {
-        ClearGlassControlRow(
+        ClearGlassStepRow(
             systemImage: systemImage,
             title: "\(number). \(title)",
             subtitle: detail,
-            iconTint: state.iconTint
+            iconTint: state.iconTint,
+            statusText: statusText,
+            statusStyle: state.style,
+            isDimmed: state == .locked
         ) {
-            VStack(alignment: .trailing, spacing: 8) {
-                ClearGlassStatusValue(text: statusText, style: state.style)
-
-                if let actionTitle, let action {
-                    stepButton(title: actionTitle, action: action)
-                }
+            if let actionTitle, let action {
+                stepButton(title: actionTitle, action: action)
             }
         }
-        .opacity(state == .locked ? 0.74 : 1)
         .accessibilityElement(children: .combine)
     }
 

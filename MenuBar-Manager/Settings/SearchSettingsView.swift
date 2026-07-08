@@ -163,24 +163,19 @@ struct SearchRequirementRow: View {
     var action: (() -> Void)? = nil
 
     var body: some View {
-        ClearGlassControlRow(
+        ClearGlassStepRow(
             systemImage: systemImage,
             title: title,
             subtitle: detail,
-            iconTint: isSatisfied ? .green : .orange
+            iconTint: isSatisfied ? .green : .orange,
+            statusText: status,
+            statusStyle: isSatisfied ? .success : .warning
         ) {
-            VStack(alignment: .trailing, spacing: 8) {
-                ClearGlassStatusValue(
-                    text: status,
-                    style: isSatisfied ? .success : .warning
-                )
-
-                if let actionTitle, let action {
-                    Button(actionTitle) {
-                        action()
-                    }
-                    .controlSize(.small)
+            if let actionTitle, let action {
+                Button(actionTitle) {
+                    action()
                 }
+                .controlSize(.small)
             }
         }
     }
