@@ -12,8 +12,8 @@ import Observation
 @Observable
 final class MoveOutcomeStore: MoveOutcomeRecording {
     @ObservationIgnored private let appSupportPaths: AppSupportPaths
-    @ObservationIgnored private let fileManager: FileManager
     @ObservationIgnored private let maxOutcomes: Int
+    @ObservationIgnored private let store: CodableFileStore<[MoveOutcome]>
 
     private(set) var outcomes: [MoveOutcome]
     var lastError: String?
@@ -24,8 +24,13 @@ final class MoveOutcomeStore: MoveOutcomeRecording {
         maxOutcomes: Int = 500
     ) {
         self.appSupportPaths = appSupportPaths
-        self.fileManager = fileManager
         self.maxOutcomes = max(1, maxOutcomes)
+        self.store = CodableFileStore(
+            fileURL: appSupportPaths.moveOutcomesFileURL,
+            fileManager: fileManager,
+            encoder: Self.encoder(),
+            decoder: Self.decoder()
+        )
         self.outcomes = []
         load()
     }
@@ -59,11 +64,8 @@ final class MoveOutcomeStore: MoveOutcomeRecording {
     }
 
     private func load() {
-        let url = appSupportPaths.moveOutcomesFileURL
-        guard fileManager.fileExists(atPath: url.path) else { return }
         do {
-            let data = try Data(contentsOf: url)
-            outcomes = try Self.decoder().decode([MoveOutcome].self, from: data)
+            outcomes = try store.read() ?? []
             lastError = nil
         } catch {
             outcomes = []
@@ -73,12 +75,12 @@ final class MoveOutcomeStore: MoveOutcomeRecording {
 
     private func persist() {
         do {
-            try appSupportPaths.ensureDirectoriesExist()
-            let data = try Self.encoder().encode(outcomes)
-            try data.write(to: appSupportPaths.moveOutcomesFileURL, options: .atomic)
+            try store.write(outcomes)
 
             // Also refresh the human-readable reliability summary so the QA run
             // has a readable success-rate readout without any UI. Local only.
+            // `store.write` already created the parent directory this sibling
+            // file shares.
             let summary = MoveReliabilityReport(outcomes: outcomes).plainText()
             try Data(summary.utf8).write(
                 to: appSupportPaths.moveReliabilitySummaryFileURL,

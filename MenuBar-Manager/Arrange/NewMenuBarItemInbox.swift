@@ -357,17 +357,31 @@ nonisolated struct NewMenuBarItemInboxDetector {
 
 @MainActor
 final class NewMenuBarItemInboxStore {
-    private let fileURL: URL?
-    private let fileManager: FileManager
+    private let store: CodableFileStore<NewMenuBarItemInbox>?
     private(set) var inbox: NewMenuBarItemInbox
 
     init(
         fileURL: URL?,
         fileManager: FileManager = .default
     ) {
-        self.fileURL = fileURL
-        self.fileManager = fileManager
-        self.inbox = Self.load(from: fileURL, fileManager: fileManager)
+        let store: CodableFileStore<NewMenuBarItemInbox>?
+        if let fileURL {
+            // Preserve the original numeric (`.deferredToDate`) date format for
+            // `firstSeenAt`/`lastSeenAt`: pass a plain encoder rather than the
+            // ISO8601 CodableFileStore default so existing files still decode.
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            store = CodableFileStore(
+                fileURL: fileURL,
+                fileManager: fileManager,
+                encoder: encoder,
+                decoder: JSONDecoder()
+            )
+        } else {
+            store = nil
+        }
+        self.store = store
+        self.inbox = Self.load(from: store)
     }
 
     @discardableResult
@@ -391,30 +405,22 @@ final class NewMenuBarItemInboxStore {
     }
 
     private func save() {
-        guard let fileURL else { return }
+        guard let store else { return }
 
         do {
-            try fileManager.createDirectory(
-                at: fileURL.deletingLastPathComponent(),
-                withIntermediateDirectories: true
-            )
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            try encoder.encode(inbox).write(to: fileURL, options: [.atomic])
+            try store.write(inbox)
         } catch {
             // Inbox state is a convenience layer; failing closed keeps the app usable.
         }
     }
 
-    private static func load(from fileURL: URL?, fileManager: FileManager) -> NewMenuBarItemInbox {
-        guard let fileURL,
-              fileManager.fileExists(atPath: fileURL.path) else {
-            return .empty
-        }
+    private static func load(from store: CodableFileStore<NewMenuBarItemInbox>?) -> NewMenuBarItemInbox {
+        guard let store else { return .empty }
 
         do {
-            let data = try Data(contentsOf: fileURL)
-            let inbox = try JSONDecoder().decode(NewMenuBarItemInbox.self, from: data)
+            guard let inbox = try store.read() else {
+                return .empty
+            }
             guard inbox.schemaVersion == NewMenuBarItemInbox.empty.schemaVersion else {
                 return .empty
             }

@@ -9,6 +9,7 @@ final class SpacerItemStore {
     private let fileManager: FileManager
     private let diagnosticsLogger: DiagnosticsLogger?
     private let now: () -> Date
+    private let store: CodableFileStore<SpacerItemContainer>
 
     private(set) var items: [SpacerItemModel] = []
 
@@ -22,23 +23,29 @@ final class SpacerItemStore {
         diagnosticsLogger: DiagnosticsLogger? = nil,
         now: @escaping () -> Date = { Date() }
     ) {
-        self.fileURL = directory.appendingPathComponent("spacers.json")
+        let fileURL = directory.appendingPathComponent("spacers.json")
+        self.fileURL = fileURL
         self.backupsDirectory = backupsDirectory
         self.fileManager = fileManager
         self.diagnosticsLogger = diagnosticsLogger
         self.now = now
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        self.store = CodableFileStore(
+            fileURL: fileURL,
+            fileManager: fileManager,
+            encoder: encoder,
+            decoder: JSONDecoder()
+        )
     }
 
     /// Load items from disk. If the file is corrupted, back it up and reset.
     func load() {
-        guard fileManager.fileExists(atPath: fileURL.path) else {
-            items = []
-            return
-        }
-
         do {
-            let data = try Data(contentsOf: fileURL)
-            let container = try JSONDecoder().decode(SpacerItemContainer.self, from: data)
+            guard let container = try store.read() else {
+                items = []
+                return
+            }
             items = container.items.sorted { $0.sortOrder < $1.sortOrder }
         } catch {
             diagnosticsLogger?.log(
@@ -54,15 +61,11 @@ final class SpacerItemStore {
     /// Save items to disk.
     func save() {
         do {
-            try fileManager.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
             let container = SpacerItemContainer(
                 schemaVersion: Self.schemaVersion,
                 items: items
             )
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            let data = try encoder.encode(container)
-            try data.write(to: fileURL, options: .atomic)
+            try store.write(container)
         } catch {
             diagnosticsLogger?.log(
                 "Failed to save spacer store: \(error.localizedDescription)",
