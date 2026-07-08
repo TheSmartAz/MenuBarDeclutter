@@ -619,7 +619,7 @@ struct SettingsRootView: View {
                     navigationModel.selectedSection = .menuBarItems
                 },
                 onOpenGroups: {
-                    navigationModel.selectedSection = .advanced
+                    navigationModel.selectedSection = .groups
                 },
                 onOpenArrange: {
                     navigationModel.selectedSection = .arrange
