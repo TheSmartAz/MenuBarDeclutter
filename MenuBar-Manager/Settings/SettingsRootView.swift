@@ -918,7 +918,9 @@ struct SettingsRootView: View {
                     },
                     onOpenRecovery: {
                         navigationModel.selectedSection = .recovery
-                    }
+                    },
+                    applyLayout: actions.applyWorkspaceLayout,
+                    isLayoutApplyEnabled: { actions.isWorkspaceLayoutApplyEnabled?() ?? false }
                 )
             } else {
                 ClearGlassSettingsPage(

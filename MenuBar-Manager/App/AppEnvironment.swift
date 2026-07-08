@@ -226,6 +226,15 @@ final class AppEnvironment {
                 }
                 return await self.executeAssistedMoveFromSettings(snapshot, command: command)
             },
+            applyWorkspaceLayout: { [weak self] in
+                await self?.applyActiveWorkspaceLayout() ?? nil
+            },
+            isWorkspaceLayoutApplyEnabled: { [weak self] in
+                guard let self else { return false }
+                return self.settingsStore.iconMovingEnabled
+                    && self.settingsStore.proModeEnabled
+                    && self.accessibilityPermissionService.status == .granted
+            },
             profile: SettingsProfileActions(
                 dryRun: { [weak self] profile in
                     self?.dryRunProfile(profile) ?? ProfileApplicationDryRun(
@@ -604,9 +613,9 @@ final class AppEnvironment {
 
     /// Entry point for a future "apply layout on switch" control: applies the
     /// active workspace's target layout to the real bar iff the apply gate is on.
-    func applyActiveWorkspaceLayout() async {
+    func applyActiveWorkspaceLayout() async -> WorkspaceLayoutApplyResult? {
         let workspace = workspaceSwitchingService.activeWorkspace()
-        _ = await workspaceLayoutCoordinator.applyLayoutIfEnabled(for: workspace)
+        return await workspaceLayoutCoordinator.applyLayoutIfEnabled(for: workspace)
     }
 
     /// Entry point for a future "Save current layout to workspace" control.
