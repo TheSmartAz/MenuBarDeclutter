@@ -142,7 +142,7 @@ struct WorkspacePreviewSettingsView: View {
                 newItemCount: liveStatus?.newMenuBarItemReviewCount,
                 healthWarningCount: liveStatus?.healthReport?.issues.count ?? 0,
                 latestScanAgeSeconds: nil,
-                proDiscoveryAvailable: settingsStore.proModeEnabled && settingsStore.accessibilityDiscoveryEnabled,
+                proDiscoveryAvailable: settingsStore.isProDiscoveryAvailable,
                 safeModeActive: liveStatus?.safeModeActive ?? false,
                 currentDate: Date()
             )

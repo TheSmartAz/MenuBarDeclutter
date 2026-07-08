@@ -66,7 +66,7 @@ final class SetBuilderViewModel {
     var proxyLibrary: [SetBuilderLibraryItem] {
         MenuBarItemLibraryProvider(
             snapshots: snapshotsProvider(),
-            proDiscoveryAvailable: settingsStore.proModeEnabled && settingsStore.accessibilityDiscoveryEnabled,
+            proDiscoveryAvailable: settingsStore.isProDiscoveryAvailable,
             accessibilityAvailable: settingsStore.lastAccessibilityPermissionStatus == AccessibilityPermissionStatus.granted.rawValue
         ).items()
     }
@@ -80,7 +80,7 @@ final class SetBuilderViewModel {
             snapshots: snapshotsProvider(),
             workspaceSnapshot: switchingService.currentSnapshot(),
             groups: groups,
-            proDiscoveryAvailable: settingsStore.proModeEnabled && settingsStore.accessibilityDiscoveryEnabled,
+            proDiscoveryAvailable: settingsStore.isProDiscoveryAvailable,
             accessibilityAvailable: settingsStore.lastAccessibilityPermissionStatus == AccessibilityPermissionStatus.granted.rawValue
         ).items()
     }

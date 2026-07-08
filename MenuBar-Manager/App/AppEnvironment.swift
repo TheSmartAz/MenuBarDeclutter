@@ -859,7 +859,7 @@ final class AppEnvironment {
         },
         proDiscoveryAvailable: { [weak self] in
             guard let self else { return false }
-            return self.settingsStore.proModeEnabled && self.settingsStore.accessibilityDiscoveryEnabled
+            return self.settingsStore.isProDiscoveryAvailable
         },
         accessibilityAvailable: { [weak self] in
             self?.accessibilityPermissionService.status == .granted
@@ -2364,7 +2364,7 @@ final class AppEnvironment {
             newItemCount: liveStatus.newMenuBarItemReviewCount,
             healthWarningCount: liveStatus.healthReport?.issues.count ?? 0,
             latestScanAgeSeconds: latestScanAge,
-            proDiscoveryAvailable: settingsStore.proModeEnabled && settingsStore.accessibilityDiscoveryEnabled,
+            proDiscoveryAvailable: settingsStore.isProDiscoveryAvailable,
             safeModeActive: safeModeLaunchState.isSafeModeActive,
             currentDate: Date()
         )

@@ -180,7 +180,7 @@ extension SettingsRootView {
                     settingsStore: settingsStore,
                     groupStore: groupStore,
                     snapshots: liveStatus?.scannedMenuBarItems ?? [],
-                    proModeAvailable: settingsStore.proModeEnabled && settingsStore.accessibilityDiscoveryEnabled,
+                    proModeAvailable: settingsStore.isProDiscoveryAvailable,
                     onOpenPrivacySettings: {
                         navigationModel.selectedSection = .privacy
                     },

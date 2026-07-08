@@ -173,7 +173,7 @@ struct PrivacySettingsView: View {
 
             PrivacyScanThrottleRow(
                 value: $settingsStore.menuBarScanIntervalSeconds,
-                isEnabled: settingsStore.proModeEnabled && settingsStore.accessibilityDiscoveryEnabled
+                isEnabled: settingsStore.isProDiscoveryAvailable
             )
             .onChange(of: settingsStore.menuBarScanIntervalSeconds) {
                 notifyPrivacyChanged()
@@ -439,7 +439,7 @@ struct PrivacySettingsView: View {
     }
 
     private var accessibilityStatusStyle: ClearGlassStatusStyle {
-        guard settingsStore.proModeEnabled && settingsStore.accessibilityDiscoveryEnabled else {
+        guard settingsStore.isProDiscoveryAvailable else {
             return .secondary
         }
 

@@ -329,7 +329,10 @@ struct HealthService {
             )
         }
 
-        let proDiscoveryEnabled = snapshot.proModeEnabled && snapshot.accessibilityDiscoveryEnabled
+        let proDiscoveryEnabled = FeatureGate.isProDiscoveryAvailable(
+            proModeEnabled: snapshot.proModeEnabled,
+            accessibilityDiscoveryEnabled: snapshot.accessibilityDiscoveryEnabled
+        )
         if proDiscoveryEnabled && snapshot.accessibilityPermissionStatus != .granted {
             issues.append(
                 HealthIssue(

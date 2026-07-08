@@ -321,7 +321,7 @@ struct FindAndRescueSettingsView: View {
     }
 
     private var discoveryReady: Bool {
-        settingsStore.proModeEnabled && settingsStore.accessibilityDiscoveryEnabled
+        settingsStore.isProDiscoveryAvailable
     }
 
     private var findRescueReady: Bool {

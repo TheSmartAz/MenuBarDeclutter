@@ -78,7 +78,7 @@ final class CrowdedRevealRescueService {
         activeDisplayID: String? = nil,
         activeAppMenuPressure: CrowdedRevealMenuPressure = .unknown
     ) -> CrowdedRevealRescueResult {
-        let proDiscoveryAvailable = settingsStore.proModeEnabled && settingsStore.accessibilityDiscoveryEnabled
+        let proDiscoveryAvailable = settingsStore.isProDiscoveryAvailable
         let decision = decisionEngine.decide(CrowdedRevealDecisionInput(
             intent: intent,
             currentVisibility: currentVisibility,
