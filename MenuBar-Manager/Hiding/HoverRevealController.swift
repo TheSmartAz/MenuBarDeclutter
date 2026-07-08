@@ -64,7 +64,24 @@ final class HoverRevealController {
             stop()
             return
         }
-        guard pollTimer == nil else { return }
+        isPollingActive = true
+        resumeTimerIfNeeded()
+    }
+
+    /// Notifies the controller that the menu bar collapse state changed. Wired to
+    /// `HidingService.onStateChange` so the polling timer resumes on collapse
+    /// after having self-suspended while expanded-and-idle (M1).
+    func menuBarStateDidChange() {
+        resumeTimerIfNeeded()
+    }
+
+    /// Schedules the polling timer only when it is actually needed: hover reveal
+    /// is enabled AND the menu bar is collapsed (watching for the cursor to
+    /// enter) or a hover peek is in progress (watching for it to leave).
+    /// Idempotent — a no-op when the timer is already running or not needed.
+    private func resumeTimerIfNeeded() {
+        guard isPollingActive, pollTimer == nil else { return }
+        guard isCollapsedProvider() || wasHovering else { return }
 
         let interval = settingsStore.hoverRevealPollingIntervalSeconds
         pollTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
@@ -72,8 +89,15 @@ final class HoverRevealController {
                 self?.tick()
             }
         }
-        isPollingActive = true
         diagnosticsLogger.log("Hover reveal polling started (interval=\(interval)s).", level: .debug)
+    }
+
+    /// Invalidates the polling timer without disabling the feature. Unlike
+    /// `stop()`, `isPollingActive` (the enabled flag surfaced in diagnostics) is
+    /// left untouched — the timer is merely idle until the next collapse.
+    private func suspendTimer() {
+        pollTimer?.invalidate()
+        pollTimer = nil
     }
 
     /// Stops the polling timer.
@@ -121,7 +145,13 @@ final class HoverRevealController {
 
     func tick() {
         let isCollapsed = isCollapsedProvider()
-        guard isCollapsed || wasHovering else { return }
+        guard isCollapsed || wasHovering else {
+            // Expanded and not mid-peek: nothing to poll for until the next
+            // collapse. Suspend the timer; `menuBarStateDidChange()` resumes it
+            // when the menu bar collapses again. (M1)
+            suspendTimer()
+            return
+        }
 
         let point = mouseLocationProvider()
         let inBand = screenGeometry.isPointInAnyMenuBarBand(point)

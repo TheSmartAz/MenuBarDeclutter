@@ -1170,6 +1170,12 @@ final class AppEnvironment {
         hoverRevealController.onLeave = { [weak self] in
             self?.armRehide()
         }
+        // Resume hover polling when the menu bar collapses: the timer self-
+        // suspends while expanded-and-idle, and onStateChange fires on every
+        // HidingService transition, so no collapse path is missed. (M1)
+        hidingService.onStateChange = { [weak self] _ in
+            self?.hoverRevealController.menuBarStateDidChange()
+        }
 
         // Wire hotkey: toggle visibility.
         hotkeyManager.onTrigger = { [weak self] in
