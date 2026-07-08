@@ -21,16 +21,6 @@ nonisolated struct SetBuilderDraft: Identifiable, Equatable, Sendable {
     }
 }
 
-nonisolated struct SetBuilderItemDraft: Identifiable, Equatable, Sendable {
-    var id: UUID
-    var workspaceItem: WorkspaceItem
-    var resolvedTitle: String
-    var resolvedSubtitle: String?
-    var resolvedIcon: SetBuilderItemIcon
-    var status: SetBuilderItemStatus
-    var source: SetBuilderItemSource
-}
-
 nonisolated struct SetBuilderItemIcon: Equatable, Sendable {
     var systemName: String
 }

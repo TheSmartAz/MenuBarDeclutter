@@ -147,12 +147,9 @@ struct Phase14ProductDietTests {
 
     @Test func deferredFeatureCopyTargetsCurrentReleaseLine() {
         let bulkMoving = FeatureVisibility.visibility(for: .stableBulkMoving)
-        let visualCapture = FeatureVisibility.visibility(for: .visualItemCapture)
 
         #expect(containsReleaseToken(bulkMoving.summary, "v0.1.10"))
-        #expect(containsReleaseToken(visualCapture.summary, "v0.1.10"))
         #expect(!containsReleaseToken(bulkMoving.summary, "v0.1.1"))
-        #expect(!containsReleaseToken(visualCapture.summary, "v0.1.1"))
     }
 
     private func containsReleaseToken(_ summary: String, _ release: String) -> Bool {

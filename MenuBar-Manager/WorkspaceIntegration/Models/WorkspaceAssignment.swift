@@ -1,10 +1,5 @@
 import Foundation
 
-nonisolated struct WorkspaceAssignment: Equatable, Sendable {
-    var reference: MenuBarItemReference
-    var target: WorkspaceAssignmentTarget
-}
-
 nonisolated enum WorkspaceAssignmentTarget: Equatable, Sendable {
     case currentWorkspace
     case workspace(UUID)

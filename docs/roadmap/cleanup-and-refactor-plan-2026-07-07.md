@@ -351,3 +351,60 @@ Workspaces consolidations · Tier-C ledger decision.
 deferred); Wave 5 = H1/H2/M1/M2 (M3 assessed + skipped). Every step build-green;
 logic lane 107 tests / 20 suites pass; hosted `HotkeyBindingStore`,
 `HoverRevealController`, `MenuBarIconCacheKey` suites pass.
+
+---
+
+## Post-wave: Tier B dead-code sweep — DONE (`4c10db91`)
+
+The waves executed §4 only; §1's **Tier B** (dead types inside live subsystems)
+was never scheduled. Cleared via an **agent team** — 11 parallel verify-then-
+remove agents, one per disjoint file, each re-verifying via word-boundary grep
+across app + both test targets and preserving live siblings. **16 symbols /
+~172 LOC removed, 0 declined:** the WorkspaceIntegration dead enums/structs
+(kept `WorkspaceAssignmentTarget`, `CrowdedRescueWorkspaceFallbackPreference`),
+the 3 SetBuilder orphans, the 3 InfoStrip orphans (kept live `InfoTileView`),
+both never-invoked diagnostics redactors, the dead `CompactStripScanStateBadge`,
+the `visualItemCapture` ledger case (+ its test ripple), and the mock's dead
+fault-injection branches. Build green; logic lane 107 pass; unit test target
+compiles.
+
+## Still untouched — requires further attention
+
+These audit findings (§1–§3) are neither executed nor covered by a documented
+deferral. Ordered by readiness:
+
+**Decision-gated dead code (Tier C):**
+- DesignSystem components rendered **only by tests** (`StatusBadge`,
+  `MenuBarZoneBadge`, `RequirementRow`, `NoticeBanner`, `ToolbarButton`) —
+  remove them + their tests, once confirmed none is slated for imminent UI use.
+- `FeatureVisibility` ledger (~290 LOC) — still **0 app consumers** (tests-only).
+  Decide: wire `AdvancedFeatureDirectory` to it (make it real), or delete it +
+  `Phase14ProductDietTests`. Keep `ProductFeatureStatus` (live).
+- WI test-only files `WorkspacePhysicalProfilePlanner` /
+  `WorkspacePlacementRecommendationAdapter` — confirm not intended future
+  Level-2 code before deleting (removal ripples `WorkspaceIntegrationTests`).
+- Four feature-status sources of truth (`ProductFeatureStatus`, `FeatureStatus`,
+  `AdvancedFeatureDirectory` data; the dead `WorkspaceIntegrationFeatureStatus`
+  is now gone) — consolidate.
+
+**Structural refactors (serial, human-in-loop; some flagged "opportunistic" in
+§4):**
+- `AppEnvironment` god-object still **2,816 LOC** (R1/R2 deferred).
+- `SettingsStore` per-domain façades (1,730 LOC, 79 dependents) — deferred.
+- `DiagnosticsExporter` (1,208) / `HealthService` (700) per-domain splits —
+  deferred.
+- `WorkspacePreviewSettingsView` god-view (**grew to 1,571 LOC**) + embedded
+  InfoStrip mutation logic — never scheduled; gated on the InfoStrip-freeze
+  decision.
+- `DiagnosticsSettingsView` (1,581) — extract `DiagnosticsExportController`
+  (NSSavePanel/file-IO out of the view).
+- `LiveDiagnosticsStatus` god-state (**30 dependents**) — split into per-domain
+  slices.
+- `IntentExecuting` seam to kill `AppEnvironment.shared` (14 `Shortcuts/` sites).
+- AX seam (`AXElementProviding`) for `MenuBarItemDirectActivationService` —
+  roadmap flags AX as the load-bearing fragile primitive.
+- Async-dispatch standardization (`Task` vs `DispatchQueue.main.async`).
+
+**Product-gated consolidations (not pure cleanup — do as features are reworked):**
+Search/Find Icon → Second Bar; SetBuilder → Workspaces; InfoStrip freeze
+(delete ~400 LOC from `WorkspacePreviewSettingsView`); Accurate Icons defer.

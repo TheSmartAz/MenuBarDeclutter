@@ -19,12 +19,3 @@ nonisolated enum CrowdedRescueWorkspaceFallbackPreference: String, Codable, Case
         }
     }
 }
-
-nonisolated struct WorkspaceCrowdedRescueContext: Equatable, Sendable {
-    var functionBarPreviewEnabled: Bool
-    var activeWorkspaceExists: Bool
-    var activeWorkspaceItemCount: Int
-    var functionBarControllerAvailable: Bool
-    var safeModeActive: Bool
-    var preference: CrowdedRescueWorkspaceFallbackPreference
-}

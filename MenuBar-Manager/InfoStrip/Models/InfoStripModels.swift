@@ -29,12 +29,6 @@ nonisolated struct InfoTileProviderID: RawRepresentable, Codable, Equatable, Has
     }
 }
 
-nonisolated struct InfoTile: Identifiable, Equatable, Sendable {
-    var id: InfoTileProviderID
-    var displayName: String
-    var systemImage: String
-}
-
 nonisolated struct InfoTileSnapshot: Identifiable, Codable, Equatable, Sendable {
     var id: UUID
     var providerID: String
@@ -157,21 +151,6 @@ nonisolated enum InfoStripUnavailableReason: String, Equatable, Sendable {
     case noActiveWorkspace
     case noTilesAvailable
     case noDisplayAvailable
-}
-
-nonisolated enum InfoStripInteractionMode: String, Codable, Equatable, CaseIterable, Identifiable, Sendable {
-    case showFunctionBarOnHover
-    case keepInfoStrip
-    case clickToAction
-
-    var id: String { rawValue }
-}
-
-nonisolated enum InfoStripRotationPolicy: String, Codable, Equatable, CaseIterable, Identifiable, Sendable {
-    case automatic
-    case manualOnly
-
-    var id: String { rawValue }
 }
 
 nonisolated enum WorkspaceDisplayState: Equatable, Sendable {

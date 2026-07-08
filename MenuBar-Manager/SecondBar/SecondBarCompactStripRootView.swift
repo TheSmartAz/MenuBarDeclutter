@@ -265,56 +265,6 @@ private struct CompactStripIconButton: View {
     }
 }
 
-private struct CompactStripScanStateBadge: View {
-    let scanState: SecondBarCompactStripScanState
-
-    var body: some View {
-        Label(title, systemImage: systemImage)
-            .labelStyle(.titleAndIcon)
-            .font(DesignTokens.Typography.caption)
-            .lineLimit(1)
-            .foregroundStyle(.yellow)
-            .padding(.horizontal, DesignTokens.Spacing.small)
-            .frame(height: 28)
-            .background(Color.yellow.opacity(0.10), in: .rect(cornerRadius: DesignTokens.Radius.control))
-            .help(help)
-            .accessibilityIdentifier("secondBar.compact.scanState")
-    }
-
-    private var title: String {
-        switch scanState {
-        case .fresh:
-            "Scan ready"
-        case .stale:
-            "Scan stale"
-        case .noScan:
-            "No scan yet"
-        }
-    }
-
-    private var systemImage: String {
-        switch scanState {
-        case .fresh:
-            "checkmark.circle"
-        case .stale:
-            "clock.badge.exclamationmark"
-        case .noScan:
-            "arrow.triangle.2.circlepath"
-        }
-    }
-
-    private var help: String {
-        switch scanState {
-        case .fresh:
-            "Menu bar scan is current."
-        case .stale:
-            "Menu bar scan may be stale. Refresh from the Manage panel."
-        case .noScan:
-            "No menu bar scan is available yet. Refresh from the Manage panel."
-        }
-    }
-}
-
 private struct CompactStripFeedback: View {
     let feedback: SecondBarCompactStripActivationFeedback
     let onRetryActivation: (MenuBarItemSnapshot) -> Void
