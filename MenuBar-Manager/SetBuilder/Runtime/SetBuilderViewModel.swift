@@ -445,13 +445,6 @@ final class SetBuilderViewModel {
 }
 
 @MainActor
-struct SetBuilderCommitService {
-    func commit(_ draft: SetBuilderDraft, switchingService: WorkspaceSwitchingService) -> WorkspaceSwitchResult {
-        switchingService.updateWorkspace(draft.editedWorkspace)
-    }
-}
-
-@MainActor
 struct SetBuilderDraftStore {
     private(set) var drafts: [UUID: SetBuilderDraft] = [:]
 
@@ -465,14 +458,5 @@ struct SetBuilderDraftStore {
 
     mutating func discard(workspaceID: UUID) {
         drafts.removeValue(forKey: workspaceID)
-    }
-}
-
-@MainActor
-struct SetBuilderValidationService {
-    func validate(_ draft: SetBuilderDraft) -> [SetBuilderValidationIssue] {
-        var issues: [WorkspaceValidationIssue] = []
-        _ = WorkspaceValidation.repair(draft.editedWorkspace, issues: &issues)
-        return issues.map { SetBuilderValidationIssue(message: $0.kind.rawValue) }
     }
 }

@@ -42,16 +42,6 @@ nonisolated struct FunctionBarDiagnosticsSnapshot: Codable, Equatable, Sendable 
     }
 }
 
-nonisolated enum FunctionBarDiagnosticsRedactor {
-    static func redactedItemSummary(items: [FunctionBarItemModel]) -> [String: Int] {
-        [
-            "total": items.count,
-            "unavailable": items.filter { !$0.availability.isAvailable }.count,
-            "missing": items.filter { $0.status == .missingReference }.count
-        ]
-    }
-}
-
 private extension FunctionBarDisplayState {
     var diagnosticName: String {
         switch self {

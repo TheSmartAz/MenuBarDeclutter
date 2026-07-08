@@ -52,16 +52,6 @@ nonisolated struct InfoStripDiagnosticsSnapshot: Codable, Equatable, Sendable {
     }
 }
 
-nonisolated enum InfoStripDiagnosticsRedactor {
-    static func redacted(snapshot: InfoTileSnapshot) -> InfoTileSnapshot {
-        guard snapshot.privacyLevel != .safeForDiagnostics else { return snapshot }
-        var copy = snapshot
-        copy.title = "[redacted]"
-        copy.subtitle = nil
-        return copy
-    }
-}
-
 private extension InfoStripDisplayState {
     var isVisible: Bool {
         if case .visible = self { return true }

@@ -100,7 +100,6 @@ nonisolated enum ProductFeature: String, CaseIterable, Identifiable, Sendable {
     case assistedMove
     case broadThirdPartyActivation
     case stableBulkMoving
-    case visualItemCapture
 
     var id: String { rawValue }
 }
@@ -329,14 +328,6 @@ nonisolated struct FeatureVisibility: Equatable, Sendable {
             status: .deferred,
             isVisibleInMainFlow: false,
             summary: "Not part of the v0.1.10 release line."
-        ),
-        FeatureVisibility(
-            feature: .visualItemCapture,
-            title: "Visual Item Capture",
-            area: .advanced,
-            status: .deferred,
-            isVisibleInMainFlow: false,
-            summary: "Screen capture based workflows are not part of v0.1.10."
         )
     ]
 

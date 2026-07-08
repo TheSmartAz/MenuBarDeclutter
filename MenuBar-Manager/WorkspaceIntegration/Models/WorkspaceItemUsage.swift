@@ -48,34 +48,6 @@ nonisolated struct WorkspaceUsageIndexSnapshot: Equatable, Sendable {
     }
 }
 
-nonisolated enum WorkspaceReferenceStatus: String, Codable, Equatable, Sendable {
-    case available
-    case unassigned
-    case missingReference
-    case stale
-    case protected
-}
-
-nonisolated enum WorkspaceIntegrationFeatureStatus: String, Codable, Equatable, Sendable {
-    case stable
-    case preview
-    case labs
-    case experimental
-    case deferred
-    case internalOnly
-
-    var displayName: String {
-        switch self {
-        case .stable: "Stable"
-        case .preview: "Preview"
-        case .labs: "Labs"
-        case .experimental: "Labs"
-        case .deferred: "Deferred"
-        case .internalOnly: "Internal"
-        }
-    }
-}
-
 nonisolated enum WorkspaceUsageBadge: String, Equatable, Sendable {
     case currentWorkspace
     case usedInWorkspaces
