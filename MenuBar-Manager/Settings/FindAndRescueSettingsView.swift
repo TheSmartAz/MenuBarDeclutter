@@ -498,14 +498,12 @@ struct FindAndRescueSettingsView: View {
         systemImage: String,
         binding: Binding<Bool>
     ) -> some View {
-        ClearGlassControlRow(
+        ClearGlassToggleRow(
             systemImage: systemImage,
             title: title,
-            subtitle: subtitle
-        ) {
-            Toggle(title, isOn: binding)
-                .labelsHidden()
-        }
+            subtitle: subtitle,
+            isOn: binding
+        )
     }
 }
 
