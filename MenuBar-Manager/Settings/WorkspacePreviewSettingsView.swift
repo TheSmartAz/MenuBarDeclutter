@@ -318,16 +318,16 @@ struct WorkspacePreviewSettingsView: View {
     }
 
     private static func layoutOutcomeText(_ outcome: WorkspaceSwitchOutcome) -> String {
-        switch outcome {
-        case .noChange:
-            "Bar already matches — nothing to move."
-        case .applied(let count):
-            "Applied \(count) move\(count == 1 ? "" : "s")."
-        case .rolledBack(let index):
-            "A move failed (step \(index + 1)); rolled back to keep the bar intact."
-        case .rollbackIncomplete(let failedAt, _):
-            "A move failed (step \(failedAt + 1)) and rollback was incomplete — check the bar."
+        if outcome.isNoOp {
+            return "Bar already matches — nothing to move."
         }
+        if outcome.failedCount == 0 {
+            return "Applied \(outcome.appliedCount) move\(outcome.appliedCount == 1 ? "" : "s")."
+        }
+        if outcome.appliedCount == 0 {
+            return "Couldn't move \(outcome.failedCount) item\(outcome.failedCount == 1 ? "" : "s") — they may not support moving."
+        }
+        return "Applied \(outcome.appliedCount), couldn't move \(outcome.failedCount) (some apps can't be moved)."
     }
 
     private var quickActionsSection: some View {

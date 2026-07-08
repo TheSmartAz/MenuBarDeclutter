@@ -69,6 +69,6 @@ struct WorkspaceLayoutCoordinatorTests {
         )
         let ws = MenuBarWorkspace(name: "W", itemTargets: [WorkspaceItemTarget(itemKey: "bundle:com.a", desiredZone: .hidden)])
         let result = await coordinator.applyLayoutIfEnabled(for: ws)
-        #expect(result?.outcome == .applied(moveCount: 1))
+        #expect(result?.outcome.appliedCount == 1)
     }
 }

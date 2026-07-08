@@ -24,15 +24,13 @@ struct WorkspaceSwitchExecutorTests {
     }
 
     @Test func appliesEveryMoveWhenEachSucceeds() async {
-        let plan = threeMovePlan()
         let mover = ScriptedMover()
+        let outcome = await executor.apply(threeMovePlan(), using: mover)
 
-        let outcome = await executor.apply(plan, using: mover)
-
-        #expect(outcome == .applied(moveCount: 3))
-        #expect(outcome.isClean)
-        let keys = await mover.recordedCalls().map(\.itemKey)
-        #expect(keys == ["A", "B", "C"])
+        #expect(outcome.appliedItemKeys == ["A", "B", "C"])
+        #expect(outcome.failedItemKeys.isEmpty)
+        #expect(!outcome.hasFailures)
+        #expect(await mover.recordedCalls().map(\.itemKey) == ["A", "B", "C"])
     }
 
     @Test func noChangeForEmptyPlan() async {
@@ -41,53 +39,40 @@ struct WorkspaceSwitchExecutorTests {
             target: [WorkspaceItemTarget(itemKey: "A", desiredZone: .visible)]
         )
         let mover = ScriptedMover()
-
         let outcome = await executor.apply(plan, using: mover)
 
-        #expect(outcome == .noChange)
+        #expect(outcome.isNoOp)
         #expect(await mover.recordedCalls().isEmpty)
     }
 
-    @Test func rollsBackAppliedMovesOnFailure() async {
-        let plan = threeMovePlan()
-        // Fail the 2nd forward move (index 1).
+    @Test func continuesPastFailuresAndReportsThemWithoutRollback() async {
+        // B (the 2nd move) fails; best-effort still applies C, and never issues
+        // reverse/rollback moves — each item is attempted exactly once, in order.
         let mover = ScriptedMover(failingCallIndices: [1])
+        let outcome = await executor.apply(threeMovePlan(), using: mover)
 
-        let outcome = await executor.apply(plan, using: mover)
-
-        #expect(outcome == .rolledBack(failedAt: 1))
-        #expect(outcome.isClean)
-
-        // Forward A, forward B (fails), then reverse of A back to visible.
-        let calls = await mover.recordedCalls()
-        #expect(calls.map(\.itemKey) == ["A", "B", "A"])
-        #expect(calls.last?.command == .moveToZone(.visible))
+        #expect(outcome.appliedItemKeys == ["A", "C"])
+        #expect(outcome.failedItemKeys == ["B"])
+        #expect(outcome.hasFailures)
+        #expect(await mover.recordedCalls().map(\.itemKey) == ["A", "B", "C"])
     }
 
-    @Test func reportsRollbackIncompleteWhenUndoAlsoFails() async {
-        let plan = threeMovePlan()
-        // Fail the 3rd forward move (index 2) and the first rollback move (index 3).
-        let mover = ScriptedMover(failingCallIndices: [2, 3])
+    @Test func reportsAllFailuresWhenNothingMoves() async {
+        let mover = ScriptedMover(failingCallIndices: [0, 1, 2])
+        let outcome = await executor.apply(threeMovePlan(), using: mover)
 
-        let outcome = await executor.apply(plan, using: mover)
-
-        #expect(outcome == .rollbackIncomplete(failedAt: 2, rollbackFailedAt: 0))
-        #expect(!outcome.isClean)
+        #expect(outcome.appliedItemKeys.isEmpty)
+        #expect(outcome.failedItemKeys == ["A", "B", "C"])
     }
 
-    @Test func rollbackReversesInOppositeOrder() async {
-        let plan = threeMovePlan()
-        // Fail the 3rd forward move (index 2); rollback should undo B then A.
+    @Test func oneUnmovableItemDoesNotFailTheWholeSwitch() async {
+        // The whole point of best-effort: a single stubborn item (C fails) must
+        // not undo the others — A and B still land.
         let mover = ScriptedMover(failingCallIndices: [2])
+        let outcome = await executor.apply(threeMovePlan(), using: mover)
 
-        let outcome = await executor.apply(plan, using: mover)
-
-        #expect(outcome == .rolledBack(failedAt: 2))
-        let calls = await mover.recordedCalls()
-        // A, B, C(fail), then reverse B, reverse A.
-        #expect(calls.map(\.itemKey) == ["A", "B", "C", "B", "A"])
-        #expect(calls[3].command == .moveToZone(.visible)) // B back to visible
-        #expect(calls[4].command == .moveToZone(.visible)) // A back to visible
+        #expect(outcome.appliedItemKeys == ["A", "B"])
+        #expect(outcome.failedItemKeys == ["C"])
     }
 }
 

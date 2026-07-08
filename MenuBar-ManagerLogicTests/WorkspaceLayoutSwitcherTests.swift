@@ -55,16 +55,18 @@ struct WorkspaceLayoutSwitcherTests {
             using: StubMover(succeeds: true)
         )
         #expect(result.plan.moves.count == 1)
-        #expect(result.outcome == .applied(moveCount: 1))
+        #expect(result.outcome.appliedCount == 1)
+        #expect(!result.outcome.hasFailures)
     }
 
-    @Test func applyRollsBackWhenMoverFails() async {
+    @Test func applyReportsFailedMoveBestEffort() async {
         let ws = workspace([WorkspaceItemTarget(itemKey: "bundle:com.a", desiredZone: .hidden)])
         let result = await switcher.apply(
             ws,
             currentScan: [snap(bundle: "com.a", zone: .visible)],
             using: StubMover(succeeds: false)
         )
-        #expect(result.outcome == .rolledBack(failedAt: 0))
+        #expect(result.outcome.appliedCount == 0)
+        #expect(result.outcome.failedItemKeys == ["bundle:com.a"])
     }
 }

@@ -10,62 +10,48 @@ protocol MoveExecuting: Sendable {
 }
 
 /// The result of applying a workspace reconciliation plan to the real menu bar.
-nonisolated enum WorkspaceSwitchOutcome: Equatable, Sendable {
-    /// The plan was empty; nothing was touched.
-    case noChange
-    /// Every planned move succeeded.
-    case applied(moveCount: Int)
-    /// A move failed; every move applied before it was reversed successfully,
-    /// leaving the bar as it started. `failedAt` is the 0-based move index.
-    case rolledBack(failedAt: Int)
-    /// A move failed AND a later rollback move also failed, so the bar may be in
-    /// a partial state. Both indices are reported for diagnostics.
-    case rollbackIncomplete(failedAt: Int, rollbackFailedAt: Int)
+///
+/// **Best-effort:** every movable item is moved; items that can't move (stubborn
+/// apps, background agents like `com.openai.sky.CUAService`, items that reject
+/// synthetic drags) are reported rather than rolled back. A single unmovable item
+/// must not fail the whole switch — real menu bars almost always contain one.
+nonisolated struct WorkspaceSwitchOutcome: Equatable, Sendable {
+    /// Items that reached their target zone.
+    let appliedItemKeys: [String]
+    /// Items whose move did not verify (left where they were).
+    let failedItemKeys: [String]
 
-    /// True unless the bar was left in a partial (non-atomic) state.
-    var isClean: Bool {
-        switch self {
-        case .noChange, .applied, .rolledBack:
-            true
-        case .rollbackIncomplete:
-            false
-        }
-    }
+    static let noChange = WorkspaceSwitchOutcome(appliedItemKeys: [], failedItemKeys: [])
+
+    var appliedCount: Int { appliedItemKeys.count }
+    var failedCount: Int { failedItemKeys.count }
+    var isNoOp: Bool { appliedItemKeys.isEmpty && failedItemKeys.isEmpty }
+    var hasFailures: Bool { !failedItemKeys.isEmpty }
 }
 
-/// Applies a reconciliation plan one move at a time, stopping and rolling back
-/// atomically on the first failure so a workspace switch is all-or-nothing.
+/// Applies a reconciliation plan one move at a time, **best-effort**: it moves
+/// every item it can and records the ones it can't, rather than rolling the whole
+/// switch back on the first failure.
 ///
-/// This is pure control flow — the risky real moves live behind `MoveExecuting`,
-/// and the ordering/rollback come from `WorkspaceReconciliationPlan`. That keeps
-/// the "don't scramble the bar" guarantee fully unit-testable.
+/// This replaced an all-or-nothing atomic design after a hardware pass: a real bar
+/// almost always has at least one unmovable item, so atomic rollback would fail
+/// the entire apply every time. A failed move leaves its item where it was (the
+/// common failure is "the item didn't move at all"), so the bar stays coherent —
+/// the movable items reach their targets and the rest are reported to the user.
 nonisolated struct WorkspaceSwitchExecutor {
     func apply(
         _ plan: WorkspaceReconciliationPlan,
         using mover: any MoveExecuting
     ) async -> WorkspaceSwitchOutcome {
-        guard !plan.isNoOp else { return .noChange }
-
-        for (index, move) in plan.moves.enumerated() {
+        var applied: [String] = []
+        var failed: [String] = []
+        for move in plan.moves {
             if await mover.move(itemKey: move.itemKey, command: move.command) {
-                continue
+                applied.append(move.itemKey)
+            } else {
+                failed.append(move.itemKey)
             }
-
-            // Move `index` failed. Undo the moves already applied (0..<index),
-            // most-recent first, so the switch is atomic.
-            let rollback = plan.rollbackPlan(afterApplying: index)
-            for (rollbackIndex, rollbackMove) in rollback.enumerated() {
-                let undone = await mover.move(
-                    itemKey: rollbackMove.itemKey,
-                    command: rollbackMove.command
-                )
-                if !undone {
-                    return .rollbackIncomplete(failedAt: index, rollbackFailedAt: rollbackIndex)
-                }
-            }
-            return .rolledBack(failedAt: index)
         }
-
-        return .applied(moveCount: plan.moves.count)
+        return WorkspaceSwitchOutcome(appliedItemKeys: applied, failedItemKeys: failed)
     }
 }
