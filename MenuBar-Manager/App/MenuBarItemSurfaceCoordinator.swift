@@ -334,6 +334,32 @@ final class MenuBarItemSurfaceCoordinator {
         return result.didRun
     }
 
+    /// Builds the Level-2 layout coordinator wired to the real scan + mover this
+    /// surface coordinator already owns. Inert until the UI drives capture/apply.
+    func makeWorkspaceLayoutCoordinator(isApplyEnabled: @escaping () -> Bool) -> WorkspaceLayoutCoordinator {
+        let mover = WorkspaceMoveExecutor(
+            scan: { [weak self] in
+                await self?.refreshMenuBarItemsForMoveVerification() ?? []
+            },
+            performMove: { [weak self] snapshot, command in
+                guard let self else {
+                    return IconMoveResult.skipped(command: command, itemName: "", error: .disabled)
+                }
+                return await self.moveIcon(snapshot, command: command)
+            }
+        )
+        return WorkspaceLayoutCoordinator(
+            scan: { [weak self] in
+                await self?.refreshMenuBarItemsForMoveVerification() ?? []
+            },
+            mover: mover,
+            isApplyEnabled: isApplyEnabled,
+            log: { [weak self] result in
+                self?.diagnosticsLogger.log("Workspace layout apply: \(result.outcome)", level: .info)
+            }
+        )
+    }
+
     private func moveIcon(_ snapshot: MenuBarItemSnapshot, command: IconMoveCommand) async -> IconMoveResult {
         guard !safeModeLaunchState.isSafeModeActive else {
             return IconMoveResult.skipped(

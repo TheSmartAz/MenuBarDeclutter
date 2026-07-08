@@ -591,6 +591,31 @@ final class AppEnvironment {
         }
     )
 
+    /// Level-2 layout coordinator (inert until UI drives it). The apply gate
+    /// reuses the Assisted Move opt-in conditions.
+    private lazy var workspaceLayoutCoordinator = menuBarItemSurfaceCoordinator.makeWorkspaceLayoutCoordinator(
+        isApplyEnabled: { [weak self] in
+            guard let self else { return false }
+            return self.settingsStore.iconMovingEnabled
+                && self.settingsStore.proModeEnabled
+                && self.accessibilityPermissionService.status == .granted
+        }
+    )
+
+    /// Entry point for a future "apply layout on switch" control: applies the
+    /// active workspace's target layout to the real bar iff the apply gate is on.
+    func applyActiveWorkspaceLayout() async {
+        let workspace = workspaceSwitchingService.activeWorkspace()
+        _ = await workspaceLayoutCoordinator.applyLayoutIfEnabled(for: workspace)
+    }
+
+    /// Entry point for a future "Save current layout to workspace" control.
+    func captureLayoutIntoActiveWorkspace() async {
+        let workspace = workspaceSwitchingService.activeWorkspace()
+        let updated = await workspaceLayoutCoordinator.captureCurrentLayout(into: workspace)
+        _ = workspaceSwitchingService.updateWorkspace(updated)
+    }
+
     private lazy var healthCoordinator = AppHealthCoordinator(
         dependencies: AppHealthCoordinatorDependencies(
             settingsStore: settingsStore,
