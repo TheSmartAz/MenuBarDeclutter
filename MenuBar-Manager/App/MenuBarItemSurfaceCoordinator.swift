@@ -345,7 +345,7 @@ final class MenuBarItemSurfaceCoordinator {
                 guard let self else {
                     return IconMoveResult.skipped(command: command, itemName: "", error: .disabled)
                 }
-                return await self.moveIcon(snapshot, command: command)
+                return await self.performWorkspaceLayoutMove(snapshot, command: command)
             }
         )
         return WorkspaceLayoutCoordinator(
@@ -369,6 +369,20 @@ final class MenuBarItemSurfaceCoordinator {
             )
         }
         return await iconMoveService.move(snapshot, command: command)
+    }
+
+    /// Move used by a workspace layout apply: the batch is already an explicit
+    /// user action, so it skips the per-move confirmation (otherwise an N-move
+    /// layout would pop N dialogs). Still honors Safe Mode.
+    private func performWorkspaceLayoutMove(_ snapshot: MenuBarItemSnapshot, command: IconMoveCommand) async -> IconMoveResult {
+        guard !safeModeLaunchState.isSafeModeActive else {
+            return IconMoveResult.skipped(
+                command: command,
+                itemName: snapshot.owningApplicationName ?? snapshot.title ?? "Menu Bar Item",
+                error: .disabled
+            )
+        }
+        return await iconMoveService.moveAfterExternalConfirmation(snapshot, command: command)
     }
 
     private func suspendRuntimeForIconMove() {
