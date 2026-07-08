@@ -466,10 +466,21 @@ suites); unit-lane export/import + diagnostics regression check green (39 tests)
 **The whole Level-2 logic stack is now built and tested** (planner → executor →
 adapter → target model → switcher → coordinator).
 
-**Remaining last-mile** (needs UX decisions + your hardware; not runtime-verifiable
-in this environment):
-- Compose the coordinator in `AppEnvironment` (real scan + `IconMoveService` mover
-  + apply gate = the Assisted Move opt-in) and call `applyLayoutIfEnabled` on a
-  successful workspace switch.
-- UI: a "Save current layout to workspace" action (drives `captureCurrentLayout`),
-  an "apply layout on switch" opt-in, and the dry-run preview surface.
+### Composition hook — ✅ compile-only, inert (2026-07-07)
+
+`MenuBarItemSurfaceCoordinator.makeWorkspaceLayoutCoordinator` vends a coordinator
+wired to the real scan + the private `IconMoveService` mover it already owns.
+`AppEnvironment` holds it (apply gate = the Assisted Move opt-in:
+`iconMovingEnabled` + `proModeEnabled` + Accessibility granted) and exposes two
+inert entry points for the future UI: `applyActiveWorkspaceLayout()` and
+`captureLayoutIntoActiveWorkspace()`. **Nothing calls them yet, and workspace
+targets default empty, so app behavior is unchanged.** Staged as isolated hunks
+(pre-existing work in those two files left unstaged); the committed tree builds
+clean in isolation (`BUILD SUCCEEDED`).
+
+**Remaining (needs UX decisions + your hardware; not runtime-verifiable here):**
+- UI to call the entry points — a "Save current layout to workspace" action, an
+  "apply layout on switch" opt-in, and the dry-run preview surface (the plan from
+  `WorkspaceLayoutSwitcher.plan(for:currentScan:)`).
+- A hardware pass confirming an actual switch moves the real bar as planned
+  (single-move reliability already measured at 100%/20; the switch chains those).
