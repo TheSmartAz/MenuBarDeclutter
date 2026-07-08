@@ -93,14 +93,12 @@ struct SearchSettingsView: View {
             }
 
             ClearGlassSection("Search Hotkey", subtitle: "Keyboard access for the Find Icon panel.") {
-                ClearGlassControlRow(
+                ClearGlassToggleRow(
                     systemImage: "keyboard",
                     title: "Enable Find Icon hotkey",
-                    subtitle: "Default: Option + Command + F. The hotkey is disabled until you turn it on."
-                ) {
-                    Toggle("Enable Find Icon hotkey", isOn: $settingsStore.searchHotkeyEnabled)
-                        .labelsHidden()
-                }
+                    subtitle: "Default: Option + Command + F. The hotkey is disabled until you turn it on.",
+                    isOn: $settingsStore.searchHotkeyEnabled
+                )
 
                 if settingsStore.searchHotkeyEnabled {
                     ClearGlassDivider()
