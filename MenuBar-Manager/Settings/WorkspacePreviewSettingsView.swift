@@ -310,24 +310,30 @@ struct WorkspacePreviewSettingsView: View {
         isApplyingLayout = true
         Task { @MainActor in
             let result = await applyLayout()
-            lastLayoutOutcome = result.map { Self.layoutOutcomeText($0.outcome) }
+            lastLayoutOutcome = result.map { Self.layoutOutcomeText($0) }
                 ?? "Not applied — enable Assisted Move and save a layout first."
             isApplyingLayout = false
             refreshAfterWorkspaceMutation()
         }
     }
 
-    private static func layoutOutcomeText(_ outcome: WorkspaceSwitchOutcome) -> String {
-        if outcome.isNoOp {
-            return "Bar already matches — nothing to move."
+    private static func layoutOutcomeText(_ result: WorkspaceLayoutApplyResult) -> String {
+        let outcome = result.outcome
+        let skipped = result.skippedUnmovableKeys.count
+        var text: String
+        if outcome.isNoOp && skipped == 0 {
+            text = "Bar already matches — nothing to move."
+        } else if outcome.failedCount == 0 {
+            text = "Applied \(outcome.appliedCount) move\(outcome.appliedCount == 1 ? "" : "s")."
+        } else if outcome.appliedCount == 0 {
+            text = "Couldn't move \(outcome.failedCount) item\(outcome.failedCount == 1 ? "" : "s") — they may not support moving."
+        } else {
+            text = "Applied \(outcome.appliedCount), couldn't move \(outcome.failedCount)."
         }
-        if outcome.failedCount == 0 {
-            return "Applied \(outcome.appliedCount) move\(outcome.appliedCount == 1 ? "" : "s")."
+        if skipped > 0 {
+            text += " (\(skipped) skipped as unmovable)"
         }
-        if outcome.appliedCount == 0 {
-            return "Couldn't move \(outcome.failedCount) item\(outcome.failedCount == 1 ? "" : "s") — they may not support moving."
-        }
-        return "Applied \(outcome.appliedCount), couldn't move \(outcome.failedCount) (some apps can't be moved)."
+        return text
     }
 
     private var quickActionsSection: some View {

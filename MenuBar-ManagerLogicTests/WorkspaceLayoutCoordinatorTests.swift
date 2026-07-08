@@ -71,4 +71,27 @@ struct WorkspaceLayoutCoordinatorTests {
         let result = await coordinator.applyLayoutIfEnabled(for: ws)
         #expect(result?.outcome.appliedCount == 1)
     }
+
+    @Test func learnsUnmovableItemsAndSkipsThemNextTime() async {
+        let items = [makeSnap(bundle: "com.a", zone: .visible)]
+        let coordinator = WorkspaceLayoutCoordinator(
+            scan: { items },
+            mover: StubMover(succeeds: false),   // com.a cannot move
+            isApplyEnabled: { true }
+        )
+        let ws = MenuBarWorkspace(
+            name: "W",
+            itemTargets: [WorkspaceItemTarget(itemKey: "bundle:com.a", desiredZone: .hidden)]
+        )
+
+        // First apply: com.a is attempted and fails.
+        let first = await coordinator.applyLayoutIfEnabled(for: ws)
+        #expect(first?.outcome.failedItemKeys == ["bundle:com.a"])
+        #expect(first?.skippedUnmovableKeys.isEmpty == true)
+
+        // Second apply: com.a is now known-unmovable -> skipped, not re-attempted.
+        let second = await coordinator.applyLayoutIfEnabled(for: ws)
+        #expect(second?.outcome.isNoOp == true)
+        #expect(second?.skippedUnmovableKeys == ["bundle:com.a"])
+    }
 }

@@ -15,6 +15,10 @@ final class WorkspaceLayoutCoordinator {
     private let isApplyEnabled: () -> Bool
     private let log: (WorkspaceLayoutApplyResult) -> Void
 
+    /// Item keys that failed to move this session; skipped on later applies so we
+    /// don't re-attempt lost causes (background agents, drag-rejecting apps).
+    private var knownUnmovableKeys: Set<String> = []
+
     init(
         switcher: WorkspaceLayoutSwitcher = WorkspaceLayoutSwitcher(),
         scan: @escaping @MainActor @Sendable () async -> [MenuBarItemSnapshot],
@@ -44,7 +48,24 @@ final class WorkspaceLayoutCoordinator {
     func applyLayoutIfEnabled(for workspace: MenuBarWorkspace) async -> WorkspaceLayoutApplyResult? {
         guard isApplyEnabled(), !workspace.itemTargets.isEmpty else { return nil }
         let snapshots = await scan()
-        let result = await switcher.apply(workspace, currentScan: snapshots, using: mover)
+
+        // Skip items already known unmovable this session so we don't re-attempt
+        // lost causes; only the movable targets go to the switcher.
+        let skipped = workspace.itemTargets
+            .map(\.itemKey)
+            .filter { knownUnmovableKeys.contains($0) }
+        var movable = workspace
+        movable.itemTargets = workspace.itemTargets.filter { !knownUnmovableKeys.contains($0.itemKey) }
+
+        let applied = await switcher.apply(movable, currentScan: snapshots, using: mover)
+        // Learn: anything that failed this pass is treated as unmovable next time.
+        knownUnmovableKeys.formUnion(applied.outcome.failedItemKeys)
+
+        let result = WorkspaceLayoutApplyResult(
+            plan: applied.plan,
+            outcome: applied.outcome,
+            skippedUnmovableKeys: skipped
+        )
         log(result)
         return result
     }

@@ -5,6 +5,19 @@ import Foundation
 nonisolated struct WorkspaceLayoutApplyResult: Equatable, Sendable {
     let plan: WorkspaceReconciliationPlan
     let outcome: WorkspaceSwitchOutcome
+    /// Targets not attempted because they're already known to be unmovable
+    /// (they failed a previous apply this session).
+    let skippedUnmovableKeys: [String]
+
+    init(
+        plan: WorkspaceReconciliationPlan,
+        outcome: WorkspaceSwitchOutcome,
+        skippedUnmovableKeys: [String] = []
+    ) {
+        self.plan = plan
+        self.outcome = outcome
+        self.skippedUnmovableKeys = skippedUnmovableKeys
+    }
 }
 
 /// Orchestrates a Level-2 workspace switch: reconcile the live scan against the
