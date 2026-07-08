@@ -1,4 +1,5 @@
 import Foundation
+@testable import MenuBarDeclutter
 
 /// A reusable profile pack that can be exported and imported independently
 /// of global settings.
