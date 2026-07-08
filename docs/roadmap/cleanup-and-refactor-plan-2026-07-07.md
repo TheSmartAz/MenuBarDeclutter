@@ -264,13 +264,27 @@ Workspaces consolidations · Tier-C ledger decision.
   numeric-`Date` stores keep a plain encoder, NOT the ISO8601 default).
   **`ProfileStore` and `DogfoodStore` intentionally NOT converted** — both are
   multi-file / multi-payload stores that don't fit the single-file primitive.
+- Plus **`HotkeyBindingStore`** (`5ffac065`) — a leftover single-file store, same
+  shape as the IconGroupStore/SpacerItemStore conversions (single file + Container
+  + backup-on-corrupt); completes the sweep to **8 single-file stores**.
+  `TriggerService` left as-is (a service with incidental persistence, not a store).
 - `FeatureGate` predicate + `SettingsStore.isProDiscoveryAvailable`; routed the
   12 real pro-discovery gate sites (11 settings-backed + 1 snapshot-backed);
   left `HealthService`'s `!proMode && discovery` misconfiguration check
   untouched — `16c0c506`.
-- **Remaining in Wave 3:** DesignSystem component dedup (overview strips /
-  inspector panels / toggle-row idiom).
-- All steps: `BUILD SUCCEEDED`; logic lane 107 tests / 20 suites pass.
+- DesignSystem dedup — **`ClearGlassInspectorPanel`** (`a021d416`): merged the
+  byte-identical `AdvancedInspectorPanel`/`LayoutInspectorPanel` (12 call sites)
+  into one shared DS container; zero rendered change. **Skipped, with reason:**
+  the `*OverviewStrip` wrappers (each maps distinct per-screen state to a distinct
+  metrics array — inlining relocates code without net reduction and hurts
+  readability), the `*InspectorRow` structs (genuinely different value models),
+  and `MenuBarInspectorGroup` (a distinct iconless grouping).
+- **Remaining in Wave 3:** toggle-row idiom + auto-divider (67 control-row / 138
+  divider sites → `ClearGlassToggleRow` + `ClearGlassRowStack`) and setup/step
+  rows — large, design-sensitive sweeps that define new core DS APIs. Recommend
+  aligning on the component API before the ~200-site rewrite.
+- All steps: `BUILD SUCCEEDED`; logic lane 107 tests / 20 suites pass; hosted
+  `HotkeyBindingStore` suite passes.
 
 **Next: Wave 3 (DS dedup)**, then Wave 4 (AppEnvironment slimming) and Wave 5
 (performance: H1 encode-off-main, H2 hosting-controller reuse, M1–M3).
