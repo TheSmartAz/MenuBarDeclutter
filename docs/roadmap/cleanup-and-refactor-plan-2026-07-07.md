@@ -306,7 +306,25 @@ Workspaces consolidations · Tier-C ledger decision.
 - **Wave 3 — DONE.** All steps `BUILD SUCCEEDED`; logic lane 107 tests / 20
   suites pass; hosted `HotkeyBindingStore` suite passes.
 
-**Next: Wave 4** (AppEnvironment slimming: R1 dual-command-table collapse, R2
-health callbacks → coordinator, R3 settings-refresh delegation, `IntentExecuting`
-seam), then Wave 5 (performance: H1 encode-off-main, H2 hosting-controller reuse,
-M1–M3).
+**Wave 4 — PARTIAL (R3 done; R1/R2 deliberately not done).**
+- **R3 — DONE** (`d2b59722`): moved the two straggler refresh methods
+  (`refreshGroupSettings`, `refreshDynamicHotkeys`) into
+  `SettingsRuntimeCoordinator`, matching their delegated siblings. Threaded the 4
+  deps by reference; behavior-identical (`updateLiveStatusFromServices()` ≡
+  `liveStatusSynchronizer.synchronize()`); no lazy-init cycle. Build green.
+- **R1 — NOT DONE (assessed).** The two command tables are *not* pure duplicates:
+  `menuBuilder.actions.revealAll → revealAllFromStatusMenu()` vs
+  `handlers.revealAll → revealAllHiddenItems()` (intentional menu-vs-router
+  differences). A naive collapse regresses those; the *safe* subset (share the
+  byte-identical one-liners) is negligible value. The valuable version — route the
+  menu through the command router — is a menu-gating **behavior change**, deferred.
+- **R2 — NOT DONE (assessed).** The 15 `…ForRecovery`/`…ForHealth` methods touch
+  ~8 subsystems + 5 AppEnvironment call-backs. Moving them wholesale turns
+  `AppHealthCoordinator` into a 13-dep hub — relocating coupling, not reducing it —
+  at real (unverifiable) regression risk. The existing closure seam is already a
+  reasonable abstraction. Deferred.
+- Decision (with the user): **bank R3, stop Wave 4.** R1/R2 need a running-app
+  smoke-test loop and/or a redesign, not unattended build-only automation.
+
+**Next: Wave 5** (performance: H1 encode-off-main, H2 hosting-controller reuse,
+M1–M3) — independent, ship anytime.
