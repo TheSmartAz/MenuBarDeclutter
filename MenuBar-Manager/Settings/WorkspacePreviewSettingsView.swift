@@ -684,62 +684,60 @@ struct WorkspacePreviewSettingsView: View {
 
                 ClearGlassDivider()
 
-                ClearGlassControlRow(
-                    systemImage: "timer",
-                    title: "Idle delay",
-                    subtitle: "Idle delay: \(config.idleDelaySeconds) seconds before showing the strip."
-                ) {
-                    Stepper(
-                        "Idle delay",
-                        value: Binding(
-                            get: { activeInfoStripConfig.idleDelaySeconds },
-                            set: { setActiveInfoStripIdleDelay($0) }
-                        ),
-                        in: WorkspaceValidationConstants.minIdleDelaySeconds...WorkspaceValidationConstants.maxIdleDelaySeconds
-                    )
-                    .labelsHidden()
-                    .accessibilityLabel("Idle delay")
-                }
-                .disabled(infoStripControlsDisabled)
-
-                ClearGlassDivider()
-
-                ClearGlassControlRow(
-                    systemImage: "arrow.triangle.2.circlepath",
-                    title: "Rotation interval",
-                    subtitle: "Rotation: \(config.rotationIntervalSeconds) seconds between selected tiles."
-                ) {
-                    Stepper(
-                        "Rotation interval",
-                        value: Binding(
-                            get: { activeInfoStripConfig.rotationIntervalSeconds },
-                            set: { setActiveInfoStripRotationInterval($0) }
-                        ),
-                        in: WorkspaceValidationConstants.minRotationIntervalSeconds...WorkspaceValidationConstants.maxRotationIntervalSeconds
-                    )
-                    .labelsHidden()
-                    .accessibilityLabel("Rotation interval")
-                }
-                .disabled(infoStripControlsDisabled)
-
-                ClearGlassDivider()
-
-                ClearGlassControlRow(
-                    systemImage: "hand.point.up.left",
-                    title: "Hover behavior",
-                    subtitle: "Choose what happens when the pointer reaches the strip."
-                ) {
-                    Picker("Hover behavior", selection: Binding(
-                        get: { activeInfoStripConfig.hoverBehavior },
-                        set: { setActiveInfoStripHoverBehavior($0) }
-                    )) {
-                        ForEach(WorkspaceInfoStripHoverBehavior.allCases) { behavior in
-                            Text(infoStripHoverBehaviorLabel(behavior)).tag(behavior)
-                        }
+                ClearGlassRowStack {
+                    ClearGlassControlRow(
+                        systemImage: "timer",
+                        title: "Idle delay",
+                        subtitle: "Idle delay: \(config.idleDelaySeconds) seconds before showing the strip."
+                    ) {
+                        Stepper(
+                            "Idle delay",
+                            value: Binding(
+                                get: { activeInfoStripConfig.idleDelaySeconds },
+                                set: { setActiveInfoStripIdleDelay($0) }
+                            ),
+                            in: WorkspaceValidationConstants.minIdleDelaySeconds...WorkspaceValidationConstants.maxIdleDelaySeconds
+                        )
+                        .labelsHidden()
+                        .accessibilityLabel("Idle delay")
                     }
-                    .pickerStyle(.menu)
+                    .disabled(infoStripControlsDisabled)
+
+                    ClearGlassControlRow(
+                        systemImage: "arrow.triangle.2.circlepath",
+                        title: "Rotation interval",
+                        subtitle: "Rotation: \(config.rotationIntervalSeconds) seconds between selected tiles."
+                    ) {
+                        Stepper(
+                            "Rotation interval",
+                            value: Binding(
+                                get: { activeInfoStripConfig.rotationIntervalSeconds },
+                                set: { setActiveInfoStripRotationInterval($0) }
+                            ),
+                            in: WorkspaceValidationConstants.minRotationIntervalSeconds...WorkspaceValidationConstants.maxRotationIntervalSeconds
+                        )
+                        .labelsHidden()
+                        .accessibilityLabel("Rotation interval")
+                    }
+                    .disabled(infoStripControlsDisabled)
+
+                    ClearGlassControlRow(
+                        systemImage: "hand.point.up.left",
+                        title: "Hover behavior",
+                        subtitle: "Choose what happens when the pointer reaches the strip."
+                    ) {
+                        Picker("Hover behavior", selection: Binding(
+                            get: { activeInfoStripConfig.hoverBehavior },
+                            set: { setActiveInfoStripHoverBehavior($0) }
+                        )) {
+                            ForEach(WorkspaceInfoStripHoverBehavior.allCases) { behavior in
+                                Text(infoStripHoverBehaviorLabel(behavior)).tag(behavior)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                    }
+                    .disabled(infoStripControlsDisabled)
                 }
-                .disabled(infoStripControlsDisabled)
 
                 ClearGlassDivider()
 
