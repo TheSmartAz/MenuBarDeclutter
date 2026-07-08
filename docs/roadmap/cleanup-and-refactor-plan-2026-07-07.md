@@ -326,5 +326,28 @@ Workspaces consolidations · Tier-C ledger decision.
 - Decision (with the user): **bank R3, stop Wave 4.** R1/R2 need a running-app
   smoke-test loop and/or a redesign, not unattended build-only automation.
 
-**Next: Wave 5** (performance: H1 encode-off-main, H2 hosting-controller reuse,
-M1–M3) — independent, ship anytime.
+**Wave 5 — performance — DONE (4 of 5; M3 deliberately skipped).**
+- **H1 — DONE** (`9258ad9e`): moved captured-icon PNG encode + atomic write off
+  the main actor (a detached utility Task); in-memory cache + per-icon
+  notification stay synchronous so consumers see the image immediately. CGImage
+  is Sendable; `FileManager.default` used directly. Per-sweep notification
+  coalescing left out (no sweep boundary; the userInfo identity is contractual).
+- **H2 — DONE** (`974e93bb`): compact strip reuses one `NSHostingController<AnyView>`
+  and updates `rootView` in place instead of rebuilding it every render.
+- **M1 — DONE** (`4ada968e`): hover-reveal polling timer self-suspends while
+  expanded-and-idle and resumes on collapse via `HidingService.onStateChange`
+  (previously unused). Reveal/re-hide logic untouched; hover suite passes.
+- **M2 — DONE** (`ba568484`): skip enumerating every running app's bundle id
+  unless an `.appLaunched` rule exists (its only consumer).
+- **M3 — SKIPPED (assessed).** `SearchRootView`'s 1 Hz poll can't be made
+  event-driven safely: `refreshProviderBackedResultsIfNeeded()` invalidates on a
+  3-part signature including `newItemStorageKeysProvider()` and
+  `workspaceUsageProvider()` — both **closures over non-observable sources**, so
+  there's no `onChange` signal to drive off (the plan's premise was wrong).
+  Removing the poll regresses to stale results; the poll only runs transiently
+  while the Search panel is open and is guarded/cheap when nothing changed.
+
+**All cleanup waves resolved.** Waves 1–3 done; Wave 4 = R3 (R1/R2 assessed +
+deferred); Wave 5 = H1/H2/M1/M2 (M3 assessed + skipped). Every step build-green;
+logic lane 107 tests / 20 suites pass; hosted `HotkeyBindingStore`,
+`HoverRevealController`, `MenuBarIconCacheKey` suites pass.
