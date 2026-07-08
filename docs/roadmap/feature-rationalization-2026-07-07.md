@@ -478,9 +478,28 @@ targets default empty, so app behavior is unchanged.** Staged as isolated hunks
 (pre-existing work in those two files left unstaged); the committed tree builds
 clean in isolation (`BUILD SUCCEEDED`).
 
-**Remaining (needs UX decisions + your hardware; not runtime-verifiable here):**
-- UI to call the entry points — a "Save current layout to workspace" action, an
-  "apply layout on switch" opt-in, and the dry-run preview surface (the plan from
-  `WorkspaceLayoutSwitcher.plan(for:currentScan:)`).
-- A hardware pass confirming an actual switch moves the real bar as planned
-  (single-move reliability already measured at 100%/20; the switch chains those).
+### UI — Menu Bar Layout controls ✅ compile-verified (2026-07-07)
+
+`WorkspacePreviewSettingsView` gains a **Menu Bar Layout** section: a live plan
+summary (`WorkspaceLayoutPlanSummary`, tested), the apply-gate status, **Save
+Current Layout** (captures the bar into `itemTargets` in-view), and **Apply Layout
+Now** (routes through the `AppEnvironment` action → coordinator → real moves).
+`SettingsActions` gained `applyWorkspaceLayout` / `isWorkspaceLayoutApplyEnabled`.
+Capture + preview run in-view (the view already holds the switching service + live
+scan); only apply needs the real mover.
+
+Verified: app builds (`BUILD SUCCEEDED`, committed tree in isolation); logic lane
+**100 tests / 19 suites**. The SwiftUI itself is compile-verified only — it wants
+a visual/GUI pass.
+
+**Level-2 is now built end-to-end** (logic → composition hook → UI). The apply
+gate is the Assisted Move opt-in, so it stays off by default and moves nothing
+until a user opts in *and* saves a layout.
+
+**Only remaining:**
+- A **hardware pass** — enable Assisted Move, *Save Current Layout* on a workspace,
+  hit *Apply Layout Now*, and confirm the real bar reconfigures (single-move
+  reliability measured at 100%/20; a switch chains those with atomic rollback).
+- Optional polish: a visual review of the new section, and an *auto-apply-on-switch*
+  toggle if you want switching to apply automatically instead of via the button
+  (needs a `SettingsStore` flag + hooking the switch trigger sites).
