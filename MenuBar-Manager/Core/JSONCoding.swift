@@ -1,6 +1,6 @@
 import Foundation
 
-enum JSONCoding {
+nonisolated enum JSONCoding {
     static func makeEncoder(
         outputFormatting: JSONEncoder.OutputFormatting = [.prettyPrinted, .sortedKeys],
         dateEncodingStrategy: JSONEncoder.DateEncodingStrategy = .iso8601
