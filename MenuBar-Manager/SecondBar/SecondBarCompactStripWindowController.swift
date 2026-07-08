@@ -27,6 +27,11 @@ final class SecondBarCompactStripWindowController: NSWindowController, NSWindowD
     private var lastAnchorFrame: CGRect?
     private var activationFeedback: SecondBarCompactStripActivationFeedback?
 
+    /// Reused across renders: rebuilding a fresh `NSHostingController` on every
+    /// `renderAndPosition()` (twice per open + every reposition) is a visible
+    /// hitch (H2). Created lazily once, then its `rootView` is updated in place.
+    private var hostingController: NSHostingController<AnyView>?
+
     var isShowingCompactStrip: Bool {
         window?.isVisible == true && visibleContent?.isCompact == true
     }
@@ -233,7 +238,14 @@ final class SecondBarCompactStripWindowController: NSWindowController, NSWindowD
         )
         .frame(width: placement.frame.width, height: placement.frame.height)
 
-        window.contentViewController = NSHostingController(rootView: rootView)
+        let erasedRootView = AnyView(rootView)
+        if let hostingController {
+            hostingController.rootView = erasedRootView
+        } else {
+            let controller = NSHostingController(rootView: erasedRootView)
+            hostingController = controller
+            window.contentViewController = controller
+        }
         window.setFrame(placement.frame, display: true)
         liveStatus.secondBarCurrentScreen = placement.screenID
         liveStatus.secondBarLastPosition = frameSummary(placement.frame)

@@ -111,24 +111,20 @@ private struct CapacityAndSuggestionsSection: View {
             subtitle: "Local crowding estimates and non-invasive recommendations."
         ) {
             VStack(spacing: 0) {
-                ClearGlassControlRow(
-                    systemImage: "chart.bar.fill",
-                    title: "Show Capacity Warnings",
-                    subtitle: "Show warnings when the menu bar appears crowded."
-                ) {
-                    Toggle("Show Capacity Warnings", isOn: $settingsStore.showCapacityWarnings)
-                        .labelsHidden()
-                }
+                ClearGlassRowStack {
+                    ClearGlassToggleRow(
+                        systemImage: "chart.bar.fill",
+                        title: "Show Capacity Warnings",
+                        subtitle: "Show warnings when the menu bar appears crowded.",
+                        isOn: $settingsStore.showCapacityWarnings
+                    )
 
-                ClearGlassDivider()
-
-                ClearGlassControlRow(
-                    systemImage: "lightbulb",
-                    title: "Layout Suggestions",
-                    subtitle: "Receive privacy-safe suggestions for improving layout."
-                ) {
-                    Toggle("Layout Suggestions", isOn: $settingsStore.layoutSuggestionsEnabled)
-                        .labelsHidden()
+                    ClearGlassToggleRow(
+                        systemImage: "lightbulb",
+                        title: "Layout Suggestions",
+                        subtitle: "Receive privacy-safe suggestions for improving layout.",
+                        isOn: $settingsStore.layoutSuggestionsEnabled
+                    )
                 }
 
                 ClearGlassDivider()
@@ -171,7 +167,7 @@ private struct CapacityInspectorPanel: View {
     var estimate: LayoutCapacityEstimate?
 
     var body: some View {
-        LayoutInspectorPanel(
+        ClearGlassInspectorPanel(
             title: "Capacity Inspector",
             subtitle: estimate?.source.displayName ?? "Basic geometry fallback",
             systemImage: "menubar.rectangle"
@@ -287,7 +283,7 @@ private struct SuggestionInspectorPanel: View {
     let suggestions: [LayoutSuggestion]
 
     var body: some View {
-        LayoutInspectorPanel(
+        ClearGlassInspectorPanel(
             title: "Suggestions",
             subtitle: isEnabled ? "\(suggestions.count) current" : "Turned off",
             systemImage: "lightbulb",
@@ -399,31 +395,27 @@ private struct FullMenuBarModePanel: View {
     @Bindable var settingsStore: SettingsStore
 
     var body: some View {
-        LayoutInspectorPanel(
+        ClearGlassInspectorPanel(
             title: "Full Menu Bar Mode",
             subtitle: "Reveal every app-owned status item temporarily.",
             systemImage: "rectangle.expand.vertical",
             iconTint: settingsStore.fullMenuBarModeEnabled ? .green : .secondary
         ) {
             VStack(spacing: 0) {
-                ClearGlassControlRow(
-                    systemImage: "rectangle.expand.vertical",
-                    title: "Enable Full Menu Bar Mode",
-                    subtitle: "Allow entering a temporary full reveal mode."
-                ) {
-                    Toggle("Enable Full Menu Bar Mode", isOn: $settingsStore.fullMenuBarModeEnabled)
-                        .labelsHidden()
-                }
+                ClearGlassRowStack {
+                    ClearGlassToggleRow(
+                        systemImage: "rectangle.expand.vertical",
+                        title: "Enable Full Menu Bar Mode",
+                        subtitle: "Allow entering a temporary full reveal mode.",
+                        isOn: $settingsStore.fullMenuBarModeEnabled
+                    )
 
-                ClearGlassDivider()
-
-                ClearGlassControlRow(
-                    systemImage: "clock",
-                    title: "Auto-Exit",
-                    subtitle: "Automatically exit Full Menu Bar Mode after a timeout."
-                ) {
-                    Toggle("Auto-Exit", isOn: $settingsStore.fullMenuBarModeAutoExitEnabled)
-                        .labelsHidden()
+                    ClearGlassToggleRow(
+                        systemImage: "clock",
+                        title: "Auto-Exit",
+                        subtitle: "Automatically exit Full Menu Bar Mode after a timeout.",
+                        isOn: $settingsStore.fullMenuBarModeAutoExitEnabled
+                    )
                 }
 
                 if settingsStore.fullMenuBarModeAutoExitEnabled {
@@ -441,35 +433,27 @@ private struct FullMenuBarModePanel: View {
 
                 ClearGlassDivider()
 
-                ClearGlassControlRow(
-                    systemImage: "menubar.rectangle",
-                    title: "Show Second Bar",
-                    subtitle: "Open Second Bar when entering Full Menu Bar Mode."
-                ) {
-                    Toggle("Show Second Bar", isOn: $settingsStore.fullMenuBarModeShowsSecondBar)
-                        .labelsHidden()
-                }
+                ClearGlassRowStack {
+                    ClearGlassToggleRow(
+                        systemImage: "menubar.rectangle",
+                        title: "Show Second Bar",
+                        subtitle: "Open Second Bar when entering Full Menu Bar Mode.",
+                        isOn: $settingsStore.fullMenuBarModeShowsSecondBar
+                    )
 
-                ClearGlassDivider()
+                    ClearGlassToggleRow(
+                        systemImage: "pause.circle",
+                        title: "Suspend Auto-Rehide",
+                        subtitle: "Prevent auto-rehide while Full Menu Bar Mode is active.",
+                        isOn: $settingsStore.fullMenuBarModeSuspendsAutoRehide
+                    )
 
-                ClearGlassControlRow(
-                    systemImage: "pause.circle",
-                    title: "Suspend Auto-Rehide",
-                    subtitle: "Prevent auto-rehide while Full Menu Bar Mode is active."
-                ) {
-                    Toggle("Suspend Auto-Rehide", isOn: $settingsStore.fullMenuBarModeSuspendsAutoRehide)
-                        .labelsHidden()
-                }
-
-                ClearGlassDivider()
-
-                ClearGlassControlRow(
-                    systemImage: "line.vertical",
-                    title: "Show Spacer Markers",
-                    subtitle: "Show spacer markers while in Full Menu Bar Mode."
-                ) {
-                    Toggle("Show Spacer Markers", isOn: $settingsStore.fullMenuBarModeShowsSpacerMarkers)
-                        .labelsHidden()
+                    ClearGlassToggleRow(
+                        systemImage: "line.vertical",
+                        title: "Show Spacer Markers",
+                        subtitle: "Show spacer markers while in Full Menu Bar Mode.",
+                        isOn: $settingsStore.fullMenuBarModeShowsSpacerMarkers
+                    )
                 }
             }
         }
@@ -480,7 +464,7 @@ private struct CrowdedRevealPanel: View {
     @Bindable var settingsStore: SettingsStore
 
     var body: some View {
-        LayoutInspectorPanel(
+        ClearGlassInspectorPanel(
             title: "Crowded Reveal Rescue",
             subtitle: "Fail closed into Second Bar when inline reveal is risky.",
             systemImage: "shield.lefthalf.filled",
@@ -494,24 +478,20 @@ private struct CrowdedRevealPanel: View {
             LayoutInspectorDivider()
 
             VStack(spacing: 0) {
-                ClearGlassControlRow(
-                    systemImage: "shield.lefthalf.filled",
-                    title: "Enable Crowded Reveal Rescue",
-                    subtitle: "Intercept reveals when the menu bar is crowded."
-                ) {
-                    Toggle("Enable Crowded Reveal Rescue", isOn: $settingsStore.crowdedRevealRescueEnabled)
-                        .labelsHidden()
-                }
+                ClearGlassRowStack {
+                    ClearGlassToggleRow(
+                        systemImage: "shield.lefthalf.filled",
+                        title: "Enable Crowded Reveal Rescue",
+                        subtitle: "Intercept reveals when the menu bar is crowded.",
+                        isOn: $settingsStore.crowdedRevealRescueEnabled
+                    )
 
-                ClearGlassDivider()
-
-                ClearGlassControlRow(
-                    systemImage: "menubar.rectangle",
-                    title: "Auto-Open Second Bar",
-                    subtitle: "Automatically open Second Bar when crowded."
-                ) {
-                    Toggle("Auto-Open Second Bar", isOn: $settingsStore.crowdedRevealAutoOpenSecondBar)
-                        .labelsHidden()
+                    ClearGlassToggleRow(
+                        systemImage: "menubar.rectangle",
+                        title: "Auto-Open Second Bar",
+                        subtitle: "Automatically open Second Bar when crowded.",
+                        isOn: $settingsStore.crowdedRevealAutoOpenSecondBar
+                    )
                 }
 
                 ClearGlassDivider()
@@ -528,14 +508,12 @@ private struct CrowdedRevealPanel: View {
 
                 ClearGlassDivider()
 
-                ClearGlassControlRow(
+                ClearGlassToggleRow(
                     systemImage: "star",
                     title: "Require Pro Estimate",
-                    subtitle: "Only trigger rescue when a Pro AX estimate is available."
-                ) {
-                    Toggle("Require Pro Estimate", isOn: $settingsStore.crowdedRevealRequireProEstimate)
-                        .labelsHidden()
-                }
+                    subtitle: "Only trigger rescue when a Pro AX estimate is available.",
+                    isOn: $settingsStore.crowdedRevealRequireProEstimate
+                )
             }
         }
     }
@@ -554,24 +532,20 @@ private struct SpacerItemsSection: View {
             subtitle: "App-owned NSStatusItem spacers for organizing dense menu bars."
         ) {
             VStack(spacing: 0) {
-                ClearGlassControlRow(
-                    systemImage: "line.vertical",
-                    title: "Enable Spacer Items",
-                    subtitle: "Allow adding app-owned spacer and divider status items."
-                ) {
-                    Toggle("Enable Spacer Items", isOn: $settingsStore.spacerItemsEnabled)
-                        .labelsHidden()
-                }
+                ClearGlassRowStack {
+                    ClearGlassToggleRow(
+                        systemImage: "line.vertical",
+                        title: "Enable Spacer Items",
+                        subtitle: "Allow adding app-owned spacer and divider status items.",
+                        isOn: $settingsStore.spacerItemsEnabled
+                    )
 
-                ClearGlassDivider()
-
-                ClearGlassControlRow(
-                    systemImage: "eye",
-                    title: "Show Spacer Markers",
-                    subtitle: "Show visual markers on spacer items."
-                ) {
-                    Toggle("Show Spacer Markers", isOn: $settingsStore.showSpacerMarkers)
-                        .labelsHidden()
+                    ClearGlassToggleRow(
+                        systemImage: "eye",
+                        title: "Show Spacer Markers",
+                        subtitle: "Show visual markers on spacer items.",
+                        isOn: $settingsStore.showSpacerMarkers
+                    )
                 }
 
                 ClearGlassDivider()
@@ -583,7 +557,7 @@ private struct SpacerItemsSection: View {
                 )
                 .padding(.vertical, 10)
 
-                LayoutInspectorPanel(
+                ClearGlassInspectorPanel(
                     title: "Spacer Inspector",
                     subtitle: settingsStore.spacerItemsEnabled ? "Add, edit, hide, or reset spacers." : "Spacer controls are disabled.",
                     systemImage: "sidebar.right",
@@ -632,15 +606,13 @@ private struct MenuBarSpacingLabsSection: View {
 
                 ClearGlassDivider()
 
-                ClearGlassControlRow(
+                ClearGlassToggleRow(
                     systemImage: "testtube.2",
                     title: "Enable Spacing Labs",
                     subtitle: "Enable the Labs spacing manager. Off by default.",
-                    iconTint: settingsStore.menuBarSpacingLabsEnabled ? .purple : .secondary
-                ) {
-                    Toggle("Enable Spacing Labs", isOn: $settingsStore.menuBarSpacingLabsEnabled)
-                        .labelsHidden()
-                }
+                    iconTint: settingsStore.menuBarSpacingLabsEnabled ? .purple : .secondary,
+                    isOn: $settingsStore.menuBarSpacingLabsEnabled
+                )
 
                 if settingsStore.menuBarSpacingLabsEnabled {
                     ClearGlassDivider()
@@ -664,7 +636,7 @@ private struct MenuBarSpacingPresetPanel: View {
     @Bindable var settingsStore: SettingsStore
 
     var body: some View {
-        LayoutInspectorPanel(
+        ClearGlassInspectorPanel(
             title: "Spacing Inspector",
             subtitle: selectedPreset.displayName,
             systemImage: "slider.horizontal.3",
@@ -735,62 +707,6 @@ private struct MenuBarSpacingPresetPanel: View {
 }
 
 // MARK: - Shared Layout Helpers
-
-private struct LayoutInspectorPanel<Content: View>: View {
-    let title: String
-    var subtitle: String?
-    let systemImage: String
-    var iconTint: Color = .secondary
-    @ViewBuilder let content: Content
-
-    init(
-        title: String,
-        subtitle: String? = nil,
-        systemImage: String,
-        iconTint: Color = .secondary,
-        @ViewBuilder content: () -> Content
-    ) {
-        self.title = title
-        self.subtitle = subtitle
-        self.systemImage = systemImage
-        self.iconTint = iconTint
-        self.content = content()
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top, spacing: 10) {
-                Image(systemName: systemImage)
-                    .font(.system(size: 16, weight: .regular))
-                    .foregroundStyle(iconTint)
-                    .frame(width: 22, height: 22)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.subheadline)
-                        .foregroundStyle(.primary)
-
-                    if let subtitle {
-                        Text(subtitle)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            content
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 8))
-        .overlay {
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color(nsColor: .separatorColor).opacity(0.46), lineWidth: 0.5)
-        }
-    }
-}
 
 private struct LayoutInspectorRow: View {
     let title: String

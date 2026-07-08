@@ -61,15 +61,13 @@ struct SecondBarSettingsView: View {
 
                 ClearGlassDivider()
 
-                ClearGlassControlRow(
+                ClearGlassToggleRow(
                     systemImage: "menubar.rectangle",
                     title: "Show in status menu",
                     subtitle: "Keep the Second Bar shortcut visible in the status menu. Direct links and automation use the same readiness gate.",
-                    iconTint: .blue
-                ) {
-                    Toggle("Show Second Bar in status menu", isOn: $settingsStore.secondBarEnabled)
-                        .labelsHidden()
-                }
+                    iconTint: .blue,
+                    isOn: $settingsStore.secondBarEnabled
+                )
 
                 ClearGlassDivider()
 
@@ -258,14 +256,12 @@ struct SecondBarSettingsView: View {
         systemImage: String,
         binding: Binding<Bool>
     ) -> some View {
-        ClearGlassControlRow(
+        ClearGlassToggleRow(
             systemImage: systemImage,
             title: title,
-            subtitle: subtitle
-        ) {
-            Toggle(title, isOn: binding)
-                .labelsHidden()
-        }
+            subtitle: subtitle,
+            isOn: binding
+        )
     }
 }
 

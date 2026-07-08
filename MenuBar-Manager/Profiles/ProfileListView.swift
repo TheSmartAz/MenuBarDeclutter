@@ -306,26 +306,22 @@ struct ProfileListView: View {
 
     private var triggerControlPanel: some View {
         VStack(spacing: 0) {
-            ClearGlassControlRow(
-                systemImage: "bolt",
-                title: "Enable Smart Triggers",
-                subtitle: "Evaluate local rules and apply profiles when the app is running."
-            ) {
-                Toggle("Enable Smart Triggers", isOn: $settingsStore.smartTriggersEnabled)
-                    .labelsHidden()
-                    .onChange(of: settingsStore.smartTriggersEnabled) { _, _ in onTriggersChanged() }
-            }
+            ClearGlassRowStack {
+                ClearGlassToggleRow(
+                    systemImage: "bolt",
+                    title: "Enable Smart Triggers",
+                    subtitle: "Evaluate local rules and apply profiles when the app is running.",
+                    isOn: $settingsStore.smartTriggersEnabled,
+                    onChange: { onTriggersChanged() }
+                )
 
-            ClearGlassDivider()
-
-            ClearGlassControlRow(
-                systemImage: "pause.circle",
-                title: "Pause All Automation",
-                subtitle: "Keep trigger rules saved but stop them from applying profiles."
-            ) {
-                Toggle("Pause All Automation", isOn: $settingsStore.automationPaused)
-                    .labelsHidden()
-                    .onChange(of: settingsStore.automationPaused) { _, _ in onTriggersChanged() }
+                ClearGlassToggleRow(
+                    systemImage: "pause.circle",
+                    title: "Pause All Automation",
+                    subtitle: "Keep trigger rules saved but stop them from applying profiles.",
+                    isOn: $settingsStore.automationPaused,
+                    onChange: { onTriggersChanged() }
+                )
             }
         }
     }

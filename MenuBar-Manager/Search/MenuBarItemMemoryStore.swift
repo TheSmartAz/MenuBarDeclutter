@@ -20,6 +20,7 @@ final class MenuBarItemMemoryStore {
     private let fileURL: URL?
     private let fileManager: FileManager
     private let recentLimit: Int
+    private let store: CodableFileStore<State>?
     private var state: State
 
     init(
@@ -30,7 +31,21 @@ final class MenuBarItemMemoryStore {
         self.fileURL = fileURL
         self.fileManager = fileManager
         self.recentLimit = max(0, recentLimit)
-        var loadedState = Self.loadState(from: fileURL, fileManager: fileManager)
+        let store: CodableFileStore<State>?
+        if let fileURL {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            store = CodableFileStore(
+                fileURL: fileURL,
+                fileManager: fileManager,
+                encoder: encoder,
+                decoder: JSONDecoder()
+            )
+        } else {
+            store = nil
+        }
+        self.store = store
+        var loadedState = Self.loadState(from: store)
         if loadedState.recentItemStorageKeys.count > self.recentLimit {
             loadedState.recentItemStorageKeys.removeLast(
                 loadedState.recentItemStorageKeys.count - self.recentLimit
@@ -127,32 +142,23 @@ final class MenuBarItemMemoryStore {
     }
 
     private func save() {
-        guard let fileURL else { return }
+        guard let store else { return }
 
         do {
-            try fileManager.createDirectory(
-                at: fileURL.deletingLastPathComponent(),
-                withIntermediateDirectories: true
-            )
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            let data = try encoder.encode(state)
-            try data.write(to: fileURL, options: [.atomic])
+            try store.write(state)
         } catch {
             // Recents/favorites are convenience state only; failing closed keeps
             // Basic Mode and Pro workflows usable without surfacing a modal error.
         }
     }
 
-    private static func loadState(from fileURL: URL?, fileManager: FileManager) -> State {
-        guard let fileURL,
-              fileManager.fileExists(atPath: fileURL.path) else {
-            return .empty
-        }
+    private static func loadState(from store: CodableFileStore<State>?) -> State {
+        guard let store else { return .empty }
 
         do {
-            let data = try Data(contentsOf: fileURL)
-            let state = try JSONDecoder().decode(State.self, from: data)
+            guard let state = try store.read() else {
+                return .empty
+            }
             guard state.schemaVersion == State.empty.schemaVersion else {
                 return .empty
             }

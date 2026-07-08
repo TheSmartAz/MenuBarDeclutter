@@ -11,6 +11,7 @@ final class IconGroupStore {
     private let fileManager: FileManager
     private let diagnosticsLogger: DiagnosticsLogger?
     private let now: () -> Date
+    private let store: CodableFileStore<IconGroupContainer>
 
     private(set) var groups: [IconGroup] = []
 
@@ -24,23 +25,29 @@ final class IconGroupStore {
         diagnosticsLogger: DiagnosticsLogger? = nil,
         now: @escaping () -> Date = { Date() }
     ) {
-        self.fileURL = directory.appendingPathComponent("groups.json")
+        let fileURL = directory.appendingPathComponent("groups.json")
+        self.fileURL = fileURL
         self.backupsDirectory = backupsDirectory
         self.fileManager = fileManager
         self.diagnosticsLogger = diagnosticsLogger
         self.now = now
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        self.store = CodableFileStore(
+            fileURL: fileURL,
+            fileManager: fileManager,
+            encoder: encoder,
+            decoder: JSONDecoder()
+        )
     }
 
     /// Load groups from disk. If the file is corrupted, back it up and reset.
     func load() {
-        guard fileManager.fileExists(atPath: fileURL.path) else {
-            groups = []
-            return
-        }
-
         do {
-            let data = try Data(contentsOf: fileURL)
-            let container = try JSONDecoder().decode(IconGroupContainer.self, from: data)
+            guard let container = try store.read() else {
+                groups = []
+                return
+            }
             groups = IconGroupSort.sort(container.groups)
         } catch {
             diagnosticsLogger?.log(
@@ -56,15 +63,11 @@ final class IconGroupStore {
     /// Save groups to disk.
     func save() {
         do {
-            try fileManager.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
             let container = IconGroupContainer(
                 schemaVersion: Self.schemaVersion,
                 groups: groups
             )
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            let data = try encoder.encode(container)
-            try data.write(to: fileURL, options: .atomic)
+            try store.write(container)
             notifyGroupsDidChange()
         } catch {
             diagnosticsLogger?.log(

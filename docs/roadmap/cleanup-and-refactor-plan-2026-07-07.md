@@ -225,3 +225,129 @@ Workspaces consolidations · Tier-C ledger decision.
 - One commit per item, message `cleanup(waveN): <item>`, so any step is
   independently revertible.
 - No item spans two waves; no two concurrent items edit the same file.
+
+---
+
+## Execution status (updated 2026-07-08)
+
+**Wave 1 — DONE.**
+- Tier-A deletions (~415 LOC): `SettingsPrimitives.swift`, `LabeledSlider.swift`,
+  `WorkspaceIntegrationCoordinator.swift`, `WorkspaceAssignmentCommandAdapter.swift`,
+  `FeatureVisibility.features(in:)` — commit `af8722d6`.
+- `onOpenGroups` / `onOpenAdvanced` callback split (regression fix) — `b682f604`.
+- App-shipped test doubles → test target (`MockAuthenticationService`,
+  `MockMenuBarSpacingCommandRunner`, `ProfilePack.swift` whole file) moved to
+  `MenuBar-ManagerTests/Support/`; verified app build + `build-for-testing` green —
+  `da97e0e5`.
+- `.experimental` label fix — **skipped** (the "correct" label for `.experimental`
+  vs `.labs` is a product decision, not a mechanical fix).
+
+**Wave 2 — DONE.**
+- `ClearGlass*` design-system library (~2,000 LOC, 35 types) extracted from
+  `SettingsRootView.swift` → `DesignSystem/ClearGlass/ClearGlassComponents.swift` —
+  `bbadfe04`.
+- `detailView(for:)` 20-case router (~415 LOC) extracted →
+  `SettingsRootView+DetailRouter.swift` (same-type extension; 8 private helpers
+  promoted to internal) — `0b16d38b`.
+- Net: `SettingsRootView.swift` **3,158 → 757 LOC (−76%)**.
+- `.behavior` de-dup — satisfied by the existing combined `case .hideReveal,
+  .behavior` render (single source of truth). The alias is **kept**: it has a
+  production caller (`AppDelegate.swift:252`) + 3 test assertions, and the plan
+  scopes this as de-dup, not removal.
+
+**Wave 3 — DONE.**
+- `CodableFileStore<T>` primitive — `d8628165` (added standalone, then adopted).
+- Adopted across **7 single-file stores** (`MoveOutcomeStore`, `SpacerItemStore`,
+  `IconGroupStore`, `MenuBarItemMemoryStore`, `NewMenuBarItemInboxStore`,
+  `PlacementItemPreferenceStore`, `WorkspaceStore`) — `e4b9f722`. Each preserves
+  its EXACT prior encoder/decoder so on-disk JSON is byte-identical (the
+  numeric-`Date` stores keep a plain encoder, NOT the ISO8601 default).
+  **`ProfileStore` and `DogfoodStore` intentionally NOT converted** — both are
+  multi-file / multi-payload stores that don't fit the single-file primitive.
+- Plus **`HotkeyBindingStore`** (`5ffac065`) — a leftover single-file store, same
+  shape as the IconGroupStore/SpacerItemStore conversions (single file + Container
+  + backup-on-corrupt); completes the sweep to **8 single-file stores**.
+  `TriggerService` left as-is (a service with incidental persistence, not a store).
+- `FeatureGate` predicate + `SettingsStore.isProDiscoveryAvailable`; routed the
+  12 real pro-discovery gate sites (11 settings-backed + 1 snapshot-backed);
+  left `HealthService`'s `!proMode && discovery` misconfiguration check
+  untouched — `16c0c506`.
+- DesignSystem dedup — **`ClearGlassInspectorPanel`** (`a021d416`): merged the
+  byte-identical `AdvancedInspectorPanel`/`LayoutInspectorPanel` (12 call sites)
+  into one shared DS container; zero rendered change. **Skipped, with reason:**
+  the `*OverviewStrip` wrappers (each maps distinct per-screen state to a distinct
+  metrics array — inlining relocates code without net reduction and hurts
+  readability), the `*InspectorRow` structs (genuinely different value models),
+  and `MenuBarInspectorGroup` (a distinct iconless grouping).
+- Toggle-row sweep — **DONE.** Added `ClearGlassToggleRow` (collapses
+  `ClearGlassControlRow { Toggle().labelsHidden() }`) and `ClearGlassRowStack`
+  (auto-inserts dividers between a run of rows, via an isolated `_VariadicView`).
+  API piloted on `SearchSettingsView` and approved, then rolled out via parallel
+  per-file subagents (strict "correctness over coverage" spec): **23 toggle rows
+  collapsed across 6 files; `ClearGlassRowStack` adopted in 7 files.** Converted:
+  Search, Layout (13 rows/5 runs), General, SecondBar, Advanced, DynamicHotkeys,
+  WorkspacePreview, ProfileList, IconGroups, FindAndRescue. Deliberately NOT
+  converted (toggles carrying `.onChange`/`.disabled`/`.help`, Steppers/Pickers,
+  or non-literal helper-row runs) — those keep `ClearGlassControlRow`.
+  `PrivateAccessSettingsView` had no eligible rows; `AssistedMoveConfirmationView`
+  skipped at user request. Each file committed separately; every build green.
+- `onChange:` overload added to `ClearGlassToggleRow` → extended sweep collapsed
+  **7 more** settings-callback toggles (IconGroups 3, ProfileList 2, Advanced 1,
+  DynamicHotkeys 1). **30 toggle rows total.** Left where the closure uses its
+  value param (Launch-at-Login, separator-length) or the toggle has
+  `.disabled`/HStack (PrivateAccess).
+- `ClearGlassStepRow` — consolidated the shared status+action accessory of
+  `SearchRequirementRow`, `ProSecondBarSetupStepRow`, `FindRescueSetupStepRow`
+  (each keeps its model adapter + own button via a `@ViewBuilder` action slot).
+  `ArrangeStepRow`/`RequirementRow`/`DogfoodChecklistRow` left as distinct.
+- Skipped, with reason: the `*OverviewStrip` wrappers (distinct per-screen metric
+  arrays — inlining is a net loss), `*InspectorRow` structs (different value
+  models), `MenuBarInspectorGroup` (distinct chrome).
+- **Wave 3 — DONE.** All steps `BUILD SUCCEEDED`; logic lane 107 tests / 20
+  suites pass; hosted `HotkeyBindingStore` suite passes.
+
+**Wave 4 — PARTIAL (R3 done; R1/R2 deliberately not done).**
+- **R3 — DONE** (`d2b59722`): moved the two straggler refresh methods
+  (`refreshGroupSettings`, `refreshDynamicHotkeys`) into
+  `SettingsRuntimeCoordinator`, matching their delegated siblings. Threaded the 4
+  deps by reference; behavior-identical (`updateLiveStatusFromServices()` ≡
+  `liveStatusSynchronizer.synchronize()`); no lazy-init cycle. Build green.
+- **R1 — NOT DONE (assessed).** The two command tables are *not* pure duplicates:
+  `menuBuilder.actions.revealAll → revealAllFromStatusMenu()` vs
+  `handlers.revealAll → revealAllHiddenItems()` (intentional menu-vs-router
+  differences). A naive collapse regresses those; the *safe* subset (share the
+  byte-identical one-liners) is negligible value. The valuable version — route the
+  menu through the command router — is a menu-gating **behavior change**, deferred.
+- **R2 — NOT DONE (assessed).** The 15 `…ForRecovery`/`…ForHealth` methods touch
+  ~8 subsystems + 5 AppEnvironment call-backs. Moving them wholesale turns
+  `AppHealthCoordinator` into a 13-dep hub — relocating coupling, not reducing it —
+  at real (unverifiable) regression risk. The existing closure seam is already a
+  reasonable abstraction. Deferred.
+- Decision (with the user): **bank R3, stop Wave 4.** R1/R2 need a running-app
+  smoke-test loop and/or a redesign, not unattended build-only automation.
+
+**Wave 5 — performance — DONE (4 of 5; M3 deliberately skipped).**
+- **H1 — DONE** (`9258ad9e`): moved captured-icon PNG encode + atomic write off
+  the main actor (a detached utility Task); in-memory cache + per-icon
+  notification stay synchronous so consumers see the image immediately. CGImage
+  is Sendable; `FileManager.default` used directly. Per-sweep notification
+  coalescing left out (no sweep boundary; the userInfo identity is contractual).
+- **H2 — DONE** (`974e93bb`): compact strip reuses one `NSHostingController<AnyView>`
+  and updates `rootView` in place instead of rebuilding it every render.
+- **M1 — DONE** (`4ada968e`): hover-reveal polling timer self-suspends while
+  expanded-and-idle and resumes on collapse via `HidingService.onStateChange`
+  (previously unused). Reveal/re-hide logic untouched; hover suite passes.
+- **M2 — DONE** (`ba568484`): skip enumerating every running app's bundle id
+  unless an `.appLaunched` rule exists (its only consumer).
+- **M3 — SKIPPED (assessed).** `SearchRootView`'s 1 Hz poll can't be made
+  event-driven safely: `refreshProviderBackedResultsIfNeeded()` invalidates on a
+  3-part signature including `newItemStorageKeysProvider()` and
+  `workspaceUsageProvider()` — both **closures over non-observable sources**, so
+  there's no `onChange` signal to drive off (the plan's premise was wrong).
+  Removing the poll regresses to stale results; the poll only runs transiently
+  while the Search panel is open and is guarded/cheap when nothing changed.
+
+**All cleanup waves resolved.** Waves 1–3 done; Wave 4 = R3 (R1/R2 assessed +
+deferred); Wave 5 = H1/H2/M1/M2 (M3 assessed + skipped). Every step build-green;
+logic lane 107 tests / 20 suites pass; hosted `HotkeyBindingStore`,
+`HoverRevealController`, `MenuBarIconCacheKey` suites pass.

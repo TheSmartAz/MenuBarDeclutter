@@ -190,36 +190,34 @@ struct DynamicHotkeysSettingsView: View {
 
                 ClearGlassDivider()
 
-                ClearGlassControlRow(
-                    systemImage: "keyboard",
-                    title: "Enable Dynamic Hotkeys",
-                    subtitle: "Register user-created hotkeys for groups, profiles, and layout actions."
-                ) {
-                    Toggle("Enable Dynamic Hotkeys", isOn: $settingsStore.dynamicHotkeysEnabled)
-                        .labelsHidden()
-                        .onChange(of: settingsStore.dynamicHotkeysEnabled) { _, _ in notifyChanged() }
-                }
+                ClearGlassRowStack {
+                    ClearGlassToggleRow(
+                        systemImage: "keyboard",
+                        title: "Enable Dynamic Hotkeys",
+                        subtitle: "Register user-created hotkeys for groups, profiles, and layout actions.",
+                        isOn: $settingsStore.dynamicHotkeysEnabled,
+                        onChange: { notifyChanged() }
+                    )
 
-                ClearGlassDivider()
+                    ClearGlassControlRow(
+                        systemImage: "number",
+                        title: "Maximum Dynamic Hotkeys",
+                        subtitle: "Limit registrations so accidental bulk imports cannot register too many shortcuts."
+                    ) {
+                        HStack(spacing: 10) {
+                            Text(settingsStore.maxDynamicHotkeys, format: .number)
+                                .font(.system(.body, design: .monospaced))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 32, alignment: .trailing)
 
-                ClearGlassControlRow(
-                    systemImage: "number",
-                    title: "Maximum Dynamic Hotkeys",
-                    subtitle: "Limit registrations so accidental bulk imports cannot register too many shortcuts."
-                ) {
-                    HStack(spacing: 10) {
-                        Text(settingsStore.maxDynamicHotkeys, format: .number)
-                            .font(.system(.body, design: .monospaced))
-                            .foregroundStyle(.secondary)
-                            .frame(width: 32, alignment: .trailing)
-
-                        Stepper(
-                            "Maximum Dynamic Hotkeys",
-                            value: $settingsStore.maxDynamicHotkeys,
-                            in: 0...50
-                        )
-                        .labelsHidden()
-                        .onChange(of: settingsStore.maxDynamicHotkeys) { _, _ in notifyChanged() }
+                            Stepper(
+                                "Maximum Dynamic Hotkeys",
+                                value: $settingsStore.maxDynamicHotkeys,
+                                in: 0...50
+                            )
+                            .labelsHidden()
+                            .onChange(of: settingsStore.maxDynamicHotkeys) { _, _ in notifyChanged() }
+                        }
                     }
                 }
 

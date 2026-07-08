@@ -360,7 +360,17 @@ final class TriggerService {
             return currentContextProvider()
         }
 
-        let runningBundleIDs = Set(NSWorkspace.shared.runningApplications.compactMap(\.bundleIdentifier))
+        // Enumerating every running app's bundle id (an expensive call on every
+        // app-switch burst) is only consumed by `.appLaunched` rules. Skip it
+        // entirely when no such rule exists — the common case — since nothing
+        // else reads `runningBundleIdentifiers`. (M2)
+        let needsRunningApps = triggers.contains { trigger in
+            if case .appLaunched = trigger.rule { return true }
+            return false
+        }
+        let runningBundleIDs = needsRunningApps
+            ? Set(NSWorkspace.shared.runningApplications.compactMap(\.bundleIdentifier))
+            : []
         let frontmost = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
         let components = Calendar.current.dateComponents([.hour, .minute], from: now())
 

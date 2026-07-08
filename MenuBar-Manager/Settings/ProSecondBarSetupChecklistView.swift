@@ -189,28 +189,23 @@ private struct ProSecondBarSetupStepRow: View {
     let perform: (ProSecondBarSetupAction) -> Void
 
     var body: some View {
-        ClearGlassControlRow(
+        ClearGlassStepRow(
             systemImage: step.id.systemImage,
             title: step.id.title,
             subtitle: step.id.detail,
-            iconTint: step.state.clearGlassStyle.tint
+            iconTint: step.state.clearGlassStyle.tint,
+            statusText: step.statusText,
+            statusStyle: step.state.clearGlassStyle,
+            isDimmed: step.state == .waiting
         ) {
-            VStack(alignment: .trailing, spacing: 8) {
-                ClearGlassStatusValue(
-                    text: step.statusText,
-                    style: step.state.clearGlassStyle
-                )
-
-                if let action = step.action {
-                    Button(action.title, systemImage: action.systemImage) {
-                        perform(action)
-                    }
-                    .controlSize(.small)
-                    .disabled(!isActionEnabled)
+            if let action = step.action {
+                Button(action.title, systemImage: action.systemImage) {
+                    perform(action)
                 }
+                .controlSize(.small)
+                .disabled(!isActionEnabled)
             }
         }
-        .opacity(step.state == .waiting ? 0.72 : 1)
     }
 }
 

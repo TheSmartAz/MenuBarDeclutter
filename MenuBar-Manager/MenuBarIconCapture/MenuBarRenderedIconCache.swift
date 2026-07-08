@@ -58,7 +58,7 @@ final class MenuBarRenderedIconCache {
         let image = NSImage(cgImage: iconSnapshot.image, size: iconSnapshot.frameInScreenPoints.size)
         imagesByKey[iconSnapshot.cacheKey] = image
         latestKeyByIdentity[iconSnapshot.identity.fingerprint] = iconSnapshot.cacheKey
-        persist(image, for: iconSnapshot.cacheKey)
+        persistInBackground(cgImage: iconSnapshot.image, for: iconSnapshot.cacheKey)
         notificationCenter.post(
             name: .menuBarRenderedIconCacheDidChange,
             object: self,
@@ -100,31 +100,30 @@ final class MenuBarRenderedIconCache {
         return image
     }
 
-    private func persist(_ image: NSImage, for key: MenuBarIconCacheKey) {
-        guard let directoryURL,
-              let data = image.pngData() else {
-            return
-        }
-
-        do {
-            try fileManager.createDirectory(
-                at: directoryURL,
-                withIntermediateDirectories: true
-            )
-            let url = directoryURL.appendingPathComponent(key.storageFilename)
-            try data.write(to: url, options: .atomic)
-        } catch {
-            // The in-memory cache remains usable if disk persistence fails.
+    /// Encodes the PNG and writes it to disk off the main actor. The in-memory
+    /// cache and the change notification are already updated synchronously in
+    /// `cache(_:)`, so callers see the new image immediately (they read the
+    /// in-memory `imagesByKey`, never waiting on disk); only durable persistence
+    /// is deferred. Previously this ran `pngData()` + atomic write per icon (up
+    /// to 40 per sweep) synchronously on the main actor — a visible hitch. (H1)
+    private func persistInBackground(cgImage: CGImage, for key: MenuBarIconCacheKey) {
+        guard let directoryURL else { return }
+        let url = directoryURL.appendingPathComponent(key.storageFilename)
+        // `CGImage` is Sendable (immutable); `FileManager.default` is used
+        // directly (thread-safe, no captured state) rather than the injected
+        // instance, so both the encode and the write run off the main actor.
+        Task.detached(priority: .utility) {
+            guard let data = MenuBarRenderedIconCache.pngData(from: cgImage) else { return }
+            do {
+                try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+                try data.write(to: url, options: .atomic)
+            } catch {
+                // The in-memory cache remains usable if disk persistence fails.
+            }
         }
     }
-}
 
-private extension NSImage {
-    func pngData() -> Data? {
-        guard let cgImage = cgImage(forProposedRect: nil, context: nil, hints: nil) else {
-            return nil
-        }
-
+    nonisolated private static func pngData(from cgImage: CGImage) -> Data? {
         let rep = NSBitmapImageRep(cgImage: cgImage)
         return rep.representation(using: .png, properties: [:])
     }

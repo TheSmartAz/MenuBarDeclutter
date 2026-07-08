@@ -17,6 +17,7 @@ struct FindAndRescueSettingsView: View {
     var onOpenSecondBarSettings: (() -> Void)? = nil
     var onOpenMenuBarItems: (() -> Void)? = nil
     var onOpenGroups: (() -> Void)? = nil
+    var onOpenAdvanced: (() -> Void)? = nil
     var onOpenArrange: (() -> Void)? = nil
     var onOpenPrivacy: (() -> Void)? = nil
 
@@ -225,7 +226,7 @@ struct FindAndRescueSettingsView: View {
                 summary: "Use saved collections for search and Second Bar. Advanced group panels and group status items stay in Advanced."
             ) {
                 Button("Open Advanced", systemImage: "chevron.left.forwardslash.chevron.right") {
-                    onOpenGroups?()
+                    onOpenAdvanced?()
                 }
             }
         }
@@ -320,7 +321,7 @@ struct FindAndRescueSettingsView: View {
     }
 
     private var discoveryReady: Bool {
-        settingsStore.proModeEnabled && settingsStore.accessibilityDiscoveryEnabled
+        settingsStore.isProDiscoveryAvailable
     }
 
     private var findRescueReady: Bool {
@@ -497,14 +498,12 @@ struct FindAndRescueSettingsView: View {
         systemImage: String,
         binding: Binding<Bool>
     ) -> some View {
-        ClearGlassControlRow(
+        ClearGlassToggleRow(
             systemImage: systemImage,
             title: title,
-            subtitle: subtitle
-        ) {
-            Toggle(title, isOn: binding)
-                .labelsHidden()
-        }
+            subtitle: subtitle,
+            isOn: binding
+        )
     }
 }
 
@@ -552,21 +551,19 @@ private struct FindRescueSetupStepRow: View {
     var action: (() -> Void)? = nil
 
     var body: some View {
-        ClearGlassControlRow(
+        ClearGlassStepRow(
             systemImage: systemImage,
             title: "\(number). \(title)",
             subtitle: detail,
-            iconTint: state.iconTint
+            iconTint: state.iconTint,
+            statusText: statusText,
+            statusStyle: state.style,
+            isDimmed: state == .locked
         ) {
-            VStack(alignment: .trailing, spacing: 8) {
-                ClearGlassStatusValue(text: statusText, style: state.style)
-
-                if let actionTitle, let action {
-                    stepButton(title: actionTitle, action: action)
-                }
+            if let actionTitle, let action {
+                stepButton(title: actionTitle, action: action)
             }
         }
-        .opacity(state == .locked ? 0.74 : 1)
         .accessibilityElement(children: .combine)
     }
 

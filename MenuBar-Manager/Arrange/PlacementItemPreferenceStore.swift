@@ -14,8 +14,7 @@ nonisolated struct PlacementItemPreferences: Codable, Equatable, Sendable {
 @MainActor
 @Observable
 final class PlacementItemPreferenceStore {
-    @ObservationIgnored private let fileURL: URL?
-    @ObservationIgnored private let fileManager: FileManager
+    @ObservationIgnored private let store: CodableFileStore<PlacementItemPreferences>?
 
     private var state: PlacementItemPreferences
 
@@ -27,9 +26,24 @@ final class PlacementItemPreferenceStore {
         fileURL: URL?,
         fileManager: FileManager = .default
     ) {
-        self.fileURL = fileURL
-        self.fileManager = fileManager
-        self.state = Self.load(from: fileURL, fileManager: fileManager)
+        let store: CodableFileStore<PlacementItemPreferences>?
+        if let fileURL {
+            // Preserve the original numeric (`.deferredToDate`) date format:
+            // pass a plain encoder rather than the ISO8601 CodableFileStore
+            // default so existing files still decode.
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            store = CodableFileStore(
+                fileURL: fileURL,
+                fileManager: fileManager,
+                encoder: encoder,
+                decoder: JSONDecoder()
+            )
+        } else {
+            store = nil
+        }
+        self.store = store
+        self.state = Self.load(from: store)
     }
 
     func preference(for storageKey: String) -> PlacementItemPreference? {
@@ -55,30 +69,22 @@ final class PlacementItemPreferenceStore {
     }
 
     private func save() {
-        guard let fileURL else { return }
+        guard let store else { return }
 
         do {
-            try fileManager.createDirectory(
-                at: fileURL.deletingLastPathComponent(),
-                withIntermediateDirectories: true
-            )
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            try encoder.encode(state).write(to: fileURL, options: [.atomic])
+            try store.write(state)
         } catch {
             // Planner preferences are advisory. Failing closed keeps Arrange usable.
         }
     }
 
-    private static func load(from fileURL: URL?, fileManager: FileManager) -> PlacementItemPreferences {
-        guard let fileURL,
-              fileManager.fileExists(atPath: fileURL.path) else {
-            return .empty
-        }
+    private static func load(from store: CodableFileStore<PlacementItemPreferences>?) -> PlacementItemPreferences {
+        guard let store else { return .empty }
 
         do {
-            let data = try Data(contentsOf: fileURL)
-            let state = try JSONDecoder().decode(PlacementItemPreferences.self, from: data)
+            guard let state = try store.read() else {
+                return .empty
+            }
             guard state.schemaVersion == PlacementItemPreferences.empty.schemaVersion else {
                 return .empty
             }

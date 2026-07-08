@@ -15,6 +15,9 @@ final class WorkspaceStore: WorkspaceStoreProtocol {
     private let fileManager: FileManager
     private let diagnosticsLogger: DiagnosticsLogger?
     private let now: () -> Date
+    // ISO8601 + pretty/sorted: the CodableFileStore defaults match the previous
+    // `Self.encoder`/`Self.decoder` byte-for-byte.
+    private let store: CodableFileStore<WorkspaceStoreSnapshot>
 
     private(set) var snapshot: WorkspaceStoreSnapshot?
     private(set) var lastLoadStatus: WorkspaceStoreLoadStatus = .notLoaded
@@ -32,6 +35,7 @@ final class WorkspaceStore: WorkspaceStoreProtocol {
         self.fileManager = fileManager
         self.diagnosticsLogger = diagnosticsLogger
         self.now = now
+        self.store = CodableFileStore(fileURL: fileURL, fileManager: fileManager)
     }
 
     func load() throws -> WorkspaceStoreSnapshot {
@@ -47,8 +51,11 @@ final class WorkspaceStore: WorkspaceStoreProtocol {
         }
 
         do {
-            let data = try Data(contentsOf: fileURL)
-            let decoded = try Self.decoder.decode(WorkspaceStoreSnapshot.self, from: data)
+            guard let decoded = try store.read() else {
+                // File existed at the guard above but is now unreadable/absent;
+                // fall through to the corrupted-recovery path in `catch`.
+                throw WorkspaceStoreError.writeFailed("Workspace store file unexpectedly missing during load")
+            }
             let migrated = WorkspaceStoreMigration.migrate(decoded)
             let repaired = validate(migrated)
             let didMigrate = decoded.schemaVersion != WorkspaceStoreSnapshot.currentSchemaVersion
@@ -116,26 +123,11 @@ final class WorkspaceStore: WorkspaceStoreProtocol {
 
     private func write(_ snapshot: WorkspaceStoreSnapshot) throws {
         do {
-            try fileManager.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-            let data = try Self.encoder.encode(snapshot)
-            try data.write(to: fileURL, options: .atomic)
+            try store.write(snapshot)
         } catch {
             throw WorkspaceStoreError.writeFailed(error.localizedDescription)
         }
     }
-
-    private static let encoder: JSONEncoder = {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        encoder.dateEncodingStrategy = .iso8601
-        return encoder
-    }()
-
-    private static let decoder: JSONDecoder = {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return decoder
-    }()
 }
 
 enum WorkspaceStoreMigration {

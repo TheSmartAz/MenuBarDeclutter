@@ -765,6 +765,10 @@ final class AppEnvironment {
         secondBarWindowController: menuBarItemSurfaceCoordinator.secondBarWindowController,
         triggerService: profileAutomationCoordinator.triggerService,
         liveStatusSynchronizer: liveStatusSynchronizer,
+        groupStore: groupStore,
+        hotkeyBindingStore: hotkeyBindingStore,
+        groupStatusItemController: groupStatusItemController,
+        dynamicHotkeyRegistrationService: dynamicHotkeyRegistrationService,
         isHoverRevealSuppressed: { [weak self] in
             self?.isHoverRevealCurrentlySuppressed() == true
         },
@@ -859,7 +863,7 @@ final class AppEnvironment {
         },
         proDiscoveryAvailable: { [weak self] in
             guard let self else { return false }
-            return self.settingsStore.proModeEnabled && self.settingsStore.accessibilityDiscoveryEnabled
+            return self.settingsStore.isProDiscoveryAvailable
         },
         accessibilityAvailable: { [weak self] in
             self?.accessibilityPermissionService.status == .granted
@@ -1165,6 +1169,12 @@ final class AppEnvironment {
         }
         hoverRevealController.onLeave = { [weak self] in
             self?.armRehide()
+        }
+        // Resume hover polling when the menu bar collapses: the timer self-
+        // suspends while expanded-and-idle, and onStateChange fires on every
+        // HidingService transition, so no collapse path is missed. (M1)
+        hidingService.onStateChange = { [weak self] _ in
+            self?.hoverRevealController.menuBarStateDidChange()
         }
 
         // Wire hotkey: toggle visibility.
@@ -1609,23 +1619,11 @@ final class AppEnvironment {
     }
 
     func refreshGroupSettings() {
-        groupStore.load()
-        if safeModeLaunchState.isSafeModeActive {
-            groupStatusItemController.enterSafeMode()
-        } else {
-            groupStatusItemController.refresh()
-        }
-        updateLiveStatusFromServices()
+        settingsRuntimeCoordinator.refreshGroupSettings()
     }
 
     func refreshDynamicHotkeys() {
-        hotkeyBindingStore.load()
-        if safeModeLaunchState.isSafeModeActive {
-            dynamicHotkeyRegistrationService.unregisterAll()
-        } else {
-            dynamicHotkeyRegistrationService.refreshRegistrations()
-        }
-        updateLiveStatusFromServices()
+        settingsRuntimeCoordinator.refreshDynamicHotkeys()
     }
 
     func refreshAutomationSettings() {
@@ -2364,7 +2362,7 @@ final class AppEnvironment {
             newItemCount: liveStatus.newMenuBarItemReviewCount,
             healthWarningCount: liveStatus.healthReport?.issues.count ?? 0,
             latestScanAgeSeconds: latestScanAge,
-            proDiscoveryAvailable: settingsStore.proModeEnabled && settingsStore.accessibilityDiscoveryEnabled,
+            proDiscoveryAvailable: settingsStore.isProDiscoveryAvailable,
             safeModeActive: safeModeLaunchState.isSafeModeActive,
             currentDate: Date()
         )

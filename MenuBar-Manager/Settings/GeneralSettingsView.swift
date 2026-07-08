@@ -89,27 +89,25 @@ struct GeneralSettingsView: View {
 
     private var startupSection: some View {
         ClearGlassSection("Startup", subtitle: "Launch behavior and first-visible state.") {
-            ClearGlassControlRow(
-                systemImage: "power",
-                title: "Launch at Login",
-                subtitle: "Open MenuBarDeclutter automatically after signing in."
-            ) {
-                Toggle("Launch at Login", isOn: $settingsStore.launchAtLoginEnabled)
-                    .labelsHidden()
-                    .onChange(of: settingsStore.launchAtLoginEnabled) { _, newValue in
-                        launchAtLoginService?.apply(enabled: newValue)
-                    }
-            }
+            ClearGlassRowStack {
+                ClearGlassControlRow(
+                    systemImage: "power",
+                    title: "Launch at Login",
+                    subtitle: "Open MenuBarDeclutter automatically after signing in."
+                ) {
+                    Toggle("Launch at Login", isOn: $settingsStore.launchAtLoginEnabled)
+                        .labelsHidden()
+                        .onChange(of: settingsStore.launchAtLoginEnabled) { _, newValue in
+                            launchAtLoginService?.apply(enabled: newValue)
+                        }
+                }
 
-            ClearGlassDivider()
-
-            ClearGlassControlRow(
-                systemImage: "rectangle.compress.vertical",
-                title: "Start Collapsed",
-                subtitle: "Begin the next launch with hidden menu bar items collapsed."
-            ) {
-                Toggle("Start Collapsed", isOn: $settingsStore.startCollapsed)
-                    .labelsHidden()
+                ClearGlassToggleRow(
+                    systemImage: "rectangle.compress.vertical",
+                    title: "Start Collapsed",
+                    subtitle: "Begin the next launch with hidden menu bar items collapsed.",
+                    isOn: $settingsStore.startCollapsed
+                )
             }
 
             if let service = launchAtLoginService {
@@ -185,27 +183,25 @@ struct GeneralSettingsView: View {
 
     private var setupSection: some View {
         ClearGlassSection("Setup", subtitle: "Onboarding progress and first-run education.") {
-            ClearGlassControlRow(
-                systemImage: settingsStore.hasCompletedOnboarding ? "checkmark.circle" : "circle",
-                title: "Onboarding Completed",
-                subtitle: "Tracks whether the first-run flow has already been completed.",
-                iconTint: settingsStore.hasCompletedOnboarding ? .green : .secondary
-            ) {
-                Toggle("Onboarding Completed", isOn: $settingsStore.hasCompletedOnboarding)
-                    .labelsHidden()
-            }
+            ClearGlassRowStack {
+                ClearGlassToggleRow(
+                    systemImage: settingsStore.hasCompletedOnboarding ? "checkmark.circle" : "circle",
+                    title: "Onboarding Completed",
+                    subtitle: "Tracks whether the first-run flow has already been completed.",
+                    iconTint: settingsStore.hasCompletedOnboarding ? .green : .secondary,
+                    isOn: $settingsStore.hasCompletedOnboarding
+                )
 
-            ClearGlassDivider()
-
-            ClearGlassControlRow(
-                systemImage: "play.circle",
-                title: "Show Onboarding Again",
-                subtitle: "Reopen the setup tour and feature introduction."
-            ) {
-                Button("Show Onboarding", systemImage: "play.circle") {
-                    onShowOnboarding?()
+                ClearGlassControlRow(
+                    systemImage: "play.circle",
+                    title: "Show Onboarding Again",
+                    subtitle: "Reopen the setup tour and feature introduction."
+                ) {
+                    Button("Show Onboarding", systemImage: "play.circle") {
+                        onShowOnboarding?()
+                    }
+                    .disabled(!settingsStore.hasCompletedOnboarding)
                 }
-                .disabled(!settingsStore.hasCompletedOnboarding)
             }
         }
     }

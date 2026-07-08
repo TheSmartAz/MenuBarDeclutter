@@ -6,6 +6,7 @@ final class HotkeyBindingStore {
     private let fileURL: URL
     private let backupsDirectory: URL
     private let fileManager: FileManager
+    private let store: CodableFileStore<HotkeyBindingContainer>
     private let diagnosticsLogger: DiagnosticsLogger?
     private let now: () -> Date
     private let didSave: () -> Void
@@ -20,25 +21,24 @@ final class HotkeyBindingStore {
         now: @escaping () -> Date = { Date() },
         didSave: @escaping () -> Void = {}
     ) {
-        self.fileURL = directory.appendingPathComponent("hotkeys.json")
+        let fileURL = directory.appendingPathComponent("hotkeys.json")
+        self.fileURL = fileURL
         self.backupsDirectory = backupsDirectory
         self.fileManager = fileManager
+        self.store = CodableFileStore(
+            fileURL: fileURL,
+            fileManager: fileManager,
+            encoder: JSONCoding.makeEncoder(dateEncodingStrategy: .deferredToDate),
+            decoder: JSONCoding.makeDecoder(dateDecodingStrategy: .deferredToDate)
+        )
         self.diagnosticsLogger = diagnosticsLogger
         self.now = now
         self.didSave = didSave
     }
 
     func load() {
-        guard fileManager.fileExists(atPath: fileURL.path) else {
-            bindings = []
-            return
-        }
-
         do {
-            let data = try Data(contentsOf: fileURL)
-            let decoder = JSONCoding.makeDecoder(dateDecodingStrategy: .deferredToDate)
-            let container = try decoder.decode(HotkeyBindingContainer.self, from: data)
-            bindings = container.bindings
+            bindings = try store.read()?.bindings ?? []
         } catch {
             diagnosticsLogger?.log(
                 "Hotkey binding store corrupted, backing up and resetting.",
@@ -52,11 +52,7 @@ final class HotkeyBindingStore {
 
     func save() {
         do {
-            try fileManager.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-            let container = HotkeyBindingContainer(bindings: bindings)
-            let encoder = JSONCoding.makeEncoder(dateEncodingStrategy: .deferredToDate)
-            let data = try encoder.encode(container)
-            try data.write(to: fileURL, options: .atomic)
+            try store.write(HotkeyBindingContainer(bindings: bindings))
             didSave()
         } catch {
             diagnosticsLogger?.log(

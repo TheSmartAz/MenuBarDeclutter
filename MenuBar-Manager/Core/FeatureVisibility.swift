@@ -343,8 +343,4 @@ nonisolated struct FeatureVisibility: Equatable, Sendable {
     static func visibility(for feature: ProductFeature) -> FeatureVisibility {
         all.first { $0.feature == feature }!
     }
-
-    static func features(in area: ProductArea) -> [FeatureVisibility] {
-        all.filter { $0.area == area }
-    }
 }

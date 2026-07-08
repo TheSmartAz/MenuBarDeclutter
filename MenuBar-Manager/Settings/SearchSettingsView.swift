@@ -55,36 +55,28 @@ struct SearchSettingsView: View {
 
                 ClearGlassDivider()
 
-                ClearGlassControlRow(
-                    systemImage: "magnifyingglass",
-                    title: "Show in status menu",
-                    subtitle: "Keep the Find Icon shortcut visible in the status menu. Direct links and automation still open the gated panel.",
-                    iconTint: .blue
-                ) {
-                    Toggle("Show Find Icon in status menu", isOn: $settingsStore.searchEnabled)
-                        .labelsHidden()
-                }
+                ClearGlassRowStack {
+                    ClearGlassToggleRow(
+                        systemImage: "magnifyingglass",
+                        title: "Show in status menu",
+                        subtitle: "Keep the Find Icon shortcut visible in the status menu. Direct links and automation still open the gated panel.",
+                        iconTint: .blue,
+                        isOn: $settingsStore.searchEnabled
+                    )
 
-                ClearGlassDivider()
+                    ClearGlassToggleRow(
+                        systemImage: "eye",
+                        title: "Reveal item when selected",
+                        subtitle: "Temporarily reveal the selected menu bar item.",
+                        isOn: $settingsStore.searchRevealOnSelection
+                    )
 
-                ClearGlassControlRow(
-                    systemImage: "eye",
-                    title: "Reveal item when selected",
-                    subtitle: "Temporarily reveal the selected menu bar item."
-                ) {
-                    Toggle("Reveal item when selected", isOn: $settingsStore.searchRevealOnSelection)
-                        .labelsHidden()
-                }
-
-                ClearGlassDivider()
-
-                ClearGlassControlRow(
-                    systemImage: "square.dashed",
-                    title: "Highlight selected item",
-                    subtitle: "Visually highlight the selected result in the list."
-                ) {
-                    Toggle("Highlight selected item", isOn: $settingsStore.searchHighlightOnSelection)
-                        .labelsHidden()
+                    ClearGlassToggleRow(
+                        systemImage: "square.dashed",
+                        title: "Highlight selected item",
+                        subtitle: "Visually highlight the selected result in the list.",
+                        isOn: $settingsStore.searchHighlightOnSelection
+                    )
                 }
 
                 ClearGlassInlineMessage(
@@ -101,14 +93,12 @@ struct SearchSettingsView: View {
             }
 
             ClearGlassSection("Search Hotkey", subtitle: "Keyboard access for the Find Icon panel.") {
-                ClearGlassControlRow(
+                ClearGlassToggleRow(
                     systemImage: "keyboard",
                     title: "Enable Find Icon hotkey",
-                    subtitle: "Default: Option + Command + F. The hotkey is disabled until you turn it on."
-                ) {
-                    Toggle("Enable Find Icon hotkey", isOn: $settingsStore.searchHotkeyEnabled)
-                        .labelsHidden()
-                }
+                    subtitle: "Default: Option + Command + F. The hotkey is disabled until you turn it on.",
+                    isOn: $settingsStore.searchHotkeyEnabled
+                )
 
                 if settingsStore.searchHotkeyEnabled {
                     ClearGlassDivider()
@@ -173,24 +163,19 @@ struct SearchRequirementRow: View {
     var action: (() -> Void)? = nil
 
     var body: some View {
-        ClearGlassControlRow(
+        ClearGlassStepRow(
             systemImage: systemImage,
             title: title,
             subtitle: detail,
-            iconTint: isSatisfied ? .green : .orange
+            iconTint: isSatisfied ? .green : .orange,
+            statusText: status,
+            statusStyle: isSatisfied ? .success : .warning
         ) {
-            VStack(alignment: .trailing, spacing: 8) {
-                ClearGlassStatusValue(
-                    text: status,
-                    style: isSatisfied ? .success : .warning
-                )
-
-                if let actionTitle, let action {
-                    Button(actionTitle) {
-                        action()
-                    }
-                    .controlSize(.small)
+            if let actionTitle, let action {
+                Button(actionTitle) {
+                    action()
                 }
+                .controlSize(.small)
             }
         }
     }
